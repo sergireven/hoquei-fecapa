@@ -420,15 +420,29 @@ window.setCalTeam = function(t) { detailTeam=t; renderDetailClassif(); renderDet
 async function init() {
   try {
     $("loading-note").textContent = "Carregant dades...";
-    const res = await fetch(DATA_URL+"?t="+Date.now());
-    if (!res.ok) throw new Error("No s'han pogut carregar les dades");
-    DB = await res.json();
-    $("hero-season").textContent = DB.season||"2025-26";
-    $("hero-sub").textContent    = `${DB.totalComps||0} competicions · Act. ${DB.updatedAt?new Date(DB.updatedAt).toLocaleDateString("ca-ES"):"?"}`;
+    const url = DATA_URL+"?t="+Date.now();
+    let res;
+    try {
+      res = await fetch(url);
+    } catch(fetchErr) {
+      throw new Error("No s'ha pogut connectar: " + fetchErr.message);
+    }
+    if (!res.ok) throw new Error(`Error HTTP ${res.status} carregant data.json`);
+    let text;
+    try {
+      text = await res.text();
+      DB   = JSON.parse(text);
+    } catch(parseErr) {
+      throw new Error("data.json no és vàlid. Torna a executar el scraper. (" + parseErr.message + ")");
+    }
+    if (!DB.categories) throw new Error("data.json incomplet. Torna a executar el scraper.");
     $("screen-loading").style.display = "none";
+    $("screen-home").style.display    = "flex";
     renderHome();
   } catch(e) {
-    $("loading-note").innerHTML = `<span style="color:#e5001c">⚠️ ${e.message}</span>`;
+    $("loading-note").innerHTML = `
+      <span style="color:#e5001c;font-weight:700">⚠️ Error</span><br/>
+      <span style="font-size:12px;color:#6b7a99">${esc(e.message)}</span>`;
   }
 }
 init();
