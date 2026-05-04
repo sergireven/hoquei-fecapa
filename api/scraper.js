@@ -82,62 +82,68 @@ function parseCompetitionList(html) {
 }
 
 // ── Parse classification from competition page HTML ───────────
-// Structure varies — try multiple patterns:
-// Pattern A: <tr> rows with <td> cells (table)
-// Pattern B: JSON embedded in page (some Vue pages use __INITIAL_STATE__)
+// jok.cat uses Tailwind divs (NOT a <table>). Structure per row:
+//   <div class='w-1/12 ...'>POS</div>
+//   <div class='classCol-team ...'><a href="/equip/ID/...">Name</a></div>
+//   <div class='bg-neutral-700 ...'>PTS</div>   <- highlighted
+//   <div class='classCol-extra hidden'>PJ</div>
+//   <div ...>G</div> <div ...>E</div> <div ...>Pe</div>
+//   <div class='classCol-extra hidden'>GF</div>
+//   <div class='classCol-extra hidden'>GC</div>
 function parseClassification(html) {
-  // Try embedded JSON first (most reliable)
-  const jsonRe = /"classificacio"\s*:\s*(\[[\s\S]*?\])\s*[,}]/;
-  const jsonM  = jsonRe.exec(html);
-  if (jsonM) {
-    try {
-      const data = JSON.parse(jsonM[1]);
-      return data.map((r, i) => ({
-        pos:    r.posicio   || r.pos    || i + 1,
-        team:   r.equip     || r.nom    || r.name || "",
-        teamId: r.equip_id  || r.id     || null,
-        clubId: r.club_id   || null,
-        pts:    r.punts     || r.pts    || 0,
-        pj:     r.jugats    || r.pj     || 0,
-        pg:     r.guanyats  || r.pg     || 0,
-        pe:     r.empats    || r.pe     || 0,
-        pp:     r.perduts   || r.pp     || 0,
-        gf:     r.gf        || 0,
-        gc:     r.gc        || 0,
-      }));
-    } catch {}
-  }
-
-  // Try HTML table rows
   const rows = [];
-  // Look for table containing classification data
-  // Typical jok.cat table: pos | team-link | pts | pj | pg | pe | pp | gf | gc
-  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let trM;
-  while ((trM = trRe.exec(html)) !== null) {
-    const row  = trM[1];
-    const tds  = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(c => strip(c[1]));
-    if (tds.length < 8) continue;
-    if (!/^\d{1,2}$/.test(tds[0])) continue; // first cell must be position number
 
-    // Extract teamId from link in second cell
-    const linkM = /<a[^>]*href="[^"]*\/equip\/(\d+)\/[^"]*"[^>]*>([^<]+)<\/a>/i.exec(row);
-    const teamId = linkM ? linkM[1] : null;
-    const team   = linkM ? strip(linkM[2]) : tds[1];
+  // Isolate classification block (between header and stats section)
+  const blockStart = html.indexOf('classCol-team');
+  if (blockStart === -1) return rows;
+  const blockEnd = html.indexOf('Equip m\u00E9s golejador');
+  const section  = blockEnd !== -1 ? html.slice(0, blockEnd) : html;
 
-    // Extract clubId from img in row
-    const imgM  = /logos_clubes\/(\d+)[._]/i.exec(row);
-    const clubId = imgM ? imgM[1] : null;
-
-    const nums = tds.slice(2).map(n => parseInt(n)).filter(n => !isNaN(n));
-    if (nums.length < 6) continue;
-
-    rows.push({
-      pos: parseInt(tds[0]), team, teamId, clubId,
-      pts: nums[0], pj: nums[1], pg: nums[2],
-      pe:  nums[3], pp: nums[4], gf: nums[5], gc: nums[6] || 0,
-    });
+  // Find all team equip links inside classCol-team divs
+  // These are the rows of the classification
+  const rowRe = /class='[^']*classCol-team[^']*'[^>]*>\s*<a[^>]*href="\/equip\/(\d+)\/([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g;
+  let m;
+  const teams = [];
+  while ((m = rowRe.exec(section)) !== null) {
+    if (!teams.some(t => t.id === m[1])) {
+      teams.push({ id: m[1], name: m[3].trim().replace(/\s+/g,' '), idx: m.index });
+    }
   }
+
+  teams.forEach((team, i) => {
+    // Chunk: from 400 chars before team to start of next team
+    const from  = Math.max(0, team.idx - 400);
+    const to    = (i + 1 < teams.length) ? teams[i+1].idx + 100 : team.idx + 800;
+    const chunk = section.slice(from, to);
+
+    // Position: find a 1-2 digit number in a w-1/12 div
+    const posM = chunk.match(/class='[^']*w-1\/12[^']*'\s*>\s*(\d{1,2})\s*<\/div>/);
+    const pos  = posM ? parseInt(posM[1]) : i + 1;
+
+    // All numbers from divs AFTER the team name
+    const afterIdx = chunk.indexOf(team.name);
+    const after    = afterIdx !== -1 ? chunk.slice(afterIdx + team.name.length) : chunk;
+    const nums = [];
+    const numRe = /<div[^>]*>\s*(\d+)\s*<\/div>/g;
+    let nm;
+    while ((nm = numRe.exec(after)) !== null && nums.length < 7) {
+      const v = parseInt(nm[1]);
+      if (v >= 0 && v < 5000) nums.push(v);
+    }
+
+    if (nums.length >= 6) {
+      rows.push({
+        pos,
+        teamId: team.id,
+        team:   team.name,
+        clubId: null,
+        pts: nums[0], pj: nums[1], pg: nums[2],
+        pe:  nums[3], pp: nums[4], gf: nums[5],
+        gc:  nums[6] !== undefined ? nums[6] : 0,
+      });
+    }
+  });
+
   return rows;
 }
 

@@ -1,56 +1,80 @@
 // ============================================================
-// FECAPA Hoquei Patins — app.js v2
+// FECAPA Hoquei Patins — app.js v3
 // ============================================================
 
 const SHIELD   = "https://sidgad.cloud/fecapa/images/logos_clubes/";
 const DATA_URL = "./data.json";
-const FAV_KEY  = "hoquei_favs_v2";      // [{compId, teamName}]
-const HIST_KEY = "hoquei_hist_v2";      // last visited comp IDs
+const FAV_KEY  = "hoquei_favs_v3";
 
 // ── State ─────────────────────────────────────────────────────
 const S = {
-  data:      null,           // full data.json
-  view:      "home",         // home | picker | detail
-  comp:      null,           // selected competition object
-  filterCat: "ALL",
-  search:    "",
-  tab:       "summary",
-  filterTeam:null,
+  data:       null,
+  view:       "home",   // home | picker | detail
+  comp:       null,
+  filterCat:  "ALL",
+  search:     "",
+  tab:        "summary",
+  filterTeam: null,
 };
 
-// Favourites: [{compId, teamName, compName, category}]
-let favs = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
-function saveFavs() { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }
-function isFav(compId, teamName) {
-  return favs.some(f => f.compId === compId && f.teamName === teamName);
-}
+// ── Favourites ────────────────────────────────────────────────
+let favs = [];
+try { favs = JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); } catch {}
+const saveFavs  = () => localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+const isFav     = (cid, tn) => favs.some(f => f.compId===cid && f.teamName===tn);
 function toggleFav(compId, teamName, compName, category) {
   if (isFav(compId, teamName)) {
-    favs = favs.filter(f => !(f.compId === compId && f.teamName === teamName));
+    favs = favs.filter(f => !(f.compId===compId && f.teamName===teamName));
   } else {
     favs.push({ compId, teamName, compName, category });
   }
   saveFavs();
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-const esc   = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const img   = (id,cls="team-shield") => id
-  ? `<img class="${cls}" src="${SHIELD}${id}.gif" onerror="this.style.display='none'" alt=""/>`
-  : `<span class="${cls}-ph"></span>`;
+// ── Screens ───────────────────────────────────────────────────
+const screens = {
+  home:   document.getElementById("screen-home"),
+  picker: document.getElementById("screen-picker"),
+  detail: document.getElementById("screen-detail"),
+};
+function showScreen(name) {
+  Object.entries(screens).forEach(([k,el]) => el.style.display = k===name ? "flex" : "none");
+  S.view = name;
+}
+
+// ── Utils ─────────────────────────────────────────────────────
+const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+function sImg(clubId, cls="shield-sm") {
+  if (!clubId) return `<span class="${cls}-ph"></span>`;
+  return `<img class="${cls}" src="${SHIELD}${clubId}.gif" onerror="this.style.display='none'" alt=""/>`;
+}
 
 function posColor(p) {
-  return p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#94a3b8";
-}
-function resultBadge(hs, as, isHome) {
-  if (hs==null||as==null) return "";
-  const win = isHome ? hs>as : as>hs;
-  const draw = hs===as;
-  if (draw) return `<span class="rbadge draw">E</span>`;
-  return win ? `<span class="rbadge win">V</span>` : `<span class="rbadge loss">D</span>`;
+  if (p===1) return "#d97706";
+  if (p===2) return "#64748b";
+  if (p===3) return "#b45309";
+  return "#94a3b8";
 }
 
-// Find competition by id across all categories
+function getClubId(teamName) {
+  if (!S.data || !teamName) return null;
+  const idx = S.data.clubIndex || {};
+  for (const v of Object.values(idx)) {
+    if (v.name && v.name.toLowerCase() === teamName.toLowerCase()) return v.clubId;
+  }
+  // fuzzy: strip trailing A/B/C/D
+  const base = teamName.toLowerCase().replace(/\s+[a-d]$/, "").trim();
+  for (const v of Object.values(idx)) {
+    if (v.name && v.name.toLowerCase().replace(/\s+[a-d]$/,"").trim() === base) return v.clubId;
+  }
+  return null;
+}
+
+function getClubIdFromRow(row) {
+  return row.clubId || getClubId(row.team);
+}
+
 function findComp(compId) {
   if (!S.data) return null;
   for (const comps of Object.values(S.data.categories)) {
@@ -60,26 +84,165 @@ function findComp(compId) {
   return null;
 }
 
-// Get club ID for a team name from the global index
-function clubId(teamName) {
-  if (!S.data||!teamName) return null;
-  // Direct match in clubIndex by name
-  for (const [, v] of Object.entries(S.data.clubIndex||{})) {
-    if (v.name && v.name.toLowerCase() === teamName.toLowerCase()) return v.clubId;
+function getCatForComp(comp) {
+  if (!S.data) return "Altres";
+  for (const [cat, comps] of Object.entries(S.data.categories)) {
+    if (comps.some(c => c.id === comp.id)) return cat;
   }
-  // Fuzzy
-  for (const [, v] of Object.entries(S.data.clubIndex||{})) {
-    if (v.name && teamName.toLowerCase().includes(v.name.toLowerCase().replace(/\s+[a-d]$/i,""))) return v.clubId;
-  }
-  return null;
+  return "Altres";
 }
 
-function clubIdFromRow(row) {
-  return row.clubId || clubId(row.team) || null;
+// ── Match card ────────────────────────────────────────────────
+function matchCard(m, myTeam) {
+  const riH    = myTeam && m.home && m.home.toLowerCase().includes(myTeam.toLowerCase());
+  const riA    = myTeam && m.away && m.away.toLowerCase().includes(myTeam.toLowerCase());
+  const played = m.played !== false && m.homeScore != null;
+  const cidH   = getClubId(m.home);
+  const cidA   = getClubId(m.away);
+
+  // Result badge & border
+  let borderColor = "transparent";
+  let badge = "";
+  if (played && myTeam) {
+    const win  = riH ? m.homeScore > m.awayScore : m.awayScore > m.homeScore;
+    const draw = m.homeScore === m.awayScore;
+    borderColor = draw ? "#d97706" : win ? "#16a34a" : "#dc2626";
+    const [bg, color, label] = draw
+      ? ["#fef3c7","#b45309","Empat"]
+      : win
+        ? ["#dcfce7","#16a34a","Victòria"]
+        : ["#fee2e2","#dc2626","Derrota"];
+    badge = `<span style="display:inline-block;background:${bg};color:${color};font-size:10px;font-weight:700;padding:1px 7px;border-radius:6px;margin-top:4px">${label}</span>`;
+  }
+
+  const scoreEl = played
+    ? `<div style="background:#e5001c;color:#fff;border-radius:8px;padding:5px 10px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;min-width:60px;text-align:center;display:inline-block">${m.homeScore} – ${m.awayScore}</div>`
+    : `<div style="background:#1a5dc7;color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;min-width:60px;text-align:center;display:inline-block">VS</div>`;
+
+  const dateEl = `<div style="font-size:10px;color:#6b7a99;margin-top:3px">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>`;
+
+  return `
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid ${borderColor};border-radius:11px;padding:10px 12px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,30,80,.05)">
+      ${m.jornada ? `<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Jornada ${m.jornada}</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px">
+          <span style="font-size:12px;font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.2">${esc(m.home)}</span>
+          ${sImg(cidH,"shield-sm")}
+        </div>
+        <div style="text-align:center">
+          ${scoreEl}
+          ${dateEl}
+          ${badge}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${sImg(cidA,"shield-sm")}
+          <span style="font-size:12px;font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.2">${esc(m.away)}</span>
+        </div>
+      </div>
+    </div>`;
 }
 
-// ── Category config ───────────────────────────────────────────
-const CATS = {
+// ── HOME ──────────────────────────────────────────────────────
+function renderHome() {
+  showScreen("home");
+  const $home = screens.home;
+
+  if (!favs.length) {
+    $home.innerHTML = `
+      <div style="background:linear-gradient(135deg,#003da5 0%,#001f6e 55%,#e5001c 100%);padding:36px 20px 28px;position:relative;overflow:hidden">
+        <div style="max-width:520px;margin:0 auto;position:relative;z-index:1;text-align:center">
+          <div style="font-size:52px;margin-bottom:12px">🏒</div>
+          <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(28px,8vw,48px);font-weight:900;color:#fff;line-height:.95;margin-bottom:8px">HOQUEI PATINS<br/><span style="color:#f0a500">CATALUNYA</span></h1>
+          <p style="color:rgba(255,255,255,.7);font-size:13px;margin-bottom:20px">Segueix el teu equip favorit a la FECAPA</p>
+          <button onclick="goToPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;cursor:pointer;display:inline-flex;align-items:center;gap:8px">🔍 Cerca el teu equip</button>
+        </div>
+      </div>
+      <div style="max-width:600px;margin:0 auto;padding:32px 16px;text-align:center;color:#6b7a99">
+        <p style="font-size:14px">Entra a una competició, selecciona el teu equip i clica ⭐ per afegir-lo aquí.</p>
+      </div>`;
+    return;
+  }
+
+  const cards = favs.map(fav => {
+    const comp  = findComp(fav.compId);
+    if (!comp) return "";
+    const cl    = comp.classification || [];
+    const cal   = comp.calendar || [];
+    const myRow = cl.find(r => r.team && r.team.toLowerCase().includes(fav.teamName.toLowerCase()));
+    const myCal = cal.filter(m =>
+      (m.home && m.home.toLowerCase().includes(fav.teamName.toLowerCase())) ||
+      (m.away && m.away.toLowerCase().includes(fav.teamName.toLowerCase()))
+    );
+    const last = [...myCal].reverse().find(m => m.played !== false && m.homeScore != null);
+    const next = myCal.find(m => m.played === false || m.homeScore == null);
+    const cid  = myRow ? getClubIdFromRow(myRow) : getClubId(fav.teamName);
+    const cat  = CAT_CONFIG[fav.category] || CAT_CONFIG["Altres"];
+
+    return `
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid ${cat.color};border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e2e6ef">
+          ${sImg(cid,"shield-md")}
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
+            <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+          </div>
+          <button onclick="removeFav('${fav.compId}','${esc(fav.teamName).replace(/'/g,"\\'")}');event.stopPropagation()" style="background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;padding:4px 6px;border-radius:6px">✕</button>
+        </div>
+        ${myRow ? `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #e2e6ef">
+          ${[
+            {v:myRow.pos+"è", l:"Posició", c:posColor(myRow.pos)},
+            {v:myRow.pts,     l:"Punts",   c:"#e5001c"},
+            {v:myRow.pg,      l:"Victòries",c:"#16a34a"},
+            {v:myRow.pp,      l:"Derrotes", c:"#dc2626"},
+          ].map(s=>`
+            <div style="text-align:center;padding:10px 6px;border-right:1px solid #e2e6ef">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:${s.c}">${s.v}</div>
+              <div style="font-size:9px;color:#6b7a99;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">${s.l}</div>
+            </div>`).join("")}
+        </div>` : ""}
+        <div style="padding:10px 12px">
+          ${last ? `<div style="font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Últim resultat</div>${matchCard(last, fav.teamName)}` : ""}
+          ${next ? `<div style="font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Proper partit</div>${matchCard(next, fav.teamName)}` : ""}
+        </div>
+        <div style="display:flex;gap:6px;padding:8px 12px 12px;border-top:1px solid #e2e6ef">
+          <button onclick="openComp('${fav.compId}','${esc(fav.teamName).replace(/'/g,"\\'")}','classif')" style="flex:1;background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📊 Classificació</button>
+          <button onclick="openComp('${fav.compId}','${esc(fav.teamName).replace(/'/g,"\\'")}','calendar')" style="flex:1;background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📅 Calendari</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  const updAt = S.data?.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?";
+  $home.innerHTML = `
+    <div style="background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 16px;position:sticky;top:0;z-index:50">
+      <div style="max-width:600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800">🏒 <span style="color:#e5001c">FECAPA</span></div>
+        <button onclick="goToPicker()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:10px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#1a2035">🔍 Cercar</button>
+      </div>
+    </div>
+    <div style="max-width:600px;margin:0 auto;padding:16px 14px 32px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Els meus equips</div>
+      ${cards}
+      <button onclick="goToPicker()" style="width:100%;background:#fff;border:2px dashed #e2e6ef;color:#6b7a99;font-size:14px;font-weight:600;padding:14px;border-radius:12px;cursor:pointer;margin-top:4px">+ Afegir equip favorit</button>
+      <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:14px">Dades actualitzades: ${updAt}</p>
+    </div>`;
+}
+
+window.removeFav = function(compId, teamName) {
+  favs = favs.filter(f => !(f.compId===compId && f.teamName===teamName));
+  saveFavs();
+  renderHome();
+};
+
+window.goToPicker = function() {
+  showScreen("picker");
+  renderFilterTabs();
+  renderPicker();
+  setTimeout(() => document.getElementById("search-input").focus(), 100);
+};
+
+// ── PICKER ────────────────────────────────────────────────────
+const CAT_CONFIG = {
   "ALL":              { emoji:"🏒", color:"#e5001c" },
   "Nacional Catalana":{ emoji:"👑", color:"#003da5" },
   "1ª Catalana":      { emoji:"⭐", color:"#1a5dc7" },
@@ -96,238 +259,72 @@ const CATS = {
   "Altres":           { emoji:"📋", color:"#6b7280" },
 };
 
-// ── Render helpers ────────────────────────────────────────────
-function matchCard(m, myTeam, showJornada=false) {
-  const riH   = myTeam && m.home?.toLowerCase().includes(myTeam.toLowerCase());
-  const riA   = myTeam && m.away?.toLowerCase().includes(myTeam.toLowerCase());
-  const played= m.played !== false && m.homeScore != null;
-  const cid_h = clubId(m.home);
-  const cid_a = clubId(m.away);
-
-  let borderCls = played ? "" : "pending";
-  let badge = "";
-  if (played && myTeam) {
-    const isHome = riH;
-    badge = resultBadge(m.homeScore, m.awayScore, isHome);
-    const win = isHome ? m.homeScore > m.awayScore : m.awayScore > m.homeScore;
-    const draw = m.homeScore === m.awayScore;
-    borderCls = draw ? "draw" : win ? "win" : "loss";
-  }
-
-  const score = played
-    ? `<span class="score">${m.homeScore} – ${m.awayScore}</span>`
-    : `<span class="score pending-score">VS</span>`;
-
-  return `
-    <div class="match-card ${borderCls}">
-      ${showJornada && m.jornada ? `<div class="jornada-label">Jornada ${m.jornada}</div>` : ""}
-      <div class="match-row">
-        <div class="match-team left ${riH?"mine":""}">
-          ${img(cid_h,"mshield")}
-          <span class="mname">${esc(m.home)}</span>
-        </div>
-        <div class="match-center">
-          ${score}
-          <div class="match-date">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
-          ${badge}
-        </div>
-        <div class="match-team right ${riA?"mine":""}">
-          <span class="mname">${esc(m.away)}</span>
-          ${img(cid_a,"mshield")}
-        </div>
-      </div>
-    </div>`;
-}
-
-// ── HOME SCREEN — favourites dashboard ───────────────────────
-function renderHome() {
-  const $home = document.getElementById("screen-home");
-  $home.style.display = "flex";
-  document.getElementById("screen-picker").style.display = "none";
-  document.getElementById("screen-detail").style.display = "none";
-
-  if (!favs.length) {
-    $home.innerHTML = `
-      <div class="hero">
-        <div class="hero-inner">
-          <div class="hero-badge">🏒 Temporada ${S.data?.season||"2025-26"}</div>
-          <h1 class="hero-title">HOQUEI<br/><span>PATINS</span><br/>CATALUNYA</h1>
-          <p class="hero-sub">Segueix el teu equip favorit</p>
-          <button class="btn-primary" onclick="goToPicker()">🔍 Cerca el teu equip</button>
-        </div>
-      </div>
-      <div class="home-body">
-        <div class="empty-favs">
-          <div style="font-size:48px;margin-bottom:12px">⭐</div>
-          <p>Encara no tens equips favorits.<br/>Cerca el teu equip i afegeix-lo!</p>
-          <button class="btn-secondary" onclick="goToPicker()" style="margin-top:16px">Veure totes les competicions</button>
-        </div>
-      </div>`;
-    return;
-  }
-
-  // Render fav cards
-  const cards = favs.map(fav => {
-    const comp = findComp(fav.compId);
-    if (!comp) return `<div class="fav-card error">Competició no trobada</div>`;
-
-    const cl   = comp.classification || [];
-    const cal  = comp.calendar || [];
-    const myRow = cl.find(r => r.team?.toLowerCase().includes(fav.teamName.toLowerCase()));
-    const myCal = cal.filter(m =>
-      m.home?.toLowerCase().includes(fav.teamName.toLowerCase()) ||
-      m.away?.toLowerCase().includes(fav.teamName.toLowerCase())
-    );
-    const lastMatch = [...myCal].reverse().find(m => m.played !== false && m.homeScore != null);
-    const nextMatch = myCal.find(m => m.played === false || m.homeScore == null);
-    const cid = myRow ? clubIdFromRow(myRow) : clubId(fav.teamName);
-    const pos  = myRow?.pos;
-    const pc   = posColor(pos);
-    const cat  = CATS[fav.category] || CATS["Altres"];
-
-    return `
-      <div class="fav-card" style="--cat-color:${cat.color}">
-        <div class="fav-header">
-          <div class="fav-shield">${img(cid,"fav-shield-img")}</div>
-          <div class="fav-title">
-            <div class="fav-team">${esc(fav.teamName)}</div>
-            <div class="fav-comp">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
-          </div>
-          <button class="fav-remove" onclick="removeFav('${fav.compId}','${esc(fav.teamName)}')" title="Eliminar favorit">✕</button>
-        </div>
-
-        ${myRow ? `
-        <div class="fav-stats">
-          <div class="fav-stat">
-            <div class="fav-stat-val" style="color:${pc}">${pos}è</div>
-            <div class="fav-stat-lbl">Posició</div>
-          </div>
-          <div class="fav-stat">
-            <div class="fav-stat-val" style="color:#e5001c">${myRow.pts}</div>
-            <div class="fav-stat-lbl">Punts</div>
-          </div>
-          <div class="fav-stat">
-            <div class="fav-stat-val" style="color:#16a34a">${myRow.pg}</div>
-            <div class="fav-stat-lbl">Victòries</div>
-          </div>
-          <div class="fav-stat">
-            <div class="fav-stat-val" style="color:#dc2626">${myRow.pp}</div>
-            <div class="fav-stat-lbl">Derrotes</div>
-          </div>
-        </div>` : ""}
-
-        ${lastMatch ? `
-        <div class="fav-section-title">Últim resultat</div>
-        ${matchCard(lastMatch, fav.teamName)}` : ""}
-
-        ${nextMatch ? `
-        <div class="fav-section-title">Proper partit</div>
-        ${matchCard(nextMatch, fav.teamName)}` : ""}
-
-        <div class="fav-actions">
-          <button class="btn-link" onclick="openComp('${fav.compId}', '${esc(fav.teamName)}', 'classif')">
-            📊 Classificació completa
-          </button>
-          <button class="btn-link" onclick="openComp('${fav.compId}', '${esc(fav.teamName)}', 'calendar')">
-            📅 Calendari
-          </button>
-        </div>
-      </div>`;
-  }).join("");
-
-  const updatedAt = S.data?.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?";
-
-  $home.innerHTML = `
-    <div class="home-header">
-      <div class="home-header-inner">
-        <div class="home-logo">🏒 <span>FECAPA</span></div>
-        <button class="btn-search" onclick="goToPicker()" title="Cercar competicions">🔍</button>
-      </div>
-    </div>
-    <div class="home-body">
-      <div class="home-section-title">Els meus equips</div>
-      ${cards}
-      <button class="btn-add-fav" onclick="goToPicker()">+ Afegir equip favorit</button>
-      <p class="update-note">Dades actualitzades: ${updatedAt}</p>
-    </div>`;
-}
-
-function removeFav(compId, teamName) {
-  favs = favs.filter(f => !(f.compId===compId && f.teamName===teamName));
-  saveFavs();
-  renderHome();
-}
-
-window.removeFav = removeFav;
-
-// ── PICKER SCREEN ─────────────────────────────────────────────
-function goToPicker() {
-  S.view = "picker";
-  document.getElementById("screen-home").style.display   = "none";
-  document.getElementById("screen-picker").style.display = "flex";
-  document.getElementById("screen-detail").style.display = "none";
-  renderFilterTabs();
-  renderPicker();
-  document.getElementById("search-input").focus();
-}
-window.goToPicker = goToPicker;
-
 function renderFilterTabs() {
   const cats = ["ALL", ...Object.keys(S.data.categories)];
   document.getElementById("filter-tabs").innerHTML = cats.map(cat => {
-    const cfg   = CATS[cat]||{emoji:"📋"};
-    const label = cat==="ALL"?"Totes":cat;
-    const count = cat==="ALL"
-      ? Object.values(S.data.categories).reduce((s,v)=>s+v.length,0)
+    const cfg   = CAT_CONFIG[cat] || { emoji:"📋" };
+    const label = cat === "ALL" ? "Totes" : cat;
+    const count = cat === "ALL"
+      ? Object.values(S.data.categories).reduce((s,v)=>s+v.length, 0)
       : (S.data.categories[cat]||[]).length;
-    return `<button class="filter-btn ${S.filterCat===cat?"active":""}" onclick="setFilter('${cat}')">
-      ${cfg.emoji} ${label} <span class="filter-count">${count}</span>
+    return `<button class="filter-btn ${S.filterCat===cat?"active":""}" data-cat="${cat}">
+      ${cfg.emoji} ${label} <span style="font-size:10px;opacity:.6">${count}</span>
     </button>`;
   }).join("");
+  document.getElementById("filter-tabs").querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      S.filterCat = btn.dataset.cat;
+      renderFilterTabs();
+      renderPicker();
+    });
+  });
 }
-window.setFilter = cat => { S.filterCat=cat; renderFilterTabs(); renderPicker(); };
 
 function renderPicker() {
   const q = S.search.toLowerCase();
-  let cats = S.filterCat==="ALL"
+  let cats = S.filterCat === "ALL"
     ? Object.entries(S.data.categories)
-    : [[S.filterCat, S.data.categories[S.filterCat]||[]]];
+    : [[S.filterCat, S.data.categories[S.filterCat] || []]];
 
   if (q) {
-    cats = cats.map(([cat,comps]) => [cat, comps.filter(c =>
+    cats = cats.map(([cat, comps]) => [cat, comps.filter(c =>
       c.name.toLowerCase().includes(q) ||
-      c.teams?.some(t => t.name.toLowerCase().includes(q))
-    )]).filter(([,c]) => c.length>0);
+      (c.teams||[]).some(t => t.name.toLowerCase().includes(q)) ||
+      (c.classification||[]).some(r => r.team && r.team.toLowerCase().includes(q))
+    )]).filter(([,c]) => c.length > 0);
   }
 
   const body = document.getElementById("picker-body");
   if (!cats.length || cats.every(([,c])=>!c.length)) {
-    body.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>Cap resultat per "<b>${esc(q)}</b>"</p></div>`;
+    body.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#6b7a99"><div style="font-size:40px;margin-bottom:10px">🔍</div><p>Cap resultat per "<b>${esc(q)}</b>"</p></div>`;
     return;
   }
 
   body.innerHTML = cats.map(([cat, comps]) => {
     if (!comps.length) return "";
-    const cfg = CATS[cat]||{emoji:"📋",color:"#666"};
-    return `<div class="cat-group">
-      <div class="cat-header">
-        <span class="cat-emoji">${cfg.emoji}</span>
-        <span class="cat-title" style="color:${cfg.color}">${cat}</span>
-        <span class="cat-count">${comps.length}</span>
-      </div>
-      ${comps.map(comp => `
-        <div class="comp-card" onclick="openComp('${comp.id}')">
-          <div class="comp-card-inner">
-            <div class="comp-pct"><span>${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span></div>
-            <div class="comp-info">
-              <div class="comp-name">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
-              <div class="comp-teams-count">${(comp.classification||comp.teams||[]).length} equips</div>
+    const cfg = CAT_CONFIG[cat] || { emoji:"📋", color:"#666" };
+    return `
+      <div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:16px">${cfg.emoji}</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;color:${cfg.color}">${cat}</span>
+          <span style="font-size:11px;font-weight:700;color:#6b7a99;background:#e2e6ef;border-radius:10px;padding:1px 7px">${comps.length}</span>
+        </div>
+        ${comps.map(comp => `
+          <div onclick="openComp('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;margin-bottom:7px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.05);transition:all .15s" onmouseover="this.style.borderColor='#1a5dc7';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+            <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+              <div style="width:38px;height:38px;border-radius:9px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#003da5">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+                <div style="font-size:11px;color:#6b7a99;margin-top:2px">${(comp.classification||comp.teams||[]).length} equips</div>
+              </div>
+              <span style="color:#94a3b8;font-size:18px">›</span>
             </div>
-            <span class="comp-arrow">›</span>
-          </div>
-          <div class="comp-progress"><div class="comp-progress-bar" style="width:${comp.pctPlayed||0}%"></div></div>
-        </div>`).join("")}
-    </div>`;
+            <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,#003da5,#e5001c);width:${comp.pctPlayed||0}%"></div></div>
+          </div>`).join("")}
+      </div>`;
   }).join("");
 }
 
@@ -336,17 +333,16 @@ document.getElementById("search-input").addEventListener("input", e => {
   renderPicker();
 });
 
-// ── DETAIL SCREEN ─────────────────────────────────────────────
-function openComp(compId, highlightTeam, defaultTab) {
+// ── DETAIL ────────────────────────────────────────────────────
+window.openComp = function(compId, highlightTeam, defaultTab) {
   const comp = findComp(compId);
   if (!comp) return;
   S.comp       = comp;
   S.filterTeam = highlightTeam || null;
   S.tab        = defaultTab || "summary";
+  S.prevView   = S.view;
 
-  document.getElementById("screen-home").style.display   = "none";
-  document.getElementById("screen-picker").style.display = "none";
-  document.getElementById("screen-detail").style.display = "flex";
+  showScreen("detail");
 
   const cleanName = comp.name.replace(/\s*\(2025-26\)/,"");
   document.getElementById("detail-comp-name").textContent = cleanName;
@@ -356,21 +352,17 @@ function openComp(compId, highlightTeam, defaultTab) {
   document.querySelectorAll(".detail-tab").forEach(t =>
     t.classList.toggle("active", t.dataset.tab === S.tab));
   document.querySelectorAll(".panel").forEach(p =>
-    p.classList.toggle("active", p.id===`panel-${S.tab}`));
+    p.classList.toggle("active", p.id === `panel-${S.tab}`));
 
   renderDetailPanels();
-  window.scrollTo(0,0);
-}
-window.openComp = openComp;
+  window.scrollTo(0, 0);
+};
 
 document.getElementById("back-btn").addEventListener("click", () => {
-  if (S.view==="picker" || document.getElementById("screen-picker").style.display!=="none") {
-    document.getElementById("screen-detail").style.display = "none";
-    document.getElementById("screen-picker").style.display = "flex";
+  if (S.prevView === "picker") {
+    showScreen("picker");
   } else {
-    document.getElementById("screen-detail").style.display = "none";
-    document.getElementById("screen-home").style.display   = "flex";
-    S.view = "home";
+    renderHome();
   }
 });
 
@@ -382,177 +374,234 @@ document.querySelectorAll(".detail-tab").forEach(tab => {
   });
 });
 
-// ── Summary panel ─────────────────────────────────────────────
+// ── Summary ───────────────────────────────────────────────────
 function renderSummary() {
-  const comp = S.comp;
-  const cl   = comp.classification||[];
+  const comp   = S.comp;
+  const cl     = comp.classification || [];
+  const cal    = comp.calendar || [];
+  const panel  = document.getElementById("panel-summary");
 
-  // If a favourite team is highlighted, show its mini-dashboard first
-  let favHtml = "";
-  if (S.filterTeam && cl.length) {
-    const myRow = cl.find(r => r.team?.toLowerCase().includes(S.filterTeam.toLowerCase()));
-    const cal   = (comp.calendar||[]).filter(m =>
-      m.home?.toLowerCase().includes(S.filterTeam.toLowerCase()) ||
-      m.away?.toLowerCase().includes(S.filterTeam.toLowerCase())
+  // Team spotlight if filterTeam is set
+  let spotlightHtml = "";
+  if (S.filterTeam) {
+    const myRow = cl.find(r => r.team && r.team.toLowerCase().includes(S.filterTeam.toLowerCase()));
+    const myCal = cal.filter(m =>
+      (m.home && m.home.toLowerCase().includes(S.filterTeam.toLowerCase())) ||
+      (m.away && m.away.toLowerCase().includes(S.filterTeam.toLowerCase()))
     );
-    const last = [...cal].reverse().find(m => m.played!==false && m.homeScore!=null);
-    const next = cal.find(m => m.played===false || m.homeScore==null);
-    const cid  = myRow ? clubIdFromRow(myRow) : clubId(S.filterTeam);
-    const pc   = posColor(myRow?.pos);
+    const last = [...myCal].reverse().find(m => m.played !== false && m.homeScore != null);
+    const next = myCal.find(m => m.played === false || m.homeScore == null);
+    const cid  = myRow ? getClubIdFromRow(myRow) : getClubId(S.filterTeam);
+    const faved = isFav(comp.id, S.filterTeam);
+    const cat  = getCatForComp(comp);
 
-    favHtml = `
-      <div class="team-spotlight">
-        <div class="spotlight-header">
-          ${img(cid,"spotlight-shield")}
-          <div>
-            <div class="spotlight-name">${esc(S.filterTeam)}</div>
-            <div class="spotlight-comp">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+    spotlightHtml = `
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        <div style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:linear-gradient(135deg,rgba(0,61,165,.06),transparent);border-bottom:1px solid #e2e6ef">
+          ${sImg(cid, "shield-md")}
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800">${esc(S.filterTeam)}</div>
+            <div style="font-size:11px;color:#6b7a99">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           </div>
-          <button class="btn-star ${isFav(comp.id,S.filterTeam)?"active":""}"
-            onclick="toggleFavBtn('${comp.id}','${esc(S.filterTeam)}','${esc(comp.name)}','${esc(getCatForComp(comp))}')">
-            ${isFav(comp.id,S.filterTeam)?"★":"☆"}
+          <button onclick="handleToggleFav('${comp.id}','${esc(S.filterTeam).replace(/'/g,"\\'")}','${esc(comp.name).replace(/'/g,"\\'")}','${esc(cat).replace(/'/g,"\\'")}',this)"
+            style="background:none;border:none;font-size:24px;cursor:pointer;color:${faved?"#f0a500":"#cbd5e1"};padding:4px" title="${faved?"Eliminar de favorits":"Afegir a favorits"}">
+            ${faved ? "★" : "☆"}
           </button>
         </div>
         ${myRow ? `
-        <div class="spotlight-stats">
-          <div class="sstat"><div class="sstat-v" style="color:${pc}">${myRow.pos}è</div><div class="sstat-l">Posició</div></div>
-          <div class="sstat"><div class="sstat-v" style="color:#e5001c">${myRow.pts}</div><div class="sstat-l">Punts</div></div>
-          <div class="sstat"><div class="sstat-v" style="color:#16a34a">${myRow.pg}</div><div class="sstat-l">Victòries</div></div>
-          <div class="sstat"><div class="sstat-v" style="color:#d97706">${myRow.pe}</div><div class="sstat-l">Empats</div></div>
-          <div class="sstat"><div class="sstat-v" style="color:#dc2626">${myRow.pp}</div><div class="sstat-l">Derrotes</div></div>
-          <div class="sstat"><div class="sstat-v">${myRow.pj}</div><div class="sstat-l">Jugats</div></div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #e2e6ef">
+          ${[
+            {v:myRow.pos+"è", l:"Pos",   c:posColor(myRow.pos)},
+            {v:myRow.pts,     l:"Pts",   c:"#e5001c"},
+            {v:myRow.pg,      l:"V",     c:"#16a34a"},
+            {v:myRow.pe,      l:"E",     c:"#d97706"},
+            {v:myRow.pp,      l:"D",     c:"#dc2626"},
+            {v:myRow.pj,      l:"PJ",    c:"#334155"},
+          ].map(s=>`<div style="text-align:center;padding:10px 4px;border-right:1px solid #e2e6ef">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:${s.c};line-height:1">${s.v}</div>
+            <div style="font-size:9px;color:#6b7a99;text-transform:uppercase;margin-top:2px">${s.l}</div>
+          </div>`).join("")}
         </div>` : ""}
-        ${last ? `<div class="spotlight-section">Últim resultat</div>${matchCard(last,S.filterTeam)}` : ""}
-        ${next ? `<div class="spotlight-section">Proper partit</div>${matchCard(next,S.filterTeam)}` : ""}
+        <div style="padding:10px 12px">
+          ${last ? `<div style="font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Últim resultat</div>${matchCard(last,S.filterTeam)}` : ""}
+          ${next ? `<div style="font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;margin-top:8px">Proper partit</div>${matchCard(next,S.filterTeam)}` : ""}
+          ${!last && !next ? `<p style="color:#94a3b8;font-size:13px;padding:8px 0">Sense partits registrats</p>` : ""}
+        </div>
       </div>`;
   }
 
-  // Top 3 podium
-  if (!cl.length) {
-    document.getElementById("panel-summary").innerHTML = favHtml + `
-      <div class="empty-state"><p>Resum no disponible.<br>
-      <a href="https://jok.cat/competicio/${comp.id}" target="_blank">Veure a jok.cat →</a></p></div>`;
-    return;
+  // Podium
+  let podiumHtml = "";
+  if (cl.length) {
+    const top3 = cl.slice(0,3);
+    const medals = ["🥇","🥈","🥉"];
+    podiumHtml = `
+      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07);margin-bottom:14px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;padding:11px 14px 8px;border-bottom:1px solid #e2e6ef">Top 3</div>
+        ${top3.map((r,i) => `
+          <div onclick="setFilterTeam('${esc(r.team).replace(/'/g,"\\'")}','classif')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:${i<2?"1px solid #f0f2f8":"none"};cursor:pointer" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background=''">
+            <span style="font-size:20px;width:28px;text-align:center">${medals[i]}</span>
+            ${sImg(getClubIdFromRow(r), "shield-md")}
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:14px">${esc(r.team)}</div>
+              <div style="font-size:11px;color:#6b7a99">${r.pj||0} partits · ${r.gf||0} gols</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#e5001c">${r.pts||0}</div>
+              <div style="font-size:9px;color:#6b7a99;text-transform:uppercase">pts</div>
+            </div>
+          </div>`).join("")}
+      </div>`;
   }
 
-  const top3 = cl.slice(0,3);
-  const medals = ["🥇","🥈","🥉"];
-  const podiumHtml = `
-    <div class="card" style="margin-bottom:14px">
-      <div class="section-title">Classificació — Top 3</div>
-      ${top3.map((r,i) => `
-        <div class="podium-row" style="border-bottom:${i<2?"1px solid var(--border)":"none"}">
-          <span style="font-size:20px;width:28px;text-align:center">${medals[i]}</span>
-          ${img(clubIdFromRow(r),"podium-shield")}
-          <div style="flex:1">
-            <div class="podium-name">${esc(r.team)}</div>
-            <div class="podium-meta">${r.pj||0} partits · ${r.gf||0} gols</div>
-          </div>
-          <div class="podium-pts">${r.pts||0}<div class="podium-pts-lbl">pts</div></div>
-        </div>`).join("")}
-    </div>`;
-
-  const totalGames = Math.round(cl.reduce((s,r)=>s+(r.pj||0),0)/2);
+  const totalGames = Math.round((cl.reduce((s,r)=>s+(r.pj||0),0))/2);
   const totalGoals = cl.reduce((s,r)=>s+(r.gf||0),0);
-  const statsHtml = `
-    <div class="stats-row">
+  const statsHtml = cl.length ? `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
       ${[
-        {v:cl.length,  l:"Equips",  c:"var(--blue)"},
-        {v:totalGames, l:"Partits", c:"var(--red)"},
-        {v:totalGoals, l:"Gols",    c:"var(--gold)"},
-        {v:(comp.pctPlayed??0)+"%",l:"Jugat",c:"#16a34a"},
-      ].map(s=>`<div class="stat-card"><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join("")}
+        {v:cl.length,  l:"Equips",  c:"#003da5"},
+        {v:totalGames, l:"Partits", c:"#e5001c"},
+        {v:totalGoals, l:"Gols",    c:"#d97706"},
+        {v:(comp.pctPlayed||0)+"%",l:"Jugat",c:"#16a34a"},
+      ].map(s=>`<div style="background:#fff;border-radius:12px;padding:12px 6px;text-align:center;box-shadow:0 1px 3px rgba(0,30,80,.05);border:1.5px solid #e2e6ef">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${s.c};line-height:1">${s.v}</div>
+        <div style="font-size:10px;font-weight:700;color:#6b7a99;margin-top:3px;text-transform:uppercase;letter-spacing:.04em">${s.l}</div>
+      </div>`).join("")}
+    </div>` : "";
+
+  // Team selector (all teams in this competition)
+  const teamNames = cl.length
+    ? cl.map(r => r.team).filter(Boolean)
+    : [...new Set([...((comp.calendar||[]).map(m=>m.home)), ...((comp.calendar||[]).map(m=>m.away))].filter(Boolean))].sort();
+
+  const teamSelectorHtml = teamNames.length ? `
+    <div style="background:#fff;border-radius:14px;padding:13px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,30,80,.05);border:1.5px solid #e2e6ef">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">Selecciona el teu equip</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${teamNames.map(t => {
+          const cid    = getClubId(t);
+          const active = S.filterTeam && t.toLowerCase().includes(S.filterTeam.toLowerCase());
+          return `<div onclick="setFilterTeam('${esc(t).replace(/'/g,"\\'")}','summary')"
+            style="display:flex;align-items:center;gap:5px;background:${active?"#003da5":"#f0f4f8"};border:1.5px solid ${active?"#003da5":"#e2e6ef"};border-radius:18px;padding:5px 10px 5px 6px;font-size:12px;font-weight:600;color:${active?"#fff":"#334155"};cursor:pointer;transition:all .15s">
+            ${sImg(cid,"chip-shield")}
+            ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}
+          </div>`;
+        }).join("")}
+      </div>
+    </div>` : "";
+
+  panel.innerHTML = spotlightHtml + (S.filterTeam ? "" : teamSelectorHtml) + podiumHtml + statsHtml + `
+    <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:11px 13px;font-size:12px;color:#1d4ed8">
+      💡 Act. ${S.data?.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?"} ·
+      <a href="https://jok.cat/competicio/${comp.id}" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:600">jok.cat →</a>
     </div>`;
-
-  document.getElementById("panel-summary").innerHTML = favHtml + podiumHtml + statsHtml + `
-    <div class="info-box">💡 Dades de <a href="https://jok.cat/competicio/${comp.id}" target="_blank" rel="noopener">jok.cat</a>
-    · Act. ${S.data?.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?"}</div>`;
 }
 
-function toggleFavBtn(compId, teamName, compName, category) {
+window.setFilterTeam = function(teamName, tab) {
+  S.filterTeam = teamName;
+  S.tab = tab || "summary";
+  document.querySelectorAll(".detail-tab").forEach(t => t.classList.toggle("active", t.dataset.tab===S.tab));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id===`panel-${S.tab}`));
+  renderDetailPanels();
+  window.scrollTo(0,0);
+};
+
+window.handleToggleFav = function(compId, teamName, compName, category, btn) {
   toggleFav(compId, teamName, compName, category);
-  renderSummary(); // re-render to update star
-}
-window.toggleFavBtn = toggleFavBtn;
+  const faved = isFav(compId, teamName);
+  btn.style.color = faved ? "#f0a500" : "#cbd5e1";
+  btn.textContent = faved ? "★" : "☆";
+};
 
-function getCatForComp(comp) {
-  for (const [cat, comps] of Object.entries(S.data.categories)) {
-    if (comps.some(c => c.id === comp.id)) return cat;
-  }
-  return "Altres";
-}
-
-// ── Classification panel ──────────────────────────────────────
+// ── Classification ────────────────────────────────────────────
 function renderClassif() {
-  const comp = S.comp;
-  const cl   = comp.classification||[];
+  const comp  = S.comp;
+  const cl    = comp.classification || [];
+  const panel = document.getElementById("panel-classif");
 
   if (!cl.length) {
-    document.getElementById("panel-classif").innerHTML = `
-      <div class="empty-state"><p>Classificació no disponible.<br>
+    panel.innerHTML = `<div style="text-align:center;padding:36px;color:#6b7a99">
+      <p>Classificació no disponible.<br/>
       <a href="https://jok.cat/competicio/${comp.id}" target="_blank">Veure a jok.cat →</a></p></div>`;
     return;
   }
 
   const rows = cl.map(r => {
-    const cid  = clubIdFromRow(r);
-    const mine = S.filterTeam && r.team?.toLowerCase().includes(S.filterTeam.toLowerCase());
+    const cid  = getClubIdFromRow(r);
+    const mine = S.filterTeam && r.team && r.team.toLowerCase().includes(S.filterTeam.toLowerCase());
     const pc   = posColor(r.pos);
-    return `<tr class="${mine?"my-team":""}">
-      <td><span class="pos-badge" style="color:${pc};background:${pc}22">${r.pos<=3?["🥇","🥈","🥉"][r.pos-1]:r.pos}</span></td>
-      <td>
-        <div class="team-name-cell">
-          ${img(cid,"team-shield")}
-          <span>${esc(r.team)}</span>
-          ${mine?'<span class="my-mark">◀</span>':""}
+    const posEl = r.pos<=3
+      ? ["🥇","🥈","🥉"][r.pos-1]
+      : `<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
+
+    return `<tr style="${mine?"background:#eff6ff":""}">
+      <td style="padding:9px 6px;text-align:center">${posEl}</td>
+      <td style="padding:9px 6px">
+        <div style="display:flex;align-items:center;gap:7px">
+          ${sImg(cid,"shield-sm")}
+          <span style="font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(r.team)}</span>
+          ${mine?'<span style="color:#e5001c;font-size:10px">◀</span>':""}
         </div>
       </td>
-      <td>${r.pj??"-"}</td>
-      <td class="green">${r.pg??"-"}</td>
-      <td class="yellow">${r.pe??"-"}</td>
-      <td class="red">${r.pp??"-"}</td>
-      <td>${r.gf??"-"}</td>
-      <td>${r.gc??"-"}</td>
-      <td class="pts ${mine?"pts-mine":""}">${r.pts??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#6b7a99">${r.pj??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#d97706">${r.pe??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#dc2626">${r.pp??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#6b7a99">${r.gf??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;color:#6b7a99">${r.gc??"-"}</td>
+      <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${mine?"#e5001c":"#1a2035"}">${r.pts??"-"}</td>
     </tr>`;
   }).join("");
 
-  document.getElementById("panel-classif").innerHTML = `
-    <div class="classif-wrap">
-      <table class="classif-table">
-        <thead><tr>
-          <th>#</th><th style="text-align:left">Equip</th>
-          <th>PJ</th><th>PG</th><th>PE</th><th>PP</th>
-          <th>GF</th><th>GC</th><th>Pts</th>
-        </tr></thead>
+  panel.innerHTML = `
+    <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f0f4f8">
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">#</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;text-align:left;border-bottom:1px solid #e2e6ef">Equip</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">PJ</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">G</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">E</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">Pe</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">GF</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">GC</th>
+            <th style="padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid #e2e6ef">Pts</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
 
-// ── Calendar panel ────────────────────────────────────────────
+// ── Calendar ──────────────────────────────────────────────────
 function renderCalendar() {
-  const comp  = S.comp;
-  let matches = comp.calendar||[];
+  const comp    = S.comp;
+  let matches   = comp.calendar || [];
+  const panel   = document.getElementById("panel-calendar");
 
   if (!matches.length) {
-    document.getElementById("panel-calendar").innerHTML = `
-      <div class="empty-state"><p>Calendari no disponible.<br>
+    panel.innerHTML = `<div style="text-align:center;padding:36px;color:#6b7a99">
+      <p>Calendari no disponible.<br/>
       <a href="https://jok.cat/competicio/${comp.id}" target="_blank">Veure a jok.cat →</a></p></div>`;
     return;
   }
 
-  // Team filter chips
-  const teamNames = [...new Set([...matches.map(m=>m.home),...matches.map(m=>m.away)].filter(Boolean))].sort();
+  // All team names for chips
+  const teamNames = [...new Set([
+    ...matches.map(m=>m.home), ...matches.map(m=>m.away)
+  ].filter(Boolean))].sort();
+
   const chipsHtml = `
-    <div class="team-filter-wrap">
-      <div class="team-filter-label">Filtrar per equip</div>
-      <div class="team-chips">
-        <div class="team-chip ${!S.filterTeam?"active":""}" onclick="setCalFilter(null)">Tots</div>
+    <div style="margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">Filtrar per equip</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <div onclick="setCalFilter(null)" style="background:${!S.filterTeam?"#003da5":"#f0f4f8"};border:1.5px solid ${!S.filterTeam?"#003da5":"#e2e6ef"};border-radius:18px;padding:5px 12px;font-size:12px;font-weight:600;color:${!S.filterTeam?"#fff":"#334155"};cursor:pointer">Tots</div>
         ${teamNames.map(t => {
-          const cid = clubId(t);
-          return `<div class="team-chip ${S.filterTeam===t?"active":""}" onclick="setCalFilter('${esc(t)}')">
-            ${img(cid,"chip-shield")} ${esc(t.replace(/Club Hoquei |CH |Cp /gi,""))}
+          const cid    = getClubId(t);
+          const active = S.filterTeam && t.toLowerCase().includes(S.filterTeam.toLowerCase());
+          return `<div onclick="setCalFilter('${esc(t).replace(/'/g,"\\'")}') " style="display:flex;align-items:center;gap:5px;background:${active?"#003da5":"#f0f4f8"};border:1.5px solid ${active?"#003da5":"#e2e6ef"};border-radius:18px;padding:5px 10px 5px 6px;font-size:12px;font-weight:600;color:${active?"#fff":"#334155"};cursor:pointer">
+            ${sImg(cid,"chip-shield")} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}
           </div>`;
         }).join("")}
       </div>
@@ -560,56 +609,63 @@ function renderCalendar() {
 
   if (S.filterTeam) {
     matches = matches.filter(m =>
-      m.home?.toLowerCase().includes(S.filterTeam.toLowerCase()) ||
-      m.away?.toLowerCase().includes(S.filterTeam.toLowerCase())
+      (m.home && m.home.toLowerCase().includes(S.filterTeam.toLowerCase())) ||
+      (m.away && m.away.toLowerCase().includes(S.filterTeam.toLowerCase()))
     );
   }
-
-  const legend = S.filterTeam ? `
-    <div class="cal-legend">
-      <span class="rbadge win">V Victòria</span>
-      <span class="rbadge draw">E Empat</span>
-      <span class="rbadge loss">D Derrota</span>
-      <span class="rbadge pending-badge">Pendent</span>
-    </div>` : "";
 
   // Group by jornada
   const byJ = {};
   matches.forEach(m => {
-    const k = m.jornada ? `Jornada ${m.jornada}` : (m.date||"Sense data");
-    if (!byJ[k]) byJ[k]=[];
+    const k = m.jornada ? `Jornada ${m.jornada}` : (m.date || "Sense data");
+    if (!byJ[k]) byJ[k] = [];
     byJ[k].push(m);
   });
 
-  const calHtml = Object.entries(byJ).map(([j,ms]) => `
-    <div class="cal-section">
-      <div class="cal-label">${esc(j)}</div>
-      ${ms.map(m => matchCard(m, S.filterTeam, false)).join("")}
+  const calHtml = Object.entries(byJ).map(([j, ms]) => `
+    <div style="margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;padding:0 2px">${esc(j)}</div>
+      ${ms.map(m => matchCard(m, S.filterTeam)).join("")}
     </div>`).join("");
 
-  document.getElementById("panel-calendar").innerHTML = chipsHtml + legend + calHtml;
+  panel.innerHTML = chipsHtml + calHtml;
 }
 
-window.setCalFilter = team => { S.filterTeam = team; renderCalendar(); };
+window.setCalFilter = function(team) {
+  S.filterTeam = team;
+  renderCalendar();
+};
 
+// ── Render all detail panels ──────────────────────────────────
 function renderDetailPanels() {
   renderSummary();
   renderClassif();
   renderCalendar();
 }
 
+// ── CSS for shields ───────────────────────────────────────────
+const style = document.createElement("style");
+style.textContent = `
+  .shield-sm  { width:22px;height:22px;object-fit:contain;background:#f0f4f8;border-radius:4px;padding:1px;flex-shrink:0 }
+  .shield-sm-ph { width:22px;height:22px;background:#f0f4f8;border-radius:4px;display:inline-block;flex-shrink:0 }
+  .shield-md  { width:34px;height:34px;object-fit:contain;background:#f0f4f8;border-radius:8px;padding:2px;flex-shrink:0 }
+  .shield-md-ph { width:34px;height:34px;background:#f0f4f8;border-radius:8px;display:inline-block;flex-shrink:0 }
+  .chip-shield { width:16px;height:16px;object-fit:contain;flex-shrink:0 }
+  .chip-shield-ph { width:16px;height:16px;display:inline-block }
+`;
+document.head.appendChild(style);
+
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   try {
-    document.getElementById("loading-note").textContent = "Carregant dades de FECAPA...";
+    document.getElementById("loading-note").textContent = "Carregant dades...";
     const res = await fetch(DATA_URL + "?t=" + Date.now());
     if (!res.ok) throw new Error("No s'han pogut carregar les dades");
     S.data = await res.json();
 
-    document.getElementById("hero-season").textContent  = S.data.season||"2025-26";
-    document.getElementById("hero-sub").textContent = `${S.data.totalComps||0} competicions · Act. ${
-      S.data.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?"
-    }`;
+    document.getElementById("hero-season").textContent = S.data.season || "2025-26";
+    document.getElementById("hero-sub").textContent =
+      `${S.data.totalComps||0} competicions · Act. ${S.data.updatedAt ? new Date(S.data.updatedAt).toLocaleDateString("ca-ES") : "?"}`;
 
     document.getElementById("screen-loading").style.display = "none";
     renderHome();
