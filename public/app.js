@@ -319,18 +319,20 @@ function openDetail(compId, teamName, tab) {
 }
 window.openDetail = openDetail;
 
-document.getElementById("back-btn").addEventListener("click", () => {
-  $("screen-detail").style.display = "none";
-  $("screen-home").style.display   = "flex";
-});
-
-document.querySelectorAll(".detail-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    detailTab = tab.dataset.tab;
-    document.querySelectorAll(".detail-tab").forEach(t => t.classList.toggle("active",t===tab));
-    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active",p.id===`panel-${detailTab}`));
+function setupListeners() {
+  const bb = document.getElementById("back-btn");
+  if (bb) bb.addEventListener("click", () => {
+    $("screen-detail").style.display = "none";
+    $("screen-home").style.display   = "flex";
   });
-});
+  document.querySelectorAll(".detail-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      detailTab = tab.dataset.tab;
+      document.querySelectorAll(".detail-tab").forEach(t => t.classList.toggle("active",t===tab));
+      document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active",p.id===`panel-${detailTab}`));
+    });
+  });
+}
 
 function renderDetailClassif() {
   const cl = detailComp.classification||[];
@@ -436,6 +438,7 @@ async function init() {
       throw new Error("data.json no és vàlid. Torna a executar el scraper. (" + parseErr.message + ")");
     }
     if (!DB.categories) throw new Error("data.json incomplet. Torna a executar el scraper.");
+    setupListeners();
     $("screen-loading").style.display = "none";
     $("screen-home").style.display    = "flex";
     renderHome();
