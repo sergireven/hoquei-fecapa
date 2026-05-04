@@ -1,0 +1,350 @@
+=== BLOC CLASSIFICACIÓ COMPLET ===
+     if(counter<10){
+                counter="0"+String(counter);
+            }
+            if(counter=="00"){
+                counter="01";
+            }
+        leagueShow(counter);
+        }
+    }
+
+    const leagueShow = (league) => { c
+        var leagueContainer = document.getElementsByClassName("leagueContainer");
+        var leagueButton = document.getElementsByClassName("leagueButton");
+        for (i = 0; i < leagueContainer.length; i++) {
+            leagueContainer[i].style.display = 'none';
+            leagueButton[i].style.backgroundColor = 'rgb(64 64 64 / 1)';
+        }
+        document.getElementById("league_" + league).style.display = "block";
+        document.getElementById(league + "_button").style.backgroundColor = "rgb(105 105 105 / 1)";
+    }
+ 
+</script>
+
+<style>
+    .classCol-team { width: 58.333%; min-width: 0; /* w-7/12 */ }
+    .classCol-form { width: 16.666%; /* w-2/12 */ }
+    .classification-expanded .classCol-team { width: 25%; min-width: 0; /* w-3/12 */ }
+    .classification-expanded .classCol-form { width: 16.666%; }
+    .classification-expanded .classCol-team a {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<script>
+    let classificationExpanded = false;
+    const toggleClassification = () => {
+        classificationExpanded = !classificationExpanded;
+        const container = document.getElementById('classificationContainer');
+        const extras = document.getElementsByClassName('classCol-extra');
+        const arrow = document.getElementById('expandClassArrow');
+        const text = document.getElementById('expandClassText');
+
+        if (classificationExpanded) {
+            container.classList.add('classification-expanded');
+            for (let i = 0; i < extras.length; i++) {
+                extras[i].classList.remove('hidden');
+            }
+            arrow.style.transform = 'rotate(180deg)';
+            text.textContent = 'Reduir';
+        } else {
+            container.classList.remove('classification-expanded');
+            for (let i = 0; i < extras.length; i++) {
+                extras[i].classList.add('hidden');
+            }
+            arrow.style.transform = 'rotate(0deg)';
+            text.textContent = 'Ampliar';
+        }
+    }
+</script>
+
+<div class="w-full text-neutral-700 text-xl mb-4 font-bold pb-2 border-b border-neutral-400">
+    <a href="/desa/competicio/4301">
+        <svg xmlns="http://www.w3.org/2000/svg" fill=none viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline w-6 cursor-pointer ">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+        </svg>
+    </a>
+    BCN PREBENJAMI OR 1
+</div>
+<div class="bg-neutral-300 w-full my-2">
+    <div id="percent" class="bg-neutral-900  text-neutral-300 py-2 font-bold transition-all ease-in" style='width:0%'>
+      <span id="percentPlace" class='  px-6 text-neutral-300 '> &nbsp;</span>
+    <span id="percentText" class='hidden  px-6 text-white '> 83 % jugat</span></div>
+</div>
+<div class='w-full lg:flex  '>
+
+    <div id="classificationContainer" class='w-full lg:w-1/2  lg:pr-2 mb-2'>
+        
+        <div class="hidden md:flex justify-end mb-1">
+            <button id="expandClassBtn" onclick="toggleClassification()" class="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800 transition-colors px-2 py-1 rounded hover:bg-neutral-200">
+                <span id="expandClassText">Ampliar</span>
+                <svg id="expandClassArrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 transition-transform duration-300">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
+        </div>
+
+        
+        <div class='bg-neutral-700 w-full border-solid border-[1px] border-b-[0px] border-neutral-400 shadow-md transition-all shadow-neutral-100 flex text-white'>
+            <div class='p-4 w-1/12 text-center '>&nbsp;</div>
+            <div class='p-4 classCol-team text-left font-bold'>Equips</div>
+            <div class='p-4 w-1/12 text-center bg-neutral-700 font-bold'>P</div>
+            <div class='p-4 w-1/12 text-center font-bold classCol-extra hidden '>PJ</div>
+            <div class='p-4 w-1/12 text-center font-bold'>G</div>
+            <div class='p-4 w-1/12 text-center font-bold'>E</div>
+            <div class='p-4 w-1/12 text-center font-bold'>Pe</div>
+            
+          
+            <div class='p-4 w-1/12 text-center font-bold classCol-extra hidden'>GF</div>
+            <div class='p-4 w-1/12 text-center font-bold classCol-extra hidden'>GC</div>
+            <div class='p-3 classCol-form text-center font-bold classCol-extra hidden'>Darrers partits</div>
+        </div>
+
+        
+        
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>1</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10349/CLUB+HOQUEI+RIPOLLET+A">Ch Ripollet A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>42</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>14</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>0</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>0</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>54</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>13</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Ce Arenys De Munt A 2 - 4 Ch Ripollet A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Ch Ripollet A 4 - 0 Oxigen  Sant Cugat A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Ch Ripollet A 4 - 0 Oxigen  Sant Cugat B 19/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Ch Santa Perpètua A 1 - 4 Ch Ripollet A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Ch Ripollet A 4 - 1 Cp Subur Sitges 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>2</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10369/OXIGEN+PHC+SANT+CUGAT+A">Oxigen  Sant Cugat A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>34</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>11</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>1</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>2</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>46</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>31</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Oxigen  Sant Cugat A 3 - 2 Sant Josep A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Ch Ripollet A 4 - 0 Oxigen  Sant Cugat A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Oxigen  Sant Cugat A 4 - 1 Ch Santa Perpètua A 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Riudebitlles A 3 - 3 Oxigen  Sant Cugat A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Oxigen  Sant Cugat A 3 - 1 Cp Voltregà A 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>3</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/8960/CP+RIUDEBITLLES+A">Cp Riudebitlles A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>23</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>6</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>5</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>3</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>39</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>31</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Cp Riudebitlles A 3 - 2 Oxigen  Sant Cugat B 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ce Arenys De Munt A 2 - 2 Cp Riudebitlles A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Cp Riudebitlles A 3 - 1 Cp Subur Sitges 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Riudebitlles A 3 - 3 Oxigen  Sant Cugat A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Oxigen  Sant Cugat C 2 - 2 Cp Riudebitlles A 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>4</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/9555/SANT+JOSEP+SANT+SADURNI+A">Sant Josep A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>21</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>7</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>0</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>7</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>37</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>34</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Oxigen  Sant Cugat A 3 - 2 Sant Josep A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Sant Josep A 4 - 1 Oxigen  Sant Cugat C 11/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Sant Josep A 3 - 1 Ce Arenys De Munt A 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Cp Subur Sitges 1 - 4 Sant Josep A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Sant Josep A 3 - 4 Ch Santa Perpètua A 01/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>5</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10111/CLUB+HOQUEI+SANTA+PERP%C3%88TUA+A">Ch Santa Perpètua A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>16</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>6</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>29</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>40</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ch Santa Perpètua A 2 - 2 Oxigen  Sant Cugat C 29/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ch Santa Perpètua A 3 - 3 Cp Voltregà A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Oxigen  Sant Cugat A 4 - 1 Ch Santa Perpètua A 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Ch Santa Perpètua A 1 - 4 Ch Ripollet A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Sant Josep A 3 - 4 Ch Santa Perpètua A 01/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>6</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10265/CLUB+PAT%C3%8D+VOLTREG%C3%80+A">Cp Voltregà A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>16</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>6</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>37</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>37</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Subur Sitges 3 - 3 Cp Voltregà A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ch Santa Perpètua A 3 - 3 Cp Voltregà A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Voltregà A 2 - 2 Oxigen  Sant Cugat C 19/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Cp Voltregà A 3 - 2 Ce Arenys De Munt A 26/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Oxigen  Sant Cugat A 3 - 1 Cp Voltregà A 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>7</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/9786/CE+ARENYS+DE+MUNT+A">Ce Arenys De Munt A</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>13</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>3</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>7</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>27</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>40</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Ce Arenys De Munt A 2 - 4 Ch Ripollet A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ce Arenys De Munt A 2 - 2 Cp Riudebitlles A 12/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Sant Josep A 3 - 1 Ce Arenys De Munt A 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Cp Voltregà A 3 - 2 Ce Arenys De Munt A 26/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ce Arenys De Munt A 3 - 3 Oxigen  Sant Cugat B 03/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>8</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10375/OXIGEN+PHC+SANT+CUGAT+C">Oxigen  Sant Cugat C</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>13</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>3</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>7</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>32</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>42</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ch Santa Perpètua A 2 - 2 Oxigen  Sant Cugat C 29/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Sant Josep A 4 - 1 Oxigen  Sant Cugat C 11/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Voltregà A 2 - 2 Oxigen  Sant Cugat C 19/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Oxigen  Sant Cugat C 2 - 3 Oxigen  Sant Cugat B 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Oxigen  Sant Cugat C 2 - 2 Cp Riudebitlles A 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>9</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/10370/OXIGEN+PHC+SANT+CUGAT+B">Oxigen  Sant Cugat B</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>13</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>4</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>1</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>9</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>29</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>43</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Cp Riudebitlles A 3 - 2 Oxigen  Sant Cugat B 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Oxigen  Sant Cugat B 3 - 2 Cp Subur Sitges 11/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Ch Ripollet A 4 - 0 Oxigen  Sant Cugat B 19/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-green-500" title="Oxigen  Sant Cugat C 2 - 3 Oxigen  Sant Cugat B 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Ce Arenys De Munt A 3 - 3 Oxigen  Sant Cugat B 03/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class='bg-white w-full border-solid border-t-[1px] border-neutral-400 shadow-md hover:bg-neutral-50 transition-all shadow-neutral-700 flex'>
+            <div class='p-2 md:p-4 w-1/12 text-center border-r-[1px] text-xs md:text-sm '>10</div>
+            <div class='p-2 md:p-4 classCol-team border-r-[1px] text-left text-xs md:text-sm '>
+                <a class="active:text-neutral-300" href="/equip/9929/CP+SUBUR+SITGES">Cp Subur Sitges</a>
+            </div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center bg-neutral-700 text-xs md:text-sm text-white'>7</div>
+              <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden bg-neutral-200'>14</div>
+          
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>2</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>1</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm'>11</div>
+            
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>26</div>
+            <div class='p-2 md:p-4 w-1/12 border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>45</div>
+            <div class='p-2 md:p-4 classCol-form border-r-[1px] text-center text-xs md:text-sm classCol-extra hidden'>
+                <div class="flex items-center justify-center gap-1">
+                                                                                                        <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400" title="Cp Subur Sitges 3 - 3 Cp Voltregà A 28/03/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Oxigen  Sant Cugat B 3 - 2 Cp Subur Sitges 11/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Cp Riudebitlles A 3 - 1 Cp Subur Sitges 18/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Cp Subur Sitges 1 - 4 Sant Josep A 25/04/2026"></span>
+                                                                                                                <span class="inline-block w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500" title="Ch Ripollet A 4 - 1 Cp Subur Sitges 02/05/2026"></span>
+                                                                                        </div>
+            </div>
+        </div>
+                <div class="mt-2">
+            <div class="font-bold bg-neutral-700 p-2 text-white border-[1px] border-b-[0px] border-neutral-500 shadow-md shadow-neutral-700 ">

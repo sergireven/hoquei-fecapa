@@ -82,67 +82,83 @@ function parseCompetitionList(html) {
 }
 
 // ── Parse classification from competition page HTML ───────────
-// jok.cat uses Tailwind divs (NOT a <table>). Structure per row:
+// Real jok.cat HTML structure per row (Tailwind divs, NOT a table):
 //   <div class='w-1/12 ...'>POS</div>
-//   <div class='classCol-team ...'><a href="/equip/ID/...">Name</a></div>
-//   <div class='bg-neutral-700 ...'>PTS</div>   <- highlighted
-//   <div class='classCol-extra hidden'>PJ</div>
-//   <div ...>G</div> <div ...>E</div> <div ...>Pe</div>
-//   <div class='classCol-extra hidden'>GF</div>
-//   <div class='classCol-extra hidden'>GC</div>
+//   <div class='classCol-team ...'><a href="/equip/ID/NAME">Team</a></div>
+//   <div class='... bg-neutral-700 ...'>PTS</div>       ← dark bg = points
+//   <div class='... classCol-extra hidden ... bg-neutral-200'>PJ</div>  ← hidden
+//   <div class='w-1/12 ...'>G</div>
+//   <div class='w-1/12 ...'>E</div>
+//   <div class='w-1/12 ...'>Pe</div>
+//   <div class='... classCol-extra hidden'>GF</div>     ← hidden
+//   <div class='... classCol-extra hidden'>GC</div>     ← hidden
+//   <div class='classCol-form ... classCol-extra hidden'>FORM</div>  ← spans with titles
 function parseClassification(html) {
   const rows = [];
 
-  // Isolate classification block (between header and stats section)
+  // Isolate just the classification section
   const blockStart = html.indexOf('classCol-team');
   if (blockStart === -1) return rows;
   const blockEnd = html.indexOf('Equip m\u00E9s golejador');
   const section  = blockEnd !== -1 ? html.slice(0, blockEnd) : html;
 
-  // Find all team equip links inside classCol-team divs
-  // These are the rows of the classification
-  const rowRe = /class='[^']*classCol-team[^']*'[^>]*>\s*<a[^>]*href="\/equip\/(\d+)\/([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g;
+  // Each row starts with a flex div containing a w-1/12 position cell
+  // Strategy: split by row boundaries using the outer row div
+  // Each row = <div class='bg-white w-full ... flex'>...</div>
+  const rowRe = /<div\s+class='bg-white\s+w-full[^']*flex'>([\s\S]*?)<\/div>\s*(?=<div\s+class='bg-white|<div\s+class="mt-2|$)/g;
   let m;
-  const teams = [];
   while ((m = rowRe.exec(section)) !== null) {
-    if (!teams.some(t => t.id === m[1])) {
-      teams.push({ id: m[1], name: m[3].trim().replace(/\s+/g,' '), idx: m.index });
+    const row = m[1];
+
+    // Position: first w-1/12 div with a 1-2 digit number
+    const posM = row.match(/class='[^']*w-1\/12[^']*'[^>]*>\s*(\d{1,2})\s*<\/div>/);
+    if (!posM) continue;
+    const pos = parseInt(posM[1]);
+
+    // Team: classCol-team div with equip link
+    const teamM = row.match(/class='[^']*classCol-team[^']*'[^>]*>[\s\S]*?href="\/equip\/(\d+)\/[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/);
+    if (!teamM) continue;
+    const teamId = teamM[1];
+    const team   = teamM[2].trim().replace(/\s+/g, ' ');
+
+    // Club ID from img near the team (may not be present in all rows)
+    const clubM = row.match(/logos_clubes\/(\d+)[._]/);
+    const clubId = clubM ? clubM[1] : null;
+
+    // PTS: bg-neutral-700 div (the highlighted points cell)
+    const ptsM = row.match(/class='[^']*bg-neutral-700[^']*'[^>]*>\s*(\d+)\s*<\/div>/);
+    const pts  = ptsM ? parseInt(ptsM[1]) : 0;
+
+    // PJ: classCol-extra hidden bg-neutral-200 div
+    const pjM = row.match(/class='[^']*classCol-extra\s+hidden[^']*bg-neutral-200[^']*'[^>]*>\s*(\d+)\s*<\/div>/);
+    const pj  = pjM ? parseInt(pjM[1]) : 0;
+
+    // G, E, Pe: the three w-1/12 divs that are NOT classCol-extra and NOT bg-neutral-700
+    // They appear after the classCol-extra PJ div
+    // Strategy: find all plain w-1/12 divs with single numbers after the team link
+    const afterTeam = row.slice(row.indexOf(team) + team.length);
+    const plainDivNums = [];
+    const plainRe = /<div\s+class='p-2 md:p-4 w-1\/12 border-r-\[1px\] text-center text-xs md:text-sm'>\s*(\d+)\s*<\/div>/g;
+    let pm;
+    while ((pm = plainRe.exec(afterTeam)) !== null) {
+      plainDivNums.push(parseInt(pm[1]));
     }
+    const pg = plainDivNums[0] ?? 0;
+    const pe = plainDivNums[1] ?? 0;
+    const pp = plainDivNums[2] ?? 0;
+
+    // GF, GC: the two classCol-extra hidden divs WITHOUT bg-neutral-200
+    const gfgcRe = /class='[^']*classCol-extra\s+hidden(?!\s*[^']*bg-neutral-200)[^']*'[^>]*>\s*(\d+)\s*<\/div>/g;
+    const gfgcNums = [];
+    let gm;
+    while ((gm = gfgcRe.exec(afterTeam)) !== null && gfgcNums.length < 2) {
+      gfgcNums.push(parseInt(gm[1]));
+    }
+    const gf = gfgcNums[0] ?? 0;
+    const gc = gfgcNums[1] ?? 0;
+
+    rows.push({ pos, teamId, team, clubId, pts, pj, pg, pe, pp, gf, gc });
   }
-
-  teams.forEach((team, i) => {
-    // Chunk: from 400 chars before team to start of next team
-    const from  = Math.max(0, team.idx - 400);
-    const to    = (i + 1 < teams.length) ? teams[i+1].idx + 100 : team.idx + 800;
-    const chunk = section.slice(from, to);
-
-    // Position: find a 1-2 digit number in a w-1/12 div
-    const posM = chunk.match(/class='[^']*w-1\/12[^']*'\s*>\s*(\d{1,2})\s*<\/div>/);
-    const pos  = posM ? parseInt(posM[1]) : i + 1;
-
-    // All numbers from divs AFTER the team name
-    const afterIdx = chunk.indexOf(team.name);
-    const after    = afterIdx !== -1 ? chunk.slice(afterIdx + team.name.length) : chunk;
-    const nums = [];
-    const numRe = /<div[^>]*>\s*(\d+)\s*<\/div>/g;
-    let nm;
-    while ((nm = numRe.exec(after)) !== null && nums.length < 7) {
-      const v = parseInt(nm[1]);
-      if (v >= 0 && v < 5000) nums.push(v);
-    }
-
-    if (nums.length >= 6) {
-      rows.push({
-        pos,
-        teamId: team.id,
-        team:   team.name,
-        clubId: null,
-        pts: nums[0], pj: nums[1], pg: nums[2],
-        pe:  nums[3], pp: nums[4], gf: nums[5],
-        gc:  nums[6] !== undefined ? nums[6] : 0,
-      });
-    }
-  });
 
   return rows;
 }
