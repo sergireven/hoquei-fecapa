@@ -435,9 +435,96 @@ function openDetail(compId, teamName, tab) {
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id===`panel-${detailTab}`));
   renderDetailClassif();
   renderDetailCalendar();
+  renderDetailJugadors();
   window.scrollTo(0,0);
 }
 window.openDetail = openDetail;
+
+function renderDetailJugadors() {
+  const panel = $("panel-jugadors");
+  if (!panel) return;
+  const ts = detailComp.teamScorers || {};
+
+  if (!Object.keys(ts).length) {
+    panel.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">
+      <div style="font-size:36px;margin-bottom:10px">📊</div>
+      <p>Estadístiques de jugadors no disponibles.<br/>
+      Torna a executar el scraper per obtenir-les.</p>
+    </div>`;
+    return;
+  }
+
+  // Build scorer table across all teams
+  const allScorers = [];
+  for (const [teamId, data] of Object.entries(ts)) {
+    const teamName = detailComp.classification?.find(r => r.teamId===teamId)?.team || "";
+    const cid = getClubIdByTeamId(teamId);
+    (data.scorers||[]).forEach(s => allScorers.push({...s, teamName, cid}));
+  }
+  allScorers.sort((a,b) => b.goals - a.goals);
+
+  const allCards = [];
+  for (const [teamId, data] of Object.entries(ts)) {
+    const teamName = detailComp.classification?.find(r => r.teamId===teamId)?.team || "";
+    const cid = getClubIdByTeamId(teamId);
+    (data.cards||[]).forEach(s => allCards.push({...s, teamName, cid}));
+  }
+  allCards.sort((a,b) => b.cards - a.cards);
+
+  const scorerRows = allScorers.slice(0,15).map((s,i) => `
+    <tr style="border-bottom:1px solid #f0f2f8">
+      <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${i===0?"#d97706":i===1?"#64748b":i===2?"#b45309":"#94a3b8"}">${i+1}</td>
+      <td style="padding:8px 6px">
+        <div style="font-size:13px;font-weight:600;text-transform:capitalize">${esc(s.name)}</div>
+        <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px;margin-top:1px">
+          ${shieldImg(s.cid,14)} ${esc(s.teamName)}
+        </div>
+      </td>
+      <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#e5001c">${s.goals}</td>
+    </tr>`).join("");
+
+  const cardRows = allCards.slice(0,10).map((s,i) => `
+    <tr style="border-bottom:1px solid #f0f2f8">
+      <td style="padding:8px 6px;text-align:center;font-size:13px;font-weight:700;color:#94a3b8">${i+1}</td>
+      <td style="padding:8px 6px">
+        <div style="font-size:13px;font-weight:600;text-transform:capitalize">${esc(s.name)}</div>
+        <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px;margin-top:1px">
+          ${shieldImg(s.cid,14)} ${esc(s.teamName)}
+        </div>
+      </td>
+      <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#f59e0b">${s.cards}</td>
+    </tr>`).join("");
+
+  panel.innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚽ Golejadors</div>
+      ${allScorers.length ? `
+      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f8fafc">
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">#</th>
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:left;border-bottom:1px solid #e2e6ef">Jugador</th>
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">Gols</th>
+          </tr></thead>
+          <tbody>${scorerRows}</tbody>
+        </table>
+      </div>` : `<p style="color:#94a3b8;font-size:13px">Sense dades</p>`}
+    </div>
+    ${allCards.length ? `
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🟨 Targetes</div>
+      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f8fafc">
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">#</th>
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:left;border-bottom:1px solid #e2e6ef">Jugador</th>
+            <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#f59e0b;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">T</th>
+          </tr></thead>
+          <tbody>${cardRows}</tbody>
+        </table>
+      </div>
+    </div>` : ""}`;
+}
 
 function setupListeners() {
   const bb = $("back-btn");

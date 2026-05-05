@@ -296,6 +296,52 @@ function extractTeams(html) {
   return teams;
 }
 
+
+// ── Parse top scorers from team page ─────────────────────────
+// Structure: <a href="/jugador/ID/NAME">name</a> ... percentage ... goals
+function parseScorers(html) {
+  const scorers = [];
+  const gIdx = html.indexOf("Golejadors");
+  if (gIdx === -1) return scorers;
+
+  // Work on the section after "Golejadors"
+  const section = html.slice(gIdx, gIdx + 8000);
+
+  // Each scorer row: link with name + number at end
+  const rowRe = /href="\/jugador\/(\d+)\/([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>[\s\S]{0,200}?(\d+)\s*<\/div>/g;
+  let m;
+  while ((m = rowRe.exec(section)) !== null) {
+    const goals = parseInt(m[4]);
+    if (goals > 0) {
+      scorers.push({
+        id:    m[1],
+        name:  decodeURIComponent(m[2].replace(/\+/g," ")).replace(/_/g," ").toLowerCase().trim(),
+        goals,
+      });
+    }
+    if (scorers.length >= 10) break; // top 10 only
+  }
+  return scorers;
+}
+
+// ── Parse yellow/red cards from team page ─────────────────────
+function parseCards(html) {
+  const cards = [];
+  const tIdx  = html.toLowerCase().indexOf("targetes");
+  if (tIdx === -1) return cards;
+  const section = html.slice(tIdx, tIdx + 5000);
+  const rowRe = /href="\/jugador\/(\d+)\/([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>[\s\S]{0,300}?(\d+)\s*<\/div>/g;
+  let m;
+  while ((m = rowRe.exec(section)) !== null) {
+    const n = parseInt(m[4]);
+    if (n > 0) {
+      cards.push({ id: m[1], name: decodeURIComponent(m[2].replace(/\+/g," ")).toLowerCase().trim(), cards: n });
+    }
+    if (cards.length >= 10) break;
+  }
+  return cards;
+}
+
 // ── Scrape one competition ────────────────────────────────────
 async function scrapeCompetition(comp) {
   const url  = `${BASE}/competicio/${comp.id}/${comp.slug}`;
@@ -307,6 +353,23 @@ async function scrapeCompetition(comp) {
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
 
+  // Scrape scorers for teams in classification (top team only to keep it fast)
+  // We store scorers per team in the competition object
+  const teamScorers = {};
+  for (const row of classification.slice(0, 20)) {  // limit to keep scraping fast
+    if (!row.teamId) continue;
+    try {
+      const teamSlug = teams.find(t => t.id === row.teamId)?.name?.replace(/\s+/g,"+") || "";
+      if (!teamSlug) continue;
+      const teamHtml = await fetchText(`${BASE}/equip/${row.teamId}/${teamSlug}`);
+      teamScorers[row.teamId] = {
+        scorers: parseScorers(teamHtml),
+        cards:   parseCards(teamHtml),
+      };
+      await sleep(DELAY_MS);
+    } catch {}
+  }
+
   // Add clubId to classification rows
   classification.forEach(r => {
     if (r.teamId) r.clubId = r.clubId || teamToClub[r.teamId] || null;
@@ -315,7 +378,7 @@ async function scrapeCompetition(comp) {
   const pctM      = html.match(/(\d+)\s*%\s*jugat/i) || html.match(/(\d+)%/);
   const pctPlayed = pctM ? Math.min(100, parseInt(pctM[1])) : null;
 
-  return { ...comp, classification, calendar, teams, teamToClub, pctPlayed };
+  return { ...comp, classification, calendar, teams, teamToClub, teamScorers, pctPlayed };
 }
 
 // ── Categorise ────────────────────────────────────────────────
