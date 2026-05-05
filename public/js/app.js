@@ -1,5 +1,5 @@
 // FECAPA app.js v7
-const SHIELD   = "https://sidgad.cloud/fecapa/images/logos_clubes/";
+const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
 const FAV_KEY  = "hoquei_favs_v7";
 
@@ -33,19 +33,45 @@ const CAT_COLOR = {
   "Veterans":"#6b7280","Altres":"#6b7280",
 };
 
-function getClubId(name) {
-  if (!DB||!name) return null;
-  const n = name.toLowerCase();
+// clubIndex: teamId → {name, clubId}
+// Classification rows already have teamId — use it directly
+function getClubIdByTeamId(teamId) {
+  if (!DB || !teamId) return null;
+  return (DB.clubIndex||{})[teamId]?.clubId || null;
+}
+
+// Fallback name lookup (for match cards where we only have team name)
+let _nameMap = null;
+function buildNameMap() {
+  if (_nameMap || !DB) return;
+  _nameMap = new Map();
   for (const v of Object.values(DB.clubIndex||{})) {
-    if (v.clubId && (v.name||"").toLowerCase()===n) return v.clubId;
+    if (!v.clubId || !v.name) continue;
+    // store both uppercase and lowercase versions
+    const nl = v.name.toLowerCase();
+    _nameMap.set(nl, v.clubId);
+    const base = nl.replace(/\s+[a-d]$/, "").trim();
+    if (!_nameMap.has(base)) _nameMap.set(base, v.clubId);
   }
-  const base = n.replace(/\s+[a-d]$/,"").trim();
-  for (const v of Object.values(DB.clubIndex||{})) {
-    if (!v.clubId) continue;
-    const vb = (v.name||"").toLowerCase().replace(/\s+[a-d]$/,"").trim();
-    if (vb===base||vb.includes(base)||base.includes(vb)) return v.clubId;
+}
+
+function getClubId(name) {
+  if (!DB || !name) return null;
+  buildNameMap();
+  const n    = name.toLowerCase();
+  const base = n.replace(/\s+[a-d]$/, "").trim();
+  if (_nameMap.has(n))    return _nameMap.get(n);
+  if (_nameMap.has(base)) return _nameMap.get(base);
+  // fuzzy
+  for (const [k, v] of _nameMap) {
+    if (k.length > 5 && (k.includes(base) || base.includes(k))) return v;
   }
   return null;
+}
+
+// Get clubId from a classification row (has direct clubId) or fall back to name lookup
+function rowClubId(row) {
+  return row.clubId || getClubIdByTeamId(row.teamId) || getClubId(row.team) || null;
 }
 
 function shieldImg(clubId, size) {
@@ -160,7 +186,7 @@ function buildFavCard(fav) {
   const myCal = cal.filter(m => teamIn(m.home,fav.teamName)||teamIn(m.away,fav.teamName));
   const last  = [...myCal].reverse().find(m => m.played!==false&&m.homeScore!=null);
   const next  = myCal.find(m => m.played===false||m.homeScore==null);
-  const cid   = myRow?(myRow.clubId||getClubId(myRow.team)):getClubId(fav.teamName);
+  const cid   = myRow?rowClubId(myRow):getClubId(fav.teamName);
   const catColor = CAT_COLOR[fav.category]||"#e5001c";
 
   // Mini classification: ±2 rows around my team
@@ -181,7 +207,7 @@ function buildFavCard(fav) {
         </div>
         ${slice.map(r => {
           const mine = teamIn(r.team, fav.teamName);
-          const rcid = r.clubId||getClubId(r.team);
+          const rcid = rowClubId(r);
           return `<div style="display:flex;align-items:center;background:${mine?"#eff6ff":"#fff"};border-top:1px solid #f0f2f8;padding:5px 12px">
             <div style="width:26px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${posColor(r.pos)}">${r.pos}</div>
             <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0">
@@ -443,7 +469,7 @@ function renderDetailClassif() {
         <tbody>
           ${cl.map(r=>{
             const mine = teamIn(r.team, detailTeam);
-            const cid  = r.clubId||getClubId(r.team);
+            const cid  = rowClubId(r);
             const pc   = posColor(r.pos);
             const pos  = r.pos<=3?["🥇","🥈","🥉"][r.pos-1]:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
             return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
