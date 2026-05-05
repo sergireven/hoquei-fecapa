@@ -245,21 +245,42 @@ function parseCalendar(html) {
 }
 
 // ── Extract club ID → team ID mappings ────────────────────────
+// jok.cat structure in classification rows:
+//   <img src=".../logos_clubes/278.gif"> immediately followed by
+//   <a href="/equip/10349/CLUB+HOQUEI+RIPOLLET+A">
+// We capture both the logo→team and team→logo directions
 function extractClubInfo(html) {
-  const map = {};
-  // <img src=".../logos_clubes/278.gif"...> near <a href=".../equip/10349/...">
-  const re = /logos_clubes\/(\d+)[._][^"']+["'][^>]*>[\s\S]{0,200}?\/equip\/(\d+)\//gi;
+  const map = {}; // teamId → clubId
+
+  // Pattern 1: logo img directly before or after equip link (within 300 chars)
+  const logoRe = /logos_clubes\/(\d+)[._][^"'\s>]+/gi;
+  const equipRe = /\/equip\/(\d+)\//gi;
+
+  // Get all logo positions and equip positions
+  const logos  = [];
+  const equips = [];
   let m;
-  while ((m = re.exec(html)) !== null) {
-    if (!map[m[2]]) map[m[2]] = m[1]; // teamId → clubId
+
+  const re1 = /logos_clubes\/(\d+)[._]/gi;
+  while ((m = re1.exec(html)) !== null) logos.push({ clubId: m[1], pos: m.index });
+
+  const re2 = /\/equip\/(\d+)\//gi;
+  while ((m = re2.exec(html)) !== null) equips.push({ teamId: m[1], pos: m.index });
+
+  // For each logo, find the nearest equip link within 400 chars
+  for (const logo of logos) {
+    for (const equip of equips) {
+      const dist = Math.abs(logo.pos - equip.pos);
+      if (dist < 400) {
+        if (!map[equip.teamId]) map[equip.teamId] = logo.clubId;
+        break;
+      }
+    }
   }
-  // Also reverse: equip link near logo
-  const re2 = /\/equip\/(\d+)\/[^"']+["'][^>]*>[\s\S]{0,200}?logos_clubes\/(\d+)[._]/gi;
-  while ((m = re2.exec(html)) !== null) {
-    if (!map[m[1]]) map[m[1]] = m[2];
-  }
+
   return map;
 }
+
 
 function extractTeams(html) {
   const teams = [];
@@ -309,8 +330,8 @@ function categorise(name) {
   if (n.includes("JUVENIL"))                            return "Juvenil";
   if (n.includes("INFANTIL"))                           return "Infantil";
   if (n.includes("ALEVÍ") || n.includes("ALEVI"))       return "Aleví";
-  if (n.includes("BENJAMÍ") || n.includes("BENJAMI"))   return "Benjamí";
   if (n.match(/PREBENJAM[IÍ]/) || n.includes("PB-"))    return "Prebenjamí";
+  if (n.includes("BENJAMÍ") || n.includes("BENJAMI"))   return "Benjamí";
   if (n.includes("VETERANS") || n.includes("LCV"))      return "Veterans";
   return "Altres";
 }
