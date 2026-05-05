@@ -5,8 +5,9 @@
       "schedule": "0 2 * * *"
     }
   ],
-  "routes": [
-    { "src": "/api/cron", "dest": "/api/cron.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ]
+  "functions": {
+    "api/cron.js": {
+      "maxDuration": 300
+    }
+  }
 }

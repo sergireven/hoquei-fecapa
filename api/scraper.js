@@ -366,6 +366,12 @@ async function scrapeCompetition(comp) {
         scorers: parseScorers(teamHtml),
         cards:   parseCards(teamHtml),
       };
+      // Extract clubId from team page (most reliable source)
+      const clubLogoM = teamHtml.match(/logos_clubes\/(\d+)[._]/);
+      if (clubLogoM && !row.clubId) {
+        row.clubId = clubLogoM[1];
+        if (!teamToClub[row.teamId]) teamToClub[row.teamId] = clubLogoM[1];
+      }
       await sleep(DELAY_MS);
     } catch {}
   }
