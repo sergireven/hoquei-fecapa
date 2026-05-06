@@ -81,7 +81,9 @@ function shieldImg(clubId, size) {
   size = size||22;
   const r = size<=22?4:8, p = size>22?2:1;
   if (!clubId) return `<span style="width:${size}px;height:${size}px;background:#e8ecf4;border-radius:${r}px;display:inline-block;flex-shrink:0"></span>`;
-  return `<img src="${SHIELD}${clubId}.gif" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
+  // clubId can be a full filename like "278_3.png" or just "278"
+  const src = clubId.includes(".") ? SHIELD + clubId : SHIELD + clubId + ".gif";
+  return `<img src="${src}" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
 }
 
 function findComp(compId) {

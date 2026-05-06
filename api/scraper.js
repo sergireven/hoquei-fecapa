@@ -122,8 +122,8 @@ function parseClassification(html) {
     const team   = teamM[2].trim().replace(/\s+/g, ' ');
 
     // Club ID from img near the team (may not be present in all rows)
-    const clubM = row.match(/logos_clubes\/(\d+)[._]/);
-    const clubId = clubM ? clubM[1] : null;
+    const clubM  = row.match(/logos_clubes\/([^"'\s>]+)/);
+    const clubId = clubM ? clubM[1].split("?")[0] : null;
 
     // PTS: bg-neutral-700 div (the highlighted points cell)
     const ptsM = row.match(/class='[^']*bg-neutral-700[^']*'[^>]*>\s*(\d+)\s*<\/div>/);
@@ -261,8 +261,13 @@ function extractClubInfo(html) {
   const equips = [];
   let m;
 
-  const re1 = /logos_clubes\/(\d+)[._]/gi;
-  while ((m = re1.exec(html)) !== null) logos.push({ clubId: m[1], pos: m.index });
+  // Capture full logo filename e.g. "278_3.png" or "278.gif"
+  const re1 = /logos_clubes\/([^"'\s>]+)/gi;
+  while ((m = re1.exec(html)) !== null) {
+    const fname   = m[1].split("?")[0];            // "278_3.png"
+    const clubId  = fname.replace(/[._].*$/, "");  // "278"
+    logos.push({ clubId, fname, pos: m.index });
+  }
 
   const re2 = /\/equip\/(\d+)\//gi;
   while ((m = re2.exec(html)) !== null) equips.push({ teamId: m[1], pos: m.index });
@@ -272,7 +277,7 @@ function extractClubInfo(html) {
     for (const equip of equips) {
       const dist = Math.abs(logo.pos - equip.pos);
       if (dist < 400) {
-        if (!map[equip.teamId]) map[equip.teamId] = logo.clubId;
+        if (!map[equip.teamId]) map[equip.teamId] = logo.fname || logo.clubId;
         break;
       }
     }
