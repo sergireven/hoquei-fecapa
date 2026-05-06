@@ -2,15 +2,15 @@ name: Actualitzar dades FECAPA
 
 on:
   schedule:
-    # Cada nit a les 02:00 UTC (03:00 o 04:00 hora catalana)
     - cron: '0 2 * * *'
-  # Permet executar manualment des de GitHub
   workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repositori
@@ -24,10 +24,8 @@ jobs:
       - name: Executar scraper
         run: node api/scraper.js
 
-      - name: Commit i push del data.json actualitzat
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data.json
-          git diff --staged --quiet || git commit -m "🏒 Actualitza dades FECAPA $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
+      - name: Commit i push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🏒 Actualitza dades FECAPA"
+          file_pattern: public/data.json

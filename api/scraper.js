@@ -10,7 +10,7 @@ const http  = require("http");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
-const DELAY_MS  = 600;
+const DELAY_MS  = 300;
 const sleep     = ms => new Promise(r => setTimeout(r, ms));
 
 // ── HTTP fetch robust ─────────────────────────────────────────
@@ -353,28 +353,9 @@ async function scrapeCompetition(comp) {
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
 
-  // Scrape scorers for teams in classification (top team only to keep it fast)
-  // We store scorers per team in the competition object
+  // NOTE: Team page scraping (scorers/cards) disabled for speed
+  // Re-enable manually when needed
   const teamScorers = {};
-  for (const row of classification.slice(0, 20)) {  // limit to keep scraping fast
-    if (!row.teamId) continue;
-    try {
-      const teamSlug = teams.find(t => t.id === row.teamId)?.name?.replace(/\s+/g,"+") || "";
-      if (!teamSlug) continue;
-      const teamHtml = await fetchText(`${BASE}/equip/${row.teamId}/${teamSlug}`);
-      teamScorers[row.teamId] = {
-        scorers: parseScorers(teamHtml),
-        cards:   parseCards(teamHtml),
-      };
-      // Extract clubId from team page (most reliable source)
-      const clubLogoM = teamHtml.match(/logos_clubes\/(\d+)[._]/);
-      if (clubLogoM && !row.clubId) {
-        row.clubId = clubLogoM[1];
-        if (!teamToClub[row.teamId]) teamToClub[row.teamId] = clubLogoM[1];
-      }
-      await sleep(DELAY_MS);
-    } catch {}
-  }
 
   // Add clubId to classification rows
   classification.forEach(r => {
