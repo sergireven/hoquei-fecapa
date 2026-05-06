@@ -10,7 +10,7 @@ const http  = require("http");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
-const DELAY_MS  = 0;
+const DELAY_MS  = 300;
 const sleep     = ms => new Promise(r => setTimeout(r, ms));
 
 // ── HTTP fetch robust ─────────────────────────────────────────
@@ -349,11 +349,7 @@ async function scrapeCompetition(comp) {
   await sleep(DELAY_MS);
 
   const classification = parseClassification(html);
-  const rawCalendar    = parseCalendar(html);
-  // Keep only last 5 played + next 5 pending to reduce data size
-  const played  = rawCalendar.filter(m => m.played !== false && m.homeScore != null).slice(-5);
-  const pending = rawCalendar.filter(m => m.played === false || m.homeScore == null).slice(0, 5);
-  const calendar = [...played, ...pending];
+  const calendar       = parseCalendar(html);
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
 
