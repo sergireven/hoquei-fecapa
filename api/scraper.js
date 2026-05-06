@@ -350,10 +350,9 @@ async function scrapeCompetition(comp) {
 
   const classification = parseClassification(html);
   const rawCalendar    = parseCalendar(html);
-  // Keep only last 5 played + next 5 pending to reduce data size
-  const played  = rawCalendar.filter(m => m.played !== false && m.homeScore != null).slice(-5);
-  const pending = rawCalendar.filter(m => m.played === false || m.homeScore == null).slice(0, 5);
-  const calendar = [...played, ...pending];
+
+  const calendar = rawCalendar; // full calendar for all competitions
+
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
 

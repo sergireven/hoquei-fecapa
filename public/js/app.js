@@ -46,12 +46,17 @@ let _nameMap = null;
 function buildNameMap() {
   if (_nameMap||!DB) return;
   _nameMap = new Map();
-  for (const v of Object.values(DB.clubIndex||{})) {
-    if (!v.clubId||!v.name) continue;
-    const nl   = v.name.toLowerCase();
-    const base = nl.replace(/\s+[a-d]$/,"").trim();
-    _nameMap.set(nl, v.clubId);
-    if (!_nameMap.has(base)) _nameMap.set(base, v.clubId);
+  // Use classification rows — correct mixed-case names with reliable clubId
+  for (const comps of Object.values(DB.categories||{})) {
+    for (const comp of comps) {
+      for (const r of (comp.classification||[])) {
+        if (!r.clubId||!r.team) continue;
+        const n = r.team.toLowerCase();
+        const base = n.replace(/\s+[a-z]$/,"").trim();
+        if (!_nameMap.has(n))    _nameMap.set(n,    r.clubId);
+        if (!_nameMap.has(base)) _nameMap.set(base, r.clubId);
+      }
+    }
   }
 }
 
