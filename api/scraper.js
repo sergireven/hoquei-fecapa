@@ -439,38 +439,45 @@ async function main() {
   };
   const clubIndex = {};
   let done = 0, errors = 0;
+  const CONCURRENCY = 8;
 
-  for (const comp of current) {
-    try {
-      const data = await scrapeCompetition(comp);
-      const cat  = categorise(comp.name);
-      categories[cat].push(data);
-
-      data.teams.forEach(t => {
-        if (!clubIndex[t.id]) {
-          clubIndex[t.id] = { name: t.name, clubId: data.teamToClub[t.id] || null };
-        }
-      });
-      data.classification.forEach(r => {
-        if (r.teamId) {
-          if (!clubIndex[r.teamId]) clubIndex[r.teamId] = { name: r.team, clubId: r.clubId };
-          else if (r.clubId) clubIndex[r.teamId].clubId = r.clubId;
-        }
-      });
-
-      done++;
-      if (done % 10 === 0 || done <= 5) {
-        const elapsed = ((Date.now()-t0)/1000).toFixed(0);
-        console.log(`   [${done}/${current.length}] ${elapsed}s — ${comp.name} (cl:${data.classification.length} cal:${data.calendar.length})`);
+  for (let i = 0; i < current.length; i += CONCURRENCY) {
+    const batch   = current.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async comp => {
+      try {
+        const data = await scrapeCompetition(comp);
+        return { ok: true, comp, data };
+      } catch(err) {
+        return { ok: false, comp, error: err.message };
       }
-    } catch(err) {
-      errors++;
-      console.error(`   ⚠️  Error "${comp.name}": ${err.message}`);
-      categories[categorise(comp.name)].push({
-        ...comp, error: err.message,
-        classification: [], calendar: [], teams: [], teamToClub: {}
-      });
+    }));
+
+    for (const result of results) {
+      if (result.ok) {
+        const { data } = result;
+        categories[categorise(data.name)].push(data);
+        data.teams.forEach(t => {
+          if (!clubIndex[t.id]) clubIndex[t.id] = { name: t.name, clubId: data.teamToClub[t.id]||null };
+        });
+        data.classification.forEach(r => {
+          if (r.teamId) {
+            if (!clubIndex[r.teamId]) clubIndex[r.teamId] = { name: r.team, clubId: r.clubId };
+            else if (r.clubId) clubIndex[r.teamId].clubId = r.clubId;
+          }
+        });
+        done++;
+      } else {
+        errors++;
+        console.error(`   ⚠️  Error "${result.comp.name}": ${result.error}`);
+        categories[categorise(result.comp.name)].push({
+          ...result.comp, error: result.error,
+          classification: [], calendar: [], teams: [], teamToClub: {}
+        });
+      }
     }
+
+    const elapsed = ((Date.now()-t0)/1000).toFixed(0);
+    console.log(`   [${done}/${current.length}] ${elapsed}s`);
     await sleep(DELAY_MS);
   }
 

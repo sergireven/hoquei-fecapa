@@ -58,7 +58,15 @@
     .filter-btn.active{color:#e5001c;border-bottom-color:#e5001c}
 
     select{appearance:auto}
-    @media(max-width:400px){#detail-comp-name{font-size:15px}}
+    @media(max-width:600px){
+      /* Mobile: larger base font sizes */
+      body { font-size: 15px; }
+      .detail-tab { font-size: 13px; padding: 9px 10px 6px; }
+      #detail-comp-name { font-size: 16px; }
+    }
+    @media(max-width:400px){
+      #detail-comp-name { font-size: 15px; }
+    }
   </style>
 </head>
 <body>

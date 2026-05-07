@@ -99,6 +99,29 @@ const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
 const teamIn   = (name,filter) => !!(filter&&name&&name.toLowerCase().includes(filter.toLowerCase()));
 const isActive = comp => (comp.pctPlayed||0) < 100;
 
+// Parse DD-MM date to sortable number (MMDD)
+function dateSort(m) {
+  if (!m.date) return 9999;
+  const parts = m.date.split("-");
+  if (parts.length !== 2) return 9999;
+  return parseInt(parts[1]) * 100 + parseInt(parts[0]); // MM*100 + DD
+}
+
+// Get last played and next pending, sorted by actual date
+function getLastAndNext(matches, teamName) {
+  const mine = matches.filter(m =>
+    teamIn(m.home, teamName) || teamIn(m.away, teamName)
+  );
+  const played  = mine.filter(m => m.played !== false && m.homeScore != null)
+                      .sort((a,b) => dateSort(a) - dateSort(b));
+  const pending = mine.filter(m => m.played === false  || m.homeScore == null)
+                      .sort((a,b) => dateSort(a) - dateSort(b));
+  return {
+    last: played.length ? played[played.length - 1] : null,
+    next: pending.length ? pending[0] : null,
+  };
+}
+
 // ── Match card ────────────────────────────────────────────────
 function matchCard(m, myTeam) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
@@ -112,13 +135,13 @@ function matchCard(m, myTeam) {
     badge=`<div style="text-align:center;margin-top:5px"><span style="background:${bg};color:${tc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:6px">${lb}</span></div>`;
   }
   const score=played
-    ?`<div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;line-height:1.1;white-space:nowrap;min-width:64px;text-align:center">${m.homeScore} – ${m.awayScore}</div>`
+    ?`<div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:'Barlow Condensed',sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:60px;text-align:center">${m.homeScore} – ${m.awayScore}</div>`
     :`<div style="background:#1a5dc7;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;min-width:48px;text-align:center">VS</div>`;
   return `
     <div style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px">
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
-          <span style="font-size:12px;font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
           ${shieldImg(cidH,22)}
         </div>
         <div style="flex-shrink:0;text-align:center;min-width:68px">
@@ -127,7 +150,7 @@ function matchCard(m, myTeam) {
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
-          <span style="font-size:12px;font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
         </div>
       </div>
       ${badge}
@@ -177,8 +200,7 @@ function buildFavCard(fav) {
   const cl=comp.classification||[], cal=comp.calendar||[];
   const myRow=cl.find(r=>teamIn(r.team,fav.teamName));
   const myCal=cal.filter(m=>teamIn(m.home,fav.teamName)||teamIn(m.away,fav.teamName));
-  const last=[...myCal].reverse().find(m=>m.played!==false&&m.homeScore!=null);
-  const next=myCal.find(m=>m.played===false||m.homeScore==null);
+  const {last, next} = getLastAndNext(cal, fav.teamName);
   const cid=myRow?rowClubId(myRow):getClubId(fav.teamName);
   const catColor=CAT_COLOR[fav.category]||"#e5001c";
 
@@ -211,7 +233,7 @@ function buildFavCard(fav) {
       <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
         ${shieldImg(cid,40)}
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
           <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
         </div>
         ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
@@ -339,8 +361,7 @@ function renderClubDashboard() {
     const cl=comp.classification||[], cal=comp.calendar||[];
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
     const myCal=cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
-    const last=[...myCal].reverse().find(m=>m.played!==false&&m.homeScore!=null);
-    const next=myCal.find(m=>m.played===false||m.homeScore==null);
+    const {last, next} = getLastAndNext(cal, t.teamName);
     const catColor=CAT_COLOR[t.category]||"#6b7a99";
     const catEmoji=CAT_EMOJI[t.category]||"🏒";
 
@@ -560,7 +581,7 @@ function renderDetailClassif(){
           const pos=r.pos<=3?["🥇","🥈","🥉"][r.pos-1]:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(r.team)}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(r.team)}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
