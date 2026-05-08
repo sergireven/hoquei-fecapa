@@ -61,17 +61,23 @@ function getClubIdByTeamId(teamId) {
 
 let _nameMap = null;
 function buildNameMap() {
-  if (_nameMap||!DB) return;
+  if (_nameMap || !DB) return;
   _nameMap = new Map();
-  // Use classification rows — correct mixed-case names with reliable clubId
-  for (const comps of Object.values(DB.categories||{})) {
-    for (const comp of comps) {
-      for (const r of (comp.classification||[])) {
-        if (!r.clubId||!r.team) continue;
-        const n = r.team.toLowerCase();
-        const base = n.replace(/\s+[a-z]$/,"").trim();
-        if (!_nameMap.has(n))    _nameMap.set(n,    r.clubId);
-        if (!_nameMap.has(base)) _nameMap.set(base, r.clubId);
+
+  const snapshots = DB?.snapshots
+    ? Object.values(DB.snapshots)
+    : [DB];
+
+  for (const snapshot of snapshots) {
+    for (const comps of Object.values(snapshot?.categories || {})) {
+      for (const comp of comps) {
+        for (const r of (comp.classification || [])) {
+          if (!r.clubId || !r.team) continue;
+          const n = r.team.toLowerCase();
+          const base = n.replace(/\s+[a-z]$/, "").trim();
+          if (!_nameMap.has(n)) _nameMap.set(n, r.clubId);
+          if (!_nameMap.has(base)) _nameMap.set(base, r.clubId);
+        }
       }
     }
   }
