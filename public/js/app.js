@@ -110,10 +110,10 @@ function shieldImg(clubId, size) {
 }
 
 function findComp(compId) {
-  if (!DB) return null;
-  for (const comps of Object.values(DB.categories)) {
-    const c = comps.find(c=>c.id===compId);
-    if (c) return c;
+  const data = getActiveData();
+  for (const comps of Object.values(data?.categories || {})) {
+    const found = (comps || []).find(c => c.id === compId);
+    if (found) return found;
   }
   return null;
 }
@@ -185,22 +185,62 @@ function renderHome() {
   $("screen-detail").style.display = "none";
   $("screen-picker").style.display = "none";
   $("screen-home").style.display   = "flex";
+
+  const seasons = getSeasonOptions();
+  const currentSeason = getCurrentSeason();
+
   $("home-header").innerHTML = `
-    <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
-      <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${seasons.length ? `
+          <select onchange="setSeason(this.value)" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:9px;padding:7px 10px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer">
+            ${seasons.map(season => `<option value="${esc(season)}" ${season===currentSeason?"selected":""}>${esc(season)}</option>`).join("")}
+          </select>
+        ` : ""}
+        <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>
+      </div>
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:4px">
-      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">⭐ Els meus${favs.length?` (${favs.length})`:""}</button>
-      <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🏟 Club</button>
-      <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🔍 Competicions</button>
+      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer">⭐ Els meus</button>
+      <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer">🏟 Clubs</button>
+      <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer">📋 Competicions</button>
     </div>`;
-  if (homeTab==="favs") renderFavs();
-  else if (homeTab==="club") renderClubTab();
+
+  if (homeTab === "favs") renderFavs();
+  else if (homeTab === "club") renderClubTab();
   else renderAllComps();
 }
 window.setHomeTab = t => { homeTab=t; renderHome(); };
+window.setSeason = function(season) {
+  selectedSeason = season;
+  window.selectedSeason = season;
 
+  _nameMap = null;
+
+  const categories = getActiveData()?.categories || {};
+  if (allFilterCat && allFilterCat !== "ALL" && !categories[allFilterCat]) {
+    allFilterCat = "ALL";
+  }
+
+  if (detailComp?.id) {
+    detailComp = findComp(detailComp.id) || null;
+  }
+
+  if (selectedClub?.key) {
+    selectedClub = null;
+  }
+
+  renderHome();
+
+  if ($("screen-detail").style.display === "flex" && detailComp) {
+    $("detail-comp-name").textContent = stripSeasonSuffix(detailComp.name);
+    $("detail-meta").textContent = `${(detailComp.classification || []).length} equips · ${detailComp.pctPlayed ?? "?"}% jugat`;
+    renderDetailClassif();
+    renderDetailCalendar();
+    renderDetailJugadors();
+  }
+};
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
   const body=$("home-body");
@@ -257,7 +297,7 @@ function buildFavCard(fav) {
         ${shieldImg(cid,40)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
-          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
+          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name||""))}</div>
         </div>
         ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;line-height:1">${myRow.pos}è</div>
@@ -285,7 +325,8 @@ function renderClubTab() {
   // Build club list from all competitions
   const clubMap = new Map(); // clubName (normalized) → { displayName, clubId, teams:[] }
 
-  for (const comps of Object.values(DB.categories)) {
+const data = getActiveData();
+for (const comps of Object.values(data?.categories || {})) {
     for (const comp of comps) {
       if (allOnlyActive && !isActive(comp)) continue;
       for (const row of (comp.classification||[])) {
@@ -342,16 +383,18 @@ function renderClubTab() {
 }
 
 function getCatForComp(comp) {
-  if (!DB) return "Altres";
-  for (const [cat,comps] of Object.entries(DB.categories))
-    if (comps.some(c=>c.id===comp.id)) return cat;
+  const data = getActiveData();
+  for (const [cat, comps] of Object.entries(data?.categories || {})) {
+    if ((comps || []).some(c => c.id === comp.id)) return cat;
+  }
   return "Altres";
 }
 
 window.selectClub = function(key) {
   // Rebuild club data for selected key
   const clubMap = new Map();
-  for (const comps of Object.values(DB.categories)) {
+  const data = getActiveData();
+  for (const comps of Object.values(data?.categories || {})) {
     for (const comp of comps) {
       if (allOnlyActive && !isActive(comp)) continue;
       for (const row of (comp.classification||[])) {
@@ -394,7 +437,7 @@ function renderClubDashboard() {
           <span style="font-size:14px">${catEmoji}</span>
           <div style="flex:1;min-width:0">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.teamName)}</div>
-            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
@@ -424,18 +467,22 @@ function renderClubDashboard() {
 
 // ── ALL COMPS ─────────────────────────────────────────────────
 function renderAllComps() {
-  const catNames=Object.keys(DB.categories).filter(k=>DB.categories[k].length>0);
-  const allCats=["ALL",...catNames];
+  const data = getActiveData();
+  const categories = data?.categories || {};
 
-  const filterBar=`
+  const catNames = Object.keys(categories).filter(k => (categories[k] || []).length > 0);
+  const allCats = ["ALL", ...catNames];
+
+  const filterBar = `
     <div style="background:#fff;border-bottom:1px solid #e2e6ef;overflow-x:auto;white-space:nowrap">
       <div style="display:inline-flex;padding:0 12px">
-        ${allCats.map(cat=>{
-          const active=allFilterCat===cat, label=cat==="ALL"?"Totes":cat;
-          const emoji=cat==="ALL"?"🏒":(CAT_EMOJI[cat]||"📋");
-          const comps=cat==="ALL"?Object.values(DB.categories).flat():DB.categories[cat]||[];
-          const count=allOnlyActive?comps.filter(isActive).length:comps.length;
-          return `<button onclick="allFilterCat='${esc(cat)}';renderAllComps()" style="background:none;border:none;border-bottom:3px solid ${active?"#e5001c":"transparent"};font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active?"#e5001c":"#6b7a99"};padding:9px 10px 6px;cursor:pointer;white-space:nowrap;text-transform:uppercase">${emoji} ${label} <span style="font-size:10px;opacity:.6">${count}</span></button>`;
+        ${allCats.map(cat => {
+          const active = allFilterCat === cat;
+          const label = cat === "ALL" ? "Totes" : cat;
+          const emoji = cat === "ALL" ? "🏒" : (CAT_EMOJI[cat] || "📋");
+          const comps = cat === "ALL" ? Object.values(categories).flat() : (categories[cat] || []);
+          const count = allOnlyActive ? comps.filter(isActive).length : comps.length;
+          return `<button onclick="allFilterCat='${esc(cat)}';renderAllComps()" style="background:none;border:none;border-bottom:3px solid ${active?"#e5001c":"transparent"};font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${active?"#1a2035":"#6b7a99"};padding:11px 10px 8px;cursor:pointer">${emoji} ${esc(label)} <span style="opacity:.7">${count}</span></button>`;
         }).join("")}
       </div>
     </div>
@@ -449,17 +496,21 @@ function renderAllComps() {
       </label>
     </div>`;
 
-  let cats=allFilterCat==="ALL"?Object.entries(DB.categories):[[allFilterCat,DB.categories[allFilterCat]||[]]];
-  cats=cats.map(([cat,comps])=>[cat, comps.filter(c=>{
+  let cats = allFilterCat === "ALL"
+    ? Object.entries(categories)
+    : [[allFilterCat, categories[allFilterCat] || []]];
+
+  cats = cats.map(([cat, comps]) => [cat, comps.filter(c => {
     if (allOnlyActive && !isActive(c)) return false;
     if (!allSearch) return true;
-    const q=allSearch.toLowerCase();
-    return c.name.toLowerCase().includes(q)||(c.classification||[]).some(r=>r.team&&r.team.toLowerCase().includes(q));
-  })]).filter(([,c])=>c.length>0);
+    const q = allSearch.toLowerCase();
+    return c.name.toLowerCase().includes(q) || (c.classification || []).some(r => r.team && r.team.toLowerCase().includes(q));
+  })]).filter(([,c]) => c.length > 0);
 
-  const compsHtml=cats.map(([cat,comps])=>{
+  const compsHtml = cats.map(([cat, comps]) => {
     if (!comps.length) return "";
-    const color=CAT_COLOR[cat]||"#666", emoji=CAT_EMOJI[cat]||"📋";
+    const color = CAT_COLOR[cat] || "#666";
+    const emoji = CAT_EMOJI[cat] || "📋";
     return `
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:0 14px">
@@ -468,30 +519,28 @@ function renderAllComps() {
           <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${comps.length}</span>
         </div>
         <div style="padding:0 14px">
-          ${comps.map(comp=>`
-            <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+          ${comps.map(comp => `
+            <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)">
               <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
                 <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed != null ? comp.pctPlayed + "%" : "?"}</span>
                 </div>
                 <div style="flex:1;min-width:0">
-                  <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
+                  <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name))}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification || []).length || "?"} equips</div>
                 </div>
                 <span style="color:#cbd5e1;font-size:18px">›</span>
               </div>
-              <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
+              <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed || 0}%"></div></div>
             </div>`).join("")}
         </div>
       </div>`;
   }).join("");
 
-  $("home-body").innerHTML=filterBar+`<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
-    cats.some(([,c])=>c.length)?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
+  $("home-body").innerHTML = filterBar + `<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
+    cats.some(([,c]) => c.length) ? compsHtml : `<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
   }</div>`;
-}
-
-// ── PICKER ────────────────────────────────────────────────────
+}// ── PICKER ────────────────────────────────────────────────────
 function openPicker() {
   $("screen-home").style.display="none"; $("screen-detail").style.display="none";
   $("screen-picker").style.display="flex"; renderPicker();
@@ -499,7 +548,8 @@ function openPicker() {
 window.openPicker=openPicker;
 
 function renderPicker() {
-  const catNames=Object.entries(DB.categories).filter(([,v])=>v.length>0).map(([k])=>k);
+  const data = getActiveData();
+const catNames = Object.entries(data?.categories || {}).filter(([,v]) => v.length > 0).map(([k]) => k);
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
@@ -538,9 +588,9 @@ window.onPickCat=function(){
   $("pick-comp-wrap").style.display=cat?"block":"none";
   $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
   if (!cat) return;
-  const comps=(DB.categories[cat]||[]).filter(c=>!allOnlyActive||isActive(c));
+  const comps = ((getActiveData()?.categories || {})[cat] || []).filter(c => !allOnlyActive || isActive(c));
   $("pick-comp").innerHTML=`<option value="">— Selecciona la competició —</option>`+
-    comps.map(c=>`<option value="${esc(c.id)}">${esc(c.name.replace(/\s*\(2025-26\)/,""))}</option>`).join("");
+    comps.map(c=>`<option value="${esc(c.id)}">${esc(c.name.stripSeasonSuffix(c.name))}</option>`).join("");
 };
 
 window.onPickComp=function(){
@@ -569,7 +619,7 @@ function openDetail(compId,teamName,tab){
   detailComp=findComp(compId); detailTeam=teamName||null; detailTab=tab||"classif";
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
-  $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
+  $("detail-comp-name").textContent = stripSeasonSuffix(detailComp.name);
   $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
@@ -691,11 +741,12 @@ async function init(){
     $("loading-note").textContent="Carregant dades...";
     const res=await fetch(DATA_URL+"?t="+Date.now());
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
-    DB=JSON.parse(await res.text());
-    if (!DB.categories) throw new Error("data.json incomplet");
+    DB = JSON.parse(await res.text());
+    if (!DB.categories && !DB.snapshots) throw new Error("data.json incomplet");
+    selectedSeason = DB?.season || getSeasonOptions()[0] || null;
     setupListeners();
-    $("screen-loading").style.display="none";
-    $("screen-home").style.display="flex";
+    $("screen-loading").style.display = "none";
+    $("screen-home").style.display = "flex";
     renderHome();
   } catch(e) {
     $("loading-note").innerHTML=`<span style="color:#e5001c;font-weight:700">⚠️ Error</span><br/><span style="font-size:12px;color:#6b7a99">${esc(e.message)}</span>`;
