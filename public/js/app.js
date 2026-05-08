@@ -2,7 +2,24 @@
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
 const FAV_KEY  = "hoquei_favs_v8";
+let selectedSeason = null;
 
+function getCurrentSeason() {
+  return selectedSeason || DB?.season || "";
+}
+
+function getActiveData() {
+  const season = getCurrentSeason();
+  return DB?.snapshots?.[season] || DB || {};
+}
+
+function getSeasonOptions() {
+  return DB?.availableSeasons || [DB?.season].filter(Boolean);
+}
+
+function stripSeasonSuffix(name) {
+  return String(name || "").replace(/\s*\(\d{4}-\d{2}\)\s*$/, "");
+}
 let DB      = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
