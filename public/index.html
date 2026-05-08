@@ -15,16 +15,13 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Loading */
     #screen-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:14px;background:#fff}
     .loading-logo{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:#e5001c}
     .loading-sub{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#6b7a99;letter-spacing:.15em;text-transform:uppercase}
     .spinner{width:34px;height:34px;border:3px solid #f0f4f8;border-top-color:#e5001c;border-radius:50%;animation:spin .7s linear infinite}
 
-    /* Screens */
     #screen-home,#screen-picker,#screen-detail{display:none;flex-direction:column;min-height:100vh}
 
-    /* Home header */
     .home-header{background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 16px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)}
     .home-header-inner{max-width:620px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
     .home-logo{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900}
@@ -32,46 +29,34 @@
     .btn-icon{background:#f0f4f8;border:1px solid #e2e6ef;border-radius:10px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#1a2035}
     #home-body{max-width:620px;margin:0 auto;width:100%;padding:16px 14px 32px}
 
-    /* Picker */
     .picker-header{background:linear-gradient(135deg,#003da5 0%,#001f6e 60%,#e5001c 100%);padding:16px 16px 20px;display:flex;align-items:center;gap:12px}
     .back-btn-picker{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
     .picker-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#fff}
     #picker-content{flex:1;overflow-y:auto}
 
-    /* Detail header */
     .detail-header{background:linear-gradient(135deg,#003da5 0%,#001850 100%);padding:12px 14px 0;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,20,60,.3)}
     .detail-header-inner{max-width:680px;margin:0 auto}
     #back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px}
     #detail-comp-name{font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,22px);font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.1;margin-bottom:3px}
     #detail-meta{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:10px}
     .detail-tabs{display:flex;gap:2px;overflow-x:auto}
-    .detail-tab{background:none;border:none;border-bottom:3px solid transparent;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.55);padding:9px 14px;cursor:pointer}
+    .detail-tab{background:none;border:none;border-bottom:3px solid transparent;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.55);padding:9px 14px 6px;cursor:pointer;white-space:nowrap}
     .detail-tab.active{color:#fff;border-bottom-color:#f0a500}
     .detail-body{flex:1;max-width:680px;margin:0 auto;width:100%;padding:16px 12px 32px}
     .panel{display:none}
     .panel.active{display:block;animation:fadeUp .2s ease}
 
-    /* Filter tabs (for future use) */
     .filter-wrap{background:#fff;border-bottom:1px solid #e2e6ef;overflow-x:auto;white-space:nowrap}
     .filter-inner{display:inline-flex;padding:0 14px}
     .filter-btn{background:none;border:none;border-bottom:3px solid transparent;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#6b7a99;padding:10px 12px 7px;cursor:pointer}
     .filter-btn.active{color:#e5001c;border-bottom-color:#e5001c}
 
     select{appearance:auto}
-    @media(max-width:600px){
-      /* Mobile: larger base font sizes */
-      body { font-size: 15px; }
-      .detail-tab { font-size: 13px; padding: 9px 10px 6px; }
-      #detail-comp-name { font-size: 16px; }
-    }
-    @media(max-width:400px){
-      #detail-comp-name { font-size: 15px; }
-    }
+    @media(max-width:600px){body{font-size:15px}.detail-tab{font-size:13px;padding:9px 10px 6px}#detail-comp-name{font-size:16px}}
+    @media(max-width:400px){#detail-comp-name{font-size:15px}}
   </style>
 </head>
 <body>
-
-<!-- LOADING -->
 <div id="screen-loading">
   <div class="loading-logo">🏒 FECAPA</div>
   <div class="loading-sub">Hoquei Patins Catalunya</div>
@@ -79,13 +64,11 @@
   <div id="loading-note" style="font-size:13px;color:#6b7a99">Carregant dades...</div>
 </div>
 
-<!-- HOME -->
 <div id="screen-home" style="display:none">
   <div id="home-header" style="background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 14px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)"></div>
   <div id="home-body" style="max-width:680px;margin:0 auto;width:100%;padding:14px 14px 32px"></div>
 </div>
 
-<!-- PICKER -->
 <div id="screen-picker" style="display:none">
   <div class="picker-header">
     <button class="back-btn-picker" onclick="document.getElementById('screen-picker').style.display='none';document.getElementById('screen-home').style.display='flex';">← Enrere</button>
@@ -94,7 +77,6 @@
   <div id="picker-content" style="flex:1;overflow-y:auto"></div>
 </div>
 
-<!-- DETAIL -->
 <div id="screen-detail" style="display:none">
   <div class="detail-header">
     <div class="detail-header-inner">
@@ -105,6 +87,7 @@
         <button class="detail-tab active" data-tab="classif">Classificació</button>
         <button class="detail-tab" data-tab="calendar">Calendari</button>
         <button class="detail-tab" data-tab="jugadors">Jugadors</button>
+        <button class="detail-tab" data-tab="entrenador">Entrenador</button>
       </div>
     </div>
   </div>
@@ -112,15 +95,13 @@
     <div id="panel-classif" class="panel active"></div>
     <div id="panel-calendar" class="panel"></div>
     <div id="panel-jugadors" class="panel"></div>
+    <div id="panel-entrenador" class="panel"></div>
   </div>
 </div>
 
-<!-- hidden fields needed by app.js hero references -->
 <span id="hero-season" style="display:none"></span>
 <span id="hero-sub" style="display:none"></span>
 
 <script src="js/app.js"></script>
-<script src="js/team-details.js"></script>
-<script src="js/match-details.js"></script>
 </body>
 </html>
