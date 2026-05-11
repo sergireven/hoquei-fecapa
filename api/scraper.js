@@ -382,7 +382,60 @@ async function scrapeCompetition(comp, season) {
         if (!entry.name) entry.name = c.name;
         entry.cards = Math.max(entry.cards || 0, c.cards || 0);
       }
-
+      
+      const playerIdsToScrape = [
+        ...new Set([
+          ...players.map(p => p.id),
+          ...scorers.map(s => s.id),
+          ...cards.map(c => c.id),
+        ].filter(Boolean))
+      ];
+      
+      for (const playerId of playerIdsToScrape) {
+        const basePlayer =
+          players.find(p => p.id === playerId) ||
+          scorers.find(p => p.id === playerId) ||
+          cards.find(p => p.id === playerId) ||
+          null;
+      
+        const entry = ensurePlayer(playerStats, playerId, {
+          name: basePlayer?.name || "",
+          teamId,
+          teamName,
+          competitionId: comp.id,
+          competitionName: comp.name,
+          competitionCategory: categorise(comp.name),
+        });
+      
+        if (!entry.name && basePlayer?.name) entry.name = basePlayer.name;
+      
+        try {
+          const profile = await scrapePlayerPage(playerId);
+      
+          if (profile.birthDate && !entry.birthDate) {
+            entry.birthDate = profile.birthDate;
+          }
+      
+          if (profile.age != null) {
+            entry.age = profile.age;
+          } else if (!entry.age && entry.birthDate) {
+            entry.age = computeAgeFromBirthDate(entry.birthDate);
+          }
+      
+          if (profile.matchesPlayed != null) {
+            entry.matchesPlayed = profile.matchesPlayed;
+          }
+      
+          entry.categories = mergeUnique(
+            entry.categories,
+            profile.categories?.length ? profile.categories : [categorise(comp.name)]
+          );
+      
+          entry.rawProfileAvailable = !!profile.rawProfileAvailable;
+        } catch (err) {
+          entry.categories = mergeUnique(entry.categories, [categorise(comp.name)]);
+        }
+      }
       teamStats[teamId] = buildTeamStats(
         teamId,
         teamName,
@@ -441,6 +494,122 @@ async function scrapeTeamPage(teamId) {
   return { scorers, cards, players };
 }
 
+// -- Jugadors ---
+async function scrapePlayerPage(playerId) {
+  const url = `${BASE}/jugador/${playerId}`;
+  const html = await fetchText(url);
+  await sleep(DELAY_MS);
+
+  return {
+    age: parsePlayerAge(html),
+    birthDate: parsePlayerBirthDate(html),
+    matchesPlayed: parsePlayerMatchesPlayed(html),
+    categories: parsePlayerCategories(html),
+    rawProfileAvailable: true,
+  };
+}
+// -- Detalls jugadors --
+function parsePlayerBirthDate(html) {
+  const patterns = [
+    /(\d{2}\/\d{2}\/\d{4})/i,
+    /(\d{2}-\d{2}-\d{4})/i,
+  ];
+
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) return m[1];
+  }
+
+  return null;
+}
+
+function parsePlayerAge(html) {
+  const patterns = [
+    /edat[^0-9]{0,20}(\d{1,2})/i,
+    /(\d{1,2})\s*anys/i,
+    /age[^0-9]{0,20}(\d{1,2})/i,
+  ];
+
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      const age = parseInt(m[1], 10);
+      if (!Number.isNaN(age) && age > 0 && age < 60) return age;
+    }
+  }
+
+  return null;
+}
+
+function parsePlayerMatchesPlayed(html) {
+  const patterns = [
+    /partits\s+jugats[^0-9]{0,20}(\d{1,3})/i,
+    /\bPJ\b[^0-9]{0,20}(\d{1,3})/i,
+    /matches\s+played[^0-9]{0,20}(\d{1,3})/i,
+  ];
+
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n) && n >= 0 && n < 200) return n;
+    }
+  }
+
+  return null;
+}
+
+function parsePlayerCategories(html) {
+  const categories = new Set();
+  const categoryPatterns = [
+    "Nacional Catalana",
+    "1ª Catalana",
+    "2ª Catalana",
+    "3ª Catalana",
+    "Fem",
+    "Júnior",
+    "Juvenil",
+    "Infantil",
+    "Aleví",
+    "Benjamí",
+    "Prebenjamí",
+    "Veterans"
+  ];
+
+  const normalized = strip(html).toUpperCase();
+
+  for (const cat of categoryPatterns) {
+    if (normalized.includes(cat.toUpperCase())) {
+      categories.add(cat);
+    }
+  }
+
+  return [...categories];
+}
+// -- Calcular edad en base a any neixement
+function computeAgeFromBirthDate(birthDate) {
+  if (!birthDate) return null;
+
+  let day, month, year;
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(birthDate)) {
+    [day, month, year] = birthDate.split("/").map(Number);
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(birthDate)) {
+    [day, month, year] = birthDate.split("-").map(Number);
+  } else {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasHadBirthday =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+
+  if (!hasHadBirthday) age--;
+
+  return age >= 0 && age < 60 ? age : null;
+}
 
 // -- Jugadors---
 function parsePlayers(html) {
@@ -481,15 +650,37 @@ function ensurePlayer(playerStats, playerId, defaults = {}) {
       competitionCategory: "",
       goals: 0,
       cards: 0,
+      matchesPlayed: null,
+      age: null,
+      birthDate: null,
+      categories: [],
       detectedInRoster: false,
+      rawProfileAvailable: false,
       ...defaults,
     };
   }
   return playerStats[playerId];
 }
+// -- Unir categories sense duplicat
+function mergeUnique(arrA = [], arrB = []) {
+  return [...new Set([...(arrA || []), ...(arrB || [])].filter(Boolean))];
+}
+
 
 // -- Estadístiques d'equip ----
-function buildTeamStats(teamId, teamName, players, scorers, cards, competitionCategory) {
+function buildTeamStats(teamId, teamName, players, scorers, cards, competitionCategory, playerStats) {
+  const teamPlayers = Object.values(playerStats).filter(p => p.teamId === teamId);
+
+  const knownAges = teamPlayers
+    .map(p => p.age)
+    .filter(a => typeof a === "number" && !Number.isNaN(a));
+
+  const avgAge = knownAges.length
+    ? Number((knownAges.reduce((sum, a) => sum + a, 0) / knownAges.length).toFixed(1))
+    : null;
+
+  const multiCategoryPlayers = teamPlayers.filter(p => (p.categories || []).length > 1).length;
+
   return {
     teamId,
     teamName,
@@ -499,6 +690,9 @@ function buildTeamStats(teamId, teamName, players, scorers, cards, competitionCa
     totalCardedPlayersDetected: cards.length,
     totalGoalsFromTopList: scorers.reduce((sum, s) => sum + (s.goals || 0), 0),
     totalCardsFromTopList: cards.reduce((sum, c) => sum + (c.cards || 0), 0),
+    avgAge,
+    multiCategoryPlayers,
+    playersWithKnownAge: knownAges.length,
   };
 }
 
