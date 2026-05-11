@@ -617,7 +617,10 @@ function openDetail(compId,teamName,tab){
   $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+  renderDetailClassif();
+  renderDetailCalendar();
+  renderDetailJugadors();
+  renderDetailEntrenador();
   window.scrollTo(0,0);
 }
 window.openDetail=openDetail;
@@ -684,51 +687,264 @@ function renderDetailCalendar(){
 }
 window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); };
 
-function renderDetailJugadors(){
-  const panel=$("panel-jugadors"); if(!panel) return;
-  const ts=detailComp.teamScorers||{};
-  if (!Object.keys(ts).length){
-    panel.innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8"><div style="font-size:36px;margin-bottom:10px">📊</div><p>Estadístiques no disponibles.<br/>Torna a executar el scraper.</p></div>`;
-    return;
-  }
-  const allScorers=[], allCards=[];
-  for (const [tid,data] of Object.entries(ts)){
-    const teamName=detailComp.classification?.find(r=>r.teamId===tid)?.team||"";
-    const cid=getClubIdByTeamId(tid);
-    (data.scorers||[]).forEach(s=>allScorers.push({...s,teamName,cid}));
-    (data.cards||[]).forEach(s=>allCards.push({...s,teamName,cid}));
-  }
-  allScorers.sort((a,b)=>b.goals-a.goals);
-  allCards.sort((a,b)=>b.cards-a.cards);
-  const tbl=(rows,valKey,valColor,valLabel)=>rows.length?`
-    <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#f8fafc">
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">#</th>
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:left;border-bottom:1px solid #e2e6ef">Jugador</th>
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${valColor};text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">${valLabel}</th>
-        </tr></thead>
-        <tbody>${rows.slice(0,15).map((s,i)=>`
-          <tr style="border-bottom:1px solid #f0f2f8">
-            <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${i===0?"#d97706":i===1?"#64748b":i===2?"#b45309":"#94a3b8"}">${i+1}</td>
-            <td style="padding:8px 6px">
-              <div style="font-size:13px;font-weight:600;text-transform:capitalize">${esc(s.name)}</div>
-              <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px;margin-top:1px">${shieldImg(s.cid,14)} ${esc(s.teamName)}</div>
-            </td>
-            <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:${valColor}">${s[valKey]}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`:`<p style="color:#94a3b8;font-size:13px">Sense dades</p>`;
-
-  panel.innerHTML=`
-    <div style="margin-bottom:16px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚽ Golejadors</div>
-      ${tbl(allScorers,"goals","#e5001c","Gols")}
-    </div>
-    ${allCards.length?`<div><div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🟨 Targetes</div>${tbl(allCards,"cards","#f59e0b","T")}</div>`:""}`;
+function getTeamDataMap() {
+  return detailComp?.teamScorers || {};
 }
 
+function getPlayerStatsMap() {
+  return detailComp?.playerStats || {};
+}
+
+function getTeamStatsMap() {
+  return detailComp?.teamStats || {};
+}
+
+function buildPlayersByTeam(detailComp) {
+  const teamScorers = detailComp?.teamScorers || {};
+  const playerStats = detailComp?.playerStats || {};
+  const result = {};
+
+  for (const [teamId, data] of Object.entries(teamScorers)) {
+    const players = data?.players || [];
+    const scorers = data?.scorers || [];
+    const cards   = data?.cards || [];
+
+    const byId = new Map();
+
+    for (const p of players) {
+      byId.set(p.id, {
+        id: p.id,
+        name: p.name,
+        goals: 0,
+        cards: 0,
+        detectedInRoster: true,
+      });
+    }
+
+    for (const s of scorers) {
+      const prev = byId.get(s.id) || {
+        id: s.id,
+        name: s.name,
+        goals: 0,
+        cards: 0,
+        detectedInRoster: false,
+      };
+      prev.goals = Math.max(prev.goals || 0, s.goals || 0);
+      if (!prev.name) prev.name = s.name;
+      byId.set(s.id, prev);
+    }
+
+    for (const c of cards) {
+      const prev = byId.get(c.id) || {
+        id: c.id,
+        name: c.name,
+        goals: 0,
+        cards: 0,
+        detectedInRoster: false,
+      };
+      prev.cards = Math.max(prev.cards || 0, c.cards || 0);
+      if (!prev.name) prev.name = c.name;
+      byId.set(c.id, prev);
+    }
+
+    for (const [playerId, stat] of Object.entries(playerStats)) {
+      if (stat.teamId !== teamId) continue;
+      const prev = byId.get(playerId) || {
+        id: playerId,
+        name: stat.name,
+        goals: 0,
+        cards: 0,
+        detectedInRoster: !!stat.detectedInRoster,
+      };
+
+      prev.name = prev.name || stat.name || "";
+      prev.goals = Math.max(prev.goals || 0, stat.goals || 0);
+      prev.cards = Math.max(prev.cards || 0, stat.cards || 0);
+      prev.detectedInRoster = prev.detectedInRoster || !!stat.detectedInRoster;
+
+      byId.set(playerId, prev);
+    }
+
+    result[teamId] = [...byId.values()].sort((a, b) => {
+      if ((b.goals || 0) !== (a.goals || 0)) return (b.goals || 0) - (a.goals || 0);
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }
+
+  return result;
+}
+
+function renderDetailJugadors() {
+  const panel = $("panel-jugadors");
+  if (!panel) return;
+
+  const teamScorers = getTeamDataMap();
+  const playerStats = getPlayerStatsMap();
+  const teamStats   = getTeamStatsMap();
+
+  const hasTeamScorers = Object.keys(teamScorers).length > 0;
+  const hasPlayerStats = Object.keys(playerStats).length > 0;
+
+  if (!hasTeamScorers && !hasPlayerStats) {
+    panel.innerHTML = `
+      <div style="text-align:center;padding:32px;color:#94a3b8">
+        <div style="font-size:36px;margin-bottom:10px">📊</div>
+        <p>Estadístiques de jugadors no disponibles.<br/>Torna a executar el scraper amb suport de pàgines d'equip.</p>
+      </div>`;
+    return;
+  }
+
+  const playersByTeam = buildPlayersByTeam(detailComp);
+
+  const teamEntries = Object.entries(playersByTeam)
+    .map(([teamId, players]) => {
+      const row = (detailComp.classification || []).find(r => r.teamId === teamId);
+      const fallback = (detailComp.teams || []).find(t => t.id === teamId);
+      const teamName = row?.team || fallback?.name || `Equip ${teamId}`;
+      const cid = row ? rowClubId(row) : getClubIdByTeamId(teamId);
+      const stat = teamStats[teamId] || {};
+
+      const header = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          ${shieldImg(cid, 24)}
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${esc(teamName)}
+            </div>
+            <div style="font-size:11px;color:#94a3b8">
+              ${players.length} jugadors detectats
+              ${stat.totalGoalsFromTopList != null ? ` · ${stat.totalGoalsFromTopList} gols top` : ""}
+              ${stat.totalCardsFromTopList != null ? ` · ${stat.totalCardsFromTopList} targetes top` : ""}
+            </div>
+          </div>
+        </div>`;
+
+      const table = players.length ? `
+        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f8fafc">
+                <th style="padding:8px 6px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Jugador</th>
+                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Gols</th>
+                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Targetes</th>
+                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Detectat</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${players.map(p => `
+                <tr style="border-bottom:1px solid #f0f2f8">
+                  <td style="padding:9px 6px">
+                    <div style="font-size:13px;font-weight:600;color:#1a2035;text-transform:capitalize">
+                      ${esc(p.name || "Jugador sense nom")}
+                    </div>
+                    <div style="font-size:10px;color:#94a3b8">ID ${esc(p.id)}</div>
+                  </td>
+                  <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#e5001c">
+                    ${p.goals || 0}
+                  </td>
+                  <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#d97706">
+                    ${p.cards || 0}
+                  </td>
+                  <td style="padding:9px 6px;text-align:center">
+                    <span style="display:inline-block;background:${p.detectedInRoster ? "#dcfce7" : "#f1f5f9"};color:${p.detectedInRoster ? "#16a34a" : "#64748b"};border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700">
+                      ${p.detectedInRoster ? "Plantilla" : "Stats"}
+                    </span>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>` : `
+        <p style="color:#94a3b8;font-size:13px">Sense jugadors detectats per aquest equip.</p>`;
+
+      return `
+        <div style="margin-bottom:16px">
+          ${header}
+          ${table}
+        </div>`;
+    });
+
+  panel.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+        👥 Jugadors per equip
+      </div>
+      ${teamEntries.join("") || `<p style="color:#94a3b8;font-size:13px">Sense dades d'equip.</p>`}
+    </div>`;
+}
+// -- Pantalla Entrenador
+function renderDetailEntrenador() {
+  const panel = $("panel-entrenador");
+  if (!panel) return;
+
+  const teamStats = getTeamStatsMap();
+  const entries = Object.entries(teamStats);
+
+  if (!entries.length) {
+    panel.innerHTML = `
+      <div style="text-align:center;padding:32px;color:#94a3b8">
+        <div style="font-size:36px;margin-bottom:10px">🧠</div>
+        <p>Estadístiques d'entrenador no disponibles encara.</p>
+      </div>`;
+    return;
+  }
+
+  const cards = entries.map(([teamId, stat]) => {
+    const row = (detailComp.classification || []).find(r => r.teamId === teamId);
+    const cid = row ? rowClubId(row) : getClubIdByTeamId(teamId);
+
+    return `
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          ${shieldImg(cid, 24)}
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035">
+              ${esc(stat.teamName || `Equip ${teamId}`)}
+            </div>
+            <div style="font-size:11px;color:#94a3b8">${esc(stat.competitionCategory || "")}</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Jugadors</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#003da5">
+              ${stat.totalPlayersDetected || 0}
+            </div>
+          </div>
+
+          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Golejadors</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#e5001c">
+              ${stat.totalScorersDetected || 0}
+            </div>
+          </div>
+
+          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Gols top</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#16a34a">
+              ${stat.totalGoalsFromTopList || 0}
+            </div>
+          </div>
+
+          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Targetes top</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#d97706">
+              ${stat.totalCardsFromTopList || 0}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  panel.innerHTML = `
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+        🧠 Resum entrenador
+      </div>
+      ${cards}
+    </div>`;
+}
 // ── Init ──────────────────────────────────────────────────────
 async function init(){
   try {
