@@ -527,7 +527,9 @@ function renderAllComps() {
   $("home-body").innerHTML = filterBar + `<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
     cats.some(([,c]) => c.length) ? compsHtml : `<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
   }</div>`;
-}// ── PICKER ────────────────────────────────────────────────────
+}
+
+// ── PICKER ────────────────────────────────────────────────────
 function openPicker() {
   $("screen-home").style.display="none"; $("screen-detail").style.display="none";
   $("screen-picker").style.display="flex"; renderPicker();
