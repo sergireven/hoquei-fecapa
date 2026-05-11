@@ -194,7 +194,7 @@ function renderHome() {
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         ${seasons.length ? `
-          <select onchange="setSeason(this.value)" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:9px;padding:7px 10px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer">
+          <select onchange="setSeason(this.value)" aria-label="Temporada" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:9px;padding:7px 10px;font-size:13px;font-weight:700;color:#1a2035;cursor:pointer">
             ${seasons.map(season => `<option value="${esc(season)}" ${season===currentSeason?"selected":""}>${esc(season)}</option>`).join("")}
           </select>
         ` : ""}
