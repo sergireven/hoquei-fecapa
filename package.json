@@ -4,6 +4,7 @@
   "description": "FECAPA Hockey Patins - Totes les competicions",
   "scripts": {
     "scrape": "node api/scraper.js",
+    "scrape:actes:load": "node api/scraper-actes-load.js",
     "dev": "npx serve public -p 3000"
   },
   "engines": { "node": ">=18" }

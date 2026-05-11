@@ -85,7 +85,7 @@ function shieldImg(clubId, size) {
   const src = clubId.includes(".") ? SHIELD + clubId : SHIELD + clubId + ".gif";
   return `<img src="${src}" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
 }
-
+//-- Busca competicions
 function findComp(compId) {
   if (!DB) return null;
   for (const comps of Object.values(DB.categories)) {
@@ -94,6 +94,53 @@ function findComp(compId) {
   }
   return null;
 }
+// -- Busca actes
+function findActa(actaId) {
+  if (!DB || !DB.actes || !actaId) return null;
+  return DB.actes[String(actaId)] || null;
+}
+// -- Fa match actes
+function getMatchActa(match) {
+  if (!match) return null;
+
+  if (match.actaId) {
+    const acta = findActa(match.actaId);
+    if (acta) return acta;
+  }
+
+  if (match.actaUrl) {
+    return {
+      actaId: match.actaId || null,
+      actaUrl: match.actaUrl,
+      actaSlug: match.actaSlug || "",
+    };
+  }
+
+  return null;
+}
+
+function getSafeActaUrl(rawUrl) {
+  if (!rawUrl) return null;
+
+  try {
+    const parsed = new URL(rawUrl, window.location.href);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch {}
+
+  return null;
+}
+
+window.openActa = function(actaId, fallbackUrl) {
+  const acta = actaId ? findActa(actaId) : null;
+  const url = acta?.actaUrl || fallbackUrl || acta?.url || "";
+  const safeUrl = getSafeActaUrl(url);
+
+  if (!safeUrl) return;
+
+  window.open(safeUrl, "_blank", "noopener,noreferrer");
+};
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
 const teamIn   = (name,filter) => !!(filter&&name&&name.toLowerCase().includes(filter.toLowerCase()));
@@ -127,6 +174,9 @@ function matchCard(m, myTeam) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const cidH   = getClubId(m.home), cidA = getClubId(m.away);
+  const acta   = getMatchActa(m);
+  const hasActa = !!(acta && (acta.actaUrl || acta.url));
+
   let border="#e2e6ef", badge="";
   if (played && myTeam) {
     const draw=m.homeScore===m.awayScore, win=riH?m.homeScore>m.awayScore:m.awayScore>m.homeScore;
@@ -134,11 +184,21 @@ function matchCard(m, myTeam) {
     const [bg,tc,lb]=draw?["#fef3c7","#b45309","Empat"]:win?["#dcfce7","#16a34a","Victòria"]:["#fee2e2","#dc2626","Derrota"];
     badge=`<div style="text-align:center;margin-top:5px"><span style="background:${bg};color:${tc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:6px">${lb}</span></div>`;
   }
+
   const score=played
-    ?`<div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:'Barlow Condensed',sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:60px;text-align:center">${m.homeScore} – ${m.awayScore}</div>`
+    ?`<div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:'Barlow Condensed',sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:48px;text-align:center">${m.homeScore} - ${m.awayScore}</div>`
     :`<div style="background:#1a5dc7;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;min-width:48px;text-align:center">VS</div>`;
+
+  const actaBadge = hasActa
+    ? `<div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>`
+    : "";
+
+  const clickAttrs = hasActa
+    ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
+    : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
+
   return `
-    <div style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px">
+    <div ${clickAttrs}>
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
@@ -147,6 +207,7 @@ function matchCard(m, myTeam) {
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          ${actaBadge}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
