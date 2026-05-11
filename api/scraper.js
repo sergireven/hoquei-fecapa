@@ -781,7 +781,7 @@ function categorise(name) {
 
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
-  console.log("🏒 FECAPA Scraper v4 — iniciant...\n");
+  console.log("🏒 FECAPA Scraper v5 — iniciant...\n");
   const t0 = Date.now();
   const previousData = await readPreviousData();
   const previousActes = previousData?.actes || {};
