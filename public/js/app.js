@@ -55,8 +55,8 @@ const CAT_COLOR = {
 
 // ── Club ID lookups ───────────────────────────────────────────
 function getClubIdByTeamId(teamId) {
-  if (!DB||!teamId) return null;
-  return (DB.clubIndex||{})[teamId]?.clubId||null;
+  if (!teamId) return null;
+  return (getActiveData()?.clubIndex || {})[teamId]?.clubId || null;
 }
 
 let _nameMap = null;
@@ -212,7 +212,7 @@ function renderHome() {
   else renderAllComps();
 }
 window.setHomeTab = t => { homeTab=t; renderHome(); };
-window.setSeason = function(season) {
+window.setSeason = function (season) {
   selectedSeason = season;
   window.selectedSeason = season;
 
@@ -223,23 +223,10 @@ window.setSeason = function(season) {
     allFilterCat = "ALL";
   }
 
-  if (detailComp?.id) {
-    detailComp = findComp(detailComp.id) || null;
-  }
-
-  if (selectedClub?.key) {
-    selectedClub = null;
-  }
+  detailComp = null;
+  selectedClub = null;
 
   renderHome();
-
-  if ($("screen-detail").style.display === "flex" && detailComp) {
-    $("detail-comp-name").textContent = stripSeasonSuffix(detailComp.name);
-    $("detail-meta").textContent = `${(detailComp.classification || []).length} equips · ${detailComp.pctPlayed ?? "?"}% jugat`;
-    renderDetailClassif();
-    renderDetailCalendar();
-    renderDetailJugadors();
-  }
 };
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
@@ -549,7 +536,9 @@ window.openPicker=openPicker;
 
 function renderPicker() {
   const data = getActiveData();
-const catNames = Object.entries(data?.categories || {}).filter(([,v]) => v.length > 0).map(([k]) => k);
+  const catNames = Object.entries(data?.categories || {})
+    .filter(([, v]) => v.length > 0)
+    .map(([k]) => k);
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
@@ -583,14 +572,19 @@ const catNames = Object.entries(data?.categories || {}).filter(([,v]) => v.lengt
     </div>`;
 }
 
-window.onPickCat=function(){
-  const cat=$("pick-cat").value;
-  $("pick-comp-wrap").style.display=cat?"block":"none";
-  $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
+window.onPickCat = function () {
+  const cat = $("pick-cat").value;
+  $("pick-comp-wrap").style.display = cat ? "block" : "none";
+  $("pick-team-wrap").style.display = "none";
+  $("pick-add-wrap").style.display = "none";
   if (!cat) return;
-  const comps = ((getActiveData()?.categories || {})[cat] || []).filter(c => !allOnlyActive || isActive(c));
-  $("pick-comp").innerHTML=`<option value="">— Selecciona la competició —</option>`+
-    comps.map(c=>`<option value="${esc(c.id)}">${esc(c.name.stripSeasonSuffix(c.name))}</option>`).join("");
+
+  const comps = ((getActiveData()?.categories || {})[cat] || [])
+    .filter(c => !allOnlyActive || isActive(c));
+
+  $("pick-comp").innerHTML =
+    `<option value="">— Selecciona la competició —</option>` +
+    comps.map(c => `<option value="${esc(c.id)}">${esc(stripSeasonSuffix(c.name))}</option>`).join("");
 };
 
 window.onPickComp=function(){
