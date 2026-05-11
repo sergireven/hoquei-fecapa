@@ -244,6 +244,86 @@ function parseCalendar(html) {
   return matches;
 }
 
+// ── Parse acta links from competition page HTML ────────────────
+// Expected format:
+//   /acta/136718/CLUB+HOQUEI+RIPOLLET+C-CP+CALDES+B
+function extractActaLinks(html) {
+  const actes = [];
+  const seen = new Set();
+
+  const re = /(?:href=")?([^"' >]*\/acta\/(\d+)\/([^"'?#<\s]+))(?:")?/gi;
+  let m;
+
+  while ((m = re.exec(html)) !== null) {
+    const rawUrl = m[1];
+    const actaId = m[2];
+    const actaSlug = m[3];
+
+    if (!actaId || seen.has(actaId)) continue;
+    seen.add(actaId);
+
+    const actaUrl = rawUrl.startsWith("http")
+      ? rawUrl
+      : new URL(rawUrl, BASE).href;
+
+    actes.push({
+      actaId,
+      actaSlug,
+      actaUrl,
+    });
+  }
+
+  return actes;
+}
+
+function normalizeTeamForActaSlug(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, "+")
+    .replace(/\++/g, "+")
+    .replace(/^\+|\+$/g, "");
+}
+
+function buildExpectedActaSlug(match) {
+  return `${normalizeTeamForActaSlug(match.home)}-${normalizeTeamForActaSlug(match.away)}`;
+}
+
+function attachActesToMatches(matches, actaLinks) {
+  const remaining = [...actaLinks];
+
+  for (const match of matches) {
+    if (!match.played || !match.home || !match.away) continue;
+
+    const expected = buildExpectedActaSlug(match);
+
+    // 1. Exact slug match
+    let idx = remaining.findIndex(a => a.actaSlug === expected);
+
+    // 2. Fallback: normalized comparison
+    if (idx === -1) {
+      idx = remaining.findIndex(a =>
+        normalizeTeamForActaSlug(a.actaSlug.replace(/-/g, " "))
+          === normalizeTeamForActaSlug(expected.replace(/-/g, " "))
+      );
+    }
+
+    if (idx === -1) continue;
+
+    const acta = remaining[idx];
+    match.actaId = acta.actaId;
+    match.actaSlug = acta.actaSlug;
+    match.actaUrl = acta.actaUrl;
+
+    remaining.splice(idx, 1);
+  }
+
+  return matches;
+}
+
+
 // ── Extract club ID → team ID mappings ────────────────────────
 // jok.cat structure in classification rows:
 //   <img src=".../logos_clubes/278.gif"> immediately followed by
@@ -355,8 +435,8 @@ async function scrapeCompetition(comp) {
 
   const classification = parseClassification(html);
   const rawCalendar    = parseCalendar(html);
-
-  const calendar = rawCalendar; // full calendar for all competitions
+  const actaLinks      = extractActaLinks(html);
+  const calendar       = attachActesToMatches(rawCalendar, actaLinks);
 
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
@@ -373,7 +453,16 @@ async function scrapeCompetition(comp) {
   const pctM      = html.match(/(\d+)\s*%\s*jugat/i) || html.match(/(\d+)%/);
   const pctPlayed = pctM ? Math.min(100, parseInt(pctM[1])) : null;
 
-  return { ...comp, classification, calendar, teams, teamToClub, teamScorers, pctPlayed };
+  return {
+    ...comp,
+    classification,
+    calendar,
+    teams,
+    teamToClub,
+    teamScorers,
+    pctPlayed,
+    actesDiscovered: actaLinks,
+  };
 }
 
 // ── Categorise ────────────────────────────────────────────────
@@ -438,6 +527,7 @@ async function main() {
     "Veterans": [], "Altres": [],
   };
   const clubIndex = {};
+  const actes = {};
   let done = 0, errors = 0;
   const CONCURRENCY = 8;
 
@@ -465,6 +555,27 @@ async function main() {
             else if (r.clubId) clubIndex[r.teamId].clubId = r.clubId;
           }
         });
+                data.calendar.forEach(m => {
+          if (!m.actaId) return;
+
+          if (!actes[m.actaId]) {
+            actes[m.actaId] = {
+              actaId: m.actaId,
+              actaSlug: m.actaSlug || "",
+              actaUrl: m.actaUrl || "",
+              compId: data.id,
+              compName: data.name,
+              jornada: m.jornada ?? null,
+              date: m.date || "",
+              time: m.time || "",
+              home: m.home || "",
+              away: m.away || "",
+              homeScore: m.homeScore ?? null,
+              awayScore: m.awayScore ?? null,
+              scrapedAt: new Date().toISOString(),
+            };
+          }
+        });
         done++;
       } else {
         errors++;
@@ -487,6 +598,7 @@ async function main() {
     totalComps: done,
     categories,
     clubIndex,
+    actes,
   };
 
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
