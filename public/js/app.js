@@ -119,13 +119,27 @@ function getMatchActa(match) {
   return null;
 }
 
+function getSafeActaUrl(rawUrl) {
+  if (!rawUrl) return null;
+
+  try {
+    const parsed = new URL(rawUrl, window.location.href);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch {}
+
+  return null;
+}
+
 window.openActa = function(actaId, fallbackUrl) {
   const acta = actaId ? findActa(actaId) : null;
   const url = acta?.actaUrl || fallbackUrl || acta?.url || "";
+  const safeUrl = getSafeActaUrl(url);
 
-  if (!url) return;
+  if (!safeUrl) return;
 
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.open(safeUrl, "_blank", "noopener,noreferrer");
 };
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
