@@ -59,9 +59,12 @@ function parseCompetitionList(html, season = SEASON) {
   const seen  = new Set();
 
   const seasonStart = html.indexOf(`data-season="${season}"`);
-  const block = seasonStart !== -1
-    ? html.slice(seasonStart)
-    : html;
+  if (seasonStart === -1) return [];
+
+  const nextSeasonStart = html.indexOf('data-season="', seasonStart + 1);
+  const block = nextSeasonStart !== -1
+    ? html.slice(seasonStart, nextSeasonStart)
+    : html.slice(seasonStart);
 
   const linkRe = /href="[^"]*\/competicio\/(\d+)\/([^"?#\s]+)"[^>]*>\s*([^<\n]+?)\s*</gi;
   let m;
@@ -164,7 +167,7 @@ function parseCalendar(html) {
     const jornada = parseInt(jornades[i]);
     const block   = jornades[i + 1] || "";
 
-    const matchBlockRe = /href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]{0,300}?(\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?[\s\S]{0,100}?(\d+)\s*-\s*(\d+)[\s\S]{0,200}?href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)</g;
+    const matchBlockRe = /href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]{0,300}?(\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?[\s\S]{0,100}?(\d+)\s*-\s*(\d+)[\s\S]{0,200}?href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>/gi;
     let mm;
     while ((mm = matchBlockRe.exec(block)) !== null) {
       const home = strip(mm[2]);
@@ -183,7 +186,7 @@ function parseCalendar(html) {
       });
     }
 
-    const pendRe = /href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]{0,300}?(\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?[\s\S]{0,100}?-[\s\S]{0,200}?href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)</g;
+    const pendRe = /href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]{0,300}?(\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?[\s\S]{0,100}?-[\s\S]{0,200}?href="[^"]*\/equip\/\d+\/([^"]+)"[^>]*>([^<]+)<\/a>/gi;
     let pm;
     while ((pm = pendRe.exec(block)) !== null) {
       const home = strip(pm[2]);
