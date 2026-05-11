@@ -292,17 +292,18 @@ function parseCards(html) {
 
 // ── Scrape one competition ────────────────────────────────────
 async function scrapeCompetition(comp, season) {
-  // season preparada per futures rutes, query params o snapshots
   const url  = `${BASE}/competicio/${comp.id}/${comp.slug}`;
   const html = await fetchText(url);
   await sleep(DELAY_MS);
 
   const classification = parseClassification(html);
-  const rawCalendar    = parseCalendar(html);
-  const calendar       = rawCalendar;
+  const calendar       = parseCalendar(html);
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
-  const teamScorers    = {};
+
+  const teamScorers = {};
+  const playerStats = {};
+  const teamStats   = {};
 
   classification.forEach(r => {
     if (r.teamId) r.clubId = r.clubId || teamToClub[r.teamId] || null;
@@ -311,8 +312,196 @@ async function scrapeCompetition(comp, season) {
   const pctM      = html.match(/(\d+)\s*%\s*jugat/i) || html.match(/(\d+)%/);
   const pctPlayed = pctM ? Math.min(100, parseInt(pctM[1])) : null;
 
-  return { ...comp, classification, calendar, teams, teamToClub, teamScorers, pctPlayed, season };
+  const teamIdsToScrape = [
+    ...new Set(
+      [
+        ...teams.map(t => t.id),
+        ...classification.map(r => r.teamId).filter(Boolean),
+      ].filter(Boolean)
+    )
+  ];
+
+  for (const teamId of teamIdsToScrape) {
+    const teamName =
+      teams.find(t => t.id === teamId)?.name ||
+      classification.find(r => r.teamId === teamId)?.team ||
+      "";
+
+    try {
+      const teamData = await scrapeTeamPage(teamId);
+      const scorers = teamData.scorers || [];
+      const cards   = teamData.cards || [];
+      const players = teamData.players || [];
+
+      teamScorers[teamId] = {
+        scorers,
+        cards,
+        players,
+      };
+
+      for (const p of players) {
+        const entry = ensurePlayer(playerStats, p.id, {
+          name: p.name,
+          teamId,
+          teamName,
+          competitionId: comp.id,
+          competitionName: comp.name,
+          competitionCategory: categorise(comp.name),
+          detectedInRoster: true,
+        });
+
+        if (!entry.name) entry.name = p.name;
+        if (!entry.teamId) entry.teamId = teamId;
+        if (!entry.teamName) entry.teamName = teamName;
+      }
+
+      for (const s of scorers) {
+        const entry = ensurePlayer(playerStats, s.id, {
+          name: s.name,
+          teamId,
+          teamName,
+          competitionId: comp.id,
+          competitionName: comp.name,
+          competitionCategory: categorise(comp.name),
+        });
+
+        if (!entry.name) entry.name = s.name;
+        entry.goals = Math.max(entry.goals || 0, s.goals || 0);
+      }
+
+      for (const c of cards) {
+        const entry = ensurePlayer(playerStats, c.id, {
+          name: c.name,
+          teamId,
+          teamName,
+          competitionId: comp.id,
+          competitionName: comp.name,
+          competitionCategory: categorise(comp.name),
+        });
+
+        if (!entry.name) entry.name = c.name;
+        entry.cards = Math.max(entry.cards || 0, c.cards || 0);
+      }
+
+      teamStats[teamId] = buildTeamStats(
+        teamId,
+        teamName,
+        players,
+        scorers,
+        cards,
+        categorise(comp.name)
+      );
+    } catch (err) {
+      teamScorers[teamId] = {
+        scorers: [],
+        cards: [],
+        players: [],
+        error: err.message,
+      };
+
+      teamStats[teamId] = {
+        teamId,
+        teamName,
+        competitionCategory: categorise(comp.name),
+        totalPlayersDetected: 0,
+        totalScorersDetected: 0,
+        totalCardedPlayersDetected: 0,
+        totalGoalsFromTopList: 0,
+        totalCardsFromTopList: 0,
+        error: err.message,
+      };
+    }
+  }
+
+  return {
+    ...comp,
+    classification,
+    calendar,
+    teams,
+    teamToClub,
+    teamScorers,
+    playerStats,
+    teamStats,
+    pctPlayed,
+    season,
+    competitionCategory: categorise(comp.name),
+  };
 }
+
+//--Equips------
+async function scrapeTeamPage(teamId) {
+  const url = `${BASE}/equip/${teamId}`;
+  const html = await fetchText(url);
+  await sleep(DELAY_MS);
+
+  const scorers = parseScorers(html);
+  const cards = parseCards(html);
+  const players = parsePlayers(html);
+
+  return { scorers, cards, players };
+}
+
+
+// -- Jugadors---
+function parsePlayers(html) {
+  const players = [];
+  const seen = new Set();
+
+  const re = /href="\/jugador\/(\d+)\/([^"?]+)"[^>]*>\s*([^<]+?)\s*<\/a>/gi;
+  let m;
+
+  while ((m = re.exec(html)) !== null) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    const rawSlug = m[2] || "";
+    const rawName = m[3] || decodeURIComponent(rawSlug.replace(/\+/g, " "));
+
+    players.push({
+      id,
+      name: strip(rawName),
+    });
+  }
+
+  return players;
+}
+
+// --Fusionar estadistiques jugadors--
+
+function ensurePlayer(playerStats, playerId, defaults = {}) {
+  if (!playerStats[playerId]) {
+    playerStats[playerId] = {
+      id: playerId,
+      name: "",
+      teamId: null,
+      teamName: "",
+      competitionId: null,
+      competitionName: "",
+      competitionCategory: "",
+      goals: 0,
+      cards: 0,
+      detectedInRoster: false,
+      ...defaults,
+    };
+  }
+  return playerStats[playerId];
+}
+
+// -- Estadístiques d'equip ----
+function buildTeamStats(teamId, teamName, players, scorers, cards, competitionCategory) {
+  return {
+    teamId,
+    teamName,
+    competitionCategory,
+    totalPlayersDetected: players.length,
+    totalScorersDetected: scorers.length,
+    totalCardedPlayersDetected: cards.length,
+    totalGoalsFromTopList: scorers.reduce((sum, s) => sum + (s.goals || 0), 0),
+    totalCardsFromTopList: cards.reduce((sum, c) => sum + (c.cards || 0), 0),
+  };
+}
+
 
 // ── Categorise ────────────────────────────────────────────────
 function categorise(name) {
