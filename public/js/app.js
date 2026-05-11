@@ -893,23 +893,32 @@ function renderDetailEntrenador() {
     const row = (detailComp.classification || []).find(r => r.teamId === teamId);
     const cid = row ? rowClubId(row) : getClubIdByTeamId(teamId);
 
+    const avgAge = stat.avgAge != null ? stat.avgAge : "-";
+    const avgMatchesPlayed = stat.avgMatchesPlayed != null ? stat.avgMatchesPlayed : "-";
+    const playersWithKnownAge = stat.playersWithKnownAge || 0;
+    const playersWithKnownMatchesPlayed = stat.playersWithKnownMatchesPlayed || 0;
+    const totalPlayersDetected = stat.totalPlayersDetected || 0;
+    const multiCategoryPlayers = stat.multiCategoryPlayers || 0;
+
     return `
       <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           ${shieldImg(cid, 24)}
           <div style="flex:1;min-width:0">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
               ${esc(stat.teamName || `Equip ${teamId}`)}
             </div>
-            <div style="font-size:11px;color:#94a3b8">${esc(stat.competitionCategory || "")}</div>
+            <div style="font-size:11px;color:#94a3b8">
+              ${esc(stat.competitionCategory || "")}
+            </div>
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
           <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center">
             <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Jugadors</div>
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#003da5">
-              ${stat.totalPlayersDetected || 0}
+              ${totalPlayersDetected}
             </div>
           </div>
 
@@ -932,6 +941,43 @@ function renderDetailEntrenador() {
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#d97706">
               ${stat.totalCardsFromTopList || 0}
             </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
+          <div style="background:#faf5ff;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Edat mitjana</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#7c3aed">
+              ${avgAge}
+            </div>
+          </div>
+
+          <div style="background:#eff6ff;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Mitjana PJ</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#2563eb">
+              ${avgMatchesPlayed}
+            </div>
+          </div>
+
+          <div style="background:#ecfeff;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Multicategoria</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#0891b2">
+              ${multiCategoryPlayers}
+            </div>
+          </div>
+
+          <div style="background:#fefce8;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">Cobertura edat</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#ca8a04">
+              ${playersWithKnownAge}/${totalPlayersDetected}
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc;border-radius:10px;padding:10px">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#475569">
+            <span><strong>PJ coneguts:</strong> ${playersWithKnownMatchesPlayed}/${totalPlayersDetected}</span>
+            <span><strong>Targetats:</strong> ${stat.totalCardedPlayersDetected || 0}</span>
           </div>
         </div>
       </div>`;
