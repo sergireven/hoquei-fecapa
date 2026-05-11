@@ -717,7 +717,11 @@ function buildPlayersByTeam(detailComp) {
         name: p.name,
         goals: 0,
         cards: 0,
+        age: null,
+        matchesPlayed: null,
+        categories: [],
         detectedInRoster: true,
+        rawProfileAvailable: false,
       });
     }
 
@@ -727,7 +731,11 @@ function buildPlayersByTeam(detailComp) {
         name: s.name,
         goals: 0,
         cards: 0,
+        age: null,
+        matchesPlayed: null,
+        categories: [],
         detectedInRoster: false,
+        rawProfileAvailable: false,
       };
       prev.goals = Math.max(prev.goals || 0, s.goals || 0);
       if (!prev.name) prev.name = s.name;
@@ -740,7 +748,11 @@ function buildPlayersByTeam(detailComp) {
         name: c.name,
         goals: 0,
         cards: 0,
+        age: null,
+        matchesPlayed: null,
+        categories: [],
         detectedInRoster: false,
+        rawProfileAvailable: false,
       };
       prev.cards = Math.max(prev.cards || 0, c.cards || 0);
       if (!prev.name) prev.name = c.name;
@@ -749,24 +761,34 @@ function buildPlayersByTeam(detailComp) {
 
     for (const [playerId, stat] of Object.entries(playerStats)) {
       if (stat.teamId !== teamId) continue;
+
       const prev = byId.get(playerId) || {
         id: playerId,
         name: stat.name,
         goals: 0,
         cards: 0,
+        age: null,
+        matchesPlayed: null,
+        categories: [],
         detectedInRoster: !!stat.detectedInRoster,
+        rawProfileAvailable: !!stat.rawProfileAvailable,
       };
 
       prev.name = prev.name || stat.name || "";
       prev.goals = Math.max(prev.goals || 0, stat.goals || 0);
       prev.cards = Math.max(prev.cards || 0, stat.cards || 0);
+      prev.age = stat.age != null ? stat.age : prev.age;
+      prev.matchesPlayed = stat.matchesPlayed != null ? stat.matchesPlayed : prev.matchesPlayed;
+      prev.categories = [...new Set([...(prev.categories || []), ...(stat.categories || [])])];
       prev.detectedInRoster = prev.detectedInRoster || !!stat.detectedInRoster;
+      prev.rawProfileAvailable = prev.rawProfileAvailable || !!stat.rawProfileAvailable;
 
       byId.set(playerId, prev);
     }
 
     result[teamId] = [...byId.values()].sort((a, b) => {
       if ((b.goals || 0) !== (a.goals || 0)) return (b.goals || 0) - (a.goals || 0);
+      if ((b.matchesPlayed || 0) !== (a.matchesPlayed || 0)) return (b.matchesPlayed || 0) - (a.matchesPlayed || 0);
       return (a.name || "").localeCompare(b.name || "");
     });
   }
@@ -789,87 +811,122 @@ function renderDetailJugadors() {
     panel.innerHTML = `
       <div style="text-align:center;padding:32px;color:#94a3b8">
         <div style="font-size:36px;margin-bottom:10px">📊</div>
-        <p>Estadístiques de jugadors no disponibles.<br/>Torna a executar el scraper amb suport de pàgines d'equip.</p>
+        <p>Estadístiques de jugadors no disponibles.<br/>Torna a executar el scraper amb suport de pàgines d'equip i jugador.</p>
       </div>`;
     return;
   }
 
   const playersByTeam = buildPlayersByTeam(detailComp);
 
-  const teamEntries = Object.entries(playersByTeam)
-    .map(([teamId, players]) => {
-      const row = (detailComp.classification || []).find(r => r.teamId === teamId);
-      const fallback = (detailComp.teams || []).find(t => t.id === teamId);
-      const teamName = row?.team || fallback?.name || `Equip ${teamId}`;
-      const cid = row ? rowClubId(row) : getClubIdByTeamId(teamId);
-      const stat = teamStats[teamId] || {};
+  const teamEntries = Object.entries(playersByTeam).sort(([teamIdA], [teamIdB]) => {
+    const rowA = (detailComp.classification || []).find(r => r.teamId === teamIdA);
+    const rowB = (detailComp.classification || []).find(r => r.teamId === teamIdB);
 
-      const header = `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          ${shieldImg(cid, 24)}
-          <div style="flex:1;min-width:0">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              ${esc(teamName)}
-            </div>
-            <div style="font-size:11px;color:#94a3b8">
-              ${players.length} jugadors detectats
-              ${stat.totalGoalsFromTopList != null ? ` · ${stat.totalGoalsFromTopList} gols top` : ""}
-              ${stat.totalCardsFromTopList != null ? ` · ${stat.totalCardsFromTopList} targetes top` : ""}
-            </div>
-          </div>
-        </div>`;
-
-      const table = players.length ? `
-        <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
-          <table style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="background:#f8fafc">
-                <th style="padding:8px 6px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Jugador</th>
-                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Gols</th>
-                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Targetes</th>
-                <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Detectat</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${players.map(p => `
-                <tr style="border-bottom:1px solid #f0f2f8">
-                  <td style="padding:9px 6px">
-                    <div style="font-size:13px;font-weight:600;color:#1a2035;text-transform:capitalize">
-                      ${esc(p.name || "Jugador sense nom")}
-                    </div>
-                    <div style="font-size:10px;color:#94a3b8">ID ${esc(p.id)}</div>
-                  </td>
-                  <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#e5001c">
-                    ${p.goals || 0}
-                  </td>
-                  <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#d97706">
-                    ${p.cards || 0}
-                  </td>
-                  <td style="padding:9px 6px;text-align:center">
-                    <span style="display:inline-block;background:${p.detectedInRoster ? "#dcfce7" : "#f1f5f9"};color:${p.detectedInRoster ? "#16a34a" : "#64748b"};border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700">
-                      ${p.detectedInRoster ? "Plantilla" : "Stats"}
-                    </span>
-                  </td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>` : `
-        <p style="color:#94a3b8;font-size:13px">Sense jugadors detectats per aquest equip.</p>`;
-
-      return `
-        <div style="margin-bottom:16px">
-          ${header}
-          ${table}
-        </div>`;
-    });
+    const posA = rowA?.pos ?? 999;
+    const posB = rowB?.pos ?? 999;
+    return posA - posB;
+  });
 
   panel.innerHTML = `
     <div style="margin-bottom:12px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
         👥 Jugadors per equip
       </div>
-      ${teamEntries.join("") || `<p style="color:#94a3b8;font-size:13px">Sense dades d'equip.</p>`}
+      ${
+        teamEntries.map(([teamId, players]) => {
+          const row = (detailComp.classification || []).find(r => r.teamId === teamId);
+          const fallback = (detailComp.teams || []).find(t => t.id === teamId);
+          const teamName = row?.team || fallback?.name || `Equip ${teamId}`;
+          const cid = row ? rowClubId(row) : getClubIdByTeamId(teamId);
+          const stat = teamStats[teamId] || {};
+
+          return `
+            <div style="margin-bottom:16px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                ${shieldImg(cid, 24)}
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${esc(teamName)}
+                  </div>
+                  <div style="font-size:11px;color:#94a3b8">
+                    ${players.length} jugadors detectats
+                    ${stat.avgAge != null ? ` · edat mitjana ${stat.avgAge}` : ""}
+                    ${stat.avgMatchesPlayed != null ? ` · PJ mitjana ${stat.avgMatchesPlayed}` : ""}
+                  </div>
+                </div>
+              </div>
+
+              ${
+                players.length ? `
+                  <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+                    <table style="width:100%;border-collapse:collapse">
+                      <thead>
+                        <tr style="background:#f8fafc">
+                          <th style="padding:8px 6px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Jugador</th>
+                          <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Edat</th>
+                          <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;border-bottom:1px solid #e2e6ef">PJ</th>
+                          <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Gols</th>
+                          <th style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;border-bottom:1px solid #e2e6ef">Targetes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${players.map(p => `
+                          <tr style="border-bottom:1px solid #f0f2f8">
+                            <td style="padding:9px 6px;vertical-align:top">
+                              <div style="font-size:13px;font-weight:600;color:#1a2035;text-transform:capitalize">
+                                ${esc(p.name || "Jugador sense nom")}
+                              </div>
+
+                              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                                <span style="display:inline-block;background:${p.detectedInRoster ? "#dcfce7" : "#f1f5f9"};color:${p.detectedInRoster ? "#16a34a" : "#64748b"};border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700">
+                                  ${p.detectedInRoster ? "Plantilla" : "Stats"}
+                                </span>
+
+                                ${p.rawProfileAvailable ? `
+                                  <span style="display:inline-block;background:#eff6ff;color:#2563eb;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700">
+                                    Perfil
+                                  </span>
+                                ` : ""}
+
+                                ${(p.categories || []).map(cat => `
+                                  <span style="display:inline-block;background:#faf5ff;color:#7c3aed;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700">
+                                    ${esc(cat)}
+                                  </span>
+                                `).join("")}
+                              </div>
+
+                              <div style="font-size:10px;color:#94a3b8;margin-top:4px">
+                                ID ${esc(p.id)}
+                              </div>
+                            </td>
+
+                            <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#7c3aed">
+                              ${p.age != null ? p.age : "-"}
+                            </td>
+
+                            <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#2563eb">
+                              ${p.matchesPlayed != null ? p.matchesPlayed : "-"}
+                            </td>
+
+                            <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#e5001c">
+                              ${p.goals || 0}
+                            </td>
+
+                            <td style="padding:9px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#d97706">
+                              ${p.cards || 0}
+                            </td>
+                          </tr>
+                        `).join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                ` : `
+                  <p style="color:#94a3b8;font-size:13px">Sense jugadors detectats per aquest equip.</p>
+                `
+              }
+            </div>`;
+        }).join("") || `<p style="color:#94a3b8;font-size:13px">Sense dades d'equip.</p>`
+      }
     </div>`;
 }
 // -- Pantalla Entrenador
