@@ -12,6 +12,9 @@ const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
 const DELAY_MS  = 0;
 const sleep     = ms => new Promise(r => setTimeout(r, ms));
+const ACTA_CONCURRENCY   = 4;
+const ACTA_PREVIEW_LIMIT = 4000;
+const ACTA_FORCE_RELOAD  = false;
 
 // ── HTTP fetch robust ─────────────────────────────────────────
 function fetchText(url, redirectsLeft = 5) {
@@ -323,6 +326,299 @@ function attachActesToMatches(matches, actaLinks) {
   return matches;
 }
 
+//-- Noves funcions per gestió de actes i jugadors
+function decodeEntities(s) {
+  return String(s || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&[a-z]+;/gi, " ");
+}
+
+function stripHtmlFull(html) {
+  return decodeEntities(
+    String(html || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+function extractTitle(html) {
+  const m = String(html || "").match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return m ? decodeEntities(m[1]).replace(/\s+/g, " ").trim() : "";
+}
+
+function extractActaMeta(rawText) {
+  const meta = {
+    compName: "",
+    date: "",
+    time: "",
+  };
+
+  const m = rawText.match(/Resultats de cerca per:\s*(.*?)\s+(\d{2}-\d{2}-\d{4})\s+(\d{2}:\d{2})/i);
+  if (m) {
+    meta.compName = (m[1] || "").trim();
+    meta.date = m[2] || "";
+    meta.time = m[3] || "";
+    return meta;
+  }
+
+  const dt = rawText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}:\d{2})/);
+  if (dt) {
+    meta.date = dt[1] || "";
+    meta.time = dt[2] || "";
+  }
+
+  return meta;
+}
+
+function extractReferees(rawText) {
+  const refs = [];
+
+  const m = rawText.match(/Àrbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i)
+         || rawText.match(/Arbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i)
+         || rawText.match(/Arbitro\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i);
+
+  if (!m) return refs;
+
+  const raw = (m[1] || "").replace(/\s+/g, " ").trim();
+  if (!raw) return refs;
+
+  raw.split(/\s{2,}|,\s*(?=[A-ZÀ-Ú])/)
+    .map(s => s.trim().replace(/,$/, ""))
+    .filter(Boolean)
+    .forEach(r => refs.push(r));
+
+  if (!refs.length && raw) refs.push(raw);
+
+  return refs;
+}
+
+function extractPlayerStatsRaw(rawText) {
+  const result = {
+    columns: ["Jugador", "G", "B", "V", "FD", "Pe"],
+    homeBlock: "",
+    awayBlock: "",
+  };
+
+  const parts = rawText.split(/Jugador\s+G\s+B\s+V\s+FD\s+Pe/i);
+  if (parts.length < 3) return result;
+
+  const cleanBlock = (txt) => String(txt || "")
+    .replace(/\s+JOK\.cat[\s\S]*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  result.homeBlock = cleanBlock(parts[1]);
+  result.awayBlock = cleanBlock(parts[2]);
+
+  return result;
+}
+
+function extractPlayerLinks(html) {
+  const players = [];
+  const seen = new Set();
+
+  const re = /href="([^"]*\/jugador\/(\d+)\/([^"?#]+))"/gi;
+  let m;
+
+  while ((m = re.exec(html)) !== null) {
+    const rawUrl = m[1];
+    const id = String(m[2] || "").trim();
+    const slug = String(m[3] || "").trim();
+
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+
+    const url = rawUrl.startsWith("http")
+      ? rawUrl
+      : new URL(rawUrl, BASE).href;
+
+    players.push({
+      jugadorId: id,
+      id,
+      type: "jugador",
+      slug,
+      url,
+    });
+  }
+
+  return players;
+}
+
+function ensureJugadorsIndex(data) {
+  if (!data.jugadors || typeof data.jugadors !== "object") {
+    data.jugadors = {};
+  }
+}
+
+function addPlayerSources(data, actaId, playerLinks) {
+  ensureJugadorsIndex(data);
+
+  for (const player of playerLinks) {
+    if (!data.jugadors[player.id]) {
+      data.jugadors[player.id] = {
+        jugadorId: player.id,
+        id: player.id,
+        type: "jugador",
+        slug: player.slug,
+        url: player.url,
+        loaded: false,
+        loadedAt: null,
+        title: "",
+        sources: [],
+      };
+    }
+
+    const target = data.jugadors[player.id];
+
+    if (!target.slug) target.slug = player.slug;
+    if (!target.url) target.url = player.url;
+
+    if (!Array.isArray(target.sources)) {
+      target.sources = [];
+    }
+
+    const exists = target.sources.some(
+      s => s.type === "acta" && s.id === String(actaId)
+    );
+
+    if (!exists) {
+      target.sources.push({
+        type: "acta",
+        id: String(actaId),
+      });
+    }
+  }
+}
+
+async function runPool(items, limit, worker) {
+  const results = [];
+  let index = 0;
+
+  async function runner() {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await worker(items[current], current);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    () => runner()
+  );
+
+  await Promise.all(workers);
+  return results;
+}
+
+async function readPreviousData() {
+  try {
+    const raw = await fs.readFile(DATA_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function shouldLoadActa(acta) {
+  if (!acta || !acta.actaUrl) return false;
+  if (ACTA_FORCE_RELOAD) return true;
+
+  return (
+    !acta.title ||
+    !acta.rawTextPreview ||
+    !acta.actaMeta ||
+    !acta.playerStatsRaw ||
+    !Array.isArray(acta.playerLinks)
+  );
+}
+
+async function loadPendingActes(output) {
+  if (!output.actes || typeof output.actes !== "object") return;
+
+  ensureJugadorsIndex(output);
+
+  const allActes = Object.values(output.actes);
+  const pending = allActes.filter(shouldLoadActa);
+
+  console.log(`\n📄 Actes totals: ${allActes.length}`);
+  console.log(`📥 Actes pendents de carregar: ${pending.length}`);
+
+  let processed = 0;
+  let okCount = 0;
+  let errCount = 0;
+  let playerRefsCount = 0;
+
+  await runPool(pending, ACTA_CONCURRENCY, async (acta) => {
+    try {
+      const html = await fetchText(acta.actaUrl);
+      await sleep(DELAY_MS);
+
+      const title = extractTitle(html);
+      const rawText = stripHtmlFull(html);
+      const actaMeta = extractActaMeta(rawText);
+      const referees = extractReferees(rawText);
+      const playerStatsRaw = extractPlayerStatsRaw(rawText);
+      const playerLinks = extractPlayerLinks(html);
+
+      const target = output.actes[acta.actaId];
+      if (target) {
+        target.actaId = target.actaId || String(acta.actaId);
+        target.id = String(acta.actaId);
+        target.type = "acta";
+        target.actaSlug = target.actaSlug || acta.actaSlug || "";
+        target.slug = target.slug || target.actaSlug || acta.actaSlug || "";
+        target.actaUrl = target.actaUrl || acta.actaUrl || "";
+        target.url = target.url || target.actaUrl || acta.actaUrl || "";
+
+        target.loaded = true;
+        target.loadedAt = new Date().toISOString();
+        target.title = title;
+        target.rawTextPreview = rawText.slice(0, ACTA_PREVIEW_LIMIT);
+        target.actaMeta = {
+          compName: actaMeta.compName || target.compName || "",
+          date: actaMeta.date || target.date || "",
+          time: actaMeta.time || target.time || "",
+        };
+        target.referees = referees;
+        target.playerStatsRaw = playerStatsRaw;
+        target.playerLinks = playerLinks;
+
+        delete target.loadError;
+        delete target.lastLoadAttemptAt;
+      }
+
+      addPlayerSources(output, acta.actaId, playerLinks);
+      playerRefsCount += playerLinks.length;
+
+      processed++;
+      okCount++;
+      console.log(`   [${processed}/${pending.length}] OK acta ${acta.actaId} jugadors:${playerLinks.length}`);
+    } catch (err) {
+      const target = output.actes[acta.actaId];
+      if (target) {
+        target.loaded = false;
+        target.loadError = err.message;
+        target.lastLoadAttemptAt = new Date().toISOString();
+      }
+
+      processed++;
+      errCount++;
+      console.log(`   [${processed}/${pending.length}] ERROR acta ${acta.actaId}: ${err.message}`);
+    }
+  });
+
+  console.log(`✅ Actes carregades: ${okCount}, errors: ${errCount}, refs jugadors: ${playerRefsCount}`);
+}
+
 
 // ── Extract club ID → team ID mappings ────────────────────────
 // jok.cat structure in classification rows:
@@ -487,6 +783,9 @@ function categorise(name) {
 async function main() {
   console.log("🏒 FECAPA Scraper v4 — iniciant...\n");
   const t0 = Date.now();
+  const previousData = await readPreviousData();
+  const previousActes = previousData?.actes || {};
+  const previousJugadors = previousData?.jugadors || {};
 
   console.log("📋 Carregant llista de competicions...");
   let listHtml;
@@ -528,6 +827,7 @@ async function main() {
   };
   const clubIndex = {};
   const actes = {};
+  const jugadors = { ...previousJugadors };
   let done = 0, errors = 0;
   const CONCURRENCY = 8;
 
@@ -555,26 +855,31 @@ async function main() {
             else if (r.clubId) clubIndex[r.teamId].clubId = r.clubId;
           }
         });
-                data.calendar.forEach(m => {
+        data.calendar.forEach(m => {
           if (!m.actaId) return;
 
-          if (!actes[m.actaId]) {
-            actes[m.actaId] = {
-              actaId: m.actaId,
-              actaSlug: m.actaSlug || "",
-              actaUrl: m.actaUrl || "",
-              compId: data.id,
-              compName: data.name,
-              jornada: m.jornada ?? null,
-              date: m.date || "",
-              time: m.time || "",
-              home: m.home || "",
-              away: m.away || "",
-              homeScore: m.homeScore ?? null,
-              awayScore: m.awayScore ?? null,
-              scrapedAt: new Date().toISOString(),
-            };
-          }
+          const prev = previousActes[m.actaId] || {};
+
+          actes[m.actaId] = {
+            ...prev,
+            actaId: String(m.actaId),
+            id: String(m.actaId),
+            type: "acta",
+            actaSlug: m.actaSlug || prev.actaSlug || prev.slug || "",
+            slug: m.actaSlug || prev.slug || prev.actaSlug || "",
+            actaUrl: m.actaUrl || prev.actaUrl || prev.url || "",
+            url: m.actaUrl || prev.url || prev.actaUrl || "",
+            compId: data.id,
+            compName: data.name,
+            jornada: m.jornada ?? null,
+            date: m.date || prev.date || "",
+            time: m.time || prev.time || "",
+            home: m.home || prev.home || "",
+            away: m.away || prev.away || "",
+            homeScore: m.homeScore ?? prev.homeScore ?? null,
+            awayScore: m.awayScore ?? prev.awayScore ?? null,
+            scrapedAt: new Date().toISOString(),
+          };
         });
         done++;
       } else {
@@ -599,8 +904,10 @@ async function main() {
     categories,
     clubIndex,
     actes,
+    jugadors,
   };
 
+  await loadPendingActes(output);
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(output, null, 2));
 
