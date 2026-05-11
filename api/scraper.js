@@ -442,7 +442,8 @@ async function scrapeCompetition(comp, season) {
         players,
         scorers,
         cards,
-        categorise(comp.name)
+        categorise(comp.name),
+        playerStats
       );
     } catch (err) {
       teamScorers[teamId] = {
@@ -461,6 +462,11 @@ async function scrapeCompetition(comp, season) {
         totalCardedPlayersDetected: 0,
         totalGoalsFromTopList: 0,
         totalCardsFromTopList: 0,
+        avgAge: null,
+        avgMatchesPlayed: null,
+        multiCategoryPlayers: 0,
+        playersWithKnownAge: 0,
+        playersWithKnownMatchesPlayed: 0,
         error: err.message,
       };
     }
@@ -675,24 +681,40 @@ function buildTeamStats(teamId, teamName, players, scorers, cards, competitionCa
     .map(p => p.age)
     .filter(a => typeof a === "number" && !Number.isNaN(a));
 
+  const knownMatchesPlayed = teamPlayers
+    .map(p => p.matchesPlayed)
+    .filter(n => typeof n === "number" && !Number.isNaN(n));
+
   const avgAge = knownAges.length
     ? Number((knownAges.reduce((sum, a) => sum + a, 0) / knownAges.length).toFixed(1))
     : null;
 
+  const avgMatchesPlayed = knownMatchesPlayed.length
+    ? Number((knownMatchesPlayed.reduce((sum, n) => sum + n, 0) / knownMatchesPlayed.length).toFixed(1))
+    : null;
+
   const multiCategoryPlayers = teamPlayers.filter(p => (p.categories || []).length > 1).length;
+
+  const playersWithKnownAge = knownAges.length;
+  const playersWithKnownMatchesPlayed = knownMatchesPlayed.length;
 
   return {
     teamId,
     teamName,
     competitionCategory,
+
     totalPlayersDetected: players.length,
     totalScorersDetected: scorers.length,
     totalCardedPlayersDetected: cards.length,
+
     totalGoalsFromTopList: scorers.reduce((sum, s) => sum + (s.goals || 0), 0),
     totalCardsFromTopList: cards.reduce((sum, c) => sum + (c.cards || 0), 0),
+
     avgAge,
+    avgMatchesPlayed,
     multiCategoryPlayers,
-    playersWithKnownAge: knownAges.length,
+    playersWithKnownAge,
+    playersWithKnownMatchesPlayed,
   };
 }
 
