@@ -86,8 +86,8 @@ function parseClassification(html) {
 
   const blockStart = html.indexOf("classCol-team");
   if (blockStart === -1) return rows;
-  const blockEnd = html.indexOf("Equip m\u00E9s golejador");
-  const section  = blockEnd !== -1 ? html.slice(0, blockEnd) : html;
+  const blockEnd = html.indexOf("Equip m\u00E9s golejador", blockStart);
+  const section  = blockEnd !== -1 ? html.slice(blockStart, blockEnd) : html.slice(blockStart);
 
   const rowRe = /<div\s+class='bg-white\s+w-full[^']*flex'>([\s\S]*?)<\/div>\s*(?=<div\s+class='bg-white|<div\s+class="mt-2|$)/g;
   let m;

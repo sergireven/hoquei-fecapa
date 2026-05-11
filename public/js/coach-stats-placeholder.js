@@ -1,3 +1,3 @@
-// Placeholder temporary file to continue coach statistics implementation.
-// The repository currently centralizes most UI logic in this file.
-// Next iteration should merge the coach tab rendering logic here.
+// Temporary placeholder for future coach statistics work.
+// The active UI logic is currently implemented in `public/js/app.js`.
+// Keep this file only as a stub until coach-specific logic is moved here.

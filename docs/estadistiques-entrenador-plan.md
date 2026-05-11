@@ -24,10 +24,11 @@
     - home
     - picker
     - detail
-  - A detail només hi ha actualment 3 pestanyes:
+  - A detail actualment hi ha 4 pestanyes:
     - `Classificació`
     - `Calendari`
     - `Jugadors`
+    - `Entrenador`
 
 - `public/js/app.js`
   - Lògica principal de la UI.
@@ -120,15 +121,12 @@ I a nivell global:
 ## Limitacions detectades ara mateix
 
 - `api/scraper.js` actualment està orientat només a **una temporada** (`2025-26`).
-- El scraping de golejadors/targetes està **desactivat** (`teamScorers = {}`).
-- No hi ha avui cap estructura de dades per:
-  - convocatòries
-  - edats
-  - porters
-  - participació en altres categories
-  - estadístiques per temporada comparables
-- `public/index.html` referencia `js/team-details.js` i `js/match-details.js`, però aquests fitxers no apareixen a l’estructura inspeccionada.
-  - Abans d’implementar completament, convé validar si són fitxers absents o restes d’una versió anterior.
+- En aquesta branca, el scraper ja fa `scrapeTeamPage`/`scrapePlayerPage` i omple estructures com `teamScorers`, `playerStats` i `teamStats`.
+- La limitació actual ja no és l’absència d’aquestes dades, sinó que el seu enriquiment i cobertura depenen del que retorni `jok.cat` a les pàgines d’equip/jugador.
+- Encara falta consolidar o ampliar, segons necessitat funcional:
+  - comparatives entre temporades
+  - validació de qualitat/completitud de mètriques avançades
+  - robustesa davant canvis d’estructura HTML o camps absents
 
 ## Implementació preparada: següents passos recomanats
 
