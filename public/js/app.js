@@ -134,13 +134,121 @@ function getSafeActaUrl(rawUrl) {
 
 window.openActa = function(actaId, fallbackUrl) {
   const acta = actaId ? findActa(actaId) : null;
+  if (acta?.loaded && acta?.playerStatsRaw) {
+    openActaDetail(acta);
+    return;
+  }
   const url = acta?.actaUrl || fallbackUrl || acta?.url || "";
   const safeUrl = getSafeActaUrl(url);
-
-  if (!safeUrl) return;
-
-  window.open(safeUrl, "_blank", "noopener,noreferrer");
+  if (safeUrl) window.open(safeUrl, "_blank", "noopener,noreferrer");
 };
+
+// ── ACTA DETAIL PAGE ─────────────────────────────────────────
+
+function parsePlayerBlock(block, links) {
+  const result = [];
+  // Match: (name with spaces/accents) followed by exactly 3 integers
+  const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?= [A-Za-zÀ-ÿ]|$)/g;
+  let m, i = 0;
+  while ((m = re.exec(block)) !== null) {
+    result.push({ name: m[1].trim(), g: +m[2], b: +m[3], v: +m[4], url: links[i]?.url || null, jugadorId: links[i]?.jugadorId || null });
+    i++;
+  }
+  // Fallback: if regex missed some, try simpler split by known player count
+  if (!result.length && links.length) {
+    const tokens = block.trim().split(/\s+/);
+    let j = 0;
+    links.forEach((link, li) => {
+      const nameParts = [];
+      while (j < tokens.length && !/^\d+$/.test(tokens[j])) nameParts.push(tokens[j++]);
+      const g = +tokens[j++] || 0, b = +tokens[j++] || 0, v = +tokens[j++] || 0;
+      result.push({ name: nameParts.join(" "), g, b, v, url: link.url, jugadorId: link.jugadorId });
+    });
+  }
+  return result;
+}
+
+function playerTableHtml(players, teamName, teamColor) {
+  if (!players.length) return `<p style="font-size:13px;color:#94a3b8;padding:8px 0">Sense dades de jugadors</p>`;
+  const hasStats = players.some(p => p.g || p.b || p.v);
+  return `
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:${teamColor};letter-spacing:.05em;margin-bottom:6px">${esc(teamName)}</div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;overflow:hidden">
+        <div style="display:flex;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+          <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</div>
+          ${hasStats?`<div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#16a34a">G</div>
+          <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#2563eb">B</div>
+          <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#dc2626">V</div>`:""}
+        </div>
+        ${players.map(p => `
+          <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
+            <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
+              ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>` : esc(p.name)}
+            </div>
+            ${hasStats?`
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.g?"900":"400"};color:${p.g?"#16a34a":"#cbd5e1"}">${p.g||"·"}</div>
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.b?"900":"400"};color:${p.b?"#2563eb":"#cbd5e1"}">${p.b||"·"}</div>
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.v?"900":"400"};color:${p.v?"#dc2626":"#cbd5e1"}">${p.v||"·"}</div>`:""}
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+function openActaDetail(acta) {
+  const psr = acta.playerStatsRaw || {};
+  const links = acta.playerLinks || [];
+  const homePlayers = parsePlayerBlock(psr.homeBlock || "", links);
+  const awayPlayers = parsePlayerBlock(psr.awayBlock || "", links.slice(homePlayers.length));
+
+  const homeId = getClubId(acta.home);
+  const awayId = getClubId(acta.away);
+  const date = acta.actaMeta?.date || acta.date || "";
+  const time = acta.actaMeta?.time || acta.time || "";
+  const refs = (acta.referees || []).filter(r => r && r.length > 2);
+  const compName = (acta.compName || acta.actaMeta?.compName || "").replace(/\s*\(2025-26\)/,"");
+  const jornada = acta.jornada ? `J${acta.jornada}` : "";
+  const actaUrl = acta.actaUrl || acta.url || "";
+
+  $("acta-header-title").textContent = `${acta.home} – ${acta.away}`;
+  $("acta-header-meta").textContent = [jornada, date, time, compName].filter(Boolean).join(" · ");
+
+  $("acta-body").innerHTML = `
+    <!-- Score header -->
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <div style="display:flex;align-items:center;padding:16px 14px;gap:8px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+          ${shieldImg(homeId, 44)}
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2">${esc(acta.home)}</div>
+        </div>
+        <div style="text-align:center;flex-shrink:0;min-width:80px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;color:#1a2035">${acta.homeScore ?? "–"} · ${acta.awayScore ?? "–"}</div>
+          ${date||time?`<div style="font-size:11px;color:#94a3b8;margin-top:4px">${[date,time].filter(Boolean).join(" ")}</div>`:""}
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+          ${shieldImg(awayId, 44)}
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2">${esc(acta.away)}</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+        ${compName?`<div style="font-size:12px;color:#6b7a99"><span style="font-weight:700">Competició:</span> ${esc(compName)}</div>`:""}
+        ${refs.length?`<div style="font-size:12px;color:#6b7a99"><span style="font-weight:700">Àrbitres:</span> ${refs.map(r=>esc(r)).join(", ")}</div>`:""}
+      </div>
+      ${actaUrl?`<div style="border-top:1px solid #f0f2f8;padding:10px 14px">
+        <a href="${esc(actaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📄 Veure acta a jok.cat →</a>
+      </div>`:""}
+    </div>
+
+    <!-- Players -->
+    <div class="acta-teams-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+      ${playerTableHtml(homePlayers, acta.home, "#003da5")}
+      ${playerTableHtml(awayPlayers, acta.away, "#e5001c")}
+    </div>`;
+
+  ["screen-home","screen-detail","screen-picker"].forEach(id => $(id).style.display="none");
+  $("screen-acta").style.display = "flex";
+  window.scrollTo(0, 0);
+}
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
 const teamIn   = (name,filter) => !!(filter&&name&&name.toLowerCase().includes(filter.toLowerCase()));
@@ -678,6 +786,13 @@ window.openDetail=openDetail;
 function setupListeners(){
   const bb=$("back-btn");
   if(bb) bb.addEventListener("click",()=>{ $("screen-detail").style.display="none"; renderHome(); });
+  const ab=$("acta-back-btn");
+  if(ab) ab.addEventListener("click",()=>{
+    $("screen-acta").style.display="none";
+    // Return to detail if it was open, otherwise home
+    if (detailComp) { $("screen-detail").style.display="flex"; window.scrollTo(0,0); }
+    else renderHome();
+  });
   document.querySelectorAll(".detail-tab").forEach(tab=>{
     tab.addEventListener("click",()=>{
       detailTab=tab.dataset.tab;

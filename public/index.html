@@ -22,7 +22,7 @@
     .spinner{width:34px;height:34px;border:3px solid #f0f4f8;border-top-color:#e5001c;border-radius:50%;animation:spin .7s linear infinite}
 
     /* Screens */
-    #screen-home,#screen-picker,#screen-detail{display:none;flex-direction:column;min-height:100vh}
+    #screen-home,#screen-picker,#screen-detail,#screen-acta{display:none;flex-direction:column;min-height:100vh}
 
     /* Home header */
     .home-header{background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 16px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)}
@@ -58,7 +58,9 @@
     .filter-btn.active{color:#e5001c;border-bottom-color:#e5001c}
 
     select{appearance:auto}
-    @media(max-width:600px){
+    @media(max-width:500px){
+      .acta-teams-grid{grid-template-columns:1fr!important}
+    }
       /* Mobile: larger base font sizes */
       body { font-size: 15px; }
       .detail-tab { font-size: 13px; padding: 9px 10px 6px; }
@@ -115,7 +117,19 @@
   </div>
 </div>
 
-<!-- hidden fields needed by app.js hero references -->
+<!-- ACTA DETAIL -->
+<div id="screen-acta" style="display:none">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="acta-back-btn">← Enrere</button></div>
+      <div id="acta-header-title" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(14px,4vw,19px);font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.15;margin-bottom:3px"></div>
+      <div id="acta-header-meta" style="font-size:11px;color:rgba(255,255,255,.6);padding-bottom:12px"></div>
+    </div>
+  </div>
+  <div id="acta-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
+</div>
+
+
 <span id="hero-season" style="display:none"></span>
 <span id="hero-sub" style="display:none"></span>
 
