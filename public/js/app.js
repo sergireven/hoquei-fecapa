@@ -134,7 +134,7 @@ function getSafeActaUrl(rawUrl) {
 
 window.openActa = function(actaId, fallbackUrl) {
   const acta = actaId ? findActa(actaId) : null;
-  if (acta?.loaded && acta?.playerStatsRaw) {
+  if (acta?.loaded && (acta?.playerStats || acta?.playerStatsRaw)) {
     openActaDetail(acta);
     return;
   }
@@ -196,10 +196,16 @@ function playerTableHtml(players, teamName, teamColor) {
 }
 
 function openActaDetail(acta) {
-  const psr = acta.playerStatsRaw || {};
-  const links = acta.playerLinks || [];
-  const homePlayers = parsePlayerBlock(psr.homeBlock || "", links);
-  const awayPlayers = parsePlayerBlock(psr.awayBlock || "", links.slice(homePlayers.length));
+  let homePlayers, awayPlayers;
+  if (acta.playerStats) {
+    homePlayers = acta.playerStats.homePlayers || [];
+    awayPlayers = acta.playerStats.awayPlayers || [];
+  } else {
+    const psr = acta.playerStatsRaw || {};
+    const links = acta.playerLinks || [];
+    homePlayers = parsePlayerBlock(psr.homeBlock || "", links);
+    awayPlayers = parsePlayerBlock(psr.awayBlock || "", links.slice(homePlayers.length));
+  }
 
   const homeId = getClubId(acta.home);
   const awayId = getClubId(acta.away);

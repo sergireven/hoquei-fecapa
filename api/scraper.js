@@ -260,7 +260,7 @@ function extractActaLinks(html) {
   while ((m = re.exec(html)) !== null) {
     const rawUrl = m[1];
     const actaId = m[2];
-    const actaSlug = m[3];
+    const actaSlug = decodeURIComponent(m[3]);
 
     if (!actaId || seen.has(actaId)) continue;
     seen.add(actaId);
@@ -422,6 +422,52 @@ function extractPlayerStatsRaw(rawText) {
   return result;
 }
 
+function parsePlayerStats(playerStatsRaw, playerLinks) {
+  const psr = playerStatsRaw || {};
+  const links = playerLinks || [];
+
+  function parseBlock(block, offset) {
+    const result = [];
+    const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?= [A-Za-zÀ-ÿ]|$)/g;
+    let m, i = 0;
+    while ((m = re.exec(block)) !== null) {
+      const link = links[offset + i] || {};
+      result.push({ name: m[1].trim(), g: +m[2], b: +m[3], v: +m[4], jugadorId: link.jugadorId || null, url: link.url || null });
+      i++;
+    }
+    if (!result.length && links.slice(offset).length) {
+      const blockLinks = links.slice(offset);
+      const tokens = String(block || "").trim().split(/\s+/);
+      let j = 0;
+      blockLinks.forEach((link) => {
+        const nameParts = [];
+        while (j < tokens.length && !/^\d+$/.test(tokens[j])) nameParts.push(tokens[j++]);
+        const g = +tokens[j++] || 0, b = +tokens[j++] || 0, v = +tokens[j++] || 0;
+        result.push({ name: nameParts.join(" "), g, b, v, jugadorId: link.jugadorId || null, url: link.url || null });
+      });
+    }
+    return result;
+  }
+
+  const homePlayers = parseBlock(psr.homeBlock || "", 0);
+  const awayPlayers = parseBlock(psr.awayBlock || "", homePlayers.length);
+  return { homePlayers, awayPlayers };
+}
+
+function migrateActes(data) {
+  if (!data?.actes) return;
+  let count = 0;
+  for (const acta of Object.values(data.actes)) {
+    if (acta.playerStatsRaw && !acta.playerStats) {
+      acta.playerStats = parsePlayerStats(acta.playerStatsRaw, acta.playerLinks || []);
+      delete acta.playerStatsRaw;
+      count++;
+    }
+    delete acta.rawTextPreview;
+  }
+  if (count > 0) console.log(`🔄 Migrades ${count} actes: playerStatsRaw → playerStats`);
+}
+
 function extractPlayerLinks(html) {
   const players = [];
   const seen = new Set();
@@ -534,9 +580,8 @@ function shouldLoadActa(acta) {
 
   return (
     !acta.title ||
-    !acta.rawTextPreview ||
     !acta.actaMeta ||
-    !acta.playerStatsRaw ||
+    !acta.playerStats ||
     !Array.isArray(acta.playerLinks)
   );
 }
@@ -582,15 +627,16 @@ async function loadPendingActes(output) {
         target.loaded = true;
         target.loadedAt = new Date().toISOString();
         target.title = title;
-        target.rawTextPreview = rawText.slice(0, ACTA_PREVIEW_LIMIT);
         target.actaMeta = {
           compName: actaMeta.compName || target.compName || "",
           date: actaMeta.date || target.date || "",
           time: actaMeta.time || target.time || "",
         };
         target.referees = referees;
-        target.playerStatsRaw = playerStatsRaw;
+        target.playerStats = parsePlayerStats(playerStatsRaw, playerLinks);
         target.playerLinks = playerLinks;
+        delete target.playerStatsRaw;
+        delete target.rawTextPreview;
 
         delete target.loadError;
         delete target.lastLoadAttemptAt;
@@ -907,6 +953,7 @@ async function main() {
     jugadors,
   };
 
+  migrateActes(output);
   await loadPendingActes(output);
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(output, null, 2));
