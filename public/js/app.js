@@ -229,7 +229,7 @@ function renderHome() {
       <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:4px">
-      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">⭐ Els meus${favs.length?` (${favs.length})`:""}</button>
+      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">⭐ Els meus${(favs.length+clubFavs.length)?` (${favs.length+clubFavs.length})`:""}</button>
       <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🏟 Club</button>
       <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🔍 Competicions</button>
     </div>`;
@@ -242,7 +242,7 @@ window.setHomeTab = t => { homeTab=t; renderHome(); };
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
   const body=$("home-body");
-  if (!favs.length) {
+  if (!favs.length && !clubFavs.length) {
     body.innerHTML=`<div style="text-align:center;padding:48px 20px 32px">
       <div style="font-size:48px;margin-bottom:12px">⭐</div>
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#1a2035;margin-bottom:8px">Cap equip afegit</h2>
@@ -252,8 +252,37 @@ function renderFavs() {
     return;
   }
   const updAt=DB?.updatedAt?new Date(DB.updatedAt).toLocaleDateString("ca-ES"):"?";
-  body.innerHTML=favs.map(buildFavCard).join("")+
+  const clubMap = clubFavs.length ? buildClubMap() : null;
+  const both = favs.length && clubFavs.length;
+  const clubSection = clubFavs.length ? `
+    ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:8px">🏟 Clubs</div>`:""}
+    ${clubFavs.map(f=>buildClubFavCard(f,clubMap)).join("")}` : "";
+  const teamSection = favs.length ? `
+    ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${clubFavs.length?"16px":0} 0 8px">🏒 Equips</div>`:""}
+    ${favs.map(buildFavCard).join("")}` : "";
+  body.innerHTML=clubSection+teamSection+
     `<p style="text-align:center;font-size:11px;color:#cbd5e1;margin-top:4px;padding-bottom:16px">Actualitzat: ${updAt}</p>`;
+}
+
+function buildClubFavCard(fav, clubMap) {
+  const club = clubMap?.get(fav.key);
+  const displayName = club?.displayName || fav.displayName;
+  const clubId = club?.clubId || fav.clubId;
+  const teamCount = club?.teams.length ?? 0;
+  return `
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #003da5;border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+        ${shieldImg(clubId,40)}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(displayName)}</div>
+          <div style="font-size:11px;color:#6b7a99">${teamCount} equip${teamCount!==1?"s":""} en curs</div>
+        </div>
+        <button onclick="removeClubFav('${esc(fav.key)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
+      </div>
+      <div style="padding:0 12px 11px">
+        <button onclick="homeTab='club';selectedClub=null;selectClub('${esc(fav.key)}')" style="width:100%;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:8px;font-size:13px;font-weight:600;color:#003da5;cursor:pointer">→ Veure club</button>
+      </div>
+    </div>`;
 }
 
 function buildFavCard(fav) {
@@ -318,32 +347,68 @@ function buildFavCard(fav) {
 
 window.removeFav = (compId,teamName) => { favs=favs.filter(f=>!(f.compId===compId&&f.teamName===teamName)); saveFavs(); renderHome(); };
 
-// ── CLUB TAB ──────────────────────────────────────────────────
-function renderClubTab() {
-  // Build club list from all competitions
-  const clubMap = new Map(); // clubName (normalized) → { displayName, clubId, teams:[] }
+const FAV_CLUBS_KEY = "hoquei_club_favs_v1";
+let clubFavs = [];
+try { clubFavs = JSON.parse(localStorage.getItem(FAV_CLUBS_KEY)||"[]"); } catch {}
+const saveClubFavs = () => localStorage.setItem(FAV_CLUBS_KEY, JSON.stringify(clubFavs));
+const isClubFav = key => clubFavs.some(f=>f.key===key);
+function toggleClubFav(key, displayName, clubId) {
+  if (isClubFav(key)) clubFavs = clubFavs.filter(f=>f.key!==key);
+  else clubFavs.push({key, displayName, clubId});
+  saveClubFavs();
+}
+window.removeClubFav = key => { clubFavs=clubFavs.filter(f=>f.key!==key); saveClubFavs(); renderHome(); };
 
+// ── CLUB TAB ──────────────────────────────────────────────────
+
+function buildClubMap() {
+  const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
       if (allOnlyActive && !isActive(comp)) continue;
       for (const row of (comp.classification||[])) {
         if (!row.team) continue;
-        // Normalize club name: remove trailing A/B/C/D/E
         const clubName = row.team.toLowerCase().replace(/\s+[a-e]$/,"").trim();
         if (!clubMap.has(clubName)) {
-          const cid = rowClubId(row);
-          clubMap.set(clubName, { displayName: row.team.replace(/\s+[A-E]$/,"").trim(), clubId: cid, teams:[] });
+          clubMap.set(clubName, { displayName: row.team.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
         }
         const club = clubMap.get(clubName);
-        // Update clubId if we now have one
         if (!club.clubId) club.clubId = rowClubId(row);
-        // Add team if not already there
-        if (!club.teams.some(t=>t.compId===comp.id&&t.teamName===row.team)) {
+        if (!club.teams.some(t=>t.compId===comp.id&&t.teamName===row.team))
           club.teams.push({ compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp) });
-        }
       }
     }
   }
+  // Merge entries that share the same club logo (same club, different name formats)
+  const normId = id => id ? String(id).match(/\d+/)?.[0] : null;
+  const byId = new Map();
+  for (const [key, club] of clubMap) {
+    const id = normId(club.clubId);
+    if (!id) continue;
+    if (!byId.has(id)) byId.set(id, []);
+    byId.get(id).push(key);
+  }
+  for (const keys of byId.values()) {
+    if (keys.length <= 1) continue;
+    // Canonical = prefer name starting with "club", then longest
+    const canonical = [...keys].sort((a,b) => {
+      const ac = a.startsWith("club") ? 1 : 0, bc = b.startsWith("club") ? 1 : 0;
+      return ac !== bc ? bc - ac : b.length - a.length;
+    })[0];
+    const main = clubMap.get(canonical);
+    for (const key of keys) {
+      if (key === canonical) continue;
+      for (const t of clubMap.get(key).teams)
+        if (!main.teams.some(x=>x.compId===t.compId&&x.teamName===t.teamName))
+          main.teams.push(t);
+      clubMap.delete(key);
+    }
+  }
+  return clubMap;
+}
+
+function renderClubTab(cursor) {
+  const clubMap = buildClubMap();
 
   // Sort clubs alphabetically
   const clubs = [...clubMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
@@ -361,7 +426,7 @@ function renderClubTab() {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <input id="club-search" placeholder="🔍 Cerca club..." value="${esc(clubSearch)}"
           style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
-          oninput="clubSearch=this.value;renderClubTab()"/>
+          oninput="clubSearch=this.value;renderClubTab(this.selectionStart)"/>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
           <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderClubTab()" style="width:16px;height:16px;accent-color:#003da5"/>
           Només en curs
@@ -369,14 +434,19 @@ function renderClubTab() {
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
         ${filtered.map(([key,club])=>`
-          <button onclick="selectClub('${esc(key)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .15s;text-align:center" onmouseover="this.style.borderColor='#003da5';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+          <div onclick="selectClub('${esc(key)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .15s;text-align:center;position:relative" onmouseover="this.style.borderColor='#003da5';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+            <button onclick="event.stopPropagation();toggleClubFav('${esc(key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubTab()" style="position:absolute;top:5px;right:5px;background:none;border:none;font-size:15px;cursor:pointer;padding:2px;line-height:1">${isClubFav(key)?"⭐":"☆"}</button>
             ${shieldImg(club.clubId,36)}
             <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.2">${esc(club.displayName)}</div>
             <div style="font-size:10px;color:#94a3b8">${club.teams.length} equip${club.teams.length!==1?"s":""}</div>
-          </button>`).join("")}
+          </div>`).join("")}
       </div>
       ${!filtered.length?`<p style="text-align:center;padding:32px;color:#94a3b8">Cap club trobat per «${esc(clubSearch)}»</p>`:""}
     </div>`;
+  if (cursor !== undefined) {
+    const inp = document.getElementById('club-search');
+    if (inp) { inp.focus(); inp.setSelectionRange(cursor, cursor); }
+  }
 }
 
 function getCatForComp(comp) {
@@ -387,23 +457,7 @@ function getCatForComp(comp) {
 }
 
 window.selectClub = function(key) {
-  // Rebuild club data for selected key
-  const clubMap = new Map();
-  for (const comps of Object.values(DB.categories)) {
-    for (const comp of comps) {
-      if (allOnlyActive && !isActive(comp)) continue;
-      for (const row of (comp.classification||[])) {
-        if (!row.team) continue;
-        const k = row.team.toLowerCase().replace(/\s+[a-e]$/,"").trim();
-        if (!clubMap.has(k)) clubMap.set(k,{displayName:row.team.replace(/\s+[A-E]$/,"").trim(),clubId:rowClubId(row),teams:[]});
-        const club=clubMap.get(k);
-        if (!club.clubId) club.clubId=rowClubId(row);
-        if (!club.teams.some(t=>t.compId===comp.id&&t.teamName===row.team))
-          club.teams.push({compId:comp.id,teamName:row.team,teamId:row.teamId,compName:comp.name,category:getCatForComp(comp)});
-      }
-    }
-  }
-  const entry=clubMap.get(key);
+  const entry = buildClubMap().get(key);
   if (entry) { selectedClub={key,...entry}; renderClubDashboard(); }
 };
 
@@ -452,6 +506,7 @@ function renderClubDashboard() {
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
         <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
       </div>
+      <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
         <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
         En curs
@@ -461,7 +516,7 @@ function renderClubDashboard() {
 }
 
 // ── ALL COMPS ─────────────────────────────────────────────────
-function renderAllComps() {
+function renderAllComps(cursor) {
   const catNames=Object.keys(DB.categories).filter(k=>DB.categories[k].length>0);
   const allCats=["ALL",...catNames];
 
@@ -480,7 +535,7 @@ function renderAllComps() {
     <div style="padding:8px 14px 4px;max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:center">
       <input id="all-search" placeholder="🔍 Cerca equip o competició..." value="${esc(allSearch)}"
         style="flex:1;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
-        oninput="allSearch=this.value;renderAllComps()"/>
+        oninput="allSearch=this.value;renderAllComps(this.selectionStart)"/>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
         <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderAllComps()" style="accent-color:#003da5"/>
         En curs
@@ -527,6 +582,10 @@ function renderAllComps() {
   $("home-body").innerHTML=filterBar+`<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
     cats.some(([,c])=>c.length)?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
   }</div>`;
+  if (cursor !== undefined) {
+    const inp = document.getElementById('all-search');
+    if (inp) { inp.focus(); inp.setSelectionRange(cursor, cursor); }
+  }
 }
 
 // ── PICKER ────────────────────────────────────────────────────
