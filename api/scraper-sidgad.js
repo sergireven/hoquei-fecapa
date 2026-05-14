@@ -123,55 +123,81 @@ async function main() {
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // ── 3. Recollir id_player navegant directament als endpoints PHP ──
-    // CORS bloqueja jQuery AJAX cross-origin; amb page.goto() no hi ha restriccions.
+    // ── 3. Descobrir jugadors interceptant les peticions AJAX del portal ──
+    // El portal fa AJAX a server2.sidgad.es quan es clica una competició.
+    // Interceptem les respostes per obtenir les dades reals sense endevinar URLs.
     const discovered = {};
     let compsDone = 0;
-    let debugLogged = false;
 
-    const dataPage = await browser.newPage();
-    await dataPage.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    );
+    // Intercepta respostes de server2.sidgad.es (estadistiques o plantilles)
+    const pendingHtml = new Map(); // url → html
+    page.on("response", async (response) => {
+      const url = response.url();
+      if (url.includes("server2.sidgad.es")) {
+        try {
+          pendingHtml.set(url, await response.text());
+        } catch {}
+      }
+    });
 
-    for (const compId of compIds) {
+    // Clic de prova a la primera competició per descobrir format URL i estructura HTML
+    const firstCompId = compIds[0];
+    pendingHtml.clear();
+    await page.evaluate(id => { document.getElementById(id)?.click(); }, firstCompId);
+    await new Promise(r => setTimeout(r, 5000));
+
+    if (pendingHtml.size > 0) {
+      console.log(`\n--- DEBUG: ${pendingHtml.size} URL(s) interceptades ---`);
+      for (const [url, html] of pendingHtml) {
+        console.log(`URL: ${url}`);
+        console.log(`HTML (800 chars):\n${html.slice(0, 800)}`);
+        console.log("---");
+      }
+    } else {
+      console.log("\n⚠ Cap resposta de server2.sidgad.es — clic pot no haver funcionat");
+    }
+
+    // Processa la resposta de la primera competició
+    function extractPlayersFromHtml(html) {
+      const players = [];
+      // Intenta atributs HTML estàndard: id_player="123" player_name="Nom"
+      const re = /id_player\s*=\s*["']?(\d+)["']?[^>]*(?:player_name|nombre)\s*=\s*["']([^"']{2,50})["']/gi;
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        players.push({ sidgadId: m[1], playerName: m[2] });
+      }
+      // Fallback: només id_player sense nom
+      if (players.length === 0) {
+        const re2 = /id_player\s*=\s*["']?(\d+)["']?/gi;
+        while ((m = re2.exec(html)) !== null) {
+          if (!players.find(p => p.sidgadId === m[1])) {
+            players.push({ sidgadId: m[1], playerName: "" });
+          }
+        }
+      }
+      return players;
+    }
+
+    for (const [url, html] of pendingHtml) {
+      for (const p of extractPlayersFromHtml(html)) {
+        if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
+      }
+    }
+    if (pendingHtml.size > 0) compsDone++;
+
+    // Resta de competicions
+    for (const compId of compIds.slice(1)) {
       try {
-        const urlStats     = `https://www.server2.sidgad.es/fecapa/fecapa_estadistiques_idc_${compId}_1.php`;
-        const urlPlantilla = `https://www.server2.sidgad.es/fecapa/fecapa_plantilles_idc_${compId}_1.php`;
-
-        // Navega directament: Puppeteer no té restriccions CORS
-        await dataPage.goto(urlStats, { waitUntil: "domcontentloaded", timeout: 15000 });
-
-        let players = await dataPage.$$eval("[id_player]", els =>
-          els.map(el => ({
-            sidgadId:   el.getAttribute("id_player"),
-            playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
-          })).filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId))
-        );
-
-        // Debug: mostra estructura HTML de la primera competició
-        if (!debugLogged) {
-          const sample = await dataPage.evaluate(() => document.body?.innerHTML?.slice(0, 600) || "");
-          console.log(`\n--- DEBUG COMP ${compId} (${sample.length} chars mostra) ---`);
-          console.log(sample);
-          console.log("---\n");
-          debugLogged = true;
+        pendingHtml.clear();
+        await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
+        // Esperar fins que arribi resposta o timeout
+        const deadline = Date.now() + 6000;
+        while (pendingHtml.size === 0 && Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 200));
         }
-
-        // Fallback: plantilles si estadistiques no té jugadors
-        if (players.length === 0) {
-          await dataPage.goto(urlPlantilla, { waitUntil: "domcontentloaded", timeout: 15000 });
-          players = await dataPage.$$eval("[id_player]", els =>
-            els.map(el => ({
-              sidgadId:   el.getAttribute("id_player"),
-              playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
-            })).filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId))
-          );
-        }
-
-        for (const p of players) {
-          if (!discovered[p.sidgadId]) {
-            discovered[p.sidgadId] = { name: p.playerName };
+        for (const [, html] of pendingHtml) {
+          for (const p of extractPlayersFromHtml(html)) {
+            if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
           }
         }
         compsDone++;
@@ -179,8 +205,6 @@ async function main() {
         console.log(`   ⚠ Comp ${compId}: ${e.message?.slice(0, 80)}`);
       }
     }
-
-    await dataPage.close();
 
     const totalDiscovered = Object.keys(discovered).length;
     console.log(`   Jugadors sidgad descoberts: ${totalDiscovered} (de ${compsDone} competicions)`);
