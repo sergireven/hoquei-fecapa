@@ -1,31 +1,34 @@
 // ============================================================
-// FECAPA Sidgad Scraper
-// Extreu dades de jugadors no disponibles a jok.cat:
-// data de naixement, posició (porter), equip inscrit
-// Flux: portal → calendari competició → actes → perfil jugador
+// FECAPA Sidgad Scraper  (portales.js reverse-engineered)
+//
+// Flux:
+//  1. Clic competició → calendari a #tab_modal_contenido_competicion
+//  2. .game_report[idp] → fecapa_gr_{idp}_1.php → acta a #sidgad_thickbox_content
+//  3. .player_season_stats[id_player] → perfil a #sidgad_thickbox_right_content
+//  4. Parseja data de naixement, posició (porter), equip inscrit
 // ============================================================
 
 const puppeteer = require("puppeteer");
 const fs        = require("fs").promises;
 const path      = require("path");
 
-const CACHE_FILE  = path.join(__dirname, "../public/jugadors-sidgad.json");
-const PORTAL_URL  = "https://www.hoqueipatins.fecapa.cat/";
-const SERVER_BASE = "https://www.server2.sidgad.es/fecapa/";
-const TEMP_ID     = "39";   // temporada 2025-26
-const MAX_ACTES   = 150;    // actes a processar per execució
-const STALE_MS    = 30 * 24 * 60 * 60 * 1000;
+const CACHE_FILE   = path.join(__dirname, "../public/jugadors-sidgad.json");
+const PORTAL_URL   = "https://www.hoqueipatins.fecapa.cat/";
+const SERVER_BASE  = "https://www.server2.sidgad.es/fecapa/";
+const TEMP_ID      = "39";    // temporada 2025-26
+const IDM          = "1";
+const MAX_MATCHES  = 300;     // partits a processar per execució
+const MAX_PROFILES = 200;     // perfils a enriquir per execució
+const STALE_MS     = 30 * 24 * 60 * 60 * 1000;
 
 async function loadCache() {
   try { return JSON.parse(await fs.readFile(CACHE_FILE, "utf8")); }
   catch { return {}; }
 }
-
 async function saveCache(cache) {
   await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true });
   await fs.writeFile(CACHE_FILE, JSON.stringify(cache, null, 2));
 }
-
 function normName(name) {
   return (name || "")
     .toUpperCase()
@@ -34,8 +37,6 @@ function normName(name) {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-// Extreu data de naixement del HTML del perfil lateral
 function parseBirthDate(html) {
   const patterns = [
     /(\d{2}\/\d{2}\/\d{4})/,
@@ -51,6 +52,21 @@ function parseBirthDate(html) {
   return null;
 }
 
+// Executa jQuery.load dins la pàgina i retorna el HTML del contenidor
+async function jqLoad(page, containerId, url, postData, timeoutMs = 10000) {
+  return page.evaluate(
+    async (cid, u, data, tms) => {
+      return new Promise(resolve => {
+        const el = document.getElementById(cid);
+        if (!el) { resolve(""); return; }
+        jQuery(el).load(u, data, function() { resolve(el.innerHTML); });
+        setTimeout(() => resolve(""), tms);
+      });
+    },
+    containerId, url, postData, timeoutMs
+  );
+}
+
 async function main() {
   console.log("🏒 FECAPA Sidgad Scraper — iniciant...\n");
 
@@ -63,87 +79,180 @@ async function main() {
   });
 
   try {
-    // Pàgina principal del portal (per sessió/cookies)
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
 
-    console.log("🌐 Carregant portal (sessió)...");
-    await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 45000 });
+    console.log("🌐 Carregant portal...");
+    await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 60000 });
     await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
     console.log("   Portal carregat ✓");
 
-    // Pàgina auxiliar per navegació directa (comparteix cookies)
-    const nav = await browser.newPage();
-    await nav.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-
-    // ── 2. Llegir scripts JS del portal per trobar URL d'actes ──
-    // El calendari i les actes carreguen via AJAX quan es clica.
-    // Els scripts JS del portal contenen les funcions que gestionen els clics.
+    // ── 1. Obtenir IDs de competicions ───────────────────────
     const compIds = await page.$$eval(
       `.listado_competiciones_fila.temp_${TEMP_ID}`,
       els => els.map(el => el.id).filter(Boolean)
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // Obté tots els scripts externs
-    const scriptUrls = await page.evaluate(() =>
-      [...document.querySelectorAll("script[src]")].map(s => s.src)
-    );
-    console.log(`   Scripts trobats: ${scriptUrls.length}`);
-    console.log("   " + scriptUrls.join("\n   "));
+    // ── 2. Recollir IDs de partits (idp) dels calendaris ─────
+    // Clic a cada competició → calendari carrega a #tab_modal_contenido_competicion
+    // Busca .game_report[idp] (partits acabats amb lupa disponible)
+    const matchIds = new Map(); // idp → { compId }
+    let debugMatchLogged = false;
 
-    // Busca en cada script les funcions relacionades amb actes/lupa
-    const https = require("https");
-    const http  = require("http");
-    const fetchText = (url) => new Promise((res, rej) => {
-      const mod = url.startsWith("https") ? https : http;
-      mod.get(url, r => {
-        let d = "";
-        r.on("data", c => d += c);
-        r.on("end", () => res(d));
-      }).on("error", rej);
-    });
-
-    for (const url of scriptUrls) {
+    for (const compId of compIds) {
       try {
-        const js = await fetchText(url);
-        // Busca mencions d'acta, lupa, partido, load_acta, etc.
-        const matches = js.match(/.{0,100}(?:acta|lupa|load_act|partido|id_partido|id_acta|id_act\b).{0,200}/gi) || [];
-        if (matches.length > 0) {
-          console.log(`\n--- SCRIPT: ${url.split("/").pop()} ---`);
-          matches.slice(0, 8).forEach(m => console.log("  " + m.replace(/\s+/g, " ").trim()));
+        await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
+        // Espera que el calendari carregui (resposta AJAX)
+        await page.waitForFunction(
+          (cid) => {
+            const el = document.getElementById("tab_modal_contenido_competicion");
+            return el && el.querySelectorAll(".game_report").length > 0;
+          },
+          { timeout: 6000 },
+          compId
+        ).catch(() => {}); // no llença error si no hi ha partits acabats
+
+        const matches = await page.$$eval(
+          "#tab_modal_contenido_competicion .game_report[idp]",
+          els => els.map(el => ({ idp: el.getAttribute("idp"), idc: el.getAttribute("idc") || "" }))
+        );
+
+        // Debug: primera competició amb partits
+        if (!debugMatchLogged && matches.length > 0) {
+          const sample = await page.evaluate(() => {
+            const el = document.getElementById("tab_modal_contenido_competicion");
+            return el?.innerHTML?.slice(0, 800) || "";
+          });
+          console.log(`\n--- DEBUG: calendari comp ${compId} (${matches.length} partits) ---`);
+          console.log(sample.replace(/\s+/g, " ").trim().slice(0, 600));
+          console.log("---\n");
+          debugMatchLogged = true;
         }
-      } catch { /* ignora */ }
+
+        for (const m of matches) {
+          if (!matchIds.has(m.idp)) matchIds.set(m.idp, { compId, idc: m.idc || compId });
+        }
+      } catch { /* continua */ }
     }
+    console.log(`   Partits amb acta descoberts: ${matchIds.size}`);
 
-    // Intercepció de xarxa: clic a competició + clic lupa si possible
-    const capturedResponses = new Map();
-    page.on("response", async (response) => {
-      const u = response.url();
-      if (u.includes("server2.sidgad.es") || u.includes("sidgad.cloud")) {
-        try { capturedResponses.set(u, await response.text()); } catch {}
-      }
-    });
+    // ── 3. Carregar actes i extreure jugadors ─────────────────
+    const discovered = {}; // id_player → { name, isGK, registeredTeam }
+    const matchList = [...matchIds.entries()].slice(0, MAX_MATCHES);
+    let actaDone = 0, debugActaLogged = false;
 
-    // Clic a la competició
-    await page.evaluate(id => { document.getElementById(id)?.click(); }, compIds[0]);
-    await new Promise(r => setTimeout(r, 3000));
+    for (const [idp, { compId, idc }] of matchList) {
+      try {
+        const actaUrl = `${SERVER_BASE}fecapa_gr_${idp}_${IDM}.php`;
+        const html = await jqLoad(page, "sidgad_thickbox_content", actaUrl,
+          { idm: IDM, idc: idc || compId, idp, tab: "tab_ficha_resumen" }, 10000);
 
-    // Mostra les URLs capturades i busca patrons d'acta en el HTML
-    console.log(`\n--- Respostes capturades post-clic: ${capturedResponses.size} ---`);
-    for (const [u, html] of capturedResponses) {
-      const actaPatterns = html.match(/.{0,50}(?:acta|lupa|id_act|id_partido|fa-search).{0,150}/gi) || [];
-      console.log(`URL: ${u} (${html.length} chars)`);
-      if (actaPatterns.length > 0) {
-        actaPatterns.slice(0, 5).forEach(m => console.log("  " + m.replace(/\s+/g, " ").trim()));
-      } else {
-        console.log("  (cap patró d'acta)");
-      }
+        if (!html || html.length < 50) continue;
+
+        // Debug: primer acta
+        if (!debugActaLogged) {
+          console.log(`\n--- DEBUG ACTA idp=${idp} (${html.length} chars) ---`);
+          const relevant = html.match(/.{0,60}(?:player_season_stats|id_player|player_name|porter|dorsal|inscrit).{0,100}/gi) || [];
+          if (relevant.length > 0) {
+            relevant.slice(0, 8).forEach(s => console.log("  " + s.replace(/\s+/g, " ").trim()));
+          } else {
+            console.log(html.slice(0, 800));
+          }
+          console.log("---\n");
+          debugActaLogged = true;
+        }
+
+        // Extreu jugadors: .player_season_stats[id_player][player_name]
+        const players = await page.evaluate(() => {
+          const container = document.getElementById("sidgad_thickbox_content");
+          if (!container) return [];
+          return [...container.querySelectorAll(".player_season_stats[id_player]")].map(el => {
+            const row = el.closest("tr") || el.parentElement;
+            // Busca la columna P (porter) dins la fila
+            const cells = row ? [...row.querySelectorAll("td")] : [];
+            const isGK = cells.some(td => /^\s*[Pp]\s*$/.test(td.textContent));
+            // Busca equip inscrit (cerca cel·la amb 3-5 caràcters en majúscules)
+            const teamCell = cells.find(td => /^[A-Z]{2,8}$/.test(td.textContent.trim()));
+            return {
+              id_player:     el.getAttribute("id_player"),
+              player_name:   el.getAttribute("player_name") || el.textContent.trim(),
+              isGK,
+              registeredTeam: teamCell?.textContent.trim() || null,
+            };
+          }).filter(p => p.id_player && /^\d+$/.test(p.id_player));
+        });
+
+        for (const p of players) {
+          if (!discovered[p.id_player]) {
+            discovered[p.id_player] = {
+              name:           p.player_name,
+              isGK:           p.isGK,
+              registeredTeam: p.registeredTeam,
+            };
+          }
+        }
+        actaDone++;
+      } catch { /* continua */ }
     }
-    console.log("---\n");
+    console.log(`   Jugadors descoberts: ${Object.keys(discovered).length} (de ${actaDone} actes)`);
 
-    await browser.close();
-    return;
+    // ── 4. Enriquir jugadors nous amb perfil (data de naixement) ─
+    const now = Date.now();
+    const toFetch = Object.entries(discovered).filter(([sid]) => {
+      const c = cache[sid];
+      return !c || (now - new Date(c.fetchedAt).getTime()) > STALE_MS;
+    }).slice(0, MAX_PROFILES);
+
+    console.log(`\n📊 A enriquir amb perfil: ${toFetch.length} jugadors`);
+    let ok = 0, empty = 0;
+    let debugProfileLogged = false;
+
+    for (const [sidgadId, info] of toFetch) {
+      try {
+        const profileUrl = `${SERVER_BASE}profiles/fecapa_profileseason_${sidgadId}_${IDM}_${TEMP_ID}.php`;
+        const html = await jqLoad(page, "sidgad_thickbox_right_content", profileUrl,
+          { idm: IDM, idc: "0", id_player: sidgadId, team_id: "0", temp_name: "2025/26" }, 8000);
+
+        // Debug: primer perfil
+        if (!debugProfileLogged && html && html.length > 50) {
+          console.log(`\n--- DEBUG PERFIL id=${sidgadId} (${html.length} chars) ---`);
+          console.log(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500));
+          console.log("---\n");
+          debugProfileLogged = true;
+        }
+
+        const birthDate = parseBirthDate(html || "");
+        if (!birthDate && (!html || html.replace(/<[^>]+>/g, "").trim().length < 10)) {
+          empty++;
+          continue;
+        }
+
+        cache[sidgadId] = {
+          sidgadId,
+          name:           info.name,
+          birthDate:      birthDate           || null,
+          registeredTeam: info.registeredTeam || null,
+          isGK:           info.isGK           ?? null,
+          fetchedAt:      new Date().toISOString(),
+        };
+        ok++;
+      } catch { empty++; }
+    }
+    console.log(`   ✅ Enriquits: ${ok}, buits/errors: ${empty}`);
+
+    // ── 5. Desar cache i índex ────────────────────────────────
+    await saveCache(cache);
+    console.log(`\n✅ Cache: ${Object.keys(cache).length} jugadors → ${CACHE_FILE}`);
+
+    const nameIndex = {};
+    for (const [sid, data] of Object.entries(cache)) {
+      const key = normName(data.name);
+      if (key) nameIndex[key] = sid;
+    }
+    const indexFile = path.join(__dirname, "../public/jugadors-sidgad-index.json");
+    await fs.writeFile(indexFile, JSON.stringify(nameIndex));
+    console.log(`   Index: ${Object.keys(nameIndex).length} noms → ${indexFile}`);
 
   } finally {
     await browser.close();
