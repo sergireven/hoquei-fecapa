@@ -150,7 +150,17 @@ async function main() {
       console.log(`\n--- DEBUG: ${pendingHtml.size} URL(s) interceptades ---`);
       for (const [url, html] of pendingHtml) {
         console.log(`URL: ${url}`);
-        console.log(`HTML (800 chars):\n${html.slice(0, 800)}`);
+        // Extreu atributs file= dels botons de menú per veure les URLs exactes
+        const fileMatches = [...html.matchAll(/id="([^"]+_btn)"[^>]*file="([^"]+)"/g)];
+        if (fileMatches.length > 0) {
+          console.log("Botons menú (id → file):");
+          for (const [, btnId, file] of fileMatches) {
+            console.log(`  ${btnId}: ${file}`);
+          }
+        } else {
+          // Mostra els primers 1200 chars si no hi ha botons
+          console.log(`HTML (1200 chars):\n${html.slice(0, 1200)}`);
+        }
         console.log("---");
       }
     } else {
