@@ -69,6 +69,17 @@
     @media(max-width:400px){
       #detail-comp-name { font-size: 15px; }
     }
+
+    /* Player modal (bottom sheet) */
+    #player-modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none}
+    #player-modal{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;z-index:201;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);box-shadow:0 -6px 30px rgba(0,20,60,.22)}
+    #player-modal.pm-open{transform:translateY(0)}
+    .pm-stat{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:10px 4px}
+    .pm-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1}
+    .pm-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em;text-align:center}
+    .pm-section{padding:14px 16px;border-top:1px solid #f0f2f8}
+    .pm-section-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.1em;margin-bottom:10px}
+    .player-name-btn{color:#003da5;font-weight:600;cursor:pointer;border-bottom:1px dotted #003da5;background:none;border-top:none;border-left:none;border-right:none;padding:0;font-size:inherit;font-family:inherit}
   </style>
 </head>
 <body>
@@ -134,6 +145,12 @@
 <span id="hero-sub" style="display:none"></span>
 
 <div id="last-update-bar" style="display:none;text-align:center;padding:8px 14px;font-size:11px;color:#6b7a99;background:#f0f4f8;border-top:1px solid #e2e6ef"></div>
+
+<!-- Player modal (bottom sheet) -->
+<div id="player-modal-bd" onclick="closePlayerModal()"></div>
+<div id="player-modal" role="dialog" aria-modal="true">
+  <div id="player-modal-body"></div>
+</div>
 
 <script src="js/app.js"></script>
 <script src="js/team-details.js"></script>
