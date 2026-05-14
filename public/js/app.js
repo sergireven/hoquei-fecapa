@@ -22,6 +22,19 @@ function toggleFav(compId, teamName, compName, category) {
   saveFavs();
 }
 
+const PLAYER_FAV_KEY = "hoquei_player_favs_v1";
+let playerFavs = [];
+try { playerFavs = JSON.parse(localStorage.getItem(PLAYER_FAV_KEY)||"[]"); } catch {}
+const savePlayerFavs  = () => localStorage.setItem(PLAYER_FAV_KEY, JSON.stringify(playerFavs));
+const isPlayerFav     = jid => playerFavs.includes(jid);
+function togglePlayerFav(jid) {
+  if (isPlayerFav(jid)) playerFavs = playerFavs.filter(id=>id!==jid);
+  else playerFavs.push(jid);
+  savePlayerFavs();
+}
+
+let jugadorSearch = "";
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;");
 
@@ -378,16 +391,102 @@ function renderHome() {
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
       <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>
     </div>
-    <div style="max-width:720px;margin:0 auto;display:flex;gap:4px">
-      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">⭐ Els meus${(favs.length+clubFavs.length)?` (${favs.length+clubFavs.length})`:""}</button>
-      <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🏟 Club</button>
-      <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 4px;font-size:12px;font-weight:700;cursor:pointer">🔍 Competicions</button>
+    <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
+      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus${(favs.length+clubFavs.length+playerFavs.length)?` (${favs.length+clubFavs.length+playerFavs.length})`:""}</button>
+      <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🏟 Club</button>
+      <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🔍 Comps</button>
+      <button onclick="setHomeTab('jugadors')" style="flex:1;background:${homeTab==='jugadors'?"#1a2035":"#f0f4f8"};color:${homeTab==='jugadors'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='jugadors'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">👤 Jugadors</button>
     </div>`;
   if (homeTab==="favs") renderFavs();
   else if (homeTab==="club") renderClubTab();
+  else if (homeTab==="jugadors") renderJugadorsTab();
   else renderAllComps();
 }
 window.setHomeTab = t => { homeTab=t; renderHome(); };
+
+// ── JUGADORS ──────────────────────────────────────────────────
+function renderJugadorsTab() {
+  const body = $("home-body");
+  const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const calcAge = bd => {
+    if (!bd) return null;
+    const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
+    if (isNaN(dob)) return null;
+    const today=new Date();
+    return today.getFullYear()-dob.getFullYear()-(today<new Date(today.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
+  };
+
+  const playerRow = (jid, player) => {
+    const name = fmtName(player);
+    const age  = calcAge(player.birthDate);
+    const team = player.teamStats?.[0];
+    const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : null;
+    const fav  = isPlayerFav(jid);
+    const sub  = [
+      team    ? `<span style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${esc(team.team)}</span>` : "",
+      catLabel? `<span style="font-size:10px;font-weight:700;background:#f0f4f8;color:#475569;border-radius:4px;padding:1px 5px;flex-shrink:0">${esc(catLabel)}</span>` : "",
+      player.isGK ? `<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;flex-shrink:0">🥅</span>` : "",
+      age     ? `<span style="font-size:11px;color:#94a3b8;flex-shrink:0">${age}a</span>` : "",
+    ].filter(Boolean);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8">
+      <div data-jid="${esc(jid)}" style="flex:1;min-width:0;cursor:pointer">
+        <div style="font-size:14px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
+        ${sub.length?`<div style="display:flex;align-items:center;gap:5px;margin-top:2px;flex-wrap:wrap">${sub.join("")}</div>`:""}
+      </div>
+      <button onclick="event.stopPropagation();togglePlayerFavAndRender('${esc(jid)}')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px 2px;flex-shrink:0;line-height:1;color:${fav?"#f59e0b":"#cbd5e1"}">${fav?"★":"☆"}</button>
+    </div>`;
+  };
+
+  const q = jugadorSearch.trim();
+  let listHtml = "";
+
+  // Jugadors seguits
+  if (playerFavs.length) {
+    const rows = playerFavs.map(jid=>({jid,p:DB.jugadors[jid]})).filter(x=>x.p).map(x=>playerRow(x.jid,x.p)).join("");
+    if (rows) listHtml += `
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px">⭐ Seguits</div>
+      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07);margin-bottom:16px">${rows}</div>`;
+  }
+
+  // Resultats de cerca
+  if (q.length >= 2) {
+    const qn = norm(q);
+    const results = Object.entries(DB.jugadors||{})
+      .filter(([jid,p]) => !isPlayerFav(jid) && norm(fmtName(p)).includes(qn))
+      .sort(([,a],[,b]) => {
+        const na=norm(fmtName(a)), nb=norm(fmtName(b));
+        return (nb.startsWith(qn)?0:1)-(na.startsWith(qn)?0:1) || na.localeCompare(nb);
+      })
+      .slice(0, 50);
+    listHtml += results.length
+      ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px">Resultats${results.length===50?" (50+)":` (${results.length})`}</div>
+         <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">${results.map(([jid,p])=>playerRow(jid,p)).join("")}</div>`
+      : `<div style="text-align:center;padding:32px;color:#94a3b8">Sense resultats per "<b>${esc(q)}</b>"</div>`;
+  } else if (q.length === 1) {
+    listHtml += `<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px">Escriu almenys 2 caràcters per cercar</div>`;
+  } else if (!playerFavs.length) {
+    listHtml = `<div style="text-align:center;padding:40px 20px;color:#94a3b8">
+      <div style="font-size:40px;margin-bottom:10px">👤</div>
+      <p style="font-size:14px;line-height:1.6">Cerca jugadors per nom o cognom.<br/><span style="font-size:12px">Marca'ls amb ★ per seguir-los.</span></p>
+    </div>`;
+  }
+
+  body.innerHTML = `
+    <div style="margin-bottom:14px">
+      <input type="text" id="jugador-search-input" placeholder="🔍  Cerca per nom o cognom..." value="${esc(q)}"
+        style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;background:#fff;outline:none;-webkit-appearance:none"
+        oninput="setJugadorSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
+    </div>
+    ${listHtml}`;
+
+  if (jugadorSearch) {
+    const inp = $("jugador-search-input");
+    if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+  }
+}
+window.setJugadorSearch = q => { jugadorSearch=q; renderJugadorsTab(); };
+window.togglePlayerFavAndRender = jid => { togglePlayerFav(jid); renderJugadorsTab(); };
 
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
