@@ -251,10 +251,9 @@ async function main() {
     // Format jok.cat: NOM [NOM2] COGNOM1 [COGNOM2]
     // Generem totes les variants per garantir el matching
     const nameIndex = {};
-    const addKey = (key, sid) => { if (key && !nameIndex[key]) nameIndex[key] = sid; };
-    for (const [sid, data] of Object.entries(cache)) {
-      const words = normName(data.name).split(" ").filter(Boolean);
-      if (!words.length) continue;
+    const addKey = (key, sid) => { if (key && key.length > 1 && !nameIndex[key]) nameIndex[key] = sid; };
+    const addVariants = (words, sid) => {
+      if (!words.length) return;
       addKey(words.join(" "), sid);
       // Últim mot al davant (1 nom de pila)
       if (words.length >= 2)
@@ -262,13 +261,20 @@ async function main() {
       // Últims 2 mots al davant (nom compost)
       if (words.length >= 3)
         addKey([...words.slice(-2), ...words.slice(0, -2)].join(" "), sid);
-      // Sense codi d'equip (primer mot curt = codi)
-      if (words.length >= 3 && words[0].length <= 5) {
-        const w = words.slice(1);
-        addKey(w.join(" "), sid);
-        addKey([w[w.length - 1], ...w.slice(0, -1)].join(" "), sid);
-        if (w.length >= 2)
-          addKey([...w.slice(-2), ...w.slice(0, -2)].join(" "), sid);
+      // Nom + primer cognom (sense segon cognom) — cobreix casos on jok.cat no té 2n cognom
+      if (words.length >= 3)
+        addKey([words[words.length - 1], words[0]].join(" "), sid);
+    };
+    for (const [sid, data] of Object.entries(cache)) {
+      const words = normName(data.name).split(" ").filter(Boolean);
+      if (!words.length) continue;
+      addVariants(words, sid);
+      // Sense codi d'equip (primer mot alfanumèric curt = codi d'equip o categoria)
+      if (words.length >= 3 && words[0].length <= 6) {
+        addVariants(words.slice(1), sid);
+        // Alguns codis ocupen 2 mots (p.ex. "DE LA" → no, però "NACC2 JUVB" sí)
+        if (words.length >= 4 && words[1].length <= 6)
+          addVariants(words.slice(2), sid);
       }
     }
     const indexFile = path.join(__dirname, "../public/jugadors-sidgad-index.json");

@@ -998,7 +998,7 @@ async function mergeSidgadData(jugadors) {
 
   let merged = 0;
   for (const player of Object.values(jugadors)) {
-    const rawName = (player.slug || "").replace(/\+/g, " ");
+    const rawName = decodeURIComponent(player.slug || "").replace(/\+/g, " ");
     const sidgadId = index[norm(rawName)];
     if (!sidgadId) continue;
     const sd = cache[sidgadId];
