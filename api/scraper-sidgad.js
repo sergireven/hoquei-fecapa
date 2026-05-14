@@ -105,22 +105,75 @@ async function main() {
     // ── 3. Per cada competició, recollir id_player de sidgad ──
     const discovered = {}; // sidgadId -> { name }
     let compsDone = 0;
+    let debugLogged = false;
 
     for (const compId of compIds) {
       try {
-        // Clic a la competició per carregar l'HTML dels jugadors
-        await page.click(`#${compId}`);
-        await page.waitForFunction(
-          () => document.querySelectorAll("[id_player]").length > 0,
-          { timeout: 6000 }
-        ).catch(() => {});
+        // Clic via JS (getElementById) per evitar errors de CSS amb IDs numèrics
+        const clicked = await page.evaluate(id => {
+          const el = document.getElementById(id);
+          if (!el) return false;
+          el.click();
+          return true;
+        }, compId);
 
-        const players = await page.$$eval("[id_player]", els =>
-          els.map(el => ({
-            sidgadId:   el.getAttribute("id_player"),
-            playerName: el.getAttribute("player_name") || "",
-          })).filter(p => p.sidgadId)
-        );
+        if (!clicked) {
+          console.log(`   ⚠ Element no trobat: #${compId}`);
+          continue;
+        }
+
+        // Espera breu que el contingut carregui (AJAX)
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Debug: captura DOM del primer clic
+        if (!debugLogged) {
+          const dbg = await page.evaluate(() => {
+            const c = document.querySelector(
+              "#sidgad_thickbox_right_content, .right_content, .comp_detail"
+            );
+            const html = c ? c.innerHTML.slice(0, 2000) : "(cap contenidor) " + document.body.innerHTML.slice(0, 1500);
+            const attrs = Array.from(document.querySelectorAll("*[id_player], *[player_id], *[data-player]"))
+              .slice(0, 5).map(e => e.outerHTML.slice(0, 150));
+            const tabs = Array.from(document.querySelectorAll("a, li, span, div"))
+              .filter(e => /jugador|estadisti|plantilla|players/i.test(e.textContent) && e.textContent.trim().length < 40)
+              .slice(0, 5).map(e => e.outerHTML.slice(0, 150));
+            return { html, attrs, tabs };
+          });
+          console.log("\n--- DOM right panel (primera comp) ---");
+          console.log(dbg.html);
+          console.log("--- Atributs id_player trobats:", dbg.attrs);
+          console.log("--- Tabs jugadors:", dbg.tabs);
+          console.log("---\n");
+          debugLogged = true;
+        }
+
+        // Intenta clicar tab de jugadors/estadístiques si existeix
+        await page.evaluate(() => {
+          const tabs = Array.from(document.querySelectorAll("a, li, span, div, button"));
+          const tab = tabs.find(el =>
+            /jugador|estadisti|plantilla/i.test(el.textContent) &&
+            el.textContent.trim().length < 40
+          );
+          if (tab) tab.click();
+        });
+
+        await new Promise(r => setTimeout(r, 1200));
+
+        // Busca jugadors amb múltiples variants d'atribut
+        const players = await page.evaluate(() => {
+          const byAttr = (attr) =>
+            Array.from(document.querySelectorAll(`[${attr}]`))
+              .map(el => ({
+                sidgadId:   el.getAttribute(attr),
+                playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
+              }))
+              .filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId));
+
+          return byAttr("id_player").length   ? byAttr("id_player")   :
+                 byAttr("player_id").length   ? byAttr("player_id")   :
+                 byAttr("id-player").length   ? byAttr("id-player")   :
+                 byAttr("data-player").length ? byAttr("data-player") : [];
+        });
 
         for (const p of players) {
           if (!discovered[p.sidgadId]) {
@@ -128,8 +181,8 @@ async function main() {
           }
         }
         compsDone++;
-      } catch {
-        // Competició sense jugadors (e.g. copas, no iniciades)
+      } catch (e) {
+        console.log(`   ⚠ Error comp ${compId}: ${e.message?.slice(0, 100)}`);
       }
     }
 
