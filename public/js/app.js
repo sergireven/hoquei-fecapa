@@ -832,46 +832,82 @@ function openPlayerModal(jid, fallbackName) {
   const name   = fallbackName || (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : "Jugador");
   const url    = player?.url || `https://jok.cat/jugador/${jid}`;
 
-  // Recompte d'actes per categoria (totes les temporades disponibles a FECAPA)
-  const catCounts = {};
-  for (const src of (player?.sources || [])) {
-    const cat = DB?.actesIndex?.[src.id];
-    if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
-  }
-  const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
-  const maxCat = catEntries[0]?.[1] || 1;
+  // ── Dades bàsiques ───────────────────────────────────────────
+  const numberHtml = player?.number != null
+    ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#94a3b8;margin-left:6px">#${player.number}</span>`
+    : "";
 
+  // Edat calculada de birthDate (DD/MM/YYYY o YYYY-MM-DD)
+  let ageHtml = "";
+  if (player?.birthDate) {
+    const p = player.birthDate.split(/[\/\-]/);
+    const dob = p[0].length === 4
+      ? new Date(`${p[0]}-${p[1]}-${p[2]}`)
+      : new Date(`${p[2]}-${p[1]}-${p[0]}`);
+    if (!isNaN(dob)) {
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear()
+        - (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+      ageHtml = `<span style="font-size:13px;color:#6b7a99;font-weight:500"> · ${age} anys</span>`;
+    }
+  }
+
+  const gkHtml = player?.isGK
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin-top:4px">🥅 Porter</span>`
+    : "";
+
+  // ── Estadístiques de temporada ────────────────────────────────
   const cs      = player?.careerStats || [];
   const current = cs[0];
   const history = cs.slice(1);
 
-  const numberHtml = player?.number != null
-    ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#94a3b8;margin-left:6px">#${player.number}</span>`
-    : "";
-
   const statBox = (val, lbl, color) =>
     `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
+
+  // ── Equips (teamStats del scraper) ────────────────────────────
+  const teamStats = player?.teamStats || [];
+
+  // Fallback: categories des de sources si no hi ha teamStats
+  const catCounts = {};
+  if (!teamStats.length) {
+    for (const src of (player?.sources || [])) {
+      const cat = DB?.actesIndex?.[src.id];
+      if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
+    }
+  }
+  const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+
+  // Secció principal: equips amb barra visual
+  const displayRows = teamStats.length
+    ? teamStats.map(t => ({ label: esc(t.team), sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""), count: t.count }))
+    : catEntries.map(([cat, cnt]) => ({ label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: cnt }));
+  const maxCount = displayRows[0]?.count || 1;
+
+  const breakdownSection = displayRows.length ? `
+    <div class="pm-section-title" style="margin-top:${current?"12px":"0"}">${teamStats.length ? "Equips" : "Categories"}</div>
+    ${displayRows.map(r => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
+          ${r.sublabel ? `<div style="font-size:10px;color:#94a3b8">${r.sublabel}</div>` : ""}
+        </div>
+        <div style="width:60px;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden;flex-shrink:0">
+          <div style="width:${Math.round(r.count/maxCount*100)}%;height:100%;background:#003da5;border-radius:4px"></div>
+        </div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:24px;text-align:right;flex-shrink:0">${r.count}</div>
+      </div>`).join("")}` : "";
 
   const currentSection = current ? `
     <div class="pm-section">
       <div class="pm-section-title">Temporada ${esc(current.seasonName)}</div>
-      <div style="display:flex;background:#f8fafc;border-radius:12px;margin-bottom:${catEntries.length?"12px":"0"}">
-        ${statBox(current.match_count, "Partits", "#1a2035")}
-        ${statBox(current.total_goals, "Gols", "#e5001c")}
-        ${statBox(current.total_blue || "·", "Blaves", "#2563eb")}
+      <div style="display:flex;background:#f8fafc;border-radius:12px">
+        ${statBox(current.match_count, "Partits",   "#1a2035")}
+        ${statBox(current.total_goals, "Gols",      "#e5001c")}
+        ${statBox(current.total_blue || "·", "Blaves",    "#2563eb")}
         ${statBox(current.total_red  || "·", "Vermelles", "#dc2626")}
       </div>
-      ${catEntries.length ? `
-        <div class="pm-section-title" style="margin-top:4px">Categories a FECAPA</div>
-        ${catEntries.map(([cat, cnt]) => `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <div style="width:130px;font-size:12px;font-weight:500;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(CAT_LABELS[cat] || cat)}</div>
-            <div style="flex:1;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden">
-              <div style="width:${Math.round(cnt/maxCat*100)}%;height:100%;background:#003da5;border-radius:4px"></div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:22px;text-align:right">${cnt}</div>
-          </div>`).join("")}` : ""}
-    </div>` : "";
+      ${breakdownSection}
+    </div>` : (breakdownSection ? `<div class="pm-section">${breakdownSection}</div>` : "");
 
   const historySection = history.length ? `
     <div class="pm-section">
@@ -888,7 +924,7 @@ function openPlayerModal(jid, fallbackName) {
         </div>`).join("")}
     </div>` : "";
 
-  const noDataHtml = !current && !catEntries.length ? `
+  const noDataHtml = !current && !displayRows.length ? `
     <div class="pm-section" style="color:#94a3b8;font-size:13px;text-align:center;padding:24px 16px">
       Dades detallades no disponibles encara.<br/>Les estadístiques es carreguen progressivament.
     </div>` : "";
@@ -899,7 +935,8 @@ function openPlayerModal(jid, fallbackName) {
     </div>
     <div style="padding:12px 16px 14px;display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${numberHtml}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${numberHtml}${ageHtml}</div>
+        ${gkHtml}
       </div>
       <button onclick="closePlayerModal()" style="background:#f0f4f8;border:none;border-radius:10px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>

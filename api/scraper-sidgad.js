@@ -66,6 +66,27 @@ function parseProfile(html) {
     if (m) { result.registeredTeam = m[1].trim(); break; }
   }
 
+  // Posició / porter (formats Catalan i Castellà)
+  const posPatterns = [
+    /demarcaci[oó][^:]*:\s*<[^>]+>([^<]{2,25})</i,
+    /demarcaci[oó][^:]*:\s*([^\n<]{2,25})/i,
+    /posici[oó][^:]*:\s*<[^>]+>([^<]{2,25})</i,
+    /posici[oó][^:]*:\s*([^\n<]{2,25})/i,
+  ];
+  for (const re of posPatterns) {
+    const m = html.match(re);
+    if (m) {
+      result.position = m[1].trim();
+      result.isGK = /porter|portero|goalkeeper/i.test(m[1]);
+      break;
+    }
+  }
+  // Fallback: "porter" al text visible sense etiquetar explícitament
+  if (result.isGK === undefined) {
+    const text = html.replace(/<[^>]+>/g, " ");
+    result.isGK = /\bporter\b|\bportero\b/i.test(text) ? true : undefined;
+  }
+
   return result;
 }
 
@@ -223,8 +244,10 @@ async function main() {
         cache[sidgadId] = {
           sidgadId,
           name:           info.name,
-          birthDate:      parsed.birthDate   || null,
+          birthDate:      parsed.birthDate      || null,
           registeredTeam: parsed.registeredTeam || null,
+          position:       parsed.position       || null,
+          isGK:           parsed.isGK           ?? null,
           fetchedAt:      new Date().toISOString(),
         };
         ok++;
