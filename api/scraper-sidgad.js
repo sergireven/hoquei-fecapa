@@ -102,125 +102,54 @@ async function main() {
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // Debug: estructura inicial d'una fila de competició (onclick, atributs)
-    const firstRowDebug = await page.evaluate(tempId => {
-      const rows = Array.from(document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)).slice(0, 2);
-      return rows.map(r => ({
-        id:      r.id,
-        onclick: r.getAttribute("onclick"),
-        compId:  r.getAttribute("comp_id") || r.getAttribute("data-comp") || r.getAttribute("id_comp"),
-        html:    r.outerHTML.slice(0, 400),
-      }));
-    }, TEMP_ID);
-    console.log("   Exemple files competició:", JSON.stringify(firstRowDebug, null, 2));
-
-    // ── 3. Per cada competició, recollir id_player de sidgad ──
-    // Intercepta peticions de xarxa per descobrir URLs de jugadors
-    const capturedUrls = [];
-    page.on("request", req => {
-      const u = req.url();
-      if ((u.includes("sidgad") || u.includes("fecapa")) && !capturedUrls.includes(u)) {
-        capturedUrls.push(u);
-      }
-    });
-
-    const discovered = {}; // sidgadId -> { name }
+    // ── 3. Recollir id_player via l'endpoint d'estadistiques ──
+    // El clic de competició carrega fecapa_estadistiques_idc_{id}_1.php (via jQuery AJAX).
+    // Cridem directament aquest endpoint per cada competició sense navegar per la UI.
+    const discovered = {};
     let compsDone = 0;
-    let debugLogged = false;
 
     for (const compId of compIds) {
       try {
-        // Clic via JS (getElementById) per evitar errors de CSS amb IDs numèrics
-        const clicked = await page.evaluate(id => {
-          const el = document.getElementById(id);
-          if (!el) return false;
-          el.click();
-          return true;
-        }, compId);
+        const players = await page.evaluate(async (cid) => {
+          return new Promise(resolve => {
+            const tmp = document.createElement("div");
+            document.body.appendChild(tmp);
 
-        if (!clicked) continue;
+            const url = `https://www.server2.sidgad.es/fecapa/fecapa_estadistiques_idc_${cid}_1.php`;
 
-        // Espera que el panell de la competició carregui contingut
-        await page.waitForFunction(
-          () => {
-            const c = document.getElementById("sidgad_thickbox_right_content");
-            // també mira si la fila clicada s'ha expandit (inline)
-            const expanded = document.querySelector(".comp_expanded, .competition_expanded, [class*='comp_detail']");
-            return (c && c.innerHTML.trim().length > 100) || !!expanded;
-          },
-          { timeout: 8000 }
-        ).catch(() => {});
+            jQuery(tmp).load(url, function() {
+              const found = Array.from(tmp.querySelectorAll("[id_player]"))
+                .map(el => ({
+                  sidgadId:   el.getAttribute("id_player"),
+                  playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
+                }))
+                .filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId));
 
-        // Debug detallat: primer clic
-        if (!debugLogged) {
-          const dbg = await page.evaluate(() => {
-            const rightContent = document.getElementById("sidgad_thickbox_right_content");
-            const rightFull    = document.getElementById("sidgad_thickbox_right");
-            // Cerca qualsevol element amb els atributs de jugador
-            const playerEls = Array.from(document.querySelectorAll("[id_player],[player_id],[data-player],[id-player]"))
-              .slice(0, 5).map(e => e.outerHTML.slice(0, 200));
-            // Cerca tabs/botons amb text de jugadors dins el right panel
-            const tabsInRight = rightFull ? Array.from(rightFull.querySelectorAll("a,li,span,div,button"))
-              .filter(e => e.textContent.trim().length > 0 && e.textContent.trim().length < 50)
-              .slice(0, 10).map(e => e.outerHTML.slice(0, 200)) : [];
-            // Cerca qualsevol contenidor que no sigui el right panel que tingui contingut nou
-            const allDivs = Array.from(document.querySelectorAll("div[id]"))
-              .filter(d => d.innerHTML.trim().length > 50 && d.innerHTML.trim().length < 2000)
-              .map(d => ({ id: d.id, len: d.innerHTML.length, preview: d.innerHTML.slice(0, 100) }));
-            return {
-              rightContentHtml: rightContent ? rightContent.innerHTML.slice(0, 2000) : "BUIT",
-              rightFullHtml:    rightFull    ? rightFull.innerHTML.slice(0, 500)     : "NO TROBAT",
-              playerEls,
-              tabsInRight,
-              activeDivs: allDivs.slice(0, 10),
-            };
+              // Si estadistiques no té jugadors, prova plantilles
+              if (found.length === 0) {
+                const url2 = `https://www.server2.sidgad.es/fecapa/fecapa_plantilles_idc_${cid}_1.php`;
+                jQuery(tmp).load(url2, function() {
+                  const found2 = Array.from(tmp.querySelectorAll("[id_player]"))
+                    .map(el => ({
+                      sidgadId:   el.getAttribute("id_player"),
+                      playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
+                    }))
+                    .filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId));
+                  try { document.body.removeChild(tmp); } catch {}
+                  resolve(found2);
+                });
+              } else {
+                try { document.body.removeChild(tmp); } catch {}
+                resolve(found);
+              }
+            });
+
+            setTimeout(() => {
+              try { document.body.removeChild(tmp); } catch {}
+              resolve([]);
+            }, 10000);
           });
-          console.log("\n=== DEBUG: DOM 8s après 1r clic ===");
-          console.log("rightContent:", dbg.rightContentHtml);
-          console.log("rightFull snippet:", dbg.rightFullHtml);
-          console.log("Atributs id_player:", dbg.playerEls);
-          console.log("Tabs dins right panel:", dbg.tabsInRight);
-          console.log("Divs actius (id, mida):", dbg.activeDivs.map(d => `#${d.id}(${d.len}): ${d.preview}`));
-          console.log("URLs capturades:", capturedUrls.slice(0, 20));
-          console.log("===\n");
-          debugLogged = true;
-        }
-
-        // Intenta clicar tab de plantilles/estadistiques dins el right content
-        const tabClicked = await page.evaluate(() => {
-          const right = document.getElementById("sidgad_thickbox_right");
-          if (!right) return false;
-          const tabs = Array.from(right.querySelectorAll("a, li, span, div, button"));
-          const tab  = tabs.find(el =>
-            /plantill|estadisti|jugador/i.test(el.textContent || el.getAttribute("onclick") || "") &&
-            el.textContent.trim().length < 60
-          );
-          if (tab) { tab.click(); return true; }
-          return false;
-        });
-
-        if (tabClicked) {
-          await page.waitForFunction(
-            () => document.querySelectorAll("[id_player],[player_id],[data-player]").length > 0,
-            { timeout: 5000 }
-          ).catch(() => {});
-        }
-
-        // Recull jugadors amb múltiples variants d'atribut
-        const players = await page.evaluate(() => {
-          const byAttr = (attr) =>
-            Array.from(document.querySelectorAll(`[${attr}]`))
-              .map(el => ({
-                sidgadId:   el.getAttribute(attr),
-                playerName: el.getAttribute("player_name") || el.getAttribute("nombre") || "",
-              }))
-              .filter(p => p.sidgadId && /^\d+$/.test(p.sidgadId));
-
-          return byAttr("id_player").length   ? byAttr("id_player")   :
-                 byAttr("player_id").length   ? byAttr("player_id")   :
-                 byAttr("id-player").length   ? byAttr("id-player")   :
-                 byAttr("data-player").length ? byAttr("data-player") : [];
-        });
+        }, compId);
 
         for (const p of players) {
           if (!discovered[p.sidgadId]) {
@@ -229,7 +158,7 @@ async function main() {
         }
         compsDone++;
       } catch (e) {
-        console.log(`   ⚠ Error comp ${compId}: ${e.message?.slice(0, 100)}`);
+        console.log(`   ⚠ Comp ${compId}: ${e.message?.slice(0, 80)}`);
       }
     }
 
