@@ -5,7 +5,11 @@
   "scripts": {
     "scrape": "node --max-old-space-size=4096 api/scraper.js",
     "scrape:actes:load": "node api/scraper-actes-load.js",
+    "scrape:sidgad": "node api/scraper-sidgad.js",
     "dev": "npx serve public -p 3000"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0"
   },
   "engines": { "node": ">=18" }
 }

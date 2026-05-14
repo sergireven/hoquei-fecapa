@@ -26,11 +26,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Executar scraper
+      - name: Instal·lar dependències
+        run: npm install
+
+      - name: Executar scraper principal
         run: node api/scraper.js
+
+      - name: Executar scraper sidgad (dades jugadors)
+        run: node api/scraper-sidgad.js
 
       - name: Commit i push
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🏒 Actualitza dades FECAPA"
-          file_pattern: public/data.json
+          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json
