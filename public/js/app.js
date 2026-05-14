@@ -524,12 +524,22 @@ function buildClubFavCard(fav, clubMap) {
         ${shieldImg(clubId,40)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(displayName)}</div>
-          <div style="font-size:11px;color:#6b7a99">${teamCount} equip${teamCount!==1?"s":""} en curs</div>
+          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
         </div>
-        <button onclick="removeClubFav('${esc(fav.key)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
+        ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;line-height:1">${myRow.pos}è</div>
+          <div style="font-size:9px;margin-top:1px">${myRow.pts} pts</div>
+        </div>`:""}
+        <button onclick="removeFav('${esc(fav.compId)}','${esc(fav.teamName)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
       </div>
       <div style="padding:0 12px 11px">
-        <button onclick="homeTab='club';selectedClub=null;selectClub('${esc(fav.key)}')" style="width:100%;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:8px;font-size:13px;font-weight:600;color:#003da5;cursor:pointer">→ Veure club</button>
+        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName)}`:""}
+        ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 11px">
+        <button onclick="openDetail('${esc(fav.compId)}','${esc(fav.teamName)}','classif')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📊 Classificació</button>
+        <button onclick="openDetail('${esc(fav.compId)}','${esc(fav.teamName)}','calendar')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📅 Calendari</button>
       </div>
     </div>`;
 }
@@ -1150,101 +1160,23 @@ function getCatSlugForComp(comp) {
 }
 
 function renderDetailJugadors(){
-  const panel=$("panel-jugadors"); if(!panel) return;
-
-  // Amb equip seleccionat: mostra tots els jugadors que han jugat
-  if (detailTeam) {
-    const catSlug = getCatSlugForComp(detailComp);
-    const normT = s => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();
-    const tNorm = normT(detailTeam);
-    const roster = [];
-    for (const [jid, player] of Object.entries(DB.jugadors||{})) {
-      const ts = (player.teamStats||[]).find(t => t.cat===catSlug && normT(t.team)===tNorm);
-      if (ts) roster.push({jid, player, count: ts.count});
-    }
-    roster.sort((a,b)=>b.count-a.count||(a.player.slug||"").localeCompare(b.player.slug||""));
-
-    if (!roster.length) {
-      panel.innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8"><div style="font-size:36px;margin-bottom:10px">👥</div><p>Sense jugadors registrats per a <b>${esc(detailTeam)}</b>.<br/><span style="font-size:12px">Les dades es carreguen progressivament.</span></p></div>`;
-      return;
-    }
-
-    const calcAge = bd => {
-      if (!bd) return null;
-      const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
-      if (isNaN(dob)) return null;
-      const today=new Date();
-      return today.getFullYear()-dob.getFullYear()-(today<new Date(today.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
-    };
-
-    const cid = getClubId(detailTeam);
-    panel.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        ${shieldImg(cid,32)}
-        <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#1a2035">${esc(detailTeam)}</div>
-          <div style="font-size:12px;color:#94a3b8">${roster.length} jugadors</div>
-        </div>
-      </div>
-      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
-        ${roster.map(({jid,player,count})=>{
-          const name=player.slug?decodeURIComponent(player.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()):jid;
-          const age=calcAge(player.birthDate);
-          const sub=[player.isGK?`<span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700">🥅 Porter</span>`:"", age?`<span style="font-size:11px;color:#94a3b8">${age} anys</span>`:""].filter(Boolean);
-          return `<div data-jid="${esc(jid)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
-              ${sub.length?`<div style="display:flex;align-items:center;gap:6px;margin-top:2px">${sub.join("")}</div>`:""}
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#003da5;white-space:nowrap">${count} <span style="font-size:11px;font-weight:600;color:#94a3b8">partits</span></div>
-          </div>`;
-        }).join("")}
-      </div>`;
-    return;
-  }
-
-  // Sense equip: golejadors i targetes de tota la competició
-  const ts=detailComp.teamScorers||{};
-  if (!Object.keys(ts).length){
-    panel.innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8"><div style="font-size:36px;margin-bottom:10px">📊</div><p>Estadístiques no disponibles.<br/>Torna a executar el scraper.</p></div>`;
-    return;
-  }
-  const allScorers=[], allCards=[];
-  for (const [tid,data] of Object.entries(ts)){
-    const teamName=detailComp.classification?.find(r=>r.teamId===tid)?.team||"";
-    const cid=getClubIdByTeamId(tid);
-    (data.scorers||[]).forEach(s=>allScorers.push({...s,teamName,cid}));
-    (data.cards||[]).forEach(s=>allCards.push({...s,teamName,cid}));
-  }
-  allScorers.sort((a,b)=>b.goals-a.goals);
-  allCards.sort((a,b)=>b.cards-a.cards);
-  const tbl=(rows,valKey,valColor,valLabel)=>rows.length?`
-    <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#f8fafc">
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">#</th>
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:left;border-bottom:1px solid #e2e6ef">Jugador</th>
-          <th style="padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${valColor};text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">${valLabel}</th>
-        </tr></thead>
-        <tbody>${rows.slice(0,15).map((s,i)=>`
-          <tr style="border-bottom:1px solid #f0f2f8">
-            <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${i===0?"#d97706":i===1?"#64748b":i===2?"#b45309":"#94a3b8"}">${i+1}</td>
-            <td style="padding:8px 6px">
-              <div style="font-size:13px;font-weight:600;text-transform:capitalize">${esc(s.name)}</div>
-              <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px;margin-top:1px">${shieldImg(s.cid,14)} ${esc(s.teamName)}</div>
-            </td>
-            <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:${valColor}">${s[valKey]}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`:`<p style="color:#94a3b8;font-size:13px">Sense dades</p>`;
-
-  panel.innerHTML=`
-    <div style="margin-bottom:16px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚽ Golejadors</div>
-      ${tbl(allScorers,"goals","#e5001c","Gols")}
+  const all=detailComp.players||[];
+  if (!all.length){ $("panel-jugadors").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
+  const names=[...new Set(all.map(p=>p.team).filter(Boolean))].sort();
+  const chips=`<div style="margin-bottom:10px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <button onclick="setJugadorsTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tots</button>
+      ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setJugadorsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}</button>`;}).join("")}
     </div>
-    ${allCards.length?`<div><div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🟨 Targetes</div>${tbl(allCards,"cards","#f59e0b","T")}</div>`:""}`;
+  </div>`;
+  const players=detailTeam?all.filter(p=>teamIn(p.team,detailTeam)):all;
+  $("panel-jugadors").innerHTML=chips+players.map(p=>playerCard(p)).join("");
+}
+
+function setJugadorsTeam(team) {
+  detailTeam = team;
+  renderDetailJugadors();
 }
 
 // ── Init ──────────────────────────────────────────────────────
