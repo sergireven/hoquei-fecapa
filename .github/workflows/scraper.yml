@@ -29,11 +29,11 @@ jobs:
       - name: Instal·lar dependències
         run: npm install
 
-      - name: Executar scraper principal
-        run: node api/scraper.js
-
       - name: Executar scraper sidgad (dades jugadors)
         run: node api/scraper-sidgad.js
+
+      - name: Executar scraper principal
+        run: node api/scraper.js
 
       - name: Commit i push
         uses: stefanzweifel/git-auto-commit-action@v5

@@ -167,20 +167,22 @@ async function main() {
         const players = await page.evaluate(() => {
           const container = document.getElementById("sidgad_thickbox_content");
           if (!container) return [];
-          return [...container.querySelectorAll(".player_season_stats[id_player]")].map(el => {
+          return [...container.querySelectorAll(".player_season_stats")].map(el => {
+            const idAttr = el.getAttribute("id_player");
+            const id_player = (idAttr && idAttr !== "0" && /^\d+$/.test(idAttr))
+              ? idAttr
+              : (el.id && /^\d+$/.test(el.id) ? el.id : null);
             const row = el.closest("tr") || el.parentElement;
-            // Busca la columna P (porter) dins la fila
             const cells = row ? [...row.querySelectorAll("td")] : [];
             const isGK = cells.some(td => /^\s*[Pp]\s*$/.test(td.textContent));
-            // Busca equip inscrit (cerca cel·la amb 3-5 caràcters en majúscules)
             const teamCell = cells.find(td => /^[A-Z]{2,8}$/.test(td.textContent.trim()));
             return {
-              id_player:     el.getAttribute("id_player"),
+              id_player,
               player_name:   el.getAttribute("player_name") || el.textContent.trim(),
               isGK,
               registeredTeam: teamCell?.textContent.trim() || null,
             };
-          }).filter(p => p.id_player && /^\d+$/.test(p.id_player));
+          }).filter(p => p.id_player);
         });
 
         for (const p of players) {

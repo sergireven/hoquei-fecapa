@@ -838,7 +838,7 @@ function openPlayerModal(jid, fallbackName) {
     : "";
 
   // Edat calculada de birthDate (DD/MM/YYYY o YYYY-MM-DD)
-  let ageHtml = "";
+  let ageHtml = "", birthDateStr = "";
   if (player?.birthDate) {
     const p = player.birthDate.split(/[\/\-]/);
     const dob = p[0].length === 4
@@ -849,11 +849,20 @@ function openPlayerModal(jid, fallbackName) {
       const age = today.getFullYear() - dob.getFullYear()
         - (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
       ageHtml = `<span style="font-size:13px;color:#6b7a99;font-weight:500"> · ${age} anys</span>`;
+      birthDateStr = player.birthDate;
     }
   }
 
-  const gkHtml = player?.isGK
-    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin-top:4px">🥅 Porter</span>`
+  // Chips: data de naixement + posició
+  const metaChips = [];
+  if (birthDateStr) metaChips.push(
+    `<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f4f8;color:#475569;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">📅 ${birthDateStr}</span>`
+  );
+  if (player?.isGK) metaChips.push(
+    `<span style="display:inline-flex;align-items:center;gap:3px;background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">🥅 Porter</span>`
+  );
+  const metaRow = metaChips.length
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">${metaChips.join("")}</div>`
     : "";
 
   // ── Estadístiques de temporada ────────────────────────────────
@@ -936,7 +945,7 @@ function openPlayerModal(jid, fallbackName) {
     <div style="padding:12px 16px 14px;display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1;min-width:0">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${numberHtml}${ageHtml}</div>
-        ${gkHtml}
+        ${metaRow}
       </div>
       <button onclick="closePlayerModal()" style="background:#f0f4f8;border:none;border-radius:10px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
