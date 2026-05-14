@@ -941,6 +941,79 @@ function categorise(name) {
   return "Altres";
 }
 
+// ── Equips per jugador (teamStats) ────────────────────────────
+// Recorre totes les actes carregades i computa per a cada jugador
+// quants partits ha jugat amb cada equip i en quina categoria.
+function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
+  const counts = {}; // jugadorId → { teamName → { cat, count } }
+
+  for (const [, acta] of Object.entries(actes || {})) {
+    if (!acta.playerStats) continue;
+    const cat = catSlug(compIdToCat[acta.compId] || "Altres");
+
+    const addGroup = (players, team) => {
+      for (const p of (players || [])) {
+        const m = p.url?.match(/\/jugador\/(\d+)\//);
+        if (!m) continue;
+        const jid = m[1];
+        if (!counts[jid]) counts[jid] = {};
+        const key = team || "?";
+        if (!counts[jid][key]) counts[jid][key] = { cat, count: 0 };
+        counts[jid][key].count++;
+      }
+    };
+
+    addGroup(acta.playerStats.homePlayers, acta.home);
+    addGroup(acta.playerStats.awayPlayers, acta.away);
+  }
+
+  for (const [jid, teams] of Object.entries(counts)) {
+    const player = jugadors[jid];
+    if (!player) continue;
+    player.teamStats = Object.entries(teams)
+      .map(([team, info]) => ({ team, cat: info.cat, count: info.count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  console.log(`   📊 teamStats calculats per a ${Object.keys(counts).length} jugadors`);
+}
+
+// ── Fusió de dades sidgad (edat, posició) ─────────────────────
+async function mergeSidgadData(jugadors) {
+  const cacheFile = path.join(__dirname, "../public/jugadors-sidgad.json");
+  const indexFile = path.join(__dirname, "../public/jugadors-sidgad-index.json");
+
+  let cache, index;
+  try {
+    cache = JSON.parse(await fs.readFile(cacheFile, "utf8"));
+    index = JSON.parse(await fs.readFile(indexFile, "utf8"));
+  } catch {
+    console.log("   ℹ️  jugadors-sidgad.json no disponible (el scraper sidgad s'executa separat)");
+    return;
+  }
+
+  const norm = s => (s || "").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+  let merged = 0;
+  for (const player of Object.values(jugadors)) {
+    const rawName = (player.slug || "").replace(/\+/g, " ");
+    const sidgadId = index[norm(rawName)];
+    if (!sidgadId) continue;
+    const sd = cache[sidgadId];
+    if (!sd) continue;
+
+    if (sd.birthDate)      player.birthDate      = sd.birthDate;
+    if (sd.registeredTeam) player.registeredTeam = sd.registeredTeam;
+    if (sd.isGK != null)   player.isGK           = sd.isGK;
+    if (sd.position)       player.position       = sd.position;
+    merged++;
+  }
+
+  console.log(`   🔗 Sidgad merge: ${merged} jugadors amb edat/posició`);
+}
+
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
   console.log("🏒 FECAPA Scraper v5 — iniciant...\n");
@@ -1099,6 +1172,10 @@ async function main() {
     const kb2 = (JSON.stringify(actes).length / 1024).toFixed(0);
     console.log(`   📁 actes/${slug}.json — ${count} actes, ${kb2} KB`);
   }
+
+  // Enriquiment addicional: equips per jugador + fusió sidgad
+  buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
+  await mergeSidgadData(output.jugadors);
 
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
