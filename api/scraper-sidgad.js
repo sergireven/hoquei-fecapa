@@ -102,7 +102,28 @@ async function main() {
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
+    // Debug: estructura inicial d'una fila de competició (onclick, atributs)
+    const firstRowDebug = await page.evaluate(tempId => {
+      const rows = Array.from(document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)).slice(0, 2);
+      return rows.map(r => ({
+        id:      r.id,
+        onclick: r.getAttribute("onclick"),
+        compId:  r.getAttribute("comp_id") || r.getAttribute("data-comp") || r.getAttribute("id_comp"),
+        html:    r.outerHTML.slice(0, 400),
+      }));
+    }, TEMP_ID);
+    console.log("   Exemple files competició:", JSON.stringify(firstRowDebug, null, 2));
+
     // ── 3. Per cada competició, recollir id_player de sidgad ──
+    // Intercepta peticions de xarxa per descobrir URLs de jugadors
+    const capturedUrls = [];
+    page.on("request", req => {
+      const u = req.url();
+      if ((u.includes("sidgad") || u.includes("fecapa")) && !capturedUrls.includes(u)) {
+        capturedUrls.push(u);
+      }
+    });
+
     const discovered = {}; // sidgadId -> { name }
     let compsDone = 0;
     let debugLogged = false;
@@ -117,49 +138,75 @@ async function main() {
           return true;
         }, compId);
 
-        if (!clicked) {
-          console.log(`   ⚠ Element no trobat: #${compId}`);
-          continue;
-        }
+        if (!clicked) continue;
 
-        // Espera breu que el contingut carregui (AJAX)
-        await new Promise(r => setTimeout(r, 1500));
+        // Espera que el panell de la competició carregui contingut
+        await page.waitForFunction(
+          () => {
+            const c = document.getElementById("sidgad_thickbox_right_content");
+            // també mira si la fila clicada s'ha expandit (inline)
+            const expanded = document.querySelector(".comp_expanded, .competition_expanded, [class*='comp_detail']");
+            return (c && c.innerHTML.trim().length > 100) || !!expanded;
+          },
+          { timeout: 8000 }
+        ).catch(() => {});
 
-        // Debug: captura DOM del primer clic
+        // Debug detallat: primer clic
         if (!debugLogged) {
           const dbg = await page.evaluate(() => {
-            const c = document.querySelector(
-              "#sidgad_thickbox_right_content, .right_content, .comp_detail"
-            );
-            const html = c ? c.innerHTML.slice(0, 2000) : "(cap contenidor) " + document.body.innerHTML.slice(0, 1500);
-            const attrs = Array.from(document.querySelectorAll("*[id_player], *[player_id], *[data-player]"))
-              .slice(0, 5).map(e => e.outerHTML.slice(0, 150));
-            const tabs = Array.from(document.querySelectorAll("a, li, span, div"))
-              .filter(e => /jugador|estadisti|plantilla|players/i.test(e.textContent) && e.textContent.trim().length < 40)
-              .slice(0, 5).map(e => e.outerHTML.slice(0, 150));
-            return { html, attrs, tabs };
+            const rightContent = document.getElementById("sidgad_thickbox_right_content");
+            const rightFull    = document.getElementById("sidgad_thickbox_right");
+            // Cerca qualsevol element amb els atributs de jugador
+            const playerEls = Array.from(document.querySelectorAll("[id_player],[player_id],[data-player],[id-player]"))
+              .slice(0, 5).map(e => e.outerHTML.slice(0, 200));
+            // Cerca tabs/botons amb text de jugadors dins el right panel
+            const tabsInRight = rightFull ? Array.from(rightFull.querySelectorAll("a,li,span,div,button"))
+              .filter(e => e.textContent.trim().length > 0 && e.textContent.trim().length < 50)
+              .slice(0, 10).map(e => e.outerHTML.slice(0, 200)) : [];
+            // Cerca qualsevol contenidor que no sigui el right panel que tingui contingut nou
+            const allDivs = Array.from(document.querySelectorAll("div[id]"))
+              .filter(d => d.innerHTML.trim().length > 50 && d.innerHTML.trim().length < 2000)
+              .map(d => ({ id: d.id, len: d.innerHTML.length, preview: d.innerHTML.slice(0, 100) }));
+            return {
+              rightContentHtml: rightContent ? rightContent.innerHTML.slice(0, 2000) : "BUIT",
+              rightFullHtml:    rightFull    ? rightFull.innerHTML.slice(0, 500)     : "NO TROBAT",
+              playerEls,
+              tabsInRight,
+              activeDivs: allDivs.slice(0, 10),
+            };
           });
-          console.log("\n--- DOM right panel (primera comp) ---");
-          console.log(dbg.html);
-          console.log("--- Atributs id_player trobats:", dbg.attrs);
-          console.log("--- Tabs jugadors:", dbg.tabs);
-          console.log("---\n");
+          console.log("\n=== DEBUG: DOM 8s après 1r clic ===");
+          console.log("rightContent:", dbg.rightContentHtml);
+          console.log("rightFull snippet:", dbg.rightFullHtml);
+          console.log("Atributs id_player:", dbg.playerEls);
+          console.log("Tabs dins right panel:", dbg.tabsInRight);
+          console.log("Divs actius (id, mida):", dbg.activeDivs.map(d => `#${d.id}(${d.len}): ${d.preview}`));
+          console.log("URLs capturades:", capturedUrls.slice(0, 20));
+          console.log("===\n");
           debugLogged = true;
         }
 
-        // Intenta clicar tab de jugadors/estadístiques si existeix
-        await page.evaluate(() => {
-          const tabs = Array.from(document.querySelectorAll("a, li, span, div, button"));
-          const tab = tabs.find(el =>
-            /jugador|estadisti|plantilla/i.test(el.textContent) &&
-            el.textContent.trim().length < 40
+        // Intenta clicar tab de plantilles/estadistiques dins el right content
+        const tabClicked = await page.evaluate(() => {
+          const right = document.getElementById("sidgad_thickbox_right");
+          if (!right) return false;
+          const tabs = Array.from(right.querySelectorAll("a, li, span, div, button"));
+          const tab  = tabs.find(el =>
+            /plantill|estadisti|jugador/i.test(el.textContent || el.getAttribute("onclick") || "") &&
+            el.textContent.trim().length < 60
           );
-          if (tab) tab.click();
+          if (tab) { tab.click(); return true; }
+          return false;
         });
 
-        await new Promise(r => setTimeout(r, 1200));
+        if (tabClicked) {
+          await page.waitForFunction(
+            () => document.querySelectorAll("[id_player],[player_id],[data-player]").length > 0,
+            { timeout: 5000 }
+          ).catch(() => {});
+        }
 
-        // Busca jugadors amb múltiples variants d'atribut
+        // Recull jugadors amb múltiples variants d'atribut
         const players = await page.evaluate(() => {
           const byAttr = (attr) =>
             Array.from(document.querySelectorAll(`[${attr}]`))
