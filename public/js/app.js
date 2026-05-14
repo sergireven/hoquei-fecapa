@@ -4,6 +4,7 @@ const DATA_URL = "./data.json";
 const FAV_KEY  = "hoquei_favs_v8";
 
 let DB      = null;
+let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
 let allFilterCat  = "ALL";
@@ -28,6 +29,14 @@ const CAT_EMOJI = {
   "Nacional Catalana":"👑","1ª Catalana":"⭐","2ª Catalana":"🔵","3ª Catalana":"🟣",
   "Fem":"♀","Júnior":"🎯","Juvenil":"⚡","Infantil":"🏆","Aleví":"💪",
   "Benjamí":"🔥","Prebenjamí":"⭐","Veterans":"🧓","Altres":"📋",
+};
+// Mapatge de slug d'acta (actesIndex values) → nom de categoria per mostrar
+const CAT_LABELS = {
+  "nacional-catalana":"Nacional Catalana","1a-catalana":"1a Catalana",
+  "2a-catalana":"2a Catalana","3a-catalana":"3a Catalana",
+  "juvenil":"Juvenil","junior":"Júnior","infantil":"Infantil",
+  "alevi":"Aleví","benjami":"Benjamí","prebenjami":"Pre-benjamí",
+  "fem":"Femení","veterans":"Veterans","altres":"Altres",
 };
 const CAT_COLOR = {
   "Nacional Catalana":"#003da5","1ª Catalana":"#1a5dc7","2ª Catalana":"#2563eb",
@@ -211,7 +220,7 @@ function playerTableHtml(players, teamName, teamColor) {
         ${players.map(p => `
           <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
             <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
-              ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>` : esc(p.name)}
+              ${(()=>{const m=p.url?.match(/\/jugador\/(\d+)\//);const jid=m?.[1];if(jid)return`<button class="player-name-btn" data-jid="${jid}">${esc(p.name)}</button>`;if(p.url)return`<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>`;return esc(p.name);})()}
             </div>
             ${hasStats?`
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.g?"900":"400"};color:${p.g?"#16a34a":"#cbd5e1"}">${p.g||"·"}</div>
@@ -816,6 +825,104 @@ function openDetail(compId,teamName,tab){
 }
 window.openDetail=openDetail;
 
+// ── Fitxa de jugador (bottom sheet) ──────────────────────────
+function openPlayerModal(jid, fallbackName) {
+  const player = DB?.jugadors?.[jid];
+  const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
+  const name   = fallbackName || (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : "Jugador");
+  const url    = player?.url || `https://jok.cat/jugador/${jid}`;
+
+  // Recompte d'actes per categoria (totes les temporades disponibles a FECAPA)
+  const catCounts = {};
+  for (const src of (player?.sources || [])) {
+    const cat = DB?.actesIndex?.[src.id];
+    if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
+  }
+  const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+  const maxCat = catEntries[0]?.[1] || 1;
+
+  const cs      = player?.careerStats || [];
+  const current = cs[0];
+  const history = cs.slice(1);
+
+  const numberHtml = player?.number != null
+    ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#94a3b8;margin-left:6px">#${player.number}</span>`
+    : "";
+
+  const statBox = (val, lbl, color) =>
+    `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
+
+  const currentSection = current ? `
+    <div class="pm-section">
+      <div class="pm-section-title">Temporada ${esc(current.seasonName)}</div>
+      <div style="display:flex;background:#f8fafc;border-radius:12px;margin-bottom:${catEntries.length?"12px":"0"}">
+        ${statBox(current.match_count, "Partits", "#1a2035")}
+        ${statBox(current.total_goals, "Gols", "#e5001c")}
+        ${statBox(current.total_blue || "·", "Blaves", "#2563eb")}
+        ${statBox(current.total_red  || "·", "Vermelles", "#dc2626")}
+      </div>
+      ${catEntries.length ? `
+        <div class="pm-section-title" style="margin-top:4px">Categories a FECAPA</div>
+        ${catEntries.map(([cat, cnt]) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:130px;font-size:12px;font-weight:500;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(CAT_LABELS[cat] || cat)}</div>
+            <div style="flex:1;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden">
+              <div style="width:${Math.round(cnt/maxCat*100)}%;height:100%;background:#003da5;border-radius:4px"></div>
+            </div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:22px;text-align:right">${cnt}</div>
+          </div>`).join("")}` : ""}
+    </div>` : "";
+
+  const historySection = history.length ? `
+    <div class="pm-section">
+      <div class="pm-section-title">Temporades anteriors</div>
+      ${history.map(s => `
+        <div style="display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #f8fafc">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#1a2035;width:68px">${esc(s.seasonName)}</div>
+          <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap">
+            <span style="font-size:13px;color:#6b7a99"><b style="color:#1a2035">${s.match_count}</b> P</span>
+            <span style="font-size:13px;color:#6b7a99"><b style="color:#e5001c">${s.total_goals}</b> G</span>
+            ${s.total_blue ? `<span style="font-size:13px;color:#6b7a99"><b style="color:#2563eb">${s.total_blue}</b> B</span>` : ""}
+            ${s.total_red  ? `<span style="font-size:13px;color:#6b7a99"><b style="color:#dc2626">${s.total_red}</b> R</span>` : ""}
+          </div>
+        </div>`).join("")}
+    </div>` : "";
+
+  const noDataHtml = !current && !catEntries.length ? `
+    <div class="pm-section" style="color:#94a3b8;font-size:13px;text-align:center;padding:24px 16px">
+      Dades detallades no disponibles encara.<br/>Les estadístiques es carreguen progressivament.
+    </div>` : "";
+
+  $("player-modal-body").innerHTML = `
+    <div style="display:flex;justify-content:center;padding:12px 0 2px">
+      <div style="width:38px;height:4px;background:#e2e6ef;border-radius:2px"></div>
+    </div>
+    <div style="padding:12px 16px 14px;display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${numberHtml}</div>
+      </div>
+      <button onclick="closePlayerModal()" style="background:#f0f4f8;border:none;border-radius:10px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    ${currentSection}
+    ${historySection}
+    ${noDataHtml}
+    <div class="pm-section">
+      <a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#003da5;text-decoration:none">🔗 Veure perfil a jok.cat →</a>
+    </div>
+    <div style="height:env(safe-area-inset-bottom,0px)"></div>`;
+
+  $("player-modal").classList.add("pm-open");
+  $("player-modal-bd").style.display = "block";
+  currentJugadorId = jid;
+}
+
+function closePlayerModal() {
+  $("player-modal").classList.remove("pm-open");
+  $("player-modal-bd").style.display = "none";
+  currentJugadorId = null;
+}
+window.closePlayerModal = closePlayerModal;
+
 function setupListeners(){
   const bb=$("back-btn");
   if(bb) bb.addEventListener("click",()=>{ $("screen-detail").style.display="none"; renderHome(); });
@@ -825,6 +932,11 @@ function setupListeners(){
     // Return to detail if it was open, otherwise home
     if (detailComp) { $("screen-detail").style.display="flex"; window.scrollTo(0,0); }
     else renderHome();
+  });
+  // Delegació de clics als noms de jugadors (qualsevol pantalla)
+  document.addEventListener("click", e => {
+    const btn = e.target.closest("[data-jid]");
+    if (btn) openPlayerModal(btn.dataset.jid, btn.textContent.trim());
   });
   document.querySelectorAll(".detail-tab").forEach(tab=>{
     tab.addEventListener("click",()=>{
