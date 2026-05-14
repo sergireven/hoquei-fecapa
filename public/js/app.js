@@ -94,10 +94,28 @@ function findComp(compId) {
   }
   return null;
 }
-// -- Busca actes
+// -- Busca actes (cerca en el cache de categories carregades)
+const actesCache = {}; // catSlug → { actaId: actaData }
+
+async function loadCatActes(slug) {
+  if (actesCache[slug]) return actesCache[slug];
+  try {
+    const res = await fetch(`./actes/${slug}.json?t=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    actesCache[slug] = await res.json();
+  } catch(e) {
+    actesCache[slug] = {};
+  }
+  return actesCache[slug];
+}
+
 function findActa(actaId) {
-  if (!DB || !DB.actes || !actaId) return null;
-  return DB.actes[String(actaId)] || null;
+  if (!DB || !actaId) return null;
+  const id = String(actaId);
+  for (const actes of Object.values(actesCache)) {
+    if (actes[id]) return actes[id];
+  }
+  return null;
 }
 // -- Fa match actes
 function getMatchActa(match) {
@@ -132,8 +150,17 @@ function getSafeActaUrl(rawUrl) {
   return null;
 }
 
-window.openActa = function(actaId, fallbackUrl) {
-  const acta = actaId ? findActa(actaId) : null;
+window.openActa = async function(actaId, fallbackUrl) {
+  let acta = actaId ? findActa(actaId) : null;
+
+  if (!acta && actaId && DB?.actesIndex) {
+    const slug = DB.actesIndex[String(actaId)];
+    if (slug) {
+      const actes = await loadCatActes(slug);
+      acta = actes[String(actaId)] || null;
+    }
+  }
+
   if (acta?.loaded && (acta?.playerStats || acta?.playerStatsRaw)) {
     openActaDetail(acta);
     return;
