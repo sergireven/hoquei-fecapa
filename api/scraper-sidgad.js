@@ -123,98 +123,58 @@ async function main() {
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // ── 3. Descobrir jugadors interceptant les peticions AJAX del portal ──
-    // El portal fa AJAX a server2.sidgad.es quan es clica una competició.
-    // Interceptem les respostes per obtenir les dades reals sense endevinar URLs.
+    // ── 3. Descobrir jugadors navegant a fecapa_stats_1_{compId}.php ──
+    // URL descoberta interceptant AJAX del portal: el botó plantilla/goles/etc.
+    // apunta a stats_1_{compId}.php → amb prefix fecapa_ → fecapa_stats_1_{compId}.php
+    const BASE_STATS = "https://www.server2.sidgad.es/fecapa/fecapa_stats_1_";
     const discovered = {};
     let compsDone = 0;
+    let debugLogged = false;
 
-    // Intercepta respostes de server2.sidgad.es (estadistiques o plantilles)
-    const pendingHtml = new Map(); // url → html
-    page.on("response", async (response) => {
-      const url = response.url();
-      if (url.includes("server2.sidgad.es")) {
-        try {
-          pendingHtml.set(url, await response.text());
-        } catch {}
-      }
-    });
+    const dataPage = await browser.newPage();
+    await dataPage.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    );
 
-    // Clic de prova a la primera competició per descobrir format URL i estructura HTML
-    const firstCompId = compIds[0];
-    pendingHtml.clear();
-    await page.evaluate(id => { document.getElementById(id)?.click(); }, firstCompId);
-    await new Promise(r => setTimeout(r, 5000));
-
-    if (pendingHtml.size > 0) {
-      console.log(`\n--- DEBUG: ${pendingHtml.size} URL(s) interceptades ---`);
-      for (const [url, html] of pendingHtml) {
-        console.log(`URL: ${url}`);
-        // Extreu atributs file= dels botons de menú per veure les URLs exactes
-        const fileMatches = [...html.matchAll(/id="([^"]+_btn)"[^>]*file="([^"]+)"/g)];
-        if (fileMatches.length > 0) {
-          console.log("Botons menú (id → file):");
-          for (const [, btnId, file] of fileMatches) {
-            console.log(`  ${btnId}: ${file}`);
-          }
-        } else {
-          // Mostra els primers 1200 chars si no hi ha botons
-          console.log(`HTML (1200 chars):\n${html.slice(0, 1200)}`);
-        }
-        console.log("---");
-      }
-    } else {
-      console.log("\n⚠ Cap resposta de server2.sidgad.es — clic pot no haver funcionat");
-    }
-
-    // Processa la resposta de la primera competició
     function extractPlayersFromHtml(html) {
       const players = [];
-      // Intenta atributs HTML estàndard: id_player="123" player_name="Nom"
-      const re = /id_player\s*=\s*["']?(\d+)["']?[^>]*(?:player_name|nombre)\s*=\s*["']([^"']{2,50})["']/gi;
+      // Atributs HTML: id_player="123" (amb o sense player_name)
+      const re = /id_player\s*=\s*["']?(\d+)["']?(?:[^>]*(?:player_name|nombre)\s*=\s*["']([^"']{2,50})["'])?/gi;
       let m;
       while ((m = re.exec(html)) !== null) {
-        players.push({ sidgadId: m[1], playerName: m[2] });
-      }
-      // Fallback: només id_player sense nom
-      if (players.length === 0) {
-        const re2 = /id_player\s*=\s*["']?(\d+)["']?/gi;
-        while ((m = re2.exec(html)) !== null) {
-          if (!players.find(p => p.sidgadId === m[1])) {
-            players.push({ sidgadId: m[1], playerName: "" });
-          }
+        if (!players.find(p => p.sidgadId === m[1])) {
+          players.push({ sidgadId: m[1], playerName: m[2] || "" });
         }
       }
       return players;
     }
 
-    for (const [url, html] of pendingHtml) {
-      for (const p of extractPlayersFromHtml(html)) {
-        if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
-      }
-    }
-    if (pendingHtml.size > 0) compsDone++;
-
-    // Resta de competicions
-    for (const compId of compIds.slice(1)) {
+    for (const compId of compIds) {
       try {
-        pendingHtml.clear();
-        await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
-        // Esperar fins que arribi resposta o timeout
-        const deadline = Date.now() + 6000;
-        while (pendingHtml.size === 0 && Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, 200));
+        await dataPage.goto(`${BASE_STATS}${compId}.php`, { waitUntil: "domcontentloaded", timeout: 15000 });
+        const html = await dataPage.evaluate(() => document.body?.innerHTML || "");
+
+        // Debug: primera competició — mostra HTML i jugadors trobats
+        if (!debugLogged) {
+          const players0 = extractPlayersFromHtml(html);
+          console.log(`\n--- DEBUG stats comp ${compId} ---`);
+          console.log(`HTML (600 chars): ${html.slice(0, 600)}`);
+          console.log(`id_player trobats: ${players0.length}`);
+          console.log("---\n");
+          debugLogged = true;
         }
-        for (const [, html] of pendingHtml) {
-          for (const p of extractPlayersFromHtml(html)) {
-            if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
-          }
+
+        const players = extractPlayersFromHtml(html);
+        for (const p of players) {
+          if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
         }
         compsDone++;
       } catch (e) {
         console.log(`   ⚠ Comp ${compId}: ${e.message?.slice(0, 80)}`);
       }
     }
+
+    await dataPage.close();
 
     const totalDiscovered = Object.keys(discovered).length;
     console.log(`   Jugadors sidgad descoberts: ${totalDiscovered} (de ${compsDone} competicions)`);
