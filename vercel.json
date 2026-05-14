@@ -2,27 +2,27 @@
   "crons": [
     {
       "path": "/api/cron",
-      "schedule": "0 8 * * *"
+      "schedule": "0 10 * * 1-5"
     },
     {
       "path": "/api/cron",
-      "schedule": "0 11 * * *"
+      "schedule": "0 8 * * 0,6"
     },
     {
       "path": "/api/cron",
-      "schedule": "0 14 * * *"
+      "schedule": "0 11 * * 0,6"
     },
     {
       "path": "/api/cron",
-      "schedule": "0 17 * * *"
+      "schedule": "0 14 * * 0,6"
     },
     {
       "path": "/api/cron",
-      "schedule": "0 19 * * *"
+      "schedule": "0 17 * * 0,6"
     },
     {
       "path": "/api/cron",
-      "schedule": "0 22 * * *"
+      "schedule": "0 20 * * 0,6"
     }
   ],
   "functions": {

@@ -2,7 +2,12 @@ name: Actualitzar dades FECAPA
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 10 * * 1-5'
+    - cron: '0 8 * * 0,6'
+    - cron: '0 11 * * 0,6'
+    - cron: '0 14 * * 0,6'
+    - cron: '0 17 * * 0,6'
+    - cron: '0 20 * * 0,6'
   workflow_dispatch:
 
 jobs:

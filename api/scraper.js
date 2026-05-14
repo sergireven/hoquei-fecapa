@@ -1047,6 +1047,7 @@ async function main() {
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
   outputMain.actesIndex = actesIndex;
+  outputMain.lastUpdate = new Date().toISOString();
 
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(outputMain, null, 2));
