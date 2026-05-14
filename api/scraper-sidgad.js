@@ -247,14 +247,33 @@ async function main() {
     await saveCache(cache);
     console.log(`\n✅ Cache: ${Object.keys(cache).length} jugadors → ${CACHE_FILE}`);
 
+    // Format sidgad: [CODI_EQUIP?] COGNOM1 [COGNOM2] NOM [NOM2]
+    // Format jok.cat: NOM [NOM2] COGNOM1 [COGNOM2]
+    // Generem totes les variants per garantir el matching
     const nameIndex = {};
+    const addKey = (key, sid) => { if (key && !nameIndex[key]) nameIndex[key] = sid; };
     for (const [sid, data] of Object.entries(cache)) {
-      const key = normName(data.name);
-      if (key) nameIndex[key] = sid;
+      const words = normName(data.name).split(" ").filter(Boolean);
+      if (!words.length) continue;
+      addKey(words.join(" "), sid);
+      // Últim mot al davant (1 nom de pila)
+      if (words.length >= 2)
+        addKey([words[words.length - 1], ...words.slice(0, -1)].join(" "), sid);
+      // Últims 2 mots al davant (nom compost)
+      if (words.length >= 3)
+        addKey([...words.slice(-2), ...words.slice(0, -2)].join(" "), sid);
+      // Sense codi d'equip (primer mot curt = codi)
+      if (words.length >= 3 && words[0].length <= 5) {
+        const w = words.slice(1);
+        addKey(w.join(" "), sid);
+        addKey([w[w.length - 1], ...w.slice(0, -1)].join(" "), sid);
+        if (w.length >= 2)
+          addKey([...w.slice(-2), ...w.slice(0, -2)].join(" "), sid);
+      }
     }
     const indexFile = path.join(__dirname, "../public/jugadors-sidgad-index.json");
     await fs.writeFile(indexFile, JSON.stringify(nameIndex));
-    console.log(`   Index: ${Object.keys(nameIndex).length} noms → ${indexFile}`);
+    console.log(`   Index: ${Object.keys(nameIndex).length} variants → ${indexFile}`);
 
   } finally {
     await browser.close();
