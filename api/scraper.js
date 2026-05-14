@@ -294,6 +294,30 @@ function buildExpectedActaSlug(match) {
   return `${normalizeTeamForActaSlug(match.home)}-${normalizeTeamForActaSlug(match.away)}`;
 }
 
+// Generic prefix tokens that don't identify a specific club
+const SLUG_GENERIC = new Set(['CH', 'HC', 'CP', 'UEH', 'CE', 'AH', 'CPI', 'CLUB', 'HOQUEI', 'PATI']);
+
+// Returns true if the normalized team name can be found inside a decoded acta slug.
+// Handles: abbreviated prefix (Ch→Club Hoquei), extra suffix (+ES+MOU), apostrophe
+// split (D'HOQUEI→D+HOQUEI) and single-char article merging (DHORTA→HORTA).
+function teamAppearsInSlug(normalizedTeam, rawActaSlug) {
+  const normSlug = normalizeTeamForActaSlug(rawActaSlug);
+  const tokens = normalizedTeam.split('+');
+  // Skip leading generic tokens to find the distinctive suffix
+  let i = 0;
+  while (i < tokens.length - 1 && SLUG_GENERIC.has(tokens[i])) i++;
+  const suffix = tokens.slice(i).join('+');
+  // Fast path: distinctive suffix is a literal substring (e.g. RIPOLLET+A, VILA-SECA)
+  if (normSlug.includes(suffix)) return true;
+  // Slow path: every key word must appear individually
+  // Handles JOI→JOIERIA (substring), DHOQUEI→D+HOQUEI (strip leading article char)
+  const keys = tokens.slice(i).filter(w => w.length >= 3);
+  return keys.length > 0 && keys.every(k =>
+    normSlug.includes(k) ||
+    (k.length >= 5 && 'DL'.includes(k[0]) && normSlug.includes(k.slice(1)))
+  );
+}
+
 function attachActesToMatches(matches, actaLinks) {
   const remaining = [...actaLinks];
 
@@ -305,11 +329,22 @@ function attachActesToMatches(matches, actaLinks) {
     // 1. Exact slug match
     let idx = remaining.findIndex(a => a.actaSlug === expected);
 
-    // 2. Fallback: normalized comparison
+    // 2. Fallback: normalized comparison (handles accent/encoding differences)
     if (idx === -1) {
       idx = remaining.findIndex(a =>
         normalizeTeamForActaSlug(a.actaSlug.replace(/-/g, " "))
           === normalizeTeamForActaSlug(expected.replace(/-/g, " "))
+      );
+    }
+
+    // 3. Fuzzy fallback: both team key-words must appear in the slug
+    // Handles abbreviated names (Ch Vila-Seca vs CLUB+HOQUEI+VILA-SECA)
+    if (idx === -1) {
+      const homeNorm = normalizeTeamForActaSlug(match.home);
+      const awayNorm = normalizeTeamForActaSlug(match.away);
+      idx = remaining.findIndex(a =>
+        teamAppearsInSlug(homeNorm, a.actaSlug) &&
+        teamAppearsInSlug(awayNorm, a.actaSlug)
       );
     }
 
@@ -807,6 +842,16 @@ async function scrapeCompetition(comp) {
   };
 }
 
+// ── Category slug ─────────────────────────────────────────────
+function catSlug(catName) {
+  return String(catName)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 // ── Categorise ────────────────────────────────────────────────
 function categorise(name) {
   const n = name.toUpperCase();
@@ -955,11 +1000,43 @@ async function main() {
 
   migrateActes(output);
   await loadPendingActes(output);
+
+  // Build compId → catSlug lookup
+  const compIdToCat = {};
+  for (const [catName, comps] of Object.entries(output.categories)) {
+    for (const comp of comps) compIdToCat[comp.id] = catName;
+  }
+
+  // Build actesIndex (actaId → catSlug) and group actes by category
+  const actesIndex = {};
+  const actesByCat = {};
+  for (const [actaId, acta] of Object.entries(output.actes || {})) {
+    const slug = catSlug(compIdToCat[acta.compId] || "Altres");
+    actesIndex[actaId] = slug;
+    if (!actesByCat[slug]) actesByCat[slug] = {};
+    actesByCat[slug][actaId] = acta;
+  }
+
+  // Write per-category actes files
+  const actesDir = path.join(__dirname, "../public/actes");
+  await fs.mkdir(actesDir, { recursive: true });
+  for (const [slug, actes] of Object.entries(actesByCat)) {
+    const filePath = path.join(actesDir, `${slug}.json`);
+    await fs.writeFile(filePath, JSON.stringify(actes));
+    const count = Object.keys(actes).length;
+    const kb2 = (JSON.stringify(actes).length / 1024).toFixed(0);
+    console.log(`   📁 actes/${slug}.json — ${count} actes, ${kb2} KB`);
+  }
+
+  // Write main data.json without actes, with actesIndex
+  const { actes: _actes, ...outputMain } = output;
+  outputMain.actesIndex = actesIndex;
+
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(output, null, 2));
+  await fs.writeFile(DATA_FILE, JSON.stringify(outputMain, null, 2));
 
   const elapsed = ((Date.now()-t0)/1000).toFixed(1);
-  const kb      = (JSON.stringify(output).length / 1024).toFixed(0);
+  const kb      = (JSON.stringify(outputMain).length / 1024).toFixed(0);
   console.log(`\n✅ Fet en ${elapsed}s — ${done} competicions, ${errors} errors, ${kb} KB`);
   console.log(`   → ${DATA_FILE}`);
 
