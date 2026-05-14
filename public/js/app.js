@@ -1041,10 +1041,70 @@ function renderDetailCalendar(){
       ${ms.map(m=>matchCard(m,detailTeam)).join("")}
     </div>`).join("");
 }
-window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); };
+window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); };
+
+function getCatSlugForComp(comp) {
+  const toSlug = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+  for (const [catName, comps] of Object.entries(DB.categories||{}))
+    if (comps.some(c=>c.id===comp.id)) return toSlug(catName);
+  return null;
+}
 
 function renderDetailJugadors(){
   const panel=$("panel-jugadors"); if(!panel) return;
+
+  // Amb equip seleccionat: mostra tots els jugadors que han jugat
+  if (detailTeam) {
+    const catSlug = getCatSlugForComp(detailComp);
+    const normT = s => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();
+    const tNorm = normT(detailTeam);
+    const roster = [];
+    for (const [jid, player] of Object.entries(DB.jugadors||{})) {
+      const ts = (player.teamStats||[]).find(t => t.cat===catSlug && normT(t.team)===tNorm);
+      if (ts) roster.push({jid, player, count: ts.count});
+    }
+    roster.sort((a,b)=>b.count-a.count||(a.player.slug||"").localeCompare(b.player.slug||""));
+
+    if (!roster.length) {
+      panel.innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8"><div style="font-size:36px;margin-bottom:10px">👥</div><p>Sense jugadors registrats per a <b>${esc(detailTeam)}</b>.<br/><span style="font-size:12px">Les dades es carreguen progressivament.</span></p></div>`;
+      return;
+    }
+
+    const calcAge = bd => {
+      if (!bd) return null;
+      const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
+      if (isNaN(dob)) return null;
+      const today=new Date();
+      return today.getFullYear()-dob.getFullYear()-(today<new Date(today.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
+    };
+
+    const cid = getClubId(detailTeam);
+    panel.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        ${shieldImg(cid,32)}
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#1a2035">${esc(detailTeam)}</div>
+          <div style="font-size:12px;color:#94a3b8">${roster.length} jugadors</div>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+        ${roster.map(({jid,player,count})=>{
+          const name=player.slug?decodeURIComponent(player.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()):jid;
+          const age=calcAge(player.birthDate);
+          const sub=[player.isGK?`<span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700">🥅 Porter</span>`:"", age?`<span style="font-size:11px;color:#94a3b8">${age} anys</span>`:""].filter(Boolean);
+          return `<div data-jid="${esc(jid)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
+              ${sub.length?`<div style="display:flex;align-items:center;gap:6px;margin-top:2px">${sub.join("")}</div>`:""}
+            </div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#003da5;white-space:nowrap">${count} <span style="font-size:11px;font-weight:600;color:#94a3b8">partits</span></div>
+          </div>`;
+        }).join("")}
+      </div>`;
+    return;
+  }
+
+  // Sense equip: golejadors i targetes de tota la competició
   const ts=detailComp.teamScorers||{};
   if (!Object.keys(ts).length){
     panel.innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8"><div style="font-size:36px;margin-bottom:10px">📊</div><p>Estadístiques no disponibles.<br/>Torna a executar el scraper.</p></div>`;
