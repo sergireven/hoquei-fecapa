@@ -580,6 +580,61 @@ function addPlayerSources(data, actaId, playerLinks) {
   }
 }
 
+// ── Enriquiment jugadors via jok.cat API ─────────────────────
+const JOK_API       = "https://jok.cat/api/player/";
+const ENRICH_LIMIT  = 400;  // màxim per execució
+const STALE_MS      = 14 * 24 * 60 * 60 * 1000; // re-enriquir als 14 dies
+
+async function enrichJugadors(jugadors) {
+  const now = Date.now();
+  const all = Object.values(jugadors).filter(j => j.jugadorId);
+
+  // Prioritat: mai enriquits primer, després els més antics
+  const toEnrich = all
+    .filter(j => !j.enrichedAt || (now - new Date(j.enrichedAt).getTime()) > STALE_MS)
+    .sort((a, b) => {
+      if (!a.enrichedAt && b.enrichedAt) return -1;
+      if (a.enrichedAt && !b.enrichedAt) return 1;
+      return new Date(a.enrichedAt) - new Date(b.enrichedAt);
+    })
+    .slice(0, ENRICH_LIMIT);
+
+  if (toEnrich.length === 0) {
+    console.log("\n📊 Jugadors: tots els perfils ja estan actualitzats.");
+    return;
+  }
+  console.log(`\n📊 Enriquint ${toEnrich.length} jugadors via jok.cat API (${all.length} total)...`);
+
+  let ok = 0, errors = 0;
+  await runPool(toEnrich, 4, async (player) => {
+    try {
+      const res = await fetch(`${JOK_API}${player.jugadorId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const info = data.playerInfo?.[0];
+      if (info?.number != null) player.number = info.number;
+
+      if (Array.isArray(data.playerStats) && data.playerStats.length > 0) {
+        player.careerStats = data.playerStats.map(s => ({
+          seasonName:   s.seasonName,
+          total_goals:  +s.total_goals,
+          match_count:  +s.match_count,
+          total_blue:   +s.total_blue,
+          total_red:    +s.total_red,
+        }));
+      }
+
+      player.enrichedAt = new Date().toISOString();
+      ok++;
+    } catch (e) {
+      errors++;
+    }
+  });
+
+  console.log(`   ✅ Enriquits: ${ok}, errors: ${errors}`);
+}
+
 async function runPool(items, limit, worker) {
   const results = [];
   let index = 0;
@@ -1016,6 +1071,7 @@ async function main() {
 
   migrateActes(output);
   await loadPendingActes(output);
+  await enrichJugadors(output.jugadors);
 
   // Build compId → catSlug lookup
   const compIdToCat = {};
@@ -1047,6 +1103,7 @@ async function main() {
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
   outputMain.actesIndex = actesIndex;
+  outputMain.lastUpdate = new Date().toISOString();
 
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(outputMain, null, 2));

@@ -938,6 +938,13 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+    if (DB.lastUpdate) {
+      const d = new Date(DB.lastUpdate);
+      const fmt = new Intl.DateTimeFormat('ca', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const bar = $("last-update-bar");
+      bar.textContent = `Darrera actualització: ${fmt.format(d)}`;
+      bar.style.display = "block";
+    }
     setupListeners();
     $("screen-loading").style.display="none";
     $("screen-home").style.display="flex";
