@@ -603,7 +603,23 @@ async function runPool(items, limit, worker) {
 async function readPreviousData() {
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+
+    // Actes are now in per-category files — reconstitute from them
+    if (!data.actes) {
+      const actesDir = path.join(__dirname, "../public/actes");
+      data.actes = {};
+      try {
+        const files = (await fs.readdir(actesDir)).filter(f => f.endsWith(".json"));
+        for (const file of files) {
+          const catRaw = await fs.readFile(path.join(actesDir, file), "utf8");
+          Object.assign(data.actes, JSON.parse(catRaw));
+        }
+        console.log(`   Actes carregades del cache: ${Object.keys(data.actes).length}`);
+      } catch {}
+    }
+
+    return data;
   } catch {
     return null;
   }
