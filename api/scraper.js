@@ -1195,6 +1195,21 @@ async function main() {
     .map(([k,v]) => `${k.split(" ")[0]}:${v.length}`)
     .join(" ");
   console.log(`   ${stats}`);
+
+  // ── Stats ────────────────────────────────────────────────────
+  const statsFile    = path.join(__dirname, "../public/scraper-stats.json");
+  const jAll         = Object.values(outputMain.jugadors).filter(j => j.jugadorId);
+  const jugadorsStats = {
+    runAt:     new Date().toISOString(),
+    total:     jAll.length,
+    enrichits: jAll.filter(j => j.enrichedAt).length,
+    pendents:  jAll.filter(j => !j.enrichedAt).length,
+  };
+  let statsData = {};
+  try { statsData = JSON.parse(await fs.readFile(statsFile, "utf8")); } catch { /* fitxer nou */ }
+  statsData.jugadors = jugadorsStats;
+  await fs.writeFile(statsFile, JSON.stringify(statsData, null, 2));
+  console.log(`   📊 Stats → ${statsFile}`);
 }
 
 main().catch(err => {

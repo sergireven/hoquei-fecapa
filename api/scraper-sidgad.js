@@ -281,6 +281,23 @@ async function main() {
     await fs.writeFile(indexFile, JSON.stringify(nameIndex));
     console.log(`   Index: ${Object.keys(nameIndex).length} variants → ${indexFile}`);
 
+    // ── Stats ────────────────────────────────────────────────────
+    const statsFile    = path.join(__dirname, "../public/scraper-stats.json");
+    const cacheEntries = Object.values(cache);
+    const sidgadStats  = {
+      runAt:               new Date().toISOString(),
+      total:               cacheEntries.length,
+      enrichits:           cacheEntries.filter(e => e.birthDate).length,
+      pendents:            cacheEntries.filter(e => !e.birthDate).length,
+      processatsAquestRun: ok,
+      buitsOErrors:        empty,
+    };
+    let statsData = {};
+    try { statsData = JSON.parse(await fs.readFile(statsFile, "utf8")); } catch { /* fitxer nou */ }
+    statsData.sidgad = sidgadStats;
+    await fs.writeFile(statsFile, JSON.stringify(statsData, null, 2));
+    console.log(`   📊 Stats → ${statsFile}`);
+
   } finally {
     await browser.close();
   }
