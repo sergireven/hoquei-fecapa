@@ -33,7 +33,7 @@ function normName(name) {
   return (name || "")
     .toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/[^A-Z0-9 ]/g, " ") // Allow spaces
     .replace(/\s+/g, " ")
     .trim();
 }
