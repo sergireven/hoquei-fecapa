@@ -76,56 +76,70 @@ async function main() {
     const nav = await browser.newPage();
     await nav.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
 
-    // ── 2. El contingut ja és al DOM — llegim directament els elements de competició ──
-    // El portal pre-carrega tot: cada competició és un <A id="compId"> amb el calendari dins.
-    // No cal clicar res — extraiem les actes directament del DOM.
-
+    // ── 2. Llegir scripts JS del portal per trobar URL d'actes ──
+    // El calendari i les actes carreguen via AJAX quan es clica.
+    // Els scripts JS del portal contenen les funcions que gestionen els clics.
     const compIds = await page.$$eval(
       `.listado_competiciones_fila.temp_${TEMP_ID}`,
       els => els.map(el => el.id).filter(Boolean)
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // Debug: llegeix el contingut de la competició amb més partits
-    // (A#3929 té 19KB, probablement molts partits acabats amb lupa)
-    const bigCompDebug = await page.evaluate(() => {
-      // Competicions per mida de contingut
-      const comps = [...document.querySelectorAll(".listado_competiciones_fila")]
-        .map(el => ({ id: el.id, len: el.innerHTML.length }))
-        .sort((a, b) => b.len - a.len)
-        .slice(0, 5);
+    // Obté tots els scripts externs
+    const scriptUrls = await page.evaluate(() =>
+      [...document.querySelectorAll("script[src]")].map(s => s.src)
+    );
+    console.log(`   Scripts trobats: ${scriptUrls.length}`);
+    console.log("   " + scriptUrls.join("\n   "));
 
-      const result = { compSizes: comps };
-
-      // Llegeix la competició més gran per veure estructura de partits
-      if (comps[0]) {
-        const el = document.getElementById(comps[0].id);
-        if (el) {
-          // Busca totes les files de partits (probablement <tr> o <div> amb class "partido" o similar)
-          const rows = el.querySelectorAll("tr, .partido, .match, .jornada_partido, [class*='partido'], [class*='match']");
-          result.rowCount = rows.length;
-          result.rowSample = rows.length > 0 ? rows[0].outerHTML.slice(0, 500) : "";
-
-          // Busca ícones lupa/search dins la competició
-          const lupas = el.querySelectorAll(".fa-search, .lupa, [class*='lupa'], [class*='acta'], i[class*='fa']");
-          result.lupaCount = lupas.length;
-          result.lupaSample = lupas.length > 0 ? lupas[0].outerHTML.slice(0, 300) : "";
-          result.lupaParentSample = lupas.length > 0 ? lupas[0].parentElement?.outerHTML.slice(0, 400) : "";
-
-          // Mostra 3000 chars del contingut per entendre l'estructura
-          result.htmlSample = el.innerHTML.slice(0, 3000);
-        }
-      }
-      return result;
+    // Busca en cada script les funcions relacionades amb actes/lupa
+    const https = require("https");
+    const http  = require("http");
+    const fetchText = (url) => new Promise((res, rej) => {
+      const mod = url.startsWith("https") ? https : http;
+      mod.get(url, r => {
+        let d = "";
+        r.on("data", c => d += c);
+        r.on("end", () => res(d));
+      }).on("error", rej);
     });
 
-    console.log("\n--- DEBUG competicions per mida ---");
-    console.log("Top 5:", JSON.stringify(bigCompDebug.compSizes));
-    console.log(`Files de partits: ${bigCompDebug.rowCount}`);
-    console.log(`Lupas trobades: ${bigCompDebug.lupaCount}`);
-    if (bigCompDebug.lupaSample) console.log("Lupa:", bigCompDebug.lupaSample);
-    if (bigCompDebug.lupaParentSample) console.log("Parent lupa:", bigCompDebug.lupaParentSample);
-    console.log("HTML mostra (3000):\n" + (bigCompDebug.htmlSample || "buit"));
+    for (const url of scriptUrls) {
+      try {
+        const js = await fetchText(url);
+        // Busca mencions d'acta, lupa, partido, load_acta, etc.
+        const matches = js.match(/.{0,100}(?:acta|lupa|load_act|partido|id_partido|id_acta|id_act\b).{0,200}/gi) || [];
+        if (matches.length > 0) {
+          console.log(`\n--- SCRIPT: ${url.split("/").pop()} ---`);
+          matches.slice(0, 8).forEach(m => console.log("  " + m.replace(/\s+/g, " ").trim()));
+        }
+      } catch { /* ignora */ }
+    }
+
+    // Intercepció de xarxa: clic a competició + clic lupa si possible
+    const capturedResponses = new Map();
+    page.on("response", async (response) => {
+      const u = response.url();
+      if (u.includes("server2.sidgad.es") || u.includes("sidgad.cloud")) {
+        try { capturedResponses.set(u, await response.text()); } catch {}
+      }
+    });
+
+    // Clic a la competició
+    await page.evaluate(id => { document.getElementById(id)?.click(); }, compIds[0]);
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Mostra les URLs capturades i busca patrons d'acta en el HTML
+    console.log(`\n--- Respostes capturades post-clic: ${capturedResponses.size} ---`);
+    for (const [u, html] of capturedResponses) {
+      const actaPatterns = html.match(/.{0,50}(?:acta|lupa|id_act|id_partido|fa-search).{0,150}/gi) || [];
+      console.log(`URL: ${u} (${html.length} chars)`);
+      if (actaPatterns.length > 0) {
+        actaPatterns.slice(0, 5).forEach(m => console.log("  " + m.replace(/\s+/g, " ").trim()));
+      } else {
+        console.log("  (cap patró d'acta)");
+      }
+    }
     console.log("---\n");
 
     await browser.close();
