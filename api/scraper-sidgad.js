@@ -76,80 +76,58 @@ async function main() {
     const nav = await browser.newPage();
     await nav.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
 
-    // ── 2. Descobrir estructura del portal via DOM ────────────
-    // Els PHP de sidgad necessiten sessió del portal; no funcionen en navegació directa.
-    // Treballem dins el DOM del portal: clic a competició, llegim el calendari carregat.
+    // ── 2. El contingut ja és al DOM — llegim directament els elements de competició ──
+    // El portal pre-carrega tot: cada competició és un <A id="compId"> amb el calendari dins.
+    // No cal clicar res — extraiem les actes directament del DOM.
+
     const compIds = await page.$$eval(
       `.listado_competiciones_fila.temp_${TEMP_ID}`,
       els => els.map(el => el.id).filter(Boolean)
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // Clic a primera competició i espera que el calendari carregui
-    await page.evaluate(id => { document.getElementById(id)?.click(); }, compIds[0]);
-    await new Promise(r => setTimeout(r, 3000));
+    // Debug: llegeix el contingut de la competició amb més partits
+    // (A#3929 té 19KB, probablement molts partits acabats amb lupa)
+    const bigCompDebug = await page.evaluate(() => {
+      // Competicions per mida de contingut
+      const comps = [...document.querySelectorAll(".listado_competiciones_fila")]
+        .map(el => ({ id: el.id, len: el.innerHTML.length }))
+        .sort((a, b) => b.len - a.len)
+        .slice(0, 5);
 
-    // Debug: inspecciona el DOM per trobar els elements "lupa" i la seva estructura
-    const debugInfo = await page.evaluate(() => {
-      const info = {};
+      const result = { compSizes: comps };
 
-      // Busca contenidor principal de contingut
-      const contentIds = ["sidgad_content_main", "content_main", "content_center",
-                          "main_content", "sidgad_content", "centro_contenido"];
-      for (const id of contentIds) {
-        const el = document.getElementById(id);
-        if (el && el.innerHTML.length > 200) {
-          info.contentContainer = id;
-          info.contentHtml = el.innerHTML.slice(0, 2000);
-          break;
+      // Llegeix la competició més gran per veure estructura de partits
+      if (comps[0]) {
+        const el = document.getElementById(comps[0].id);
+        if (el) {
+          // Busca totes les files de partits (probablement <tr> o <div> amb class "partido" o similar)
+          const rows = el.querySelectorAll("tr, .partido, .match, .jornada_partido, [class*='partido'], [class*='match']");
+          result.rowCount = rows.length;
+          result.rowSample = rows.length > 0 ? rows[0].outerHTML.slice(0, 500) : "";
+
+          // Busca ícones lupa/search dins la competició
+          const lupas = el.querySelectorAll(".fa-search, .lupa, [class*='lupa'], [class*='acta'], i[class*='fa']");
+          result.lupaCount = lupas.length;
+          result.lupaSample = lupas.length > 0 ? lupas[0].outerHTML.slice(0, 300) : "";
+          result.lupaParentSample = lupas.length > 0 ? lupas[0].parentElement?.outerHTML.slice(0, 400) : "";
+
+          // Mostra 3000 chars del contingut per entendre l'estructura
+          result.htmlSample = el.innerHTML.slice(0, 3000);
         }
       }
-      // Fallback: primer div gran
-      if (!info.contentContainer) {
-        const divs = [...document.querySelectorAll("div")];
-        const big = divs.find(d => d.id && d.innerHTML.length > 500);
-        if (big) {
-          info.contentContainer = big.id || big.className;
-          info.contentHtml = big.innerHTML.slice(0, 2000);
-        }
-      }
-
-      // Busca elements que semblin "lupa" / acta
-      const lupaEls = [...document.querySelectorAll(
-        '[class*="lupa"], [class*="search"], .fa-search, [onclick*="acta"], [act_id], [acta_id]'
-      )];
-      info.lupaCount = lupaEls.length;
-      info.lupaExamples = lupaEls.slice(0, 3).map(el => ({
-        tag: el.tagName,
-        id: el.id,
-        className: el.className,
-        attrs: el.getAttributeNames().map(a => `${a}="${el.getAttribute(a)}"`).join(" "),
-        html: el.outerHTML.slice(0, 200),
-      }));
-
-      // Tots els IDs i classes del DOM per trobar el contenidor de calendari
-      const allIds = [...document.querySelectorAll("[id]")]
-        .filter(el => el.innerHTML.length > 100)
-        .map(el => `${el.tagName}#${el.id}(${el.innerHTML.length}ch)`)
-        .slice(0, 30);
-      info.allIds = allIds;
-
-      return info;
+      return result;
     });
 
-    console.log("\n--- DEBUG DOM portal post-clic competició ---");
-    console.log("Contenidor:", debugInfo.contentContainer || "no trobat");
-    console.log("Lupa elements:", debugInfo.lupaCount);
-    if (debugInfo.lupaExamples?.length > 0) {
-      debugInfo.lupaExamples.forEach((e, i) => console.log(`  lupa[${i}]: ${e.html}`));
-    }
-    console.log("IDs amb contingut:", (debugInfo.allIds || []).join(", "));
-    if (debugInfo.contentHtml) {
-      console.log("Content HTML (2000):\n" + debugInfo.contentHtml);
-    }
+    console.log("\n--- DEBUG competicions per mida ---");
+    console.log("Top 5:", JSON.stringify(bigCompDebug.compSizes));
+    console.log(`Files de partits: ${bigCompDebug.rowCount}`);
+    console.log(`Lupas trobades: ${bigCompDebug.lupaCount}`);
+    if (bigCompDebug.lupaSample) console.log("Lupa:", bigCompDebug.lupaSample);
+    if (bigCompDebug.lupaParentSample) console.log("Parent lupa:", bigCompDebug.lupaParentSample);
+    console.log("HTML mostra (3000):\n" + (bigCompDebug.htmlSample || "buit"));
     console.log("---\n");
 
-    // Atura aquí fins que tinguem l'estructura correcta
     await browser.close();
     return;
 
