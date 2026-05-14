@@ -123,22 +123,23 @@ async function main() {
     );
     console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
 
-    // ── 3. Descobrir jugadors navegant a fecapa_stats_1_{compId}.php ──
-    // URL descoberta interceptant AJAX del portal: el botó plantilla/goles/etc.
-    // apunta a stats_1_{compId}.php → amb prefix fecapa_ → fecapa_stats_1_{compId}.php
-    const BASE_STATS = "https://www.server2.sidgad.es/fecapa/fecapa_stats_1_";
+    // ── 3. Descobrir jugadors via doble-clic (competició + stats) ──
+    // La URL real s'obté interceptant la petició que fa el portal quan es clica
+    // el botó de gols/estadistiques d'una competició.
     const discovered = {};
     let compsDone = 0;
-    let debugLogged = false;
 
-    const dataPage = await browser.newPage();
-    await dataPage.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    );
+    // Intercepta TOTES les respostes de server2.sidgad.es
+    const capturedResponses = new Map();
+    page.on("response", async (response) => {
+      const url = response.url();
+      if (url.includes("server2.sidgad.es")) {
+        try { capturedResponses.set(url, await response.text()); } catch {}
+      }
+    });
 
     function extractPlayersFromHtml(html) {
       const players = [];
-      // Atributs HTML: id_player="123" (amb o sense player_name)
       const re = /id_player\s*=\s*["']?(\d+)["']?(?:[^>]*(?:player_name|nombre)\s*=\s*["']([^"']{2,50})["'])?/gi;
       let m;
       while ((m = re.exec(html)) !== null) {
@@ -149,32 +150,64 @@ async function main() {
       return players;
     }
 
-    for (const compId of compIds) {
-      try {
-        await dataPage.goto(`${BASE_STATS}${compId}.php`, { waitUntil: "domcontentloaded", timeout: 15000 });
-        const html = await dataPage.evaluate(() => document.body?.innerHTML || "");
+    // ── Debug: clic a primera competició + clic a goles_btn ──────
+    const firstCompId = compIds[0];
+    capturedResponses.clear();
+    await page.evaluate(id => { document.getElementById(id)?.click(); }, firstCompId);
+    await new Promise(r => setTimeout(r, 2000));
 
-        // Debug: primera competició — mostra HTML i jugadors trobats
-        if (!debugLogged) {
-          const players0 = extractPlayersFromHtml(html);
-          console.log(`\n--- DEBUG stats comp ${compId} ---`);
-          console.log(`HTML (600 chars): ${html.slice(0, 600)}`);
-          console.log(`id_player trobats: ${players0.length}`);
-          console.log("---\n");
-          debugLogged = true;
+    // Clic al botó de gols per carregar stats
+    const clickedGoles = await page.evaluate(() => {
+      const btn = document.getElementById("goles_btn");
+      if (btn) { btn.click(); return true; }
+      return false;
+    });
+    console.log(`   goles_btn clicat: ${clickedGoles}`);
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Log totes les URLs capturades
+    console.log(`\n--- DEBUG: ${capturedResponses.size} URL(s) de server2 ---`);
+    for (const [url, html] of capturedResponses) {
+      const players0 = extractPlayersFromHtml(html);
+      console.log(`URL: ${url}`);
+      console.log(`  id_player: ${players0.length} | HTML (300): ${html.slice(0, 300).replace(/\n/g, " ")}`);
+    }
+    console.log("---\n");
+
+    // Processa primer resultat
+    for (const [, html] of capturedResponses) {
+      for (const p of extractPlayersFromHtml(html)) {
+        if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
+      }
+    }
+    if (capturedResponses.size > 0) compsDone++;
+
+    // ── Resta de competicions ─────────────────────────────────────
+    for (const compId of compIds.slice(1)) {
+      try {
+        capturedResponses.clear();
+        await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
+        await new Promise(r => setTimeout(r, 1500));
+
+        await page.evaluate(() => { document.getElementById("goles_btn")?.click(); });
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          // Espera que arribi alguna resposta amb jugadors
+          const hasPlayers = [...capturedResponses.values()].some(h => /id_player/i.test(h));
+          if (hasPlayers) break;
+          await new Promise(r => setTimeout(r, 300));
         }
 
-        const players = extractPlayersFromHtml(html);
-        for (const p of players) {
-          if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
+        for (const [, html] of capturedResponses) {
+          for (const p of extractPlayersFromHtml(html)) {
+            if (!discovered[p.sidgadId]) discovered[p.sidgadId] = { name: p.playerName };
+          }
         }
         compsDone++;
       } catch (e) {
         console.log(`   ⚠ Comp ${compId}: ${e.message?.slice(0, 80)}`);
       }
     }
-
-    await dataPage.close();
 
     const totalDiscovered = Object.keys(discovered).length;
     console.log(`   Jugadors sidgad descoberts: ${totalDiscovered} (de ${compsDone} competicions)`);
