@@ -7,8 +7,207 @@ const FAV_KEY  = "hoquei_favs_v8";
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SOFT_SESSION_KEY = "hoquei_user_v1";
 let currentUser    = null;
 let currentProfile = null;
+
+function _saveSoftSession(profile) {
+  localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
+}
+function _clearSoftSession() {
+  localStorage.removeItem(SOFT_SESSION_KEY);
+}
+function _loadSoftSession() {
+  try { return JSON.parse(localStorage.getItem(SOFT_SESSION_KEY)); } catch { return null; }
+}
+
+async function initAuth() {
+  if (!_sb) return;
+  // 1. Intentar sessió Supabase (magic link o sessió existent)
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session) {
+    await _loadProfile(session.user);
+    return;
+  }
+  // 2. Fallback: sessió lleugera guardada localment
+  const soft = _loadSoftSession();
+  if (soft?.email) {
+    currentProfile = soft;
+    currentUser    = { email: soft.email, id: soft.id };
+    return;
+  }
+  _sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) { await _loadProfile(session.user); }
+    else         { currentUser = null; currentProfile = null; _clearSoftSession(); }
+    renderHome();
+  });
+}
+async function _loadProfile(user) {
+  currentUser = user;
+  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).single();
+  if (data) {
+    currentProfile = data;
+    _saveSoftSession(data);
+  }
+}
+
+function renderLoginButton() {
+  if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
+  const loginBtn = currentUser
+    ? `<button onclick="openUserModal()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+        <span style="background:#e5001c;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${(currentUser.email||"?")[0].toUpperCase()}</span>
+        ${currentProfile?.role==="admin"?"Admin":currentProfile?.role==="entrenador"?"Entrenador":""}
+       </button>`
+    : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
+  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+}
+
+// Login modal
+function openLoginModal() {
+  const body = $("login-modal-body");
+  body.innerHTML = `
+    <div style="padding:20px 18px 32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">Accés a l'app</div>
+        <button onclick="closeLoginModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <p style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5">Introdueix el teu e-mail per accedir.</p>
+      <input id="login-email-input" type="email" placeholder="el-teu@email.com" autocomplete="email"
+        style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
+      <button onclick="loginWithEmail()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Accedir</button>
+      <div id="login-msg" style="margin-top:8px;text-align:center;font-size:13px;color:#64748b"></div>
+    </div>`;
+  $("login-modal-bd").style.display = "block";
+  $("login-modal").classList.add("lm-open");
+  setTimeout(() => $("login-email-input")?.focus(), 300);
+}
+function closeLoginModal() {
+  $("login-modal").classList.remove("lm-open");
+  $("login-modal-bd").style.display = "none";
+}
+
+async function loginWithEmail() {
+  const email = $("login-email-input")?.value?.trim();
+  const msg   = $("login-msg");
+  if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
+  msg.textContent = "Comprovant...";
+
+  // Comprova si l'email ja existeix a la base de dades
+  const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
+  if (profiles && profiles.length > 0) {
+    // Usuari registrat → accés directe via sessió lleugera
+    const profile = profiles[0];
+    currentProfile = profile;
+    currentUser    = { email: profile.email, id: profile.id };
+    _saveSoftSession(profile);
+    closeLoginModal();
+    renderHome();
+    return;
+  }
+
+  // Usuari nou → envia magic link per registrar-se
+  msg.textContent = "Enviant enllaç de registre...";
+  const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
+  if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
+  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ Ets nou! Comprova el correu per activar el compte."; }
+}
+window.loginWithEmail = loginWithEmail;
+window.sendMagicLink  = loginWithEmail; // alias
+
+// User menu modal
+function openUserModal() {
+  const roleLabel = currentProfile?.role === "admin" ? "Administrador" : currentProfile?.role === "entrenador" ? "Entrenador" : "Usuari";
+  const adminBtn  = currentProfile?.role === "admin"
+    ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
+    : "";
+  $("user-modal-body").innerHTML = `
+    <div style="padding:20px 18px 32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">El meu compte</div>
+        <button onclick="closeUserModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="background:#f0f4f8;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:13px;color:#64748b;margin-bottom:4px">E-mail</div>
+        <div style="font-size:15px;font-weight:600;color:#1a2035">${esc(currentUser?.email||"")}</div>
+        <div style="margin-top:8px;font-size:12px;color:#64748b">Rol: <span style="font-weight:700;color:#1a2035">${roleLabel}</span></div>
+      </div>
+      ${adminBtn}
+      <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
+    </div>`;
+  $("user-modal-bd").style.display = "block";
+  $("user-modal").classList.add("lm-open");
+}
+function closeUserModal() {
+  $("user-modal").classList.remove("lm-open");
+  $("user-modal-bd").style.display = "none";
+}
+async function signOut() {
+  await _sb?.auth.signOut();
+  currentUser = null; currentProfile = null;
+  _clearSoftSession();
+  closeUserModal();
+  renderHome();
+}
+window.signOut       = signOut;
+window.openLoginModal  = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.openUserModal   = openUserModal;
+window.closeUserModal  = closeUserModal;
+
+// Admin panel
+function openAdminPanel() {
+  ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
+  $("screen-admin").style.display = "flex";
+  renderAdminPanel();
+}
+function closeAdminPanel() {
+  $("screen-admin").style.display = "none";
+  renderHome();
+}
+async function renderAdminPanel() {
+  const body = $("admin-body");
+  body.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
+  const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
+  if (error || !profiles?.length) {
+    body.innerHTML = `<div style="color:#e5001c;padding:16px">${error ? "Error: " + esc(error.message) : "Sense accés o cap usuari."}</div>`;
+    return;
+  }
+  const ROLES = ["","entrenador","admin"];
+  const rows = profiles.map(p => `
+    <tr style="border-bottom:1px solid #f0f4f8">
+      <td style="padding:10px 8px;font-size:14px;color:#1a2035;font-weight:500">${esc(p.email)}</td>
+      <td style="padding:10px 8px;text-align:center">
+        <select data-uid="${esc(p.id)}" onchange="updateUserRole('${esc(p.id)}',this.value)"
+          style="border:1.5px solid #e2e6ef;border-radius:8px;padding:5px 8px;font-size:13px;font-family:inherit;cursor:pointer">
+          ${ROLES.map(r => `<option value="${r}" ${p.role===r?"selected":""}>${r||"—"}</option>`).join("")}
+        </select>
+      </td>
+      <td style="padding:10px 8px;font-size:11px;color:#94a3b8;text-align:right">${new Date(p.created_at).toLocaleDateString("ca-ES")}</td>
+    </tr>`).join("");
+  body.innerHTML = `
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:12px">${profiles.length} usuaris registrats</div>
+    <div style="overflow-x:auto;background:#fff;border-radius:12px;border:1.5px solid #e2e6ef">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:10px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">E-mail</th>
+          <th style="padding:10px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">Rol</th>
+          <th style="padding:10px 8px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">Registre</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+async function updateUserRole(uid, role) {
+  const { error } = await _sb.from("profiles").update({ role: role||null }).eq("id", uid);
+  if (error) {
+    // Fallback via RPC si no hi ha sessió Supabase activa
+    const { error: e2 } = await _sb.rpc("update_user_role_admin", { admin_email: currentUser?.email, target_id: uid, new_role: role||null });
+    if (e2) alert("Error: " + e2.message);
+  }
+}
+window.openAdminPanel  = openAdminPanel;
+window.closeAdminPanel = closeAdminPanel;
+window.updateUserRole  = updateUserRole;
 
 async function initAuth() {
   if (!_sb) return;
