@@ -139,7 +139,19 @@ async function main() {
 
     // ── 3. Carregar actes i extreure jugadors ─────────────────
     const discovered = {}; // id_player → { name, isGK, registeredTeam }
-    const matchList = [...matchIds.entries()].slice(0, MAX_MATCHES);
+
+    // Prioritzar partits no processats encara per cobrir-los tots progressivament
+    const processedSet = new Set(cache._processedMatchIds || []);
+    const allMatchEntries = [...matchIds.entries()];
+    let unprocessed = allMatchEntries.filter(([idp]) => !processedSet.has(idp));
+    if (unprocessed.length === 0) {
+      // Tots processats: reiniciem per tornar a descobrir jugadors nous
+      processedSet.clear();
+      unprocessed = allMatchEntries;
+      console.log(`   ♻️  Tots els partits ja processats, reiniciant cicle`);
+    }
+    const matchList = unprocessed.slice(0, MAX_MATCHES);
+    console.log(`   Partits pendents: ${unprocessed.length} → processant ${matchList.length}`);
     let actaDone = 0, debugActaLogged = false;
 
     for (const [idp, { compId, idc }] of matchList) {
@@ -244,8 +256,12 @@ async function main() {
     console.log(`   ✅ Enriquits: ${ok}, buits/errors: ${empty}`);
 
     // ── 5. Desar cache i índex ────────────────────────────────
+    // Marcar partits com a processats
+    for (const [idp] of matchList) processedSet.add(idp);
+    cache._processedMatchIds = [...processedSet];
+
     await saveCache(cache);
-    console.log(`\n✅ Cache: ${Object.keys(cache).length} jugadors → ${CACHE_FILE}`);
+    console.log(`\n✅ Cache: ${Object.keys(cache).filter(k => !k.startsWith('_')).length} jugadors → ${CACHE_FILE}`);
 
     // Format sidgad: [CODI_EQUIP?] COGNOM1 [COGNOM2] NOM [NOM2]
     // Format jok.cat: NOM [NOM2] COGNOM1 [COGNOM2]
@@ -283,7 +299,7 @@ async function main() {
 
     // ── Stats ────────────────────────────────────────────────────
     const statsFile    = path.join(__dirname, "../public/scraper-stats.json");
-    const cacheEntries = Object.values(cache);
+    const cacheEntries = Object.values(cache).filter(e => typeof e === 'object' && e.sidgadId);
     const sidgadStats  = {
       runAt:               new Date().toISOString(),
       total:               cacheEntries.length,
@@ -291,6 +307,7 @@ async function main() {
       pendents:            cacheEntries.filter(e => !e.birthDate).length,
       processatsAquestRun: ok,
       buitsOErrors:        empty,
+      partitsPendents:     unprocessed.length - matchList.length,
     };
     let statsData = {};
     try { statsData = JSON.parse(await fs.readFile(statsFile, "utf8")); } catch { /* fitxer nou */ }
