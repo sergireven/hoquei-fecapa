@@ -1295,7 +1295,7 @@ function openPlayerModal(jid, fallbackName) {
     : "";
 
   // ── Estadístiques de temporada ────────────────────────────────
-  const cs      = player?.careerStats || [];
+  const cs      = [...(player?.careerStats || [])].sort((a, b) => b.seasonName.localeCompare(a.seasonName));
   const current = cs[0];
   const history = cs.slice(1);
 
