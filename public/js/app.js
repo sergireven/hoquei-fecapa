@@ -3,6 +3,158 @@ const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
 const FAV_KEY  = "hoquei_favs_v8";
 
+// ── Supabase auth ─────────────────────────────────────────────
+const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
+const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser    = null;
+let currentProfile = null;
+
+async function initAuth() {
+  if (!_sb) return;
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session) await _loadProfile(session.user);
+  _sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) { await _loadProfile(session.user); }
+    else         { currentUser = null; currentProfile = null; }
+    renderHome();
+  });
+}
+async function _loadProfile(user) {
+  currentUser = user;
+  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).single();
+  currentProfile = data;
+}
+function renderLoginButton() {
+  if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
+  const loginBtn = currentUser
+    ? `<button onclick="openUserModal()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+        <span style="background:#e5001c;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${(currentUser.email||"?")[0].toUpperCase()}</span>
+        ${currentProfile?.role==="admin"?"Admin":currentProfile?.role==="entrenador"?"Entrenador":""}
+       </button>`
+    : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
+  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+}
+
+// Login modal
+function openLoginModal() {
+  const body = $("login-modal-body");
+  body.innerHTML = `
+    <div style="padding:20px 18px 32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">Accés a l'app</div>
+        <button onclick="closeLoginModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <p style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5">Introdueix el teu e-mail i t'enviarem un enllaç d'accés. No cal contrasenya.</p>
+      <input id="login-email-input" type="email" placeholder="el-teu@email.com" autocomplete="email"
+        style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
+      <button onclick="sendMagicLink()" style="width:100%;background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">Envia l'enllaç d'accés</button>
+      <div id="login-msg" style="margin-top:12px;text-align:center;font-size:13px;color:#64748b"></div>
+    </div>`;
+  $("login-modal-bd").style.display = "block";
+  $("login-modal").classList.add("lm-open");
+  setTimeout(() => $("login-email-input")?.focus(), 300);
+}
+function closeLoginModal() {
+  $("login-modal").classList.remove("lm-open");
+  $("login-modal-bd").style.display = "none";
+}
+async function sendMagicLink() {
+  const email = $("login-email-input")?.value?.trim();
+  const msg   = $("login-msg");
+  if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
+  msg.textContent = "Enviant...";
+  const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
+  if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
+  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ Comprova el teu correu i clica l'enllaç."; }
+}
+
+// User menu modal
+function openUserModal() {
+  const roleLabel = currentProfile?.role === "admin" ? "Administrador" : currentProfile?.role === "entrenador" ? "Entrenador" : "Usuari";
+  const adminBtn  = currentProfile?.role === "admin"
+    ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
+    : "";
+  $("user-modal-body").innerHTML = `
+    <div style="padding:20px 18px 32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">El meu compte</div>
+        <button onclick="closeUserModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="background:#f0f4f8;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:13px;color:#64748b;margin-bottom:4px">E-mail</div>
+        <div style="font-size:15px;font-weight:600;color:#1a2035">${esc(currentUser?.email||"")}</div>
+        <div style="margin-top:8px;font-size:12px;color:#64748b">Rol: <span style="font-weight:700;color:#1a2035">${roleLabel}</span></div>
+      </div>
+      ${adminBtn}
+      <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
+    </div>`;
+  $("user-modal-bd").style.display = "block";
+  $("user-modal").classList.add("lm-open");
+}
+function closeUserModal() {
+  $("user-modal").classList.remove("lm-open");
+  $("user-modal-bd").style.display = "none";
+}
+async function signOut() {
+  await _sb.auth.signOut();
+  closeUserModal();
+}
+window.sendMagicLink = sendMagicLink;
+window.signOut       = signOut;
+window.openLoginModal  = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.openUserModal   = openUserModal;
+window.closeUserModal  = closeUserModal;
+
+// Admin panel
+function openAdminPanel() {
+  ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
+  $("screen-admin").style.display = "flex";
+  renderAdminPanel();
+}
+function closeAdminPanel() {
+  $("screen-admin").style.display = "none";
+  renderHome();
+}
+async function renderAdminPanel() {
+  const body = $("admin-body");
+  body.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
+  const { data: profiles, error } = await _sb.from("profiles").select("*").order("created_at");
+  if (error) { body.innerHTML = `<div style="color:#e5001c;padding:16px">Error: ${esc(error.message)}</div>`; return; }
+  const ROLES = ["","entrenador","admin"];
+  const rows = (profiles||[]).map(p => `
+    <tr style="border-bottom:1px solid #f0f4f8">
+      <td style="padding:10px 8px;font-size:14px;color:#1a2035;font-weight:500">${esc(p.email)}</td>
+      <td style="padding:10px 8px;text-align:center">
+        <select data-uid="${esc(p.id)}" onchange="updateUserRole('${esc(p.id)}',this.value)"
+          style="border:1.5px solid #e2e6ef;border-radius:8px;padding:5px 8px;font-size:13px;font-family:inherit;cursor:pointer">
+          ${ROLES.map(r => `<option value="${r}" ${p.role===r?"selected":""}>${r||"—"}</option>`).join("")}
+        </select>
+      </td>
+      <td style="padding:10px 8px;font-size:11px;color:#94a3b8;text-align:right">${new Date(p.created_at).toLocaleDateString("ca-ES")}</td>
+    </tr>`).join("");
+  body.innerHTML = `
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:12px">${profiles?.length||0} usuaris registrats</div>
+    <div style="overflow-x:auto;background:#fff;border-radius:12px;border:1.5px solid #e2e6ef">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:10px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">E-mail</th>
+          <th style="padding:10px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">Rol</th>
+          <th style="padding:10px 8px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">Registre</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+async function updateUserRole(uid, role) {
+  const { error } = await _sb.from("profiles").update({ role: role||null }).eq("id", uid);
+  if (error) alert("Error en actualitzar el rol: " + error.message);
+}
+window.openAdminPanel  = openAdminPanel;
+window.closeAdminPanel = closeAdminPanel;
+window.updateUserRole  = updateUserRole;
+
 let DB      = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
@@ -389,7 +541,7 @@ function renderHome() {
   $("home-header").innerHTML = `
     <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
-      <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>
+      ${renderLoginButton()}
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
       <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus${(favs.length+clubFavs.length+playerFavs.length)?` (${favs.length+clubFavs.length+playerFavs.length})`:""}</button>
@@ -1258,6 +1410,7 @@ async function init(){
     setupListeners();
     $("screen-loading").style.display="none";
     $("screen-home").style.display="flex";
+    await initAuth();
     renderHome();
   } catch(e) {
     $("loading-note").innerHTML=`<span style="color:#e5001c;font-weight:700">⚠️ Error</span><br/><span style="font-size:12px;color:#6b7a99">${esc(e.message)}</span>`;

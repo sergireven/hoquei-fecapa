@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>FECAPA · Hoquei Patins Catalunya</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Barlow',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh}
@@ -80,6 +81,12 @@
     .pm-section{padding:14px 16px;border-top:1px solid #f0f2f8}
     .pm-section-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.1em;margin-bottom:10px}
     .player-name-btn{color:#003da5;font-weight:600;cursor:pointer;border-bottom:1px dotted #003da5;background:none;border-top:none;border-left:none;border-right:none;padding:0;font-size:inherit;font-family:inherit}
+    /* Login/user modals (bottom sheet) */
+    #login-modal-bd,#user-modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none}
+    #login-modal,#user-modal{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;max-height:80vh;overflow-y:auto;z-index:301;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);box-shadow:0 -6px 30px rgba(0,20,60,.22)}
+    #login-modal.lm-open,#user-modal.lm-open{transform:translateY(0)}
+    /* Admin panel screen */
+    #screen-admin{display:none;flex-direction:column;min-height:100vh}
   </style>
 </head>
 <body>
@@ -150,6 +157,29 @@
 <div id="player-modal-bd" onclick="closePlayerModal()"></div>
 <div id="player-modal" role="dialog" aria-modal="true">
   <div id="player-modal-body"></div>
+</div>
+
+<!-- Login modal (bottom sheet) -->
+<div id="login-modal-bd" onclick="closeLoginModal()"></div>
+<div id="login-modal" role="dialog" aria-modal="true">
+  <div id="login-modal-body"></div>
+</div>
+
+<!-- User menu modal (bottom sheet) -->
+<div id="user-modal-bd" onclick="closeUserModal()"></div>
+<div id="user-modal" role="dialog" aria-modal="true">
+  <div id="user-modal-body"></div>
+</div>
+
+<!-- Admin panel -->
+<div id="screen-admin" style="display:none">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="admin-back-btn" onclick="closeAdminPanel()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">← Enrere</button></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#fff;margin:8px 0 4px">Panell d'administrador</div>
+    </div>
+  </div>
+  <div id="admin-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
 </div>
 
 <script src="js/app.js"></script>
