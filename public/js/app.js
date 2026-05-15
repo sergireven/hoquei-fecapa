@@ -1152,23 +1152,96 @@ function getCatSlugForComp(comp) {
 }
 
 function renderDetailJugadors(){
-  const all=detailComp.players||[];
-  if (!all.length){ $("panel-jugadors").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
-  const names=[...new Set(all.map(p=>p.team).filter(Boolean))].sort();
-  const chips=`<div style="margin-bottom:10px">
+  const catSlug = getCatSlugForComp(detailComp);
+
+  // Noms d'equip del calendari (font fiable)
+  const calNames = [...new Set([
+    ...(detailComp.calendar||[]).map(m=>m.home),
+    ...(detailComp.calendar||[]).map(m=>m.away)
+  ].filter(Boolean))].sort();
+  const calNamesLc = new Set(calNames.map(n=>n.toLowerCase()));
+
+  // Chips de filtre (iguals que pestanya Calendari)
+  const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
       <button onclick="setJugadorsTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tots</button>
-      ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setJugadorsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}</button>`;}).join("")}
+      ${calNames.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setJugadorsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}</button>`;}).join("")}
     </div>
+  </div>` : "";
+
+  const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const calcAge = bd => {
+    if (!bd) return null;
+    const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
+    if (isNaN(dob)) return null;
+    const now=new Date(), y=now.getFullYear()-dob.getFullYear();
+    return y-(now<new Date(now.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
+  };
+
+  // Filtra jugadors que han jugat en aquesta competició (cat + equip)
+  let rows = Object.entries(DB.jugadors||{}).filter(([,p]) => {
+    if (!p.teamStats) return false;
+    return p.teamStats.some(ts => ts.cat===catSlug && calNamesLc.has(ts.team.toLowerCase()));
+  });
+
+  // Aplica filtre d'equip
+  if (detailTeam) rows = rows.filter(([,p]) => p.teamStats.some(ts => teamIn(ts.team,detailTeam)));
+
+  if (!rows.length) {
+    $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div>`;
+    return;
+  }
+
+  // Ordena per gols (temporada actual) desc
+  rows.sort(([,a],[,b]) => {
+    const sa = a.careerStats?.find(s=>s.seasonName==="2025-26");
+    const sb = b.careerStats?.find(s=>s.seasonName==="2025-26");
+    return (sb?.total_goals||0)-(sa?.total_goals||0);
+  });
+
+  const tableRows = rows.map(([jid,p]) => {
+    const season = p.careerStats?.find(s=>s.seasonName==="2025-26");
+    const ts = detailTeam
+      ? p.teamStats.find(t=>teamIn(t.team,detailTeam)&&t.cat===catSlug)
+      : p.teamStats.filter(t=>t.cat===catSlug).reduce((acc,t)=>({count:(acc.count||0)+t.count}),{});
+    const partits = ts?.count || 0;
+    const gols    = season?.total_goals ?? "—";
+    const blaves  = season?.total_blue  ?? "—";
+    const age     = calcAge(p.birthDate);
+    const gk      = p.isGK ? " 🥅" : "";
+    return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
+      <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(fmtName(p))}${gk}</td>
+      <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
+      <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(p.registeredTeam||'—')}</td>
+      <td style="padding:7px 8px;font-size:13px;font-weight:700;color:#1a2035;text-align:center">${gols}</td>
+      <td style="padding:7px 8px;font-size:13px;color:#2563eb;text-align:center">${blaves}</td>
+      <td style="padding:7px 8px;font-size:13px;color:#64748b;text-align:center">${partits}</td>
+    </tr>`;
+  }).join("");
+
+  const table = `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Edat</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Inscrit</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">⚽ Gols</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">🟦 Blaves</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
   </div>`;
-  const players=detailTeam?all.filter(p=>teamIn(p.team,detailTeam)):all;
-  $("panel-jugadors").innerHTML=chips+players.map(p=>playerCard(p)).join("");
+
+  $("panel-jugadors").innerHTML = chips + table;
 }
 
 function setJugadorsTeam(team) {
   detailTeam = team;
-  renderDetailJugadors();
+  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
 }
 
 // ── Init ──────────────────────────────────────────────────────
