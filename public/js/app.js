@@ -1151,17 +1151,15 @@ function getCatSlugForComp(comp) {
   return null;
 }
 
-function renderDetailJugadors(){
+async function renderDetailJugadors(){
   const catSlug = getCatSlugForComp(detailComp);
 
-  // Noms d'equip del calendari (font fiable)
+  // Noms d'equip del calendari per als filtres
   const calNames = [...new Set([
     ...(detailComp.calendar||[]).map(m=>m.home),
     ...(detailComp.calendar||[]).map(m=>m.away)
   ].filter(Boolean))].sort();
-  const calNamesLc = new Set(calNames.map(n=>n.toLowerCase()));
 
-  // Chips de filtre (iguals que pestanya Calendari)
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
@@ -1170,73 +1168,71 @@ function renderDetailJugadors(){
     </div>
   </div>` : "";
 
+  $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">Carregant jugadors...</div>`;
+
+  const actes = await loadCatActes(catSlug);
+  const compIdStr = String(detailComp.id);
+
   const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).replace(/\b\w/g,c=>c.toUpperCase()) : "?";
   const calcAge = bd => {
     if (!bd) return null;
-    const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
+    const pts=bd.split(/[\/\-]/), dob=pts[0].length===4?new Date(`${pts[0]}-${pts[1]}-${pts[2]}`):new Date(`${pts[2]}-${pts[1]}-${pts[0]}`);
     if (isNaN(dob)) return null;
     const now=new Date(), y=now.getFullYear()-dob.getFullYear();
     return y-(now<new Date(now.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
   };
 
-  // Filtra jugadors que han jugat en aquesta competició (cat + equip)
-  let rows = Object.entries(DB.jugadors||{}).filter(([,p]) => {
-    if (!p.teamStats) return false;
-    return p.teamStats.some(ts => ts.cat===catSlug && calNamesLc.has(ts.team.toLowerCase()));
-  });
+  // Agrega estadístiques per jugador des de les actes d'aquesta competició
+  const statsMap = {};
+  for (const acta of Object.values(actes)) {
+    if (String(acta.compId) !== compIdStr) continue;
+    if (!acta.playerStats) continue;
+    const add = (player, team) => {
+      if (!player.jugadorId) return;
+      if (detailTeam && !teamIn(team, detailTeam)) return;
+      const s = statsMap[player.jugadorId] ||= { name: player.name, team, g:0, b:0, v:0, partits:0 };
+      s.g += player.g||0; s.b += player.b||0; s.v += player.v||0; s.partits++;
+    };
+    for (const p of acta.playerStats.homePlayers||[]) add(p, acta.home);
+    for (const p of acta.playerStats.awayPlayers||[]) add(p, acta.away);
+  }
 
-  // Aplica filtre d'equip
-  if (detailTeam) rows = rows.filter(([,p]) => p.teamStats.some(ts => teamIn(ts.team,detailTeam)));
+  const ids = Object.keys(statsMap).sort((a,b) => statsMap[b].g - statsMap[a].g);
 
-  if (!rows.length) {
+  if (!ids.length) {
     $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div>`;
     return;
   }
 
-  // Ordena per gols (temporada actual) desc
-  rows.sort(([,a],[,b]) => {
-    const sa = a.careerStats?.find(s=>s.seasonName==="2025-26");
-    const sb = b.careerStats?.find(s=>s.seasonName==="2025-26");
-    return (sb?.total_goals||0)-(sa?.total_goals||0);
-  });
-
-  const tableRows = rows.map(([jid,p]) => {
-    const season = p.careerStats?.find(s=>s.seasonName==="2025-26");
-    const ts = detailTeam
-      ? p.teamStats.find(t=>teamIn(t.team,detailTeam)&&t.cat===catSlug)
-      : p.teamStats.filter(t=>t.cat===catSlug).reduce((acc,t)=>({count:(acc.count||0)+t.count}),{});
-    const partits = ts?.count || 0;
-    const gols    = season?.total_goals ?? "—";
-    const blaves  = season?.total_blue  ?? "—";
-    const age     = calcAge(p.birthDate);
-    const gk      = p.isGK ? " 🥅" : "";
+  const tableRows = ids.map(jid => {
+    const s = statsMap[jid];
+    const p = DB.jugadors?.[jid];
+    const name = p?.slug ? fmtName(p) : (s.name||"?").replace(/\b\w/g,c=>c.toUpperCase());
+    const age  = calcAge(p?.birthDate);
+    const gk   = p?.isGK ? " 🥅" : "";
     return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
-      <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(fmtName(p))}${gk}</td>
+      <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(name)}${gk}</td>
       <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
-      <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(p.registeredTeam||'—')}</td>
-      <td style="padding:7px 8px;font-size:13px;font-weight:700;color:#1a2035;text-align:center">${gols}</td>
-      <td style="padding:7px 8px;font-size:13px;color:#2563eb;text-align:center">${blaves}</td>
-      <td style="padding:7px 8px;font-size:13px;color:#64748b;text-align:center">${partits}</td>
+      <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(p?.registeredTeam||'—')}</td>
+      <td style="padding:7px 8px;font-size:13px;font-weight:700;color:#1a2035;text-align:center">${s.g}</td>
+      <td style="padding:7px 8px;font-size:13px;color:#2563eb;text-align:center">${s.b}</td>
+      <td style="padding:7px 8px;font-size:13px;color:#64748b;text-align:center">${s.partits}</td>
     </tr>`;
   }).join("");
 
-  const table = `<div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="border-bottom:2px solid #e2e6ef">
-          <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Edat</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Inscrit</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">⚽ Gols</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">🟦 Blaves</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th>
-        </tr>
-      </thead>
+  $("panel-jugadors").innerHTML = chips + `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:2px solid #e2e6ef">
+        <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th>
+        <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Edat</th>
+        <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Inscrit</th>
+        <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">⚽ Gols</th>
+        <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">🟦 Blaves</th>
+        <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th>
+      </tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
   </div>`;
-
-  $("panel-jugadors").innerHTML = chips + table;
 }
 
 function setJugadorsTeam(team) {
