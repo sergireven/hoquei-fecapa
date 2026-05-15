@@ -480,9 +480,11 @@ function renderJugadorsTab() {
     </div>
     ${listHtml}`;
 
-  if (jugadorSearch) {
-    const inp = $("jugador-search-input");
-    if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+  const inp = $("jugador-search-input");
+  if (inp) {
+    inp.value = q;
+    inp.focus();
+    inp.selectionStart = inp.selectionEnd = inp.value.length;
   }
 }
 window.setJugadorSearch = q => { jugadorSearch=q; renderJugadorsTab(); };
