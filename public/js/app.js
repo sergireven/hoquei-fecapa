@@ -1255,7 +1255,14 @@ window.openDetail=openDetail;
 function openPlayerModal(jid, fallbackName) {
   const player = DB?.jugadors?.[jid];
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
-  const name   = fallbackName || (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : "Jugador");
+  const name   = (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : null)
+               || fallbackName
+               || "Jugador";
+
+  // Team i categoria del teamStats principal
+  const firstTeam  = player?.teamStats?.[0];
+  const teamSuffix = firstTeam ? `, ${firstTeam.team}` : "";
+  const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
   const url    = player?.url || `https://jok.cat/jugador/${jid}`;
 
   // ── Dades bàsiques ───────────────────────────────────────────
@@ -1373,7 +1380,7 @@ function openPlayerModal(jid, fallbackName) {
     </div>
     <div style="padding:12px 16px 14px;display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${numberSuffix}${ageSuffix}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035;line-height:1.15">${esc(name)}${teamSuffix}${catSuffix}${numberSuffix}${ageSuffix}</div>
         ${metaRow}
       </div>
       <button onclick="closePlayerModal()" style="background:#f0f4f8;border:none;border-radius:10px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center">✕</button>
