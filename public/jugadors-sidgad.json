@@ -42599,6 +42599,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T06:01:14.565Z"
   },
+  "77699": {
+    "sidgadId": "77699",
+    "name": "PREU AGUILAR SCOLAN MARGÓ",
+    "birthDate": "16/03/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:22.493Z"
+  },
   "77704": {
     "sidgadId": "77704",
     "name": "BENB PARIS SANCHEZ ARON",
@@ -50071,6 +50079,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:41:42.450Z"
   },
+  "84083": {
+    "sidgadId": "84083",
+    "name": "PREU MORA ABRIL",
+    "birthDate": "26/09/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:22.648Z"
+  },
   "84086": {
     "sidgadId": "84086",
     "name": "PREU ESTOPAÑÁN GARCIA ARAN",
@@ -51303,6 +51319,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T06:01:19.823Z"
   },
+  "84800": {
+    "sidgadId": "84800",
+    "name": "PREU JUNEDA COLL OIHANE",
+    "birthDate": "29/04/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:22.802Z"
+  },
   "84804": {
     "sidgadId": "84804",
     "name": "BENC ROMÁN REY HUGO",
@@ -52366,6 +52390,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:03.850Z"
+  },
+  "85522": {
+    "sidgadId": "85522",
+    "name": "PREU SERRA RUSCA MAX",
+    "birthDate": "02/09/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:22.962Z"
   },
   "85532": {
     "sidgadId": "85532",
@@ -55247,6 +55279,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:29:12.384Z"
   },
+  "88682": {
+    "sidgadId": "88682",
+    "name": "PREU CAMACHO GONZALEZ DE RIVERO MARC",
+    "birthDate": "11/07/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.125Z"
+  },
+  "88683": {
+    "sidgadId": "88683",
+    "name": "PREU BULLICH LLISTOSELLA MARÇAL",
+    "birthDate": "09/11/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.293Z"
+  },
   "88702": {
     "sidgadId": "88702",
     "name": "PREA ROMEU MINGUELL JÚLIA",
@@ -55335,6 +55383,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:05.505Z"
   },
+  "88787": {
+    "sidgadId": "88787",
+    "name": "PREU COROMINAS TARRAGÓ IRIS",
+    "birthDate": "14/01/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.472Z"
+  },
   "88788": {
     "sidgadId": "88788",
     "name": "BENB PEROSTES FERNÁNDEZ ROC",
@@ -55359,6 +55415,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:41:49.530Z"
   },
+  "88795": {
+    "sidgadId": "88795",
+    "name": "PREU MORENO VICTORY UMA",
+    "birthDate": "24/11/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.631Z"
+  },
+  "88796": {
+    "sidgadId": "88796",
+    "name": "PREU BOFILL SANZ ÀNEU",
+    "birthDate": "09/08/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.804Z"
+  },
   "88797": {
     "sidgadId": "88797",
     "name": "PREU RODRÍGUEZ GARCÍA HARAN",
@@ -55366,6 +55438,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:05.640Z"
+  },
+  "88798": {
+    "sidgadId": "88798",
+    "name": "PREU CARRASCO SÀBAT GUIU",
+    "birthDate": "20/03/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:23.958Z"
+  },
+  "88799": {
+    "sidgadId": "88799",
+    "name": "PREU RIBAS VILLAR SARA",
+    "birthDate": "08/11/2018",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:24.117Z"
   },
   "88801": {
     "sidgadId": "88801",
@@ -55423,6 +55511,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:31:35.125Z"
   },
+  "88808": {
+    "sidgadId": "88808",
+    "name": "PREB SÁNCHEZ CARNÉ MILAN",
+    "birthDate": "28/11/2018",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:24.273Z"
+  },
+  "88809": {
+    "sidgadId": "88809",
+    "name": "PREB GARCIA DE CALDAS AINA",
+    "birthDate": "05/09/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:24.427Z"
+  },
   "88810": {
     "sidgadId": "88810",
     "name": "PREB SÁNCHEZ KÁMEL MARTÍN",
@@ -55431,6 +55535,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T14:04:16.996Z"
   },
+  "88811": {
+    "sidgadId": "88811",
+    "name": "PREB DE LA BARRERA LAMBIS ISAAC",
+    "birthDate": "15/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:24.605Z"
+  },
   "88812": {
     "sidgadId": "88812",
     "name": "PREB MARTINEZ SUBIRANA ELSA",
@@ -55438,6 +55550,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T14:04:17.133Z"
+  },
+  "88813": {
+    "sidgadId": "88813",
+    "name": "PREI MAJÓ CARRASCO ARNAU",
+    "birthDate": "14/11/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:24.759Z"
   },
   "88815": {
     "sidgadId": "88815",
@@ -55647,6 +55767,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:19:57.293Z"
   },
+  "88946": {
+    "sidgadId": "88946",
+    "name": "PREC SALA ALONSO OVIDI",
+    "birthDate": "07/08/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:24.921Z"
+  },
   "88952": {
     "sidgadId": "88952",
     "name": "PREU CANABAL NONELL ANIOL",
@@ -55679,6 +55807,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T14:04:18.005Z"
   },
+  "89012": {
+    "sidgadId": "89012",
+    "name": "PREU VALLES PARÉ GUIM",
+    "birthDate": "04/05/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:25.076Z"
+  },
   "89013": {
     "sidgadId": "89013",
     "name": "BENU( GUZMÁN LORA ALMA",
@@ -55686,6 +55822,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:42.440Z"
+  },
+  "89014": {
+    "sidgadId": "89014",
+    "name": "PREU CANO PALACIOS ARNAU",
+    "birthDate": "10/08/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:25.230Z"
+  },
+  "89016": {
+    "sidgadId": "89016",
+    "name": "PREU PROVAN MARTINEZ WILLIAM-RAIN",
+    "birthDate": "20/04/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:25.384Z"
   },
   "89017": {
     "sidgadId": "89017",
@@ -55750,6 +55902,62 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T12:29:29.322Z"
+  },
+  "89084": {
+    "sidgadId": "89084",
+    "name": "PREU RODRIGUEZ FERNANDEZ BIEL",
+    "birthDate": "13/12/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:25.549Z"
+  },
+  "89085": {
+    "sidgadId": "89085",
+    "name": "PREU PALOMO ESTRADA POL",
+    "birthDate": "30/03/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:25.713Z"
+  },
+  "89086": {
+    "sidgadId": "89086",
+    "name": "PREU MARTÍNEZ BERNADET NEL",
+    "birthDate": "09/11/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:25.872Z"
+  },
+  "89087": {
+    "sidgadId": "89087",
+    "name": "PREU RUIZ CASACUBERTA GUIFRÉ",
+    "birthDate": "13/12/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.030Z"
+  },
+  "89088": {
+    "sidgadId": "89088",
+    "name": "PREU ANTÓN MACARRILLA PEP",
+    "birthDate": "30/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.190Z"
+  },
+  "89089": {
+    "sidgadId": "89089",
+    "name": "PREU SANTA MARIA MARTÍNEZ ALESSIO GAEL",
+    "birthDate": "15/10/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.353Z"
+  },
+  "89090": {
+    "sidgadId": "89090",
+    "name": "PREU SÁNCHEZ  PAVON BERTA",
+    "birthDate": "30/01/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.508Z"
   },
   "89094": {
     "sidgadId": "89094",
@@ -55847,6 +56055,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:31:35.610Z"
   },
+  "89115": {
+    "sidgadId": "89115",
+    "name": "PREI CALDÈS PÈLACH MAIOL",
+    "birthDate": "04/11/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.669Z"
+  },
   "89116": {
     "sidgadId": "89116",
     "name": "PREI RUIZ PULIDO AIRIN",
@@ -55855,6 +56071,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:42.589Z"
   },
+  "89117": {
+    "sidgadId": "89117",
+    "name": "PREI SPÀ SANTAMARIA ORIOL",
+    "birthDate": "09/01/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.824Z"
+  },
   "89118": {
     "sidgadId": "89118",
     "name": "PREI VILASECA ALONSO JAUME",
@@ -55862,6 +56086,54 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T20:19:57.483Z"
+  },
+  "89119": {
+    "sidgadId": "89119",
+    "name": "PREI IGLESIAS LÒPEZ PHÁT",
+    "birthDate": "20/04/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:26.984Z"
+  },
+  "89120": {
+    "sidgadId": "89120",
+    "name": "PREI GREWE RIBA ORIOL",
+    "birthDate": "23/08/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:27.138Z"
+  },
+  "89138": {
+    "sidgadId": "89138",
+    "name": "PREI LLOP CASADO JOAN",
+    "birthDate": "07/03/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:27.293Z"
+  },
+  "89165": {
+    "sidgadId": "89165",
+    "name": "PRED GUTIERREZ GONZALEZ MATEO",
+    "birthDate": "15/09/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:27.465Z"
+  },
+  "89167": {
+    "sidgadId": "89167",
+    "name": "PREI FUENTES ADALID HÉCTOR",
+    "birthDate": "23/06/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:27.626Z"
+  },
+  "89169": {
+    "sidgadId": "89169",
+    "name": "PREI FUENTES ADALID ERIK",
+    "birthDate": "23/06/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:27.780Z"
   },
   "89194": {
     "sidgadId": "89194",
@@ -55910,6 +56182,46 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T20:19:58.052Z"
+  },
+  "89228": {
+    "sidgadId": "89228",
+    "name": "PREU BERNUÉS CALABUIG MÁXIMO",
+    "birthDate": "22/07/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:27.959Z"
+  },
+  "89229": {
+    "sidgadId": "89229",
+    "name": "PREU GALLEGO LOSILLA AYLEN",
+    "birthDate": "29/06/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:28.113Z"
+  },
+  "89230": {
+    "sidgadId": "89230",
+    "name": "PREU ESCOBAR TORRES JULEN",
+    "birthDate": "03/01/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:28.272Z"
+  },
+  "89231": {
+    "sidgadId": "89231",
+    "name": "PREU MUÑOZ VILLORIA ERIC",
+    "birthDate": "27/10/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:28.432Z"
+  },
+  "89233": {
+    "sidgadId": "89233",
+    "name": "PREU LUNA MALLOL EINAR",
+    "birthDate": "01/09/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:28.587Z"
   },
   "89241": {
     "sidgadId": "89241",
@@ -56031,6 +56343,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T14:13:15.825Z"
   },
+  "89335": {
+    "sidgadId": "89335",
+    "name": "PREI VIDIELLA BASTIDA ÀLEX",
+    "birthDate": "09/05/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:28.758Z"
+  },
   "89336": {
     "sidgadId": "89336",
     "name": "PREB ALIAGA ARISSA GUIM",
@@ -56046,6 +56366,22 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T20:19:58.431Z"
+  },
+  "89411": {
+    "sidgadId": "89411",
+    "name": "PREI FONT HERNANDEZ ANTONI",
+    "birthDate": "04/01/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:28.923Z"
+  },
+  "89414": {
+    "sidgadId": "89414",
+    "name": "PREU LARA COSTA ALGUER",
+    "birthDate": "18/05/2018",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:29.081Z"
   },
   "89439": {
     "sidgadId": "89439",
@@ -56063,6 +56399,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:41:52.965Z"
   },
+  "89467": {
+    "sidgadId": "89467",
+    "name": "PREC ALEGRET PALOU GUIM",
+    "birthDate": "03/09/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:29.236Z"
+  },
   "89476": {
     "sidgadId": "89476",
     "name": "PREU LORENZO MARTINEZ ENZO",
@@ -56070,6 +56414,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T20:31:35.807Z"
+  },
+  "89477": {
+    "sidgadId": "89477",
+    "name": "PREB MARTÍ PARRA HUGO",
+    "birthDate": "16/08/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:29.397Z"
+  },
+  "89479": {
+    "sidgadId": "89479",
+    "name": "PREC ALONSO ALCARAZ MAVERICK",
+    "birthDate": "12/02/2018",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:29.555Z"
   },
   "89483": {
     "sidgadId": "89483",
@@ -56111,6 +56471,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:42.867Z"
   },
+  "89494": {
+    "sidgadId": "89494",
+    "name": "PREI TARDA ARJONA BIEL",
+    "birthDate": "15/12/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:29.722Z"
+  },
   "89495": {
     "sidgadId": "89495",
     "name": "PREB RODRIGUEZ RAMON ALBERT",
@@ -56126,6 +56494,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:43.000Z"
+  },
+  "89528": {
+    "sidgadId": "89528",
+    "name": "PREB PERALTA CORRIGÜELAS ÀLEX",
+    "birthDate": "17/11/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:29.886Z"
   },
   "89563": {
     "sidgadId": "89563",
@@ -56215,6 +56591,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-16T06:23:00.088Z"
   },
+  "89624": {
+    "sidgadId": "89624",
+    "name": "PREC RODRIGUEZ ORTEGA ERIC",
+    "birthDate": "02/03/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.040Z"
+  },
   "89648": {
     "sidgadId": "89648",
     "name": "PREI BEJARANO MORRO POL",
@@ -56254,6 +56638,38 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T19:19:34.276Z"
+  },
+  "89660": {
+    "sidgadId": "89660",
+    "name": "PREU BARBOSA RODRÍGUEZ NIL",
+    "birthDate": "15/07/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.196Z"
+  },
+  "89661": {
+    "sidgadId": "89661",
+    "name": "PREU SANCHEZ DIAZ HUGO",
+    "birthDate": "29/05/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.354Z"
+  },
+  "89663": {
+    "sidgadId": "89663",
+    "name": "PREU SALMERON MORALES DANIEL",
+    "birthDate": "18/12/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.508Z"
+  },
+  "89675": {
+    "sidgadId": "89675",
+    "name": "PREU CAÑADA ALSINA NAIA",
+    "birthDate": "28/07/2018",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:30.663Z"
   },
   "89677": {
     "sidgadId": "89677",
@@ -56311,6 +56727,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:06.584Z"
   },
+  "89739": {
+    "sidgadId": "89739",
+    "name": "PREB STARIKOV LUKA",
+    "birthDate": "13/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.823Z"
+  },
   "89751": {
     "sidgadId": "89751",
     "name": "BENG BARBANY BOIXADÓS JULIÀ",
@@ -56367,6 +56791,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T06:23:00.394Z"
   },
+  "89792": {
+    "sidgadId": "89792",
+    "name": "PREB MUÑOZ GARCIA JOSE",
+    "birthDate": "16/01/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:30.978Z"
+  },
   "89793": {
     "sidgadId": "89793",
     "name": "PREU RUIZ MESTRE FERRAN",
@@ -56374,6 +56806,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T20:31:35.991Z"
+  },
+  "89794": {
+    "sidgadId": "89794",
+    "name": "PREB ARRIBAS MARTINEZ GABRIEL",
+    "birthDate": "15/08/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.139Z"
   },
   "89795": {
     "sidgadId": "89795",
@@ -56406,6 +56846,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:06.720Z"
+  },
+  "89805": {
+    "sidgadId": "89805",
+    "name": "PREU RIEROLA GRANYENA BRU",
+    "birthDate": "11/10/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.299Z"
   },
   "89810": {
     "sidgadId": "89810",
@@ -56462,6 +56910,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:07.115Z"
+  },
+  "89852": {
+    "sidgadId": "89852",
+    "name": "PREU JUAN NICO",
+    "birthDate": "17/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.461Z"
   },
   "89860": {
     "sidgadId": "89860",
@@ -56559,6 +57015,30 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:19:59.659Z"
   },
+  "90015": {
+    "sidgadId": "90015",
+    "name": "PREE FAURA MACHADO ÀLEX",
+    "birthDate": "09/12/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.617Z"
+  },
+  "90027": {
+    "sidgadId": "90027",
+    "name": "PRED ROBLES BERMEJO NURIA",
+    "birthDate": "30/05/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.780Z"
+  },
+  "90028": {
+    "sidgadId": "90028",
+    "name": "PRED AGUSTINA CALVO AIUR",
+    "birthDate": "11/09/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:31.942Z"
+  },
   "90032": {
     "sidgadId": "90032",
     "name": "PREU( PORRA SHNICER CARMELA",
@@ -56639,6 +57119,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T20:19:59.979Z"
   },
+  "90099": {
+    "sidgadId": "90099",
+    "name": "PREU SOLER DELLA VILLA PAULA",
+    "birthDate": "30/10/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:32.096Z"
+  },
   "90100": {
     "sidgadId": "90100",
     "name": "PREU( MADERO LAINEZ NORA",
@@ -56646,6 +57134,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:07.531Z"
+  },
+  "90111": {
+    "sidgadId": "90111",
+    "name": "PRED PERES CILLEROS LEO",
+    "birthDate": "28/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:32.272Z"
   },
   "90119": {
     "sidgadId": "90119",
@@ -56719,6 +57215,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:45.053Z"
   },
+  "90147": {
+    "sidgadId": "90147",
+    "name": "PREU ANGUIANO BARRENA BERNAT",
+    "birthDate": "30/03/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:32.426Z"
+  },
   "90148": {
     "sidgadId": "90148",
     "name": "PREU( FRANCÉS VIGUERA EVA",
@@ -56759,6 +57263,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:20:00.169Z"
   },
+  "90157": {
+    "sidgadId": "90157",
+    "name": "PREU CASBAS SAURÍ ORIOL",
+    "birthDate": "21/12/2017",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:32.580Z"
+  },
   "90158": {
     "sidgadId": "90158",
     "name": "PREI CLARAMUNT CARBONELL ADRIÀ",
@@ -56766,6 +57278,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T19:19:34.940Z"
+  },
+  "90159": {
+    "sidgadId": "90159",
+    "name": "PREU COSTA AYALA TONI",
+    "birthDate": "24/02/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:32.734Z"
   },
   "90160": {
     "sidgadId": "90160",
@@ -56783,6 +57303,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:07.795Z"
   },
+  "90162": {
+    "sidgadId": "90162",
+    "name": "PREU HERRERO FLECHA ANDER",
+    "birthDate": "19/08/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:32.902Z"
+  },
+  "90165": {
+    "sidgadId": "90165",
+    "name": "PREU NUÑEZ GILABERT BIEL",
+    "birthDate": "23/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.058Z"
+  },
   "90186": {
     "sidgadId": "90186",
     "name": "BENU( DE LA FUENTE KÖING VALENTINA",
@@ -56790,6 +57326,62 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:45.729Z"
+  },
+  "90187": {
+    "sidgadId": "90187",
+    "name": "PREU REDIU SALLES AINA",
+    "birthDate": "12/07/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.212Z"
+  },
+  "90191": {
+    "sidgadId": "90191",
+    "name": "PREU VILLALBA CABISTANY ROC",
+    "birthDate": "08/09/2019",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-16T06:34:33.366Z"
+  },
+  "90197": {
+    "sidgadId": "90197",
+    "name": "PREU REGUANT BUXEDA POL",
+    "birthDate": "12/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.520Z"
+  },
+  "90198": {
+    "sidgadId": "90198",
+    "name": "PREB JIMENEZ HERMIDA ROI",
+    "birthDate": "16/11/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.684Z"
+  },
+  "90200": {
+    "sidgadId": "90200",
+    "name": "PREU MIRABET RIVAS IBAI",
+    "birthDate": "11/09/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.838Z"
+  },
+  "90202": {
+    "sidgadId": "90202",
+    "name": "PREU MIRABET RIVAS ARIADNA",
+    "birthDate": "22/03/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:33.992Z"
+  },
+  "90225": {
+    "sidgadId": "90225",
+    "name": "PREE MARTINEZ LÓPEZ BORJA",
+    "birthDate": "18/06/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.146Z"
   },
   "90241": {
     "sidgadId": "90241",
@@ -56822,6 +57414,54 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T19:19:35.276Z"
+  },
+  "90286": {
+    "sidgadId": "90286",
+    "name": "PREC LANCINA HERRERA MATIAS",
+    "birthDate": "05/11/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.308Z"
+  },
+  "90287": {
+    "sidgadId": "90287",
+    "name": "PREC PRATS FARRE BIEL",
+    "birthDate": "26/09/2017",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.480Z"
+  },
+  "90289": {
+    "sidgadId": "90289",
+    "name": "PREI MESTRE ALONSO HUGO",
+    "birthDate": "28/08/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.646Z"
+  },
+  "90290": {
+    "sidgadId": "90290",
+    "name": "PREI ROYO FERNANDEZ MARTI",
+    "birthDate": "25/03/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.813Z"
+  },
+  "90291": {
+    "sidgadId": "90291",
+    "name": "PREI RABELL ILLA POL",
+    "birthDate": "23/04/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:34.972Z"
+  },
+  "90297": {
+    "sidgadId": "90297",
+    "name": "PREI ANDRES ZHOU XAN",
+    "birthDate": "27/01/2020",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:35.130Z"
   },
   "90326": {
     "sidgadId": "90326",
@@ -56919,6 +57559,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:46.156Z"
   },
+  "90673": {
+    "sidgadId": "90673",
+    "name": "PREB SALAZAR GONZÁLEZ MELANNY",
+    "birthDate": "20/03/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:35.284Z"
+  },
   "90716": {
     "sidgadId": "90716",
     "name": "PREA BERNABÉ VARGAS MARTÍ",
@@ -56926,6 +57574,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:32:08.080Z"
+  },
+  "90718": {
+    "sidgadId": "90718",
+    "name": "PREB NOCENTINI VISCONTI GENNARO",
+    "birthDate": "30/06/2018",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:35.439Z"
   },
   "90727": {
     "sidgadId": "90727",
@@ -56958,6 +57614,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T16:32:08.220Z"
+  },
+  "90901": {
+    "sidgadId": "90901",
+    "name": "PREI MARTINEZ TRONCHONI JAIR",
+    "birthDate": "04/02/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-16T06:34:35.604Z"
   },
   "90914": {
     "sidgadId": "90914",
@@ -68938,6 +69602,123 @@
     "119032",
     "119033",
     "119030",
-    "119031"
+    "119031",
+    "124866",
+    "124867",
+    "124869",
+    "124868",
+    "124870",
+    "124872",
+    "124874",
+    "124875",
+    "124871",
+    "124873",
+    "124880",
+    "124877",
+    "124876",
+    "124878",
+    "124879",
+    "124881",
+    "124883",
+    "124884",
+    "124885",
+    "124882",
+    "124889",
+    "124888",
+    "124886",
+    "124887",
+    "124890",
+    "124893",
+    "124892",
+    "124895",
+    "124891",
+    "124894",
+    "124899",
+    "124897",
+    "124900",
+    "124896",
+    "124898",
+    "124902",
+    "124905",
+    "124903",
+    "124904",
+    "124901",
+    "124906",
+    "124910",
+    "124907",
+    "124909",
+    "124908",
+    "124913",
+    "124914",
+    "124911",
+    "124917",
+    "124919",
+    "124920",
+    "124924",
+    "124922",
+    "124921",
+    "124928",
+    "124930",
+    "124927",
+    "124931",
+    "124932",
+    "124933",
+    "124939",
+    "124937",
+    "124938",
+    "124942",
+    "124943",
+    "124941",
+    "124944",
+    "124948",
+    "124947",
+    "124949",
+    "124953",
+    "124951",
+    "124952",
+    "130015",
+    "130017",
+    "130014",
+    "130013",
+    "130016",
+    "130020",
+    "130018",
+    "130019",
+    "130021",
+    "130022",
+    "130023",
+    "130025",
+    "130026",
+    "130027",
+    "130024",
+    "130029",
+    "130028",
+    "130031",
+    "130032",
+    "130030",
+    "130036",
+    "130035",
+    "130037",
+    "130033",
+    "130034",
+    "130038",
+    "130042",
+    "130040",
+    "130039",
+    "130041",
+    "130045",
+    "130047",
+    "130046",
+    "130044",
+    "130043",
+    "130052",
+    "130051",
+    "130050",
+    "130048",
+    "130054",
+    "130056",
+    "130057",
+    "130055",
+    "130053"
   ]
 }
