@@ -1474,6 +1474,23 @@ async function mergejokIntoSidgad(categories) {
           const oldParent = jokComp.sidgadParentId;
           jokComp.sidgadParentId = config.parent;
           if (oldParent !== config.parent) nCopaNameMatched++;
+
+          // Carregar classificació de Sidgad per a aquest grup (idc)
+          const sidgadParent = sidgadComps[config.parent];
+          if (sidgadParent && sidgadParent.classificationByGroup && sidgadParent.classificationByGroup[jokComp.id]) {
+            const groupClass = sidgadParent.classificationByGroup[jokComp.id];
+            if (groupClass && groupClass.length > 0) {
+              jokComp.classification = groupClass;
+            }
+          }
+
+          // Carregar calendari de Sidgad per a aquest grup (filtra matches per idc)
+          if (sidgadParent && sidgadParent.matches) {
+            const groupMatches = sidgadParent.matches.filter(m => m.idc === String(jokComp.id));
+            if (groupMatches.length > 0) {
+              jokComp.calendar = groupMatches;
+            }
+          }
         }
       }
     }
