@@ -205,53 +205,23 @@ function parseClassificationSidgad(html) {
   return rows;
 }
 
-// Parser classificacions de Copa separades per grups (per noms)
-// Retorna un object mapejat: { idc → classification } per sincronitzar amb jok.cat
+// Parser classificacions de Copa separades per grups (per ordre d'aparició)
+// Retorna un object mapejat: { idc → classification }
 function parseClassificationByGroupSidgad(html, uniqueIdcs) {
   if (!html || html.length < 50 || !uniqueIdcs || uniqueIdcs.length === 0) return {};
   const result = {};
 
-  // Detectar seccions de grups: busca headers/títols que contenen "OR", "PLATA", "GRUPO", etc.
-  const groupPatterns = /(?:OR|PLATA|GRUPO|GROUPE|GROUP|GRP)\s*(\d+|[A-Z])/gi;
+  // Estratègia: cada <table> o <div class="taula"> probablement conté un grup
+  // Els grups apareixen en ordre: OR 1, OR 2, OR 3, PLATA 4, PLATA 5, PLATA 6
+  // Els idcs en uniqueIdcs estan en el mateix ordre (esperat)
 
-  // Dividir HTML per seccions: cada secció comença amb un header de grup
-  const sections = html.split(/<h[1-6][^>]*>|<div[^>]*class=['"]?[^'"]*(?:grup|group|division)[^'"]*['"]?[^>]*>/i);
+  // Buscar TOTES les taules de clasificació
+  const tableMatches = html.match(/<table[^>]*>([\s\S]*?)<\/table>/gi) || [];
 
-  // Mapa simple: "OR 1" → primer idc de type OR, "PLATA 4" → primer idc de type PLATA
-  // Per a Copa Barcelona: OR 1-3 → idcs 4475-4477, PLATA 4-6 → idcs 4478-4480
-  const groupNameToIdc = {};
-  let orIdx = 0, plataIdx = 0;
-  for (const idc of uniqueIdcs) {
-    // Detectar si és OR o PLATA basant-se en l'idc:
-    // Assumim que els idcs venen de jok.cat i el nom ja especifica OR/PLATA
-    // Per ara, fem matching simple basant-se en ordre
-    if (orIdx === 0 && plataIdx === 0) {
-      // Primer grup: assignar "OR 1"
-      groupNameToIdc["OR 1"] = idc;
-      orIdx++;
-    } else if (orIdx < 3) {
-      // Grups OR
-      groupNameToIdc[`OR ${orIdx + 1}`] = idc;
-      orIdx++;
-    } else {
-      // Grups PLATA
-      groupNameToIdc[`PLATA ${plataIdx + 4}`] = idc;
-      plataIdx++;
-    }
-  }
-
-  for (let i = 1; i < sections.length; i++) {
-    const section = sections[i];
-
-    // Buscar el nom del grup al començament de la secció
-    const groupMatch = section.match(groupPatterns);
-    if (!groupMatch) continue;
-
-    const groupNameRaw = groupMatch[0].toUpperCase().trim();
-
-    // Parser la taula/classificació d'aquesta secció
+  for (let tableIdx = 0; tableIdx < tableMatches.length && tableIdx < uniqueIdcs.length; tableIdx++) {
+    const table = tableMatches[tableIdx];
     const classification = [];
-    const trMatches = section.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+    const trMatches = table.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
 
     for (const tr of trMatches) {
       const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
@@ -282,13 +252,48 @@ function parseClassificationByGroupSidgad(html, uniqueIdcs) {
     }
 
     if (classification.length > 0) {
-      // Guardar amb idc mapping
-      const idc = groupNameToIdc[groupNameRaw];
-      if (idc) {
+      // Assignar al idc en ordre d'aparició
+      const idc = uniqueIdcs[tableIdx];
+      result[idc] = classification;
+    }
+  }
+
+  // Si no trobem taules, intentar amb divs
+  if (Object.keys(result).length === 0) {
+    const divMatches = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*(?:taula|table|clasificacio|classification)[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)];
+
+    for (let divIdx = 0; divIdx < divMatches.length && divIdx < uniqueIdcs.length; divIdx++) {
+      const [, divContent] = divMatches[divIdx];
+      const classification = [];
+      const trMatches = divContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+
+      for (const tr of trMatches) {
+        const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
+          decodeHtmlEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
+        );
+        if (cells.length < 5) continue;
+
+        const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
+        if (posIdx < 0) continue;
+        const pos = parseInt(cells[posIdx]);
+
+        const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
+        if (teamIdx < 0) continue;
+        const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
+
+        const teamIdM = tr.match(/\/equip\/(\d+)\//);
+        const teamId = teamIdM ? teamIdM[1] : null;
+
+        const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
+        if (nums.length < 3) continue;
+        const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
+
+        classification.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
+      }
+
+      if (classification.length > 0) {
+        const idc = uniqueIdcs[divIdx];
         result[idc] = classification;
-      } else {
-        // Fallback: guardar també amb el nom del grup per debugar
-        result[groupNameRaw] = classification;
       }
     }
   }
