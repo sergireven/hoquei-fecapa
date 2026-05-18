@@ -1446,7 +1446,40 @@ async function mergejokIntoSidgad(categories) {
   }
 
   const nIdcMatched = Object.values(categories).flat().filter(c => idcToSidgad[c.id]).length;
-  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad, ${nIdcMatched} per idc directe`);
+
+  // Prioritat 3: Matching per NOMS de Copa (quan els idcs de Sidgad són incorrectes)
+  // Mapa manual de noms Copa → competicions jok.cat
+  const copaNameMap = {
+    // Copa Barcelona
+    'BCN.*OR.*COPA.*1': ['4475'],
+    'BCN.*OR.*COPA.*2': ['4476'],
+    'BCN.*OR.*COPA.*3': ['4477'],
+    'BCN.*PLATA.*COPA.*4': ['4478'],
+    'BCN.*PLATA.*COPA.*5': ['4479'],
+    'BCN.*PLATA.*COPA.*6': ['4480'],
+  };
+
+  // Aplicar matching per noms per a Copa
+  let nCopaNameMatched = 0;
+  for (const [pattern, jokIds] of Object.entries(copaNameMap)) {
+    const regex = new RegExp(pattern, 'i');
+    for (const cat of Object.values(categories)) {
+      for (const jokComp of cat) {
+        if (!idcToSidgad[jokComp.id] && regex.test(jokComp.name)) {
+          // Buscar el Sidgad parent pels matching
+          for (const [scId, sc] of Object.entries(sidgadComps)) {
+            if (sc.name && /copa.*(barcelona|federació)/i.test(sc.name)) {
+              jokComp.sidgadParentId = scId;
+              nCopaNameMatched++;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad, ${nIdcMatched} per idc directe${nCopaNameMatched > 0 ? `, ${nCopaNameMatched} per Copa name matching` : ''}`);
   return { categories, sidgadParentMap, sidgadChildren };
 }
 
