@@ -1247,6 +1247,17 @@ async function mergejokIntoSidgad(categories) {
   // Track parent-child relationships: sidgad → [jok.cat children]
   const sidgadChildren = {}; // sidgadId → { sidgadComp, jokChildren: [jokCompIds] }
 
+  // Mapa invers idc → { sidgadCompId, classificationByGroup }
+  // Permet trobar directament la classificació d'un grup sidgad pel seu idc,
+  // que coincideix amb l'ID de competició de jok.cat (p.ex. idc=4478 ↔ jok 4478)
+  const idcToSidgad = {}; // idc → { compId, classificationByGroup }
+  for (const [scId, sc] of Object.entries(sidgadComps)) {
+    if (!sc.classificationByGroup) continue;
+    for (const idc of Object.keys(sc.classificationByGroup)) {
+      idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: sc.classificationByGroup };
+    }
+  }
+
   // Merge: for each sidgad competition, find all matching jok.cat competitions
   let mergedCount = 0;
   for (const [scId, sc] of Object.entries(sidgadComps)) {
@@ -1374,8 +1385,16 @@ async function mergejokIntoSidgad(categories) {
         jokComp.sidgadId       = virtualId;   // e.g. "4452-4"  (null if no virtual)
         sidgadParentMap[jokComp.id] = { sidgadId, sidgadName: sidgadComp.name, virtualId };
 
-        // Use sidgad classification if present
-        if (sidgadComp.classification && sidgadComp.classification.length > 0) {
+        // Classificació: prioritat 1 — grup exacte per idc (idc = ID de competició jok.cat)
+        const idcMatch = idcToSidgad[jokComp.id];
+        if (idcMatch) {
+          const groupClass = idcMatch.classificationByGroup[jokComp.id];
+          if (groupClass && groupClass.length > 0) {
+            jokComp.classification = groupClass;
+            jokComp.sidgadParentId = idcMatch.compId;
+          }
+        // Prioritat 2 — classificació global del pare sidgad (competicions d'un sol grup)
+        } else if (sidgadComp.classification && sidgadComp.classification.length > 0) {
           jokComp.classification = sidgadComp.classification;
         }
         // Merge sidgad calendar if present
@@ -1386,7 +1405,8 @@ async function mergejokIntoSidgad(categories) {
     }
   }
 
-  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad`);
+  const nIdcMatched = Object.values(categories).flat().filter(c => idcToSidgad[c.id]).length;
+  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad, ${nIdcMatched} per idc directe`);
   return { categories, sidgadParentMap, sidgadChildren };
 }
 
