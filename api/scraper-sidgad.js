@@ -309,14 +309,18 @@ async function main() {
         // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
         const clickClassTab = async () => {
           const found = await page.evaluate(() => {
-            const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab']")];
+            const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab'], [class*='nav']")];
+            // Busca: "CLASSIFICACIÓ", "CLASSIFICACIONS", "Classificació", "classificacions", etc.
             const tab = allClickable.find(el => {
-              const txt = el.textContent.trim();
+              const txt = el.textContent.trim().toUpperCase();
               const onclick = el.getAttribute("onclick") || "";
               const href = el.getAttribute("href") || "";
-              return /class?ificaci/i.test(txt) || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
+              return txt.includes("CLASSIFICACI") || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
             });
-            if (tab) { tab.click(); return true; }
+            if (tab) {
+              tab.click();
+              return true;
+            }
             return false;
           });
           if (!found) return null;
@@ -404,7 +408,13 @@ async function main() {
 
               // Obté la classificació del grup
               const classHtml = await clickClassTab();
-              if (!classHtml) continue;
+              if (!classHtml) {
+                if (!debugGroupLogged) {
+                  console.log(`\n--- DEBUG: No es pot obtenir classificació per comp ${compId} idc=${idc} ---`);
+                  debugGroupLogged = true;
+                }
+                continue;
+              }
               const classification = parseClassificationSidgad(classHtml);
               if (classification.length > 0) {
                 compData[compId].classificationByGroup[idc] = classification;
@@ -415,7 +425,9 @@ async function main() {
                   debugClassLogged = true;
                 }
               }
-            } catch { /* continua */ }
+            } catch (e) {
+              console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
+            }
           }
         } else {
           // Competició d'un sol grup: comportament original
