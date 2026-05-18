@@ -1125,51 +1125,170 @@ async function mergejokIntoSidgad(categories) {
   }
 
   // Build index of jok.cat competitions by normalized name
+  // Domain-specific token aliases: expands abbreviations to their full form
+  // before matching so jok.cat sigles align with sidgad full names.
+  const TOKEN_ALIASES = {
+    FCP: "FEDERACIO",   // Federació Catalana de Patinatge
+    BCN: "BARCELONA",
+    TAR: "TARRAGONA",
+    GIR: "GIRONA",
+    LLE: "LLEIDA",
+    CAT: "CATALUNYA",
+  };
+
   const normCompName = name => (name || "").toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    // Convert ordinal suffixes to words so "1ª CATALANA" matches "PRIMERA CATALANA" in sidgad
+    .replace(/1\xAA/g, "PRIMERA").replace(/2\xAA/g, "SEGONA").replace(/3\xAA/g, "TERCERA")
     .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim()
     .replace(/\b(2025|2026|25|26|TEMP|SEASON|SAISON)\b/g, "").replace(/\s+/g, " ").trim();
 
-  const jokIndex = {}; // normName → jok comp
+  const expandTokens = norm => norm.split(/\s+/)
+    .map(t => TOKEN_ALIASES[t] || t)
+    .join(" ");
+
+  // Extract the qualifier token that immediately follows "COPA" in the name.
+  // This is the strongest discriminant when multiple sidgad Copes exist.
+  const copaQualifier = norm => {
+    const m = norm.match(/\bCOPA\s+(\S+)/);
+    // Exclude generic/structural words that don't identify the organiser
+    const generic = new Set(["BCN", "BARCELONA", "PLATA", "OR", "BRONZE",
+                              "BENJAMIN", "BENJAMI", "PREBENJAMI", "INFANTIL",
+                              "ALEVI", "JUNIOR", "JUVENIL", "FASE", "2"]);
+    if (!m) return null;
+    const q = TOKEN_ALIASES[m[1]] || m[1];
+    return generic.has(q) ? null : q;
+  };
+
+  // Extract key terms (category, region, division) for flexible matching
+  const extractKeywords = name => {
+    const raw  = normCompName(name);
+    const norm = expandTokens(raw);   // aliases expanded for matching
+    return {
+      full: raw,
+      tokens: norm.split(/\s+/),
+      category: /\bBENJAMI/.test(norm)    ? "BENJAMIN"
+             : /PREBENJAMI/.test(norm)   ? "PREBENJAMI"
+             : /JUNIOR/.test(norm)       ? "JUNIOR"
+             : /JUVENIL/.test(norm)      ? "JUVENIL"
+             : /ALEVI/.test(norm)        ? "ALEVI"
+             : /INFANTIL/.test(norm)     ? "INFANTIL"
+             : /\bMINIFEM\b/.test(norm)  ? "MINIFEM"
+             : /\bFEM\s*19\b/.test(norm) ? "FEM19"
+             : /\bFEM\s*17\b/.test(norm) ? "FEM17"
+             : /\bFEM\s*15\b/.test(norm) ? "FEM15"
+             : /\bFEM\s*13\b/.test(norm) ? "FEM13"
+             : /\bFEM\s*11\b/.test(norm) ? "FEM11"
+             : /\bFEM\b/.test(norm)      ? "FEM"
+             : /\bMASTER\b/.test(norm)   ? "MASTER"
+             : /\bVETERANS\b/.test(norm) ? "VETERANS"
+             : null,
+      region: /BARCELONA/.test(norm)  ? "BARCELONA"
+            : /TARRAGONA/.test(norm)  ? "TARRAGONA"
+            : /GIRONA/.test(norm)     ? "GIRONA"
+            : /LLEIDA/.test(norm)     ? "LLEIDA"
+            : null,
+      division: /\bOR\b/.test(norm)   ? "OR"
+              : /PLATA/.test(norm)    ? "PLATA"
+              : /BRONZE/.test(norm)   ? "BRONZE"
+              : /INICIACIO/.test(norm)? "INICIACIO"
+              : null,
+      isCopa:        /COPA/.test(norm),
+      is3x3:         /3X3/.test(norm),
+      isPreferent:   /\bPREFERENT\b/.test(norm),
+      copaQualifier: copaQualifier(norm),
+    };
+  };
+
+  // Score how well a sidgad comp matches a jok.cat comp (higher = better).
+  // Returns -1 if incompatible (hard mismatch), otherwise ≥ 0.
+  const matchScore = (sidgadKeywords, jokKeywords) => {
+    // Hard exclusions
+    if (sidgadKeywords.category !== jokKeywords.category) return -1;
+    if (sidgadKeywords.region && jokKeywords.region && sidgadKeywords.region !== jokKeywords.region) return -1;
+    if (sidgadKeywords.division && jokKeywords.division && sidgadKeywords.division !== jokKeywords.division) return -1;
+    if (sidgadKeywords.is3x3 !== jokKeywords.is3x3) return -1;
+    if (sidgadKeywords.isPreferent !== jokKeywords.isPreferent) return -1;
+
+    let score = 0;
+
+    // Copa organiser qualifier: strongest discriminant between competing Copes
+    if (jokKeywords.copaQualifier && sidgadKeywords.copaQualifier) {
+      if (jokKeywords.copaQualifier === sidgadKeywords.copaQualifier) score += 5;
+      else score -= 5;
+    }
+
+    // General Copa alignment
+    if (jokKeywords.isCopa && sidgadKeywords.isCopa)   score += 3;
+    if (jokKeywords.isCopa && !sidgadKeywords.isCopa)  score -= 2;
+
+    // Region match bonus
+    if (sidgadKeywords.region && jokKeywords.region && sidgadKeywords.region === jokKeywords.region) score += 2;
+
+    // Division match bonus
+    if (sidgadKeywords.division && jokKeywords.division && sidgadKeywords.division === jokKeywords.division) score += 2;
+
+    // Token overlap (excluding short tokens)
+    const sidgadSig = sidgadKeywords.tokens.filter(t => t.length > 2);
+    const jokSig    = jokKeywords.tokens.filter(t => t.length > 2);
+    const overlap   = sidgadSig.filter(t => jokSig.includes(t)).length;
+    score += overlap;
+
+    return overlap >= 1 ? score : -1;
+  };
+
+  const jokComps = []; // Store all jok.cat comps for flexible lookup
   for (const comps of Object.values(categories)) {
     for (const comp of comps) {
-      const key = normCompName(comp.name || "");
-      if (key && !jokIndex[key]) jokIndex[key] = comp;
+      jokComps.push({ comp, keywords: extractKeywords(comp.name || "") });
     }
   }
 
-  // Merge: for each sidgad competition, fill in jok.cat data where sidgad is missing
+  // Track parent-child relationships: sidgad → [jok.cat children]
+  const sidgadChildren = {}; // sidgadId → { sidgadComp, jokChildren: [jokCompIds] }
+
+  // Merge: for each sidgad competition, find all matching jok.cat competitions
   let mergedCount = 0;
-  for (const sc of Object.values(sidgadComps)) {
-    const key = normCompName(sc.name || "");
-    const jokComp = jokIndex[key];
-    if (!jokComp) continue;
+  for (const [scId, sc] of Object.entries(sidgadComps)) {
+    const scKeywords = extractKeywords(sc.name || "");
+
+    // Find ALL jok.cat matches with scores, pick best first
+    const matchingJok = jokComps
+      .map(jc => ({ jc, score: matchScore(scKeywords, jc.keywords) }))
+      .filter(({ score }) => score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ jc }) => jc);
+
+    if (matchingJok.length === 0) continue;
+
+    // Use the best-scoring match for merging data into sidgad
+    const primaryJokComp = matchingJok[0].comp;
 
     // 1. Classification: use sidgad if present, else use jok.cat
     if (!sc.classification || sc.classification.length === 0) {
-      if (jokComp.classification && jokComp.classification.length > 0) {
-        sc.classification = jokComp.classification;
+      if (primaryJokComp.classification && primaryJokComp.classification.length > 0) {
+        sc.classification = primaryJokComp.classification;
       }
     }
 
     // 2. Calendar: merge best of both
     if (!sc.matches || sc.matches.length === 0) {
-      if (jokComp.calendar && jokComp.calendar.length > 0) {
-        sc.matches = jokComp.calendar;
+      if (primaryJokComp.calendar && primaryJokComp.calendar.length > 0) {
+        sc.matches = primaryJokComp.calendar;
       }
-    } else if (jokComp.calendar && jokComp.calendar.length > sc.matches.length) {
+    } else if (primaryJokComp.calendar && primaryJokComp.calendar.length > sc.matches.length) {
       // If jok.cat has more matches, supplement sidgad with missing ones
       const sidgadKeys = new Set(sc.matches.map(m => `${m.jornada}|${m.home}|${m.away}`));
-      const newMatches = jokComp.calendar.filter(m =>
+      const newMatches = primaryJokComp.calendar.filter(m =>
         !sidgadKeys.has(`${m.jornada}|${m.home}|${m.away}`)
       );
       sc.matches = sc.matches.concat(newMatches);
     }
 
     // 3. Merge acta links from jok.cat into sidgad calendar
-    if (jokComp.calendar) {
+    if (primaryJokComp.calendar) {
       const actaMap = {};
-      for (const m of jokComp.calendar) {
+      for (const m of primaryJokComp.calendar) {
         if (!m.actaId) continue;
         const key = `${m.jornada}|${m.home}|${m.away}`;
         actaMap[key] = m.actaId;
@@ -1182,20 +1301,84 @@ async function mergejokIntoSidgad(categories) {
       }
     }
 
+    // Collect children for virtual ID assignment (done after all parents processed)
+    sidgadChildren[scId] = {
+      sidgadId: scId,
+      sidgadName: sc.name,
+      jokChildren: matchingJok.map(jc => ({ jokId: jc.comp.id, jokName: jc.comp.name }))
+    };
+
     mergedCount++;
   }
 
-  // Update categories with merged sidgad data
+  // ── Assign virtual IDs to jok.cat children ───────────────────
+  // Virtual ID format: "{sidgadId}-{num}" where num is extracted from the jok.cat name.
+  // If two siblings share the same num, add division prefix: "{sidgadId}-{div}-{num}".
+  // Fallback for no number: "{sidgadId}-{jokId}".
+  const trailingNum = name => {
+    const m = normCompName(name).match(/\b(\d+)\s*$/);
+    return m ? parseInt(m[1]) : null;
+  };
+
+  for (const sc of Object.values(sidgadChildren)) {
+    const children = sc.jokChildren;
+    if (children.length === 0) continue;
+
+    // Try plain "{sidId}-{num}" — check for collisions within this parent
+    const numCounts = {};
+    for (const ch of children) {
+      const n = trailingNum(ch.jokName);
+      if (n != null) numCounts[n] = (numCounts[n] || 0) + 1;
+    }
+
+    for (const ch of children) {
+      const num = trailingNum(ch.jokName);
+      if (num == null) {
+        ch.virtualId = `${sc.sidgadId}-${ch.jokId}`;
+      } else if (numCounts[num] === 1) {
+        ch.virtualId = `${sc.sidgadId}-${num}`;
+      } else {
+        // Collision: include division from jok.cat name
+        const div = extractKeywords(ch.jokName).division || ch.jokId;
+        ch.virtualId = `${sc.sidgadId}-${div}-${num}`;
+      }
+    }
+  }
+
+  // Build jokId → virtualId lookup
+  const jokVirtualIdMap = {}; // jokId → virtualId
+  for (const sc of Object.values(sidgadChildren)) {
+    for (const ch of sc.jokChildren) {
+      if (ch.virtualId) jokVirtualIdMap[ch.jokId] = ch.virtualId;
+    }
+  }
+
+  // Update categories with merged sidgad data + virtual IDs
+  const sidgadParentMap = {}; // jokId → { sidgadId, sidgadName, virtualId }
   for (const comps of Object.values(categories)) {
     for (const jokComp of comps) {
-      const key = normCompName(jokComp.name || "");
-      const sidgadComp = Object.values(sidgadComps).find(s => normCompName(s.name) === key);
-      if (sidgadComp) {
+      const jokKeywords = extractKeywords(jokComp.name || "");
+
+      // Find best-scoring sidgad parent
+      const best = Object.entries(sidgadComps)
+        .map(([sid, s]) => ({ sid, s, score: matchScore(extractKeywords(s.name || ""), jokKeywords) }))
+        .filter(({ score }) => score >= 0)
+        .sort((a, b) => b.score - a.score)[0];
+
+      if (best) {
+        const { sid: sidgadId, s: sidgadComp } = best;
+        const virtualId = jokVirtualIdMap[jokComp.id] || null;
+
+        // Register parent + virtual ID on the jok.cat comp
+        jokComp.sidgadParentId = sidgadId;
+        jokComp.sidgadId       = virtualId;   // e.g. "4452-4"  (null if no virtual)
+        sidgadParentMap[jokComp.id] = { sidgadId, sidgadName: sidgadComp.name, virtualId };
+
         // Use sidgad classification if present
         if (sidgadComp.classification && sidgadComp.classification.length > 0) {
           jokComp.classification = sidgadComp.classification;
         }
-        // Merge sidgad matches with acta links from jok.cat
+        // Merge sidgad calendar if present
         if (sidgadComp.matches && sidgadComp.matches.length > 0) {
           jokComp.calendar = sidgadComp.matches;
         }
@@ -1203,8 +1386,8 @@ async function mergejokIntoSidgad(categories) {
     }
   }
 
-  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades`);
-  return categories;
+  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad`);
+  return { categories, sidgadParentMap, sidgadChildren };
 }
 
 // ── Main ──────────────────────────────────────────────────────
@@ -1369,11 +1552,13 @@ async function main() {
   // Enriquiment addicional: equips per jugador + fusió sidgad (primari)
   buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
   await mergeSidgadData(output.jugadors);
-  await mergejokIntoSidgad(output.categories);  // Sidgad as primary, jok.cat fallback
+  const { sidgadParentMap, sidgadChildren } = await mergejokIntoSidgad(output.categories);
 
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
   outputMain.actesIndex = actesIndex;
+  outputMain.sidgadParentMap = sidgadParentMap;   // jokId → { id, name } of sidgad parent
+  outputMain.sidgadChildren  = sidgadChildren;    // sidgadId → { sidgadName, jokChildren[] }
   outputMain.lastUpdate = new Date().toISOString();
 
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
