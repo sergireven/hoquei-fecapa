@@ -343,6 +343,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T20:12:11.086Z"
   },
+  "7827": {
+    "sidgadId": "7827",
+    "name": "VETU CODESAL GUARDIA ALBERT",
+    "birthDate": "20/01/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:46.370Z"
+  },
   "7830": {
     "sidgadId": "7830",
     "name": "TERC CAMPAS PAKELLI DAVID",
@@ -374,6 +382,14 @@
     "registeredTeam": "CPV",
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:40.968Z"
+  },
+  "7845": {
+    "sidgadId": "7845",
+    "name": "VETU LAHOZ PELLICER ROGER",
+    "birthDate": "05/01/1984",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:46.519Z"
   },
   "7851": {
     "sidgadId": "7851",
@@ -559,6 +575,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:41.354Z"
   },
+  "7983": {
+    "sidgadId": "7983",
+    "name": "VETU TAMAYO SARRION XAVIER",
+    "birthDate": "17/02/1984",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:46.698Z"
+  },
   "7990": {
     "sidgadId": "7990",
     "name": "TERC CODINA SOLEY ROGER",
@@ -622,6 +646,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T20:12:11.465Z"
+  },
+  "8055": {
+    "sidgadId": "8055",
+    "name": "VETU MORELL SAÑE ORIOL",
+    "birthDate": "02/05/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:46.851Z"
   },
   "8057": {
     "sidgadId": "8057",
@@ -990,6 +1022,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:12:36.518Z"
+  },
+  "8361": {
+    "sidgadId": "8361",
+    "name": "VETU SÁEZ HERRERO JORDI",
+    "birthDate": "06/11/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:47.010Z"
   },
   "8397": {
     "sidgadId": "8397",
@@ -1639,6 +1679,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:31.473Z"
   },
+  "8928": {
+    "sidgadId": "8928",
+    "name": "VETU FERNANDEZ RODRIGUEZ ALBERTO",
+    "birthDate": "23/02/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:47.191Z"
+  },
   "8954": {
     "sidgadId": "8954",
     "name": "DONCEL ELIAS JOAN",
@@ -1654,6 +1702,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:31.597Z"
+  },
+  "8957": {
+    "sidgadId": "8957",
+    "name": "VETU NACHE DACHS LLUIS",
+    "birthDate": "02/03/1987",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:47.345Z"
   },
   "8958": {
     "sidgadId": "8958",
@@ -1743,6 +1799,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:27.848Z"
   },
+  "9001": {
+    "sidgadId": "9001",
+    "name": "VETU GOMEZ GARCIA SERGIO",
+    "birthDate": "13/05/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:47.509Z"
+  },
   "9005": {
     "sidgadId": "9005",
     "name": "CONSCIENCIA AFONSO BRUNO FILIPE",
@@ -1750,6 +1814,38 @@
     "registeredTeam": "SAF",
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:43.515Z"
+  },
+  "9006": {
+    "sidgadId": "9006",
+    "name": "VETU REDONDO FONTRODONA EDUARD",
+    "birthDate": "10/07/1988",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:47.679Z"
+  },
+  "9008": {
+    "sidgadId": "9008",
+    "name": "VETU LEON LOPEZ RUBEN",
+    "birthDate": "02/04/1987",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:47.844Z"
+  },
+  "9010": {
+    "sidgadId": "9010",
+    "name": "VETU ECIJA MARIN DAVID",
+    "birthDate": "11/09/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:47.994Z"
+  },
+  "9011": {
+    "sidgadId": "9011",
+    "name": "VETU FONTRODONA OLMO ALBERT",
+    "birthDate": "01/01/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.142Z"
   },
   "9013": {
     "sidgadId": "9013",
@@ -1846,6 +1942,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:27.947Z"
+  },
+  "9052": {
+    "sidgadId": "9052",
+    "name": "VETU GASSÓ VIVES MARC",
+    "birthDate": "30/12/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.324Z"
   },
   "9059": {
     "sidgadId": "9059",
@@ -2351,6 +2455,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:44.396Z"
   },
+  "9492": {
+    "sidgadId": "9492",
+    "name": "VETU COLOMER ARAGON JOAN FRANCESC",
+    "birthDate": "06/02/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.471Z"
+  },
   "9493": {
     "sidgadId": "9493",
     "name": "TERC ESCOLA SOLES XAVIER",
@@ -2382,6 +2494,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T20:08:55.719Z"
+  },
+  "9534": {
+    "sidgadId": "9534",
+    "name": "VETU MOYA SALAZAR CARLOS",
+    "birthDate": "31/10/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.619Z"
   },
   "9535": {
     "sidgadId": "9535",
@@ -2463,6 +2583,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:44.688Z"
   },
+  "9576": {
+    "sidgadId": "9576",
+    "name": "VETU ROMEU COSTA SERGI",
+    "birthDate": "02/04/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.780Z"
+  },
   "9577": {
     "sidgadId": "9577",
     "name": "EXPOSITO ROVIRA JORDI",
@@ -2478,6 +2606,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:28.663Z"
+  },
+  "9582": {
+    "sidgadId": "9582",
+    "name": "VETU ORTOLL RIUS FERRAN",
+    "birthDate": "24/09/1988",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:48.927Z"
+  },
+  "9586": {
+    "sidgadId": "9586",
+    "name": "VETU CALERO CASTRO JUAN MIGUEL",
+    "birthDate": "07/06/1972",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:49.094Z"
   },
   "9587": {
     "sidgadId": "9587",
@@ -2767,6 +2911,22 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T08:31:59.217Z"
   },
+  "9769": {
+    "sidgadId": "9769",
+    "name": "VETU BEL FRANCISCO PAU",
+    "birthDate": "13/12/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:49.257Z"
+  },
+  "9774": {
+    "sidgadId": "9774",
+    "name": "VETU RABADÀ FARFAN DE LOS GODOS MARC",
+    "birthDate": "23/01/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:49.405Z"
+  },
   "9775": {
     "sidgadId": "9775",
     "name": "TERC BRICIO VÍLCHEZ CARLOS",
@@ -2782,6 +2942,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-14T13:19:45.499Z"
+  },
+  "9803": {
+    "sidgadId": "9803",
+    "name": "VETB RIBAS VALLS ENRIC",
+    "birthDate": "01/02/1974",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:49.553Z"
   },
   "9808": {
     "sidgadId": "9808",
@@ -2846,6 +3014,22 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-16T20:08:55.926Z"
+  },
+  "9847": {
+    "sidgadId": "9847",
+    "name": "VETU LLUCH NUÑEZ JORDI",
+    "birthDate": "03/03/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:49.728Z"
+  },
+  "9856": {
+    "sidgadId": "9856",
+    "name": "VETU PELACH SAGET BERNAT",
+    "birthDate": "28/10/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:49.885Z"
   },
   "9862": {
     "sidgadId": "9862",
@@ -3047,6 +3231,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:32.825Z"
   },
+  "10063": {
+    "sidgadId": "10063",
+    "name": "VETB ORQUIN MONTILLA ISAAC",
+    "birthDate": "01/01/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.045Z"
+  },
   "10065": {
     "sidgadId": "10065",
     "name": "VETB MILLAN MURILLO PAU",
@@ -3175,6 +3367,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:12.553Z"
   },
+  "10160": {
+    "sidgadId": "10160",
+    "name": "VETU VIDAL GUITART JORDI",
+    "birthDate": "13/12/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.193Z"
+  },
   "10168": {
     "sidgadId": "10168",
     "name": "PRIC FONT VILASIS NIL",
@@ -3239,6 +3439,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:33.634Z"
   },
+  "10198": {
+    "sidgadId": "10198",
+    "name": "VETU CASADEVALL MUNS ARNALD",
+    "birthDate": "07/04/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.343Z"
+  },
   "10200": {
     "sidgadId": "10200",
     "name": "TERC NESPLE TORREGUITART ANDREU",
@@ -3246,6 +3454,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T20:08:56.456Z"
+  },
+  "10202": {
+    "sidgadId": "10202",
+    "name": "VETU PRAT BAULENAS JAUME",
+    "birthDate": "17/10/1989",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:50.495Z"
   },
   "10212": {
     "sidgadId": "10212",
@@ -3959,6 +4175,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-16T11:34:34.354Z"
   },
+  "10760": {
+    "sidgadId": "10760",
+    "name": "VETU ALVAREZ GILABERT JOSEP MARIA",
+    "birthDate": "14/10/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.648Z"
+  },
   "10765": {
     "sidgadId": "10765",
     "name": "PRIC NECCHI GARCIA EMANUEL FRANCISCO",
@@ -4006,6 +4230,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T10:57:46.498Z"
+  },
+  "10828": {
+    "sidgadId": "10828",
+    "name": "VETU FAJAS GARRIGA SERGI",
+    "birthDate": "15/04/1994",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.798Z"
   },
   "10832": {
     "sidgadId": "10832",
@@ -4175,6 +4407,30 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:12:40.844Z"
   },
+  "10996": {
+    "sidgadId": "10996",
+    "name": "VETU FAJAS GARRIGA MARC",
+    "birthDate": "07/05/1989",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:50.950Z"
+  },
+  "11004": {
+    "sidgadId": "11004",
+    "name": "VETU SANCHEZ GUILLEN MIGUEL",
+    "birthDate": "08/10/1989",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.104Z"
+  },
+  "11006": {
+    "sidgadId": "11006",
+    "name": "VETU VALLS FERRUSOLA ROGER",
+    "birthDate": "20/11/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.261Z"
+  },
   "11017": {
     "sidgadId": "11017",
     "name": "0 ARXE SANTANACH AINA",
@@ -4302,6 +4558,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:57:47.853Z"
+  },
+  "11150": {
+    "sidgadId": "11150",
+    "name": "VETU AGUILAR TOMAS KILIAN",
+    "birthDate": "28/03/1992",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.407Z"
   },
   "11156": {
     "sidgadId": "11156",
@@ -4463,6 +4727,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:42:00.437Z"
   },
+  "11317": {
+    "sidgadId": "11317",
+    "name": "VETA GASPAR ELOY",
+    "birthDate": "07/09/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.561Z"
+  },
   "11323": {
     "sidgadId": "11323",
     "name": "LARREA DEL VILAR ALBERT",
@@ -4607,6 +4879,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:35.298Z"
   },
+  "11497": {
+    "sidgadId": "11497",
+    "name": "VETU PERARNAU RIERA ROGER",
+    "birthDate": "28/03/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.714Z"
+  },
   "11498": {
     "sidgadId": "11498",
     "name": "CRESPO OLIVA VICTOR",
@@ -4727,6 +5007,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:47.132Z"
   },
+  "11632": {
+    "sidgadId": "11632",
+    "name": "VETU ORTIZ RADIO SERGI",
+    "birthDate": "05/06/1992",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:51.863Z"
+  },
   "11635": {
     "sidgadId": "11635",
     "name": "NACC GRANCHA GIMENEZ PAULA",
@@ -4846,6 +5134,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T10:57:49.697Z"
+  },
+  "11736": {
+    "sidgadId": "11736",
+    "name": "VETU BOLUDA VALLCORBA XAVIER",
+    "birthDate": "27/10/1991",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.049Z"
   },
   "11740": {
     "sidgadId": "11740",
@@ -5719,6 +6015,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T11:12:43.680Z"
   },
+  "12549": {
+    "sidgadId": "12549",
+    "name": "VETU TOGORES CURTIELLAS ORIOL",
+    "birthDate": "27/02/1993",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.216Z"
+  },
   "12593": {
     "sidgadId": "12593",
     "name": "PRIC NAVARRO CABRE MARTI",
@@ -6023,6 +6327,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:03.872Z"
   },
+  "12968": {
+    "sidgadId": "12968",
+    "name": "VETU GONZALEZ SANDOVAL IVAN",
+    "birthDate": "14/07/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.378Z"
+  },
+  "13005": {
+    "sidgadId": "13005",
+    "name": "VETU SERRA RAMIS JOAQUIM",
+    "birthDate": "12/06/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.528Z"
+  },
   "13006": {
     "sidgadId": "13006",
     "name": "VET GARCÍA MATEO DAVID",
@@ -6046,6 +6366,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:35.181Z"
+  },
+  "13018": {
+    "sidgadId": "13018",
+    "name": "VETU GUTIERREZ QUIÑONES DAVID",
+    "birthDate": "12/07/1985",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:52.692Z"
   },
   "13021": {
     "sidgadId": "13021",
@@ -6327,6 +6655,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:49.464Z"
   },
+  "13169": {
+    "sidgadId": "13169",
+    "name": "VETU GRANÉ CIUDAD MARTI",
+    "birthDate": "20/04/1993",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.845Z"
+  },
   "13170": {
     "sidgadId": "13170",
     "name": "SEGC ROJO PEREZ SERGI",
@@ -6374,6 +6710,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-14T13:50:19.433Z"
+  },
+  "13184": {
+    "sidgadId": "13184",
+    "name": "VETU PI BOSCH ROBERT",
+    "birthDate": "05/11/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:52.993Z"
   },
   "13196": {
     "sidgadId": "13196",
@@ -6430,6 +6774,110 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T20:08:59.856Z"
+  },
+  "13258": {
+    "sidgadId": "13258",
+    "name": "VETB LABORI MARTI DAVID",
+    "birthDate": "12/01/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:53.151Z"
+  },
+  "13260": {
+    "sidgadId": "13260",
+    "name": "VETU ALONSO SEYOS ALBERT",
+    "birthDate": "30/09/1988",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:53.309Z"
+  },
+  "13261": {
+    "sidgadId": "13261",
+    "name": "VETU DOMINGUEZ CARRIÓ MIQUEL",
+    "birthDate": "21/11/1986",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:53.470Z"
+  },
+  "13262": {
+    "sidgadId": "13262",
+    "name": "VETB PUNCERNAU JEREMIAS JORDI",
+    "birthDate": "13/03/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:53.637Z"
+  },
+  "13269": {
+    "sidgadId": "13269",
+    "name": "VETB SAGALES LABORI CARLOS",
+    "birthDate": "31/03/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:53.804Z"
+  },
+  "13270": {
+    "sidgadId": "13270",
+    "name": "VETB CASTELLET LORAN BORJA",
+    "birthDate": "11/01/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:53.954Z"
+  },
+  "13272": {
+    "sidgadId": "13272",
+    "name": "VETB LABORI MARTI VICTOR",
+    "birthDate": "29/09/1989",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.101Z"
+  },
+  "13273": {
+    "sidgadId": "13273",
+    "name": "VETB PUNCERNAU JEREMIAS ALBERT",
+    "birthDate": "02/08/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.266Z"
+  },
+  "13274": {
+    "sidgadId": "13274",
+    "name": "VETB FREIXES FELIP CARLES",
+    "birthDate": "22/05/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.413Z"
+  },
+  "13275": {
+    "sidgadId": "13275",
+    "name": "VETB ARROYO PIQUET CARLES",
+    "birthDate": "08/06/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.580Z"
+  },
+  "13276": {
+    "sidgadId": "13276",
+    "name": "VETB BOADAS BAYER DIDAC",
+    "birthDate": "27/11/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.736Z"
+  },
+  "13277": {
+    "sidgadId": "13277",
+    "name": "VETB GARCIAPONS CAPELL TONI",
+    "birthDate": "03/03/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:54.883Z"
+  },
+  "13279": {
+    "sidgadId": "13279",
+    "name": "VETB LABORI BAU ALEJANDRO",
+    "birthDate": "19/04/1980",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:55.037Z"
   },
   "13298": {
     "sidgadId": "13298",
@@ -6527,6 +6975,30 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:13.857Z"
   },
+  "13395": {
+    "sidgadId": "13395",
+    "name": "VETU SABORIT SANZ SERGI",
+    "birthDate": "08/10/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:55.195Z"
+  },
+  "13396": {
+    "sidgadId": "13396",
+    "name": "VETU GONZALES DE JESUS ALEJANDRO",
+    "birthDate": "16/11/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:55.347Z"
+  },
+  "13397": {
+    "sidgadId": "13397",
+    "name": "VETU CAÑIS ROBLES DAVID",
+    "birthDate": "20/11/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:55.495Z"
+  },
   "13401": {
     "sidgadId": "13401",
     "name": "TERC RUBIO MANDRI ADRIA",
@@ -6542,6 +7014,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:13.952Z"
+  },
+  "13415": {
+    "sidgadId": "13415",
+    "name": "VETU GAZULLA LAMELAS RUBEN",
+    "birthDate": "11/10/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:55.643Z"
   },
   "13424": {
     "sidgadId": "13424",
@@ -6631,6 +7111,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T07:45:02.688Z"
   },
+  "13482": {
+    "sidgadId": "13482",
+    "name": "VETU GUSTEMS MORRAL ALBERT",
+    "birthDate": "02/03/1984",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:55.790Z"
+  },
   "13492": {
     "sidgadId": "13492",
     "name": "MUNTANE ALSINA MARC",
@@ -6654,6 +7142,14 @@
     "registeredTeam": "NOIA",
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:49.656Z"
+  },
+  "13530": {
+    "sidgadId": "13530",
+    "name": "VETU MARTINEZ GOMEZ JORDI",
+    "birthDate": "14/09/1983",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:55.938Z"
   },
   "13547": {
     "sidgadId": "13547",
@@ -6686,6 +7182,14 @@
     "registeredTeam": "PHSC",
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:49.757Z"
+  },
+  "13572": {
+    "sidgadId": "13572",
+    "name": "VETU VILLENA MANGUES JAIME",
+    "birthDate": "09/03/1990",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.090Z"
   },
   "13579": {
     "sidgadId": "13579",
@@ -6750,6 +7254,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:37.081Z"
+  },
+  "13638": {
+    "sidgadId": "13638",
+    "name": "VETU TIBAU FERNANDEZ FRANCESC",
+    "birthDate": "26/12/1968",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.246Z"
   },
   "13649": {
     "sidgadId": "13649",
@@ -6863,6 +7375,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:12:45.318Z"
   },
+  "13741": {
+    "sidgadId": "13741",
+    "name": "VETU URBANO ICART JORDI",
+    "birthDate": "28/04/1989",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.397Z"
+  },
   "13780": {
     "sidgadId": "13780",
     "name": "SEGC PIBERNAT BATET PERE",
@@ -6895,6 +7415,38 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T06:41:34.472Z"
   },
+  "13789": {
+    "sidgadId": "13789",
+    "name": "VETU PEDREIRA GONZALEZ OSCAR",
+    "birthDate": "18/03/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.553Z"
+  },
+  "13790": {
+    "sidgadId": "13790",
+    "name": "VETU PIFARRE ESTRADA MARC",
+    "birthDate": "15/09/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.704Z"
+  },
+  "13792": {
+    "sidgadId": "13792",
+    "name": "VETU FONT BLANCH ROGER",
+    "birthDate": "05/07/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:56.856Z"
+  },
+  "13794": {
+    "sidgadId": "13794",
+    "name": "VETU JOVER MULERO JOAQUIN",
+    "birthDate": "14/08/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.013Z"
+  },
   "13803": {
     "sidgadId": "13803",
     "name": "VET SALA PASTALLÉ FRANCESC XAVIER",
@@ -6902,6 +7454,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:14.174Z"
+  },
+  "13818": {
+    "sidgadId": "13818",
+    "name": "VETU ROURA LOPEZ MIQUEL",
+    "birthDate": "20/11/1968",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.166Z"
   },
   "13830": {
     "sidgadId": "13830",
@@ -6999,6 +7559,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:36.465Z"
   },
+  "13896": {
+    "sidgadId": "13896",
+    "name": "VETU COLL ARTIGAS JAUME",
+    "birthDate": "06/06/1977",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:57.326Z"
+  },
+  "13897": {
+    "sidgadId": "13897",
+    "name": "VETU DAUMAL SAURI ENRIC",
+    "birthDate": "16/01/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.472Z"
+  },
   "13901": {
     "sidgadId": "13901",
     "name": "VET NARVAEZ HE FRANCISCO",
@@ -7038,6 +7614,14 @@
     "registeredTeam": "CHP",
     "isGK": false,
     "fetchedAt": "2026-05-16T06:41:34.565Z"
+  },
+  "13920": {
+    "sidgadId": "13920",
+    "name": "VETU SANTAULARIA ARBORES ORIOL",
+    "birthDate": "04/07/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.626Z"
   },
   "13934": {
     "sidgadId": "13934",
@@ -7111,6 +7695,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T10:57:56.384Z"
   },
+  "14002": {
+    "sidgadId": "14002",
+    "name": "VETU ROCA LAZARO MARC",
+    "birthDate": "24/09/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.773Z"
+  },
   "14003": {
     "sidgadId": "14003",
     "name": "VETU RUÍZ LINARES OSCAR",
@@ -7175,6 +7767,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-16T11:34:37.686Z"
   },
+  "14055": {
+    "sidgadId": "14055",
+    "name": "VETU RAIGOSO ALVAREZ JUAN CARLOS",
+    "birthDate": "25/05/1969",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:57.926Z"
+  },
   "14056": {
     "sidgadId": "14056",
     "name": "VET+A VILA AMILL ALEX",
@@ -7182,6 +7782,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:15.078Z"
+  },
+  "14057": {
+    "sidgadId": "14057",
+    "name": "VETU DEL MORAL MARTIN JOSE",
+    "birthDate": "04/03/1974",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:58.083Z"
   },
   "14075": {
     "sidgadId": "14075",
@@ -7527,6 +8135,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:50.523Z"
   },
+  "14457": {
+    "sidgadId": "14457",
+    "name": "VETU FEIXAS GUASCH RAIMON",
+    "birthDate": "19/02/1980",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:58.264Z"
+  },
   "14466": {
     "sidgadId": "14466",
     "name": "SEGC PERA MARTIN ROGER",
@@ -7615,6 +8231,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T19:34:23.101Z"
   },
+  "14562": {
+    "sidgadId": "14562",
+    "name": "VETU VILA LIZANDRA SANTIAGO",
+    "birthDate": "25/07/1976",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:58.416Z"
+  },
   "14576": {
     "sidgadId": "14576",
     "name": "PRIC FERRES GARRIGA SARA",
@@ -7646,6 +8270,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:37.988Z"
+  },
+  "14619": {
+    "sidgadId": "14619",
+    "name": "VETU VIVES RUIZ LLUIS",
+    "birthDate": "06/03/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:58.589Z"
   },
   "14623": {
     "sidgadId": "14623",
@@ -7903,6 +8535,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-16T11:34:38.376Z"
   },
+  "14913": {
+    "sidgadId": "14913",
+    "name": "VETU MARTIN ESTEBAN ENRIQUE",
+    "birthDate": "09/09/1972",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:29:58.753Z"
+  },
   "14922": {
     "sidgadId": "14922",
     "name": "PRIC GALLARDO PLANAS GERARD",
@@ -7983,6 +8623,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T20:09:01.287Z"
   },
+  "14990": {
+    "sidgadId": "14990",
+    "name": "VETU PIERA  CATOT DAVID",
+    "birthDate": "24/04/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:58.911Z"
+  },
   "15002": {
     "sidgadId": "15002",
     "name": "TERC2 OLIANA CASTILLO NÖEL",
@@ -8006,6 +8654,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:57:59.260Z"
+  },
+  "15035": {
+    "sidgadId": "15035",
+    "name": "VETU SELLARES PUIG RICARD",
+    "birthDate": "01/01/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.078Z"
   },
   "15036": {
     "sidgadId": "15036",
@@ -8198,6 +8854,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T20:12:16.078Z"
+  },
+  "15354": {
+    "sidgadId": "15354",
+    "name": "VETB GARCÍA PIERNATOZZI JAVIER",
+    "birthDate": "04/06/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.227Z"
   },
   "15364": {
     "sidgadId": "15364",
@@ -8463,6 +9127,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:07.219Z"
   },
+  "15538": {
+    "sidgadId": "15538",
+    "name": "MARTINEZ MARTINEZ ALVARO",
+    "birthDate": "04/06/1979",
+    "registeredTeam": "CPV",
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.372Z"
+  },
   "15541": {
     "sidgadId": "15541",
     "name": "SEGC GONZÁLEZ VIZCAINO FRAN",
@@ -8495,6 +9167,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T10:58:00.066Z"
   },
+  "15586": {
+    "sidgadId": "15586",
+    "name": "VETU RUIZ SANCHEZ XAVI",
+    "birthDate": "29/08/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.535Z"
+  },
   "15588": {
     "sidgadId": "15588",
     "name": "SEGC GIBERT POCH GERARD",
@@ -8510,6 +9190,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T20:12:16.172Z"
+  },
+  "15624": {
+    "sidgadId": "15624",
+    "name": "VETU ESQUIUS CARRERAS EDUARD",
+    "birthDate": "26/07/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.683Z"
   },
   "15651": {
     "sidgadId": "15651",
@@ -8598,6 +9286,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:58:00.415Z"
+  },
+  "15757": {
+    "sidgadId": "15757",
+    "name": "VETU VILCHEZ ROMANO MARIUS",
+    "birthDate": "16/06/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.833Z"
   },
   "15818": {
     "sidgadId": "15818",
@@ -8719,6 +9415,38 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:15.973Z"
   },
+  "16005": {
+    "sidgadId": "16005",
+    "name": "VETU TURON BARRABES JOAQUIM",
+    "birthDate": "25/01/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:29:59.991Z"
+  },
+  "16051": {
+    "sidgadId": "16051",
+    "name": "VETU PORTAS GRIMAL JOSEP",
+    "birthDate": "23/10/1972",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.145Z"
+  },
+  "16060": {
+    "sidgadId": "16060",
+    "name": "VETU MUNSO TORRES JORDI",
+    "birthDate": "10/08/1970",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.300Z"
+  },
+  "16067": {
+    "sidgadId": "16067",
+    "name": "VETU AYATS PRESAS JOAN",
+    "birthDate": "18/09/1964",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.456Z"
+  },
   "16070": {
     "sidgadId": "16070",
     "name": "SEGCU VERDURA BRUGAROLA JANA",
@@ -8775,6 +9503,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:07.834Z"
   },
+  "16240": {
+    "sidgadId": "16240",
+    "name": "VETU SANCHEZ MONTESINOS ALBERT",
+    "birthDate": "07/12/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.613Z"
+  },
   "16241": {
     "sidgadId": "16241",
     "name": "OKL SITJÀ MORETA LLUC",
@@ -8798,6 +9534,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T20:09:01.915Z"
+  },
+  "16266": {
+    "sidgadId": "16266",
+    "name": "VETU BASSOLS DACHS JOAQUIM",
+    "birthDate": "06/03/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.771Z"
   },
   "16274": {
     "sidgadId": "16274",
@@ -8847,6 +9591,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:52.642Z"
   },
+  "16328": {
+    "sidgadId": "16328",
+    "name": "VETU ROCA MORRAL JOSEP",
+    "birthDate": "26/09/1984",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:00.919Z"
+  },
   "16330": {
     "sidgadId": "16330",
     "name": "VET ROVIRA PATO LLUÍS",
@@ -8878,6 +9630,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T09:36:39.843Z"
+  },
+  "16342": {
+    "sidgadId": "16342",
+    "name": "VETU JOVER MULERO FERRAN",
+    "birthDate": "15/10/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:01.079Z"
   },
   "16350": {
     "sidgadId": "16350",
@@ -9055,6 +9815,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T11:12:47.861Z"
   },
+  "16757": {
+    "sidgadId": "16757",
+    "name": "VETB LABORI BAU GUILLERMO",
+    "birthDate": "11/05/1984",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:01.236Z"
+  },
   "16760": {
     "sidgadId": "16760",
     "name": "TERC2 GALINDO ROMERO ALEX",
@@ -9199,6 +9967,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:12:48.220Z"
   },
+  "17676": {
+    "sidgadId": "17676",
+    "name": "VETU ALEMANY GALLEN RUBEN",
+    "birthDate": "13/04/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:01.390Z"
+  },
   "17687": {
     "sidgadId": "17687",
     "name": "VET BIENZOBAS VILAGELIU JORDI",
@@ -9206,6 +9982,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:16.648Z"
+  },
+  "17749": {
+    "sidgadId": "17749",
+    "name": "VETU SANCHEZ MONTESINOS SERGI",
+    "birthDate": "22/01/1983",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:01.538Z"
   },
   "17753": {
     "sidgadId": "17753",
@@ -9246,6 +10030,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:38.980Z"
+  },
+  "17849": {
+    "sidgadId": "17849",
+    "name": "VETU PAPIOL VIDAL JOAN",
+    "birthDate": "13/11/1970",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:01.685Z"
   },
   "17862": {
     "sidgadId": "17862",
@@ -9295,6 +10087,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-17T17:37:17.243Z"
   },
+  "17954": {
+    "sidgadId": "17954",
+    "name": "VETU ELIAS GARDEAZABAL LUIS",
+    "birthDate": "31/03/1973",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:01.845Z"
+  },
   "17955": {
     "sidgadId": "17955",
     "name": "VET GALLEGO URBANO ALEX",
@@ -9334,6 +10134,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:58:02.630Z"
+  },
+  "18649": {
+    "sidgadId": "18649",
+    "name": "VETB DE JUAN ENSEÑAT DAVID",
+    "birthDate": "02/06/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:01.993Z"
   },
   "18850": {
     "sidgadId": "18850",
@@ -9406,6 +10214,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T06:41:36.938Z"
+  },
+  "19340": {
+    "sidgadId": "19340",
+    "name": "VETA D`OSSÓ D´ARAOZ PASCUAL",
+    "birthDate": "02/03/1968",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:02.147Z"
   },
   "19348": {
     "sidgadId": "19348",
@@ -9639,6 +10455,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:17.872Z"
   },
+  "20136": {
+    "sidgadId": "20136",
+    "name": "VETU GASSÓ CHECA ALBERT",
+    "birthDate": "23/11/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:02.325Z"
+  },
   "20140": {
     "sidgadId": "20140",
     "name": "VET GARCIA PAGAN DANIEL",
@@ -9719,6 +10543,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-17T14:47:21.905Z"
   },
+  "20303": {
+    "sidgadId": "20303",
+    "name": "VETU FERRER FERRET MARC",
+    "birthDate": "03/01/1981",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:02.481Z"
+  },
   "20304": {
     "sidgadId": "20304",
     "name": "TERC JOLIS GARCIA PAU",
@@ -9782,6 +10614,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:09.080Z"
+  },
+  "20388": {
+    "sidgadId": "20388",
+    "name": "VETU SAEZ BUENO SERGIO",
+    "birthDate": "04/04/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:02.663Z"
   },
   "20398": {
     "sidgadId": "20398",
@@ -10143,6 +10983,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:42.108Z"
   },
+  "20965": {
+    "sidgadId": "20965",
+    "name": "VETU MARTORI  ROIG JORDI",
+    "birthDate": "26/04/1979",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:02.818Z"
+  },
   "20967": {
     "sidgadId": "20967",
     "name": "VET GONZÀLEZ FERNÀNDEZ XAVIER",
@@ -10270,6 +11118,14 @@
     "registeredTeam": "BAR",
     "isGK": false,
     "fetchedAt": "2026-05-14T13:19:55.177Z"
+  },
+  "21189": {
+    "sidgadId": "21189",
+    "name": "VETA SERIGÓ SOLANAS MARC",
+    "birthDate": "27/09/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:02.983Z"
   },
   "21193": {
     "sidgadId": "21193",
@@ -10935,6 +11791,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T20:09:02.821Z"
   },
+  "21977": {
+    "sidgadId": "21977",
+    "name": "VETU GUTIÉRREZ MARTÍN JORGE",
+    "birthDate": "02/02/1969",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.139Z"
+  },
   "22021": {
     "sidgadId": "22021",
     "name": "TERC2 CANUDAS SALVADOR JAN",
@@ -11086,6 +11950,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T08:42:04.667Z"
+  },
+  "22410": {
+    "sidgadId": "22410",
+    "name": "VETB NUÑEZ MOLINA JUAN ANTONIO",
+    "birthDate": "22/05/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.289Z"
   },
   "22417": {
     "sidgadId": "22417",
@@ -11871,6 +12743,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T10:58:07.516Z"
   },
+  "25552": {
+    "sidgadId": "25552",
+    "name": "VETU MARTIN MARTIN XAVIER",
+    "birthDate": "07/04/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.443Z"
+  },
   "25590": {
     "sidgadId": "25590",
     "name": "TERC2 LOPEZ COMERMA ADRIA",
@@ -12046,6 +12926,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T09:36:44.986Z"
+  },
+  "25865": {
+    "sidgadId": "25865",
+    "name": "VETU FUMÀS CASES ROGER",
+    "birthDate": "29/11/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.607Z"
   },
   "25868": {
     "sidgadId": "25868",
@@ -12383,6 +13271,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T07:45:11.035Z"
   },
+  "26386": {
+    "sidgadId": "26386",
+    "name": "VETU COLOMER JOSE ROGER",
+    "birthDate": "01/03/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.779Z"
+  },
   "26394": {
     "sidgadId": "26394",
     "name": "JUNA MARTORELL GIMENEZ ERIC",
@@ -12526,6 +13422,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:18.375Z"
+  },
+  "26509": {
+    "sidgadId": "26509",
+    "name": "VET LUNA GONZALEZ FRANCISCO JAVIER",
+    "birthDate": "02/03/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:03.962Z"
   },
   "26514": {
     "sidgadId": "26514",
@@ -12911,6 +13815,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T20:09:05.049Z"
   },
+  "26870": {
+    "sidgadId": "26870",
+    "name": "VETU TERRIÑO ARNABAT GERARD",
+    "birthDate": "01/04/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:04.127Z"
+  },
   "26877": {
     "sidgadId": "26877",
     "name": "VETU CAÑELLAS ASTUDILLO JORDI",
@@ -12918,6 +13830,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:40.708Z"
+  },
+  "26880": {
+    "sidgadId": "26880",
+    "name": "VETU HERNANDEZ MERCADE JOSEP MARIA",
+    "birthDate": "01/04/1980",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:04.292Z"
   },
   "26881": {
     "sidgadId": "26881",
@@ -13735,6 +14655,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:34:07.669Z"
   },
+  "29593": {
+    "sidgadId": "29593",
+    "name": "VETU PALAU GUZMAN JOSEP MARIA",
+    "birthDate": "12/09/1980",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:04.459Z"
+  },
   "29604": {
     "sidgadId": "29604",
     "name": "JUNA CABESTANY ALONSO MARÇAL",
@@ -14391,6 +15319,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:34:09.989Z"
   },
+  "30785": {
+    "sidgadId": "30785",
+    "name": "VETU PERIN TIENDA MIGUEL ANGEL",
+    "birthDate": "09/08/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:04.634Z"
+  },
   "30788": {
     "sidgadId": "30788",
     "name": "JUNU FLORES SALVADÓ DIDAC",
@@ -14470,6 +15406,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T07:45:13.874Z"
+  },
+  "30933": {
+    "sidgadId": "30933",
+    "name": "VETU JUBANY LORENTE JOAN",
+    "birthDate": "12/10/1970",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:04.789Z"
   },
   "30937": {
     "sidgadId": "30937",
@@ -14895,6 +15839,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:17.756Z"
   },
+  "31436": {
+    "sidgadId": "31436",
+    "name": "VETU MARTI GIBERT SEBASTIA",
+    "birthDate": "08/02/1964",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:04.944Z"
+  },
   "31451": {
     "sidgadId": "31451",
     "name": "JUVU GIMENEZ SOLÉ MARC",
@@ -14990,6 +15942,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T08:32:18.236Z"
+  },
+  "31577": {
+    "sidgadId": "31577",
+    "name": "VETU PINEDA ESPINAL JOSEP",
+    "birthDate": "23/12/1971",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.102Z"
   },
   "31578": {
     "sidgadId": "31578",
@@ -15134,6 +16094,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T07:45:15.040Z"
+  },
+  "31883": {
+    "sidgadId": "31883",
+    "name": "VETU FRET AGUILAR JAIME",
+    "birthDate": "09/08/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.251Z"
   },
   "31888": {
     "sidgadId": "31888",
@@ -15622,6 +16590,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T06:22:45.941Z"
+  },
+  "33578": {
+    "sidgadId": "33578",
+    "name": "VETU PEDEMONTE ROMA JOAN",
+    "birthDate": "27/11/1971",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.405Z"
   },
   "33618": {
     "sidgadId": "33618",
@@ -16863,6 +17839,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:34:16.714Z"
   },
+  "35851": {
+    "sidgadId": "35851",
+    "name": "VETU LLORCA LLINARES RAUL",
+    "birthDate": "10/03/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.560Z"
+  },
   "35854": {
     "sidgadId": "35854",
     "name": "JUVU RICART VERA ARIADNA",
@@ -16991,6 +17975,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T14:47:45.165Z"
   },
+  "36080": {
+    "sidgadId": "36080",
+    "name": "VETB GRAU CABEZALI ROGER",
+    "birthDate": "17/06/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.716Z"
+  },
   "36101": {
     "sidgadId": "36101",
     "name": "SEGC ESPUNY MARTINEZ IAN",
@@ -17014,6 +18006,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:41.335Z"
+  },
+  "36123": {
+    "sidgadId": "36123",
+    "name": "VETB PUNCERNAU JEREMIAS SERGI",
+    "birthDate": "29/04/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:05.869Z"
+  },
+  "36137": {
+    "sidgadId": "36137",
+    "name": "VETB CASANELLA PINAR RICARD",
+    "birthDate": "11/08/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.023Z"
   },
   "36153": {
     "sidgadId": "36153",
@@ -18423,6 +19431,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-14T13:34:19.500Z"
   },
+  "39298": {
+    "sidgadId": "39298",
+    "name": "VETU CAROL VENTURA JOAN",
+    "birthDate": "09/08/1972",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:06.180Z"
+  },
   "39300": {
     "sidgadId": "39300",
     "name": "JUNU MUNSO HOTELANO GERARD",
@@ -18822,6 +19838,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-14T13:34:20.193Z"
+  },
+  "39542": {
+    "sidgadId": "39542",
+    "name": "VETB PUIG MESA ALBERT",
+    "birthDate": "06/02/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.335Z"
   },
   "39543": {
     "sidgadId": "39543",
@@ -19822,6 +20846,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:19.667Z"
+  },
+  "40485": {
+    "sidgadId": "40485",
+    "name": "VETU MARTÍNEZ ROMÁN FRANCISCO JAVIER",
+    "birthDate": "22/10/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.492Z"
   },
   "40489": {
     "sidgadId": "40489",
@@ -21823,6 +22855,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:50:32.791Z"
   },
+  "43952": {
+    "sidgadId": "43952",
+    "name": "VETB RIUS SUÑÉ JORDI",
+    "birthDate": "12/08/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.646Z"
+  },
   "43953": {
     "sidgadId": "43953",
     "name": "TERC DILLA FRANCISCO LUCAS",
@@ -22151,6 +23191,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:42:17.628Z"
   },
+  "44150": {
+    "sidgadId": "44150",
+    "name": "VETU OJEDA MIRO ALBERT",
+    "birthDate": "19/10/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.793Z"
+  },
   "44154": {
     "sidgadId": "44154",
     "name": "JUVU MUÑOZ PUIGORIOL OT",
@@ -22310,6 +23358,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-14T13:50:34.420Z"
+  },
+  "44270": {
+    "sidgadId": "44270",
+    "name": "VETU DOMINGUEZ CARRIO CARLOS",
+    "birthDate": "11/03/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:06.947Z"
   },
   "44271": {
     "sidgadId": "44271",
@@ -23071,6 +24127,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T08:42:19.797Z"
   },
+  "44866": {
+    "sidgadId": "44866",
+    "name": "VETU ALEMANY LOPEZ ANTONI",
+    "birthDate": "17/01/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:07.095Z"
+  },
+  "44867": {
+    "sidgadId": "44867",
+    "name": "VETU ALEMANY LOPEZ DAVID",
+    "birthDate": "20/12/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:07.252Z"
+  },
   "44873": {
     "sidgadId": "44873",
     "name": "MARSINYCH GANGONELLS MARÇAL",
@@ -23190,6 +24262,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:35:44.395Z"
+  },
+  "44993": {
+    "sidgadId": "44993",
+    "name": "VETU JIMENEZ COSTA ROBERT",
+    "birthDate": "21/02/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:07.418Z"
   },
   "44996": {
     "sidgadId": "44996",
@@ -24967,6 +26047,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-14T13:50:39.102Z"
   },
+  "48556": {
+    "sidgadId": "48556",
+    "name": "VETU PRAT SOPEÑA IGNASI",
+    "birthDate": "10/09/1971",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:07.572Z"
+  },
   "48558": {
     "sidgadId": "48558",
     "name": "JUNC DALMASES NIETO FERNANDO",
@@ -26191,6 +27279,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T14:48:05.051Z"
   },
+  "49325": {
+    "sidgadId": "49325",
+    "name": "VETU VILA CATA JOAQUIM",
+    "birthDate": "06/11/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:07.738Z"
+  },
   "49337": {
     "sidgadId": "49337",
     "name": "JUVC KIDANE PRADES MARCEL",
@@ -26350,6 +27446,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:47:49.709Z"
+  },
+  "49484": {
+    "sidgadId": "49484",
+    "name": "RAJA MIRO ANTONI",
+    "birthDate": "06/11/1981",
+    "registeredTeam": "CHVS",
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:07.883Z"
   },
   "49487": {
     "sidgadId": "49487",
@@ -26935,6 +28039,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-16T05:55:14.304Z"
   },
+  "50316": {
+    "sidgadId": "50316",
+    "name": "VETU CARBALLO CORRAL DANIEL",
+    "birthDate": "26/05/1989",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:08.048Z"
+  },
   "50319": {
     "sidgadId": "50319",
     "name": "CASELLA SANTALÓ MARTINA",
@@ -27038,6 +28150,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:04:42.706Z"
+  },
+  "50384": {
+    "sidgadId": "50384",
+    "name": "VETB CASAS TAPIAS RAIMON",
+    "birthDate": "20/06/1976",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:08.195Z"
   },
   "50397": {
     "sidgadId": "50397",
@@ -28286,6 +29406,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:35:50.061Z"
+  },
+  "53421": {
+    "sidgadId": "53421",
+    "name": "VETB ODENA GARCIA ENRIC",
+    "birthDate": "18/03/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:08.343Z"
   },
   "53427": {
     "sidgadId": "53427",
@@ -30239,6 +31367,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T05:55:21.806Z"
   },
+  "54543": {
+    "sidgadId": "54543",
+    "name": "VETU CASAS CHAMAYOU MAURICI",
+    "birthDate": "12/04/1971",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:08.500Z"
+  },
   "54546": {
     "sidgadId": "54546",
     "name": "TOUS LÓPEZ NIL",
@@ -30382,6 +31518,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:14:09.843Z"
+  },
+  "54642": {
+    "sidgadId": "54642",
+    "name": "VETU BATTISTONI SOLER MARTIN",
+    "birthDate": "18/01/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:08.650Z"
+  },
+  "54688": {
+    "sidgadId": "54688",
+    "name": "VETU SAN MARTIN AVENDAÑO RAUL ANTONIO",
+    "birthDate": "07/05/1969",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:08.798Z"
   },
   "54708": {
     "sidgadId": "54708",
@@ -31447,6 +32599,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T11:35:56.545Z"
   },
+  "57859": {
+    "sidgadId": "57859",
+    "name": "VETU MONTLLO CARTOIXA XAVIER",
+    "birthDate": "07/10/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:08.951Z"
+  },
   "57874": {
     "sidgadId": "57874",
     "name": "OKL GIMENEZ ADMIRABLE ALVARO BORJA",
@@ -32143,6 +33303,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T14:48:13.303Z"
   },
+  "58111": {
+    "sidgadId": "58111",
+    "name": "VETU GUTIERREZ QUIÑONES JOSE MANUEL",
+    "birthDate": "28/06/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.130Z"
+  },
   "58122": {
     "sidgadId": "58122",
     "name": "INFU( NOYA VIDAL CANDELA",
@@ -32182,6 +33350,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T09:09:07.026Z"
+  },
+  "58152": {
+    "sidgadId": "58152",
+    "name": "NACC SCHULER JASMIN",
+    "birthDate": "11/11/1998",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.276Z"
   },
   "58169": {
     "sidgadId": "58169",
@@ -32975,6 +34151,22 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T11:48:01.659Z"
   },
+  "58678": {
+    "sidgadId": "58678",
+    "name": "VETU ALBAREDA CONEJO JORDI",
+    "birthDate": "16/06/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.427Z"
+  },
+  "58679": {
+    "sidgadId": "58679",
+    "name": "VETB LLORENS CODINACH MAURO",
+    "birthDate": "07/01/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.629Z"
+  },
   "58680": {
     "sidgadId": "58680",
     "name": "JUVU GRABULOSA MOLAS ISSAC",
@@ -33110,6 +34302,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:04:48.335Z"
+  },
+  "58793": {
+    "sidgadId": "58793",
+    "name": "VETU MUMBRU PUIG JULI",
+    "birthDate": "29/06/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.781Z"
+  },
+  "58794": {
+    "sidgadId": "58794",
+    "name": "VETU MALLA MUMBRU JORDI",
+    "birthDate": "26/11/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:09.931Z"
   },
   "58796": {
     "sidgadId": "58796",
@@ -33766,6 +34974,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:36:04.197Z"
+  },
+  "59672": {
+    "sidgadId": "59672",
+    "name": "VETU ANDREU BUSQUETS JAUME",
+    "birthDate": "19/07/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:10.081Z"
   },
   "59676": {
     "sidgadId": "59676",
@@ -35679,6 +36895,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T10:14:18.249Z"
   },
+  "62800": {
+    "sidgadId": "62800",
+    "name": "VETU UMBERT TARTERA JORDI",
+    "birthDate": "16/11/1979",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:10.239Z"
+  },
   "62802": {
     "sidgadId": "62802",
     "name": "ALEU( MERINO MIQUEL JULIA",
@@ -36503,6 +37727,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T11:05:04.189Z"
   },
+  "63474": {
+    "sidgadId": "63474",
+    "name": "VETU MARTORI ARTAU IVAN",
+    "birthDate": "14/09/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:10.396Z"
+  },
   "63496": {
     "sidgadId": "63496",
     "name": "PREU GIRABET ROSSICH ZOE",
@@ -36510,6 +37742,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:48:54.204Z"
+  },
+  "63503": {
+    "sidgadId": "63503",
+    "name": "VETU SPA SALETA JOSEP MARIA",
+    "birthDate": "29/09/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:10.549Z"
   },
   "63508": {
     "sidgadId": "63508",
@@ -36526,6 +37766,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:44.027Z"
+  },
+  "63511": {
+    "sidgadId": "63511",
+    "name": "VETU SUÑE HERRERO JORDI",
+    "birthDate": "08/06/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:10.705Z"
   },
   "63522": {
     "sidgadId": "63522",
@@ -36614,6 +37862,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-05-15T11:05:05.229Z"
+  },
+  "63616": {
+    "sidgadId": "63616",
+    "name": "VETU PUIG TARRIDAS BORIS",
+    "birthDate": "17/03/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:10.858Z"
   },
   "63619": {
     "sidgadId": "63619",
@@ -36750,6 +38006,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T11:05:06.253Z"
+  },
+  "63778": {
+    "sidgadId": "63778",
+    "name": "VETU IGLESIAS CLAPES SERGI",
+    "birthDate": "04/09/1979",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.011Z"
   },
   "63798": {
     "sidgadId": "63798",
@@ -44223,6 +45487,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T12:59:25.964Z"
   },
+  "70426": {
+    "sidgadId": "70426",
+    "name": "VETU PEDRÓS MAS JORDI",
+    "birthDate": "17/03/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.158Z"
+  },
   "70428": {
     "sidgadId": "70428",
     "name": "ALEC QUADRADA AGUILERA ÈRIC",
@@ -45030,6 +46302,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-17T17:37:28.977Z"
+  },
+  "70952": {
+    "sidgadId": "70952",
+    "name": "VETU MORALES GUTIERREZ DANIEL",
+    "birthDate": "22/09/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.309Z"
   },
   "70969": {
     "sidgadId": "70969",
@@ -48167,6 +49447,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T19:08:11.718Z"
   },
+  "74523": {
+    "sidgadId": "74523",
+    "name": "VETU CABRERA ABIZANDA IÑAKI",
+    "birthDate": "29/03/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.462Z"
+  },
   "74530": {
     "sidgadId": "74530",
     "name": "BENC CERVANTES TROITIÑO ENZO",
@@ -49599,6 +50887,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T10:42:43.509Z"
   },
+  "75018": {
+    "sidgadId": "75018",
+    "name": "VETU LOZANO PRESAS RAUL",
+    "birthDate": "20/06/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.618Z"
+  },
   "75026": {
     "sidgadId": "75026",
     "name": "BENA OSED CULEBRADAS MARTINA",
@@ -49846,6 +51142,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T10:22:22.784Z"
+  },
+  "75144": {
+    "sidgadId": "75144",
+    "name": "VETU LOPEZ HURTADO JOSE MIGUEL",
+    "birthDate": "22/01/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.777Z"
   },
   "75157": {
     "sidgadId": "75157",
@@ -50831,6 +52135,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T10:22:25.742Z"
   },
+  "75547": {
+    "sidgadId": "75547",
+    "name": "VETU SALGUERO GARCIA GUILLERMO ANTONIO",
+    "birthDate": "07/03/1990",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:11.924Z"
+  },
   "75549": {
     "sidgadId": "75549",
     "name": "BENU( RIBAS VILLAR MARTINA",
@@ -51255,6 +52567,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T12:21:45.612Z"
   },
+  "75780": {
+    "sidgadId": "75780",
+    "name": "VETU RIBAS ARENAS ANTONIO CARLOS",
+    "birthDate": "15/08/1967",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.079Z"
+  },
   "75781": {
     "sidgadId": "75781",
     "name": "BENU( PUIG TURRÓ IVET",
@@ -51598,6 +52918,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T12:21:46.526Z"
+  },
+  "76792": {
+    "sidgadId": "76792",
+    "name": "VETB ICART FITO JOAN",
+    "birthDate": "11/06/1983",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.239Z"
   },
   "76798": {
     "sidgadId": "76798",
@@ -55271,6 +56599,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T06:01:17.017Z"
   },
+  "79598": {
+    "sidgadId": "79598",
+    "name": "VETU CASTAÑO JARAMILLO HENRY",
+    "birthDate": "07/09/1981",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.395Z"
+  },
   "79615": {
     "sidgadId": "79615",
     "name": "BENU MILA BENITEZ RAMON",
@@ -55847,6 +57183,38 @@
     "isGK": false,
     "fetchedAt": "2026-05-17T14:47:28.588Z"
   },
+  "79863": {
+    "sidgadId": "79863",
+    "name": "VETU MAS BONAS ALEX",
+    "birthDate": "16/07/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.550Z"
+  },
+  "79864": {
+    "sidgadId": "79864",
+    "name": "VETU MOLINER SOTO ERNEST",
+    "birthDate": "25/07/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.717Z"
+  },
+  "79866": {
+    "sidgadId": "79866",
+    "name": "VETU MOLINER SOTO MARC",
+    "birthDate": "04/03/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:12.865Z"
+  },
+  "79878": {
+    "sidgadId": "79878",
+    "name": "VETU SORIA MASERAS MARC",
+    "birthDate": "19/02/1977",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:13.020Z"
+  },
   "79882": {
     "sidgadId": "79882",
     "name": "PREA ORGA DIMITROV TONI ALI",
@@ -55934,6 +57302,22 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T14:23:14.111Z"
+  },
+  "79936": {
+    "sidgadId": "79936",
+    "name": "VET MOLERO OLIVELLA EUGENI",
+    "birthDate": "22/08/1977",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:13.178Z"
+  },
+  "79942": {
+    "sidgadId": "79942",
+    "name": "VETU FERNANDEZ VILA MIGUEL ANGEL",
+    "birthDate": "06/06/1982",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:13.330Z"
   },
   "79949": {
     "sidgadId": "79949",
@@ -56495,6 +57879,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-16T11:34:45.336Z"
   },
+  "80152": {
+    "sidgadId": "80152",
+    "name": "VETU GUITIÉRREZ MORA JAVIER",
+    "birthDate": "29/04/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:13.482Z"
+  },
   "80160": {
     "sidgadId": "80160",
     "name": "PREU( CASANOVAS SABI ESTEL",
@@ -56614,6 +58006,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:28.822Z"
+  },
+  "80241": {
+    "sidgadId": "80241",
+    "name": "VETU MARIMON GAMELL JORDI",
+    "birthDate": "19/04/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:13.637Z"
   },
   "80252": {
     "sidgadId": "80252",
@@ -56774,6 +58174,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T14:03:56.726Z"
+  },
+  "80321": {
+    "sidgadId": "80321",
+    "name": "VETU BELENGUER SAURA JOAN",
+    "birthDate": "12/07/1973",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:13.784Z"
   },
   "80324": {
     "sidgadId": "80324",
@@ -57486,6 +58894,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T16:31:58.830Z"
+  },
+  "82488": {
+    "sidgadId": "82488",
+    "name": "VETU DOTRAS ROSQUELLAS JOAN MARIA",
+    "birthDate": "10/10/1974",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:13.962Z"
   },
   "82493": {
     "sidgadId": "82493",
@@ -62823,6 +64239,22 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T20:31:33.389Z"
   },
+  "85748": {
+    "sidgadId": "85748",
+    "name": "VETU VERDURA CASADEMUNT JORDI",
+    "birthDate": "07/12/1972",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:14.109Z"
+  },
+  "85751": {
+    "sidgadId": "85751",
+    "name": "VETU ANDREU CASEDEMONT FREDERIC",
+    "birthDate": "07/08/1973",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:14.257Z"
+  },
   "85754": {
     "sidgadId": "85754",
     "name": "PREU CASTRO MORILLO MARIO",
@@ -62830,6 +64262,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T14:04:10.768Z"
+  },
+  "85760": {
+    "sidgadId": "85760",
+    "name": "VETU VALLHONESTA SILVEIRA GERARD",
+    "birthDate": "17/09/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:14.419Z"
   },
   "85768": {
     "sidgadId": "85768",
@@ -62862,6 +64302,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T19:08:26.628Z"
+  },
+  "85843": {
+    "sidgadId": "85843",
+    "name": "VETU RABOSO RUIZ XAVIER",
+    "birthDate": "15/02/1991",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-18T08:30:14.567Z"
   },
   "85847": {
     "sidgadId": "85847",
@@ -68535,6 +69983,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T19:19:35.442Z"
   },
+  "90329": {
+    "sidgadId": "90329",
+    "name": "VETU TOSCA GARCIA IGNACIO",
+    "birthDate": "23/11/1987",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:14.731Z"
+  },
   "90330": {
     "sidgadId": "90330",
     "name": "PREC ILLESCAS MIRÓ MARINA",
@@ -68558,6 +70014,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-16T14:43:58.844Z"
+  },
+  "90373": {
+    "sidgadId": "90373",
+    "name": "VETU WIEDING VALLS MARC",
+    "birthDate": "23/04/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:14.885Z"
   },
   "90387": {
     "sidgadId": "90387",
@@ -68695,6 +70159,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:46.287Z"
   },
+  "90759": {
+    "sidgadId": "90759",
+    "name": "VETU MEZA LOZANO JOSE MANUEL",
+    "birthDate": "22/07/1994",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:15.035Z"
+  },
   "90782": {
     "sidgadId": "90782",
     "name": "PREB SEGURA BLANCO MARCOS",
@@ -68767,6 +70239,14 @@
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:46.821Z"
   },
+  "90999": {
+    "sidgadId": "90999",
+    "name": "VETU ARIBAU RUBIO VICTOR",
+    "birthDate": "13/03/1985",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:15.182Z"
+  },
   "91006": {
     "sidgadId": "91006",
     "name": "BENU RÍO OLIVARES DÍDAC",
@@ -68806,6 +70286,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T13:26:47.087Z"
+  },
+  "91134": {
+    "sidgadId": "91134",
+    "name": "VETU MORAN SORIA CARLOS JESÚS",
+    "birthDate": "26/12/1980",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:15.330Z"
   },
   "91185": {
     "sidgadId": "91185",
@@ -69078,6 +70566,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T20:20:00.359Z"
+  },
+  "91522": {
+    "sidgadId": "91522",
+    "name": "VALDEZ MURO YARA ANGELES",
+    "birthDate": "11/03/2006",
+    "registeredTeam": "CPV",
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:15.478Z"
   },
   "91526": {
     "sidgadId": "91526",
@@ -69486,6 +70982,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-05-15T19:19:40.504Z"
+  },
+  "92163": {
+    "sidgadId": "92163",
+    "name": "PREU( MORENO TAMAYO ANNA",
+    "birthDate": "14/01/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-18T08:30:15.636Z"
   },
   "10001095": {
     "sidgadId": "10001095",
@@ -83725,6 +85229,306 @@
     "142289",
     "143824",
     "143763",
-    "143794"
+    "143794",
+    "112399",
+    "112398",
+    "112397",
+    "112400",
+    "112401",
+    "112402",
+    "112403",
+    "112404",
+    "145164",
+    "145165",
+    "145166",
+    "145167",
+    "132767",
+    "132768",
+    "132766",
+    "132765",
+    "132899",
+    "132896",
+    "132898",
+    "132900",
+    "141615",
+    "141617",
+    "141616",
+    "141618",
+    "141672",
+    "141673",
+    "141671",
+    "141701",
+    "141727",
+    "141786",
+    "141783",
+    "141784",
+    "141840",
+    "141841",
+    "141842",
+    "141839",
+    "141869",
+    "141895",
+    "141898",
+    "141951",
+    "141953",
+    "142007",
+    "142010",
+    "142008",
+    "142066",
+    "142063",
+    "130073",
+    "130078",
+    "130080",
+    "130081",
+    "130079",
+    "130077",
+    "130076",
+    "130086",
+    "130083",
+    "130087",
+    "130084",
+    "130085",
+    "130082",
+    "130089",
+    "130093",
+    "130092",
+    "130091",
+    "130088",
+    "130090",
+    "130099",
+    "130094",
+    "130096",
+    "130098",
+    "130095",
+    "130097",
+    "130105",
+    "130100",
+    "130104",
+    "130101",
+    "130102",
+    "130103",
+    "130111",
+    "130110",
+    "130109",
+    "130106",
+    "130107",
+    "130108",
+    "130112",
+    "130116",
+    "130117",
+    "130113",
+    "130115",
+    "130114",
+    "130119",
+    "130122",
+    "130118",
+    "130123",
+    "130120",
+    "130121",
+    "130127",
+    "130125",
+    "130124",
+    "130129",
+    "130126",
+    "130128",
+    "130132",
+    "130133",
+    "130134",
+    "130130",
+    "130135",
+    "130131",
+    "130138",
+    "130140",
+    "130139",
+    "130136",
+    "130137",
+    "130141",
+    "130146",
+    "130147",
+    "130143",
+    "130144",
+    "130142",
+    "130145",
+    "130151",
+    "130153",
+    "130152",
+    "130150",
+    "130148",
+    "130149",
+    "130154",
+    "130156",
+    "130158",
+    "130159",
+    "130157",
+    "130155",
+    "130165",
+    "130164",
+    "130162",
+    "130163",
+    "130161",
+    "130160",
+    "130166",
+    "130169",
+    "130171",
+    "130168",
+    "130170",
+    "130167",
+    "130172",
+    "130175",
+    "130177",
+    "130173",
+    "130176",
+    "130174",
+    "130183",
+    "130179",
+    "130181",
+    "130180",
+    "130182",
+    "130178",
+    "130189",
+    "130184",
+    "130186",
+    "130188",
+    "130185",
+    "130187",
+    "130731",
+    "130728",
+    "130729",
+    "130730",
+    "130732",
+    "130734",
+    "130735",
+    "130733",
+    "130736",
+    "130737",
+    "130742",
+    "130739",
+    "130740",
+    "130741",
+    "130738",
+    "130746",
+    "130743",
+    "130745",
+    "130747",
+    "130744",
+    "130750",
+    "130751",
+    "130752",
+    "130749",
+    "130748",
+    "130757",
+    "130755",
+    "130756",
+    "130754",
+    "130753",
+    "130761",
+    "130759",
+    "130762",
+    "130760",
+    "130758",
+    "130763",
+    "130764",
+    "130765",
+    "130767",
+    "130766",
+    "130769",
+    "130772",
+    "130770",
+    "130771",
+    "130768",
+    "130773",
+    "130776",
+    "130774",
+    "130775",
+    "130777",
+    "130780",
+    "130782",
+    "130779",
+    "130781",
+    "130778",
+    "130786",
+    "130785",
+    "130787",
+    "130784",
+    "130783",
+    "130789",
+    "130791",
+    "130788",
+    "130790",
+    "130792",
+    "130797",
+    "130794",
+    "130796",
+    "130793",
+    "130795",
+    "130799",
+    "130798",
+    "130802",
+    "130801",
+    "130800",
+    "130807",
+    "130805",
+    "130806",
+    "130804",
+    "130803",
+    "130810",
+    "130812",
+    "130811",
+    "130808",
+    "130809",
+    "130813",
+    "130815",
+    "130814",
+    "130816",
+    "130817",
+    "130283",
+    "130281",
+    "130280",
+    "130287",
+    "130285",
+    "130284",
+    "130288",
+    "130290",
+    "130291",
+    "130292",
+    "130295",
+    "130294",
+    "130297",
+    "130298",
+    "130301",
+    "130303",
+    "130302",
+    "130306",
+    "130305",
+    "130307",
+    "130308",
+    "130311",
+    "130309",
+    "130315",
+    "130313",
+    "130312",
+    "130319",
+    "130318",
+    "130316",
+    "130320",
+    "130323",
+    "130322",
+    "130326",
+    "130327",
+    "130325",
+    "130330",
+    "130331",
+    "130329",
+    "130333",
+    "130334",
+    "130335",
+    "130336",
+    "130343",
+    "130337",
+    "130348",
+    "130346",
+    "130338",
+    "130351",
+    "130350"
   ]
 }
