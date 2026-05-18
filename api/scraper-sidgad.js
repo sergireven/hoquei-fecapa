@@ -167,7 +167,8 @@ function parseClassificationSidgad(html) {
     // Nom d'equip: primera cel·la de text llarg adjacent a la posició
     const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
     if (teamIdx < 0) continue;
-    const team = cells[teamIdx];
+    // Elimina codis interns de sidgad (sufixos de 2-6 majúscules al final, p.ex. "CHFA", "NACC")
+    const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
 
     // Extreu teamId del HTML de la fila (link d'equip)
     const teamIdM = tr.match(/\/equip\/(\d+)\//);
