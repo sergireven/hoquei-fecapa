@@ -6,9 +6,12 @@
     "scrape": "node --max-old-space-size=4096 api/scraper.js",
     "scrape:actes:load": "node api/scraper-actes-load.js",
     "scrape:sidgad": "node api/scraper-sidgad.js",
-    "dev": "npx serve public -p 3000"
+    "dev": "npx serve public -p 3000",
+    "server": "node api/server.js",
+    "start": "node api/server.js"
   },
   "dependencies": {
+    "express": "^4.18.2",
     "puppeteer": "^22.0.0"
   },
   "engines": { "node": ">=18" }

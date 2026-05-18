@@ -1,4 +1,19 @@
 {
+  "buildCommand": "npm install",
+  "outputDirectory": "public",
+  "functions": {
+    "api/server.js": {
+      "memory": 512,
+      "maxDuration": 300
+    },
+    "api/cron.js": {
+      "maxDuration": 300
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/server.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ],
   "crons": [
     {
       "path": "/api/cron",
@@ -24,10 +39,5 @@
       "path": "/api/cron",
       "schedule": "0 20 * * 0,6"
     }
-  ],
-  "functions": {
-    "api/cron.js": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }
