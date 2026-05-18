@@ -1206,7 +1206,8 @@ async function mergejokIntoSidgad(categories) {
     // Hard exclusions
     if (sidgadKeywords.category !== jokKeywords.category) return -1;
     if (sidgadKeywords.region && jokKeywords.region && sidgadKeywords.region !== jokKeywords.region) return -1;
-    if (sidgadKeywords.division && jokKeywords.division && sidgadKeywords.division !== jokKeywords.division) return -1;
+    // If division is present in either comp, they must match (or both be absent)
+    if (sidgadKeywords.division !== jokKeywords.division) return -1;
     if (sidgadKeywords.is3x3 !== jokKeywords.is3x3) return -1;
     if (sidgadKeywords.isPreferent !== jokKeywords.isPreferent) return -1;
 
