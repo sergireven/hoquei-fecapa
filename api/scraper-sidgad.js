@@ -179,12 +179,12 @@ function parseClassificationSidgad(html) {
     const teamIdM = tr.match(/\/equip\/(\d+)\//);
     const teamId  = teamIdM ? teamIdM[1] : null;
 
-    // Números restants
+    // Números restants: Pts, J, G, E, P, F, C, (GAV), (PEN)
     const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
     if (nums.length < 3) continue;
-    const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null] = nums;
+    const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
 
-    rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc });
+    rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
   }
 
   // Strategy 2: divs flex (similar a jok.cat)
@@ -196,13 +196,75 @@ function parseClassificationSidgad(html) {
       const nums  = texts.map(t => parseInt(t)).filter(n => !isNaN(n));
       const team  = texts.find(t => /[a-zA-Z]{3}/.test(t) && !/^\d/.test(t));
       if (!team || nums.length < 3) continue;
-      const [pos, pts, pj, pg, pe, pp, gf, gc] = nums;
+      const [pos, pts, pj, pg, pe, pp, gf, gc, gav, pen] = nums;
       const teamIdM = inner.match(/\/equip\/(\d+)\//);
-      rows.push({ pos, team, teamId: teamIdM?.[1] || null, pts, pj, pg, pe, pp, gf, gc });
+      rows.push({ pos, team, teamId: teamIdM?.[1] || null, pts, pj, pg, pe, pp, gf, gc, gav, pen });
     }
   }
 
   return rows;
+}
+
+// Parser classificacions de Copa separades per grups (per noms)
+// Retorna un object: { groupName → classification }
+function parseClassificationByGroupSidgad(html) {
+  if (!html || html.length < 50) return {};
+  const result = {};
+
+  // Detectar seccions de grups: busca headers/títols que contenen "OR", "PLATA", "GRUPO", etc.
+  // Patterns: "OR 1", "PLATA 4", "GRUPO A", "Groupe 1", etc.
+  const groupPatterns = /(?:OR|PLATA|GRUPO|GROUPE|GROUP|GRP)\s*(\d+|[A-Z])/gi;
+
+  // Dividir HTML per seccions: cada secció comença amb un header de grup
+  const sections = html.split(/<h[1-6][^>]*>|<div[^>]*class=['"]?[^'"]*(?:grup|group|division)[^'"]*['"]?[^>]*>/i);
+
+  for (let i = 1; i < sections.length; i++) {
+    const section = sections[i];
+
+    // Buscar el nom del grup al començament de la secció
+    const groupMatch = section.match(groupPatterns);
+    if (!groupMatch) continue;
+
+    const groupName = groupMatch[0].toUpperCase().trim();
+
+    // Parser la taula/classificació d'aquesta secció
+    const classification = [];
+    const trMatches = section.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+
+    for (const tr of trMatches) {
+      const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
+        decodeHtmlEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
+      );
+      if (cells.length < 5) continue;
+
+      // Posició
+      const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
+      if (posIdx < 0) continue;
+      const pos = parseInt(cells[posIdx]);
+
+      // Nom d'equip
+      const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
+      if (teamIdx < 0) continue;
+      const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
+
+      // TeamId
+      const teamIdM = tr.match(/\/equip\/(\d+)\//);
+      const teamId = teamIdM ? teamIdM[1] : null;
+
+      // Números: Pts, J, G, E, P, F, C, GAV, PEN
+      const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
+      if (nums.length < 3) continue;
+      const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
+
+      classification.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
+    }
+
+    if (classification.length > 0) {
+      result[groupName] = classification;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : {};
 }
 
 // Executa jQuery.load dins la pàgina i retorna el HTML del contenidor
@@ -382,51 +444,85 @@ async function main() {
         }
 
         if (uniqueIdcs.length > 1) {
-          // Competició amb múltiples grups: navega a cada grup i obté la seva classificació
-          let debugGroupLogged = false;
-          for (const idc of uniqueIdcs) {
-            try {
-              // Torna a clicar la competició per reiniciar l'estat
-              await page.evaluate(id => document.getElementById(id)?.click(), compId);
-              await page.waitForFunction(
-                () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
-                { timeout: 6000 }
-              ).catch(() => {});
-
-              // Selecciona el grup
-              const groupResult = await clickGroupTab(idc);
-              if (!groupResult.found) {
-                if (!debugGroupLogged) {
-                  console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
-                  console.log(JSON.stringify(groupResult.sample, null, 2));
-                  console.log("---\n");
-                  debugGroupLogged = true;
+          // Competició amb múltiples grups (p.ex. Copa): intentar clickar CLASSIFICACIONS sense grup
+          // Sidgad mostrarà totes les classificacions de grups separades, i les parsejem per noms
+          console.log(`\n🔍 Intentant carregar clasificacions de TOTS els grups per comp ${compId}...`);
+          try {
+            const classHtmlAllGroups = await clickClassTab();
+            if (classHtmlAllGroups) {
+              console.log(`   HTML rebut: ${classHtmlAllGroups.length} bytes`);
+              const classificationByGroup = parseClassificationByGroupSidgad(classHtmlAllGroups);
+              console.log(`   parseClassificationByGroupSidgad() retorna: ${Object.keys(classificationByGroup).length} grups`);
+              if (Object.keys(classificationByGroup).length > 0) {
+                // Éxit: tenim classificacions per grups
+                for (const [groupName, classification] of Object.entries(classificationByGroup)) {
+                  compData[compId].classificationByGroup[groupName] = classification;
                 }
-                continue;
-              }
-              await new Promise(r => setTimeout(r, 600));
-
-              // Obté la classificació del grup
-              const classHtml = await clickClassTab();
-              if (!classHtml) {
-                if (!debugGroupLogged) {
-                  console.log(`\n--- DEBUG: No es pot obtenir classificació per comp ${compId} idc=${idc} ---`);
-                  debugGroupLogged = true;
-                }
-                continue;
-              }
-              const classification = parseClassificationSidgad(classHtml);
-              if (classification.length > 0) {
-                compData[compId].classificationByGroup[idc] = classification;
+                console.log(`   ✓ Guardades ${Object.keys(classificationByGroup).length} classificacions de grups\n`);
                 if (!debugClassLogged) {
-                  console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
-                  console.log(JSON.stringify(classification[0]));
+                  console.log(`\n--- CLASSIFICACIONS GRUPS comp ${compId} (${Object.keys(classificationByGroup).length} grups) ---`);
+                  const firstGroup = Object.entries(classificationByGroup)[0];
+                  console.log(`   Primer grup: ${firstGroup[0]} - ${firstGroup[1].length} equips`);
                   console.log("---\n");
                   debugClassLogged = true;
                 }
+              } else {
+                console.log(`   ⚠️  No es van detectar grups en el HTML`);
               }
-            } catch (e) {
-              console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
+            } else {
+              console.log(`   ⚠️  No es va obtenir HTML de classificacions`);
+            }
+          } catch (e) {
+            console.log(`   ❌ ERROR: ${e.message}\n`);
+          }
+
+          // Si no tenim resultats, intentar l'alternativa: clickar cada grup individualment (antiga lógica)
+          if (Object.keys(compData[compId].classificationByGroup).length === 0) {
+            let debugGroupLogged = false;
+            for (const idc of uniqueIdcs) {
+              try {
+                // Torna a clicar la competició per reiniciar l'estat
+                await page.evaluate(id => document.getElementById(id)?.click(), compId);
+                await page.waitForFunction(
+                  () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
+                  { timeout: 6000 }
+                ).catch(() => {});
+
+                // Selecciona el grup
+                const groupResult = await clickGroupTab(idc);
+                if (!groupResult.found) {
+                  if (!debugGroupLogged) {
+                    console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
+                    console.log(JSON.stringify(groupResult.sample, null, 2));
+                    console.log("---\n");
+                    debugGroupLogged = true;
+                  }
+                  continue;
+                }
+                await new Promise(r => setTimeout(r, 600));
+
+                // Obté la classificació del grup
+                const classHtml = await clickClassTab();
+                if (!classHtml) {
+                  if (!debugGroupLogged) {
+                    console.log(`\n--- DEBUG: No es pot obtenir classificació per comp ${compId} idc=${idc} ---`);
+                    debugGroupLogged = true;
+                  }
+                  continue;
+                }
+                const classification = parseClassificationSidgad(classHtml);
+                if (classification.length > 0) {
+                  compData[compId].classificationByGroup[idc] = classification;
+                  if (!debugClassLogged) {
+                    console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
+                    console.log(JSON.stringify(classification[0]));
+                    console.log("---\n");
+                    debugClassLogged = true;
+                  }
+                }
+              } catch (e) {
+                console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
+              }
             }
           }
         } else {
