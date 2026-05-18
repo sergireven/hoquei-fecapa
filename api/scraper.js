@@ -1014,6 +1014,104 @@ async function mergeSidgadData(jugadors) {
   console.log(`   🔗 Sidgad merge: ${merged} jugadors amb edat/posició`);
 }
 
+// ── Fusió de competicions sidgad (classificació + resultats) ──
+function normCompName(name) {
+  return (name || "").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/\b(2025|2026|25|26)\b/g, "").replace(/\s+/g, " ").trim();
+}
+
+async function mergeSidgadCompetitions(categories, clubIndex) {
+  const compFile = path.join(__dirname, "../public/competicions-sidgad.json");
+  let sidgadComps;
+  try {
+    sidgadComps = JSON.parse(await fs.readFile(compFile, "utf8"));
+  } catch {
+    console.log("   ℹ️  competicions-sidgad.json no disponible");
+    return;
+  }
+
+  // Normalització de noms per matching
+  const normTeamName = s => (s || "").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim();
+
+  // Indexa les competicions jok.cat per nom normalitzat
+  const jokIndex = {}; // normName → comp object
+  const collisions = new Set();
+  for (const comps of Object.values(categories)) {
+    for (const comp of comps) {
+      const key = normCompName(comp.name || "");
+      if (!key) continue;
+      if (jokIndex[key]) collisions.add(key);
+      else jokIndex[key] = comp;
+    }
+  }
+  if (collisions.size > 0)
+    console.log(`   ⚠️  Competicions amb nom normalitzat duplicat (no es fusionaran): ${[...collisions].join(", ")}`);
+
+  let mergedClass = 0, mergedCal = 0;
+  for (const sc of Object.values(sidgadComps)) {
+    const key = normCompName(sc.name || "");
+    if (collisions.has(key)) continue; // ambigu, no fusionar
+    const jokComp = jokIndex[key];
+    if (!jokComp) continue;
+
+    if (sc.classification && sc.classification.length > 0) {
+      // Construeix índex de teamId/clubId de la classificació jok.cat anterior
+      const prevTeamIndex = {}; // normName → { teamId, clubId }
+      for (const row of (jokComp.classification || [])) {
+        if (row.team) prevTeamIndex[normTeamName(row.team)] = { teamId: row.teamId, clubId: row.clubId };
+      }
+
+      // Fusiona teamId/clubId de jok.cat als equips de sidgad per nom
+      jokComp.classification = sc.classification.map(row => {
+        const prev = prevTeamIndex[normTeamName(row.team)];
+        return {
+          ...row,
+          teamId: row.teamId || prev?.teamId || null,
+          clubId: row.clubId || prev?.clubId || null,
+        };
+      });
+
+      // Actualitza clubIndex amb qualsevol teamId nou de sidgad
+      for (const row of jokComp.classification) {
+        if (row.teamId && clubIndex) {
+          if (!clubIndex[row.teamId]) clubIndex[row.teamId] = { name: row.team, clubId: row.clubId };
+          else if (row.clubId && !clubIndex[row.teamId].clubId) clubIndex[row.teamId].clubId = row.clubId;
+        }
+      }
+      mergedClass++;
+    }
+
+    if (sc.matches && sc.matches.length > 0) {
+      // Converteix resultats sidgad al format de calendar jok.cat
+      const sidgadCal = sc.matches
+        .filter(m => m.home && m.away)
+        .map(m => ({
+          jornada:   m.jornada,
+          home:      m.home,
+          away:      m.away,
+          homeScore: m.homeScore,
+          awayScore: m.awayScore,
+          date:      m.date,
+          time:      m.time,
+          played:    m.played,
+          idp:       m.idp,
+        }));
+      if (sidgadCal.length > 0) {
+        if (sidgadCal.length >= (jokComp.calendar?.length || 0)) {
+          jokComp.calendar = sidgadCal;
+          mergedCal++;
+        }
+      }
+    }
+  }
+
+  console.log(`   🔗 Sidgad comps: ${mergedClass} classificacions, ${mergedCal} calendaris fusionats`);
+}
+
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
   console.log("🏒 FECAPA Scraper v5 — iniciant...\n");
@@ -1176,6 +1274,7 @@ async function main() {
   // Enriquiment addicional: equips per jugador + fusió sidgad
   buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
   await mergeSidgadData(output.jugadors);
+  await mergeSidgadCompetitions(output.categories, clubIndex);
 
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
