@@ -1448,32 +1448,32 @@ async function mergejokIntoSidgad(categories) {
   const nIdcMatched = Object.values(categories).flat().filter(c => idcToSidgad[c.id]).length;
 
   // Prioritat 3: Matching per NOMS de Copa (quan els idcs de Sidgad són incorrectes)
-  // Mapa manual de noms Copa → competicions jok.cat
+  // Mapa manual de noms Copa → competicions jok.cat + parent Sidgad CORRECTE
   const copaNameMap = {
-    // Copa Barcelona
-    'BCN.*OR.*COPA.*1': ['4475'],
-    'BCN.*OR.*COPA.*2': ['4476'],
-    'BCN.*OR.*COPA.*3': ['4477'],
-    'BCN.*PLATA.*COPA.*4': ['4478'],
-    'BCN.*PLATA.*COPA.*5': ['4479'],
-    'BCN.*PLATA.*COPA.*6': ['4480'],
+    // Copa Barcelona — parent 4452 (OVERRIDE si ja tinha parent incorrecte)
+    'BCN.*OR.*COPA.*1': { jokIds: ['4475'], parent: '4452' },
+    'BCN.*OR.*COPA.*2': { jokIds: ['4476'], parent: '4452' },
+    'BCN.*OR.*COPA.*3': { jokIds: ['4477'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*4': { jokIds: ['4478'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*5': { jokIds: ['4479'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*6': { jokIds: ['4480'], parent: '4452' },
+    // Copa Federació — parent 4459 (per quan es scrapegin 4481-4483)
+    'FCP.*PLATA.*1': { jokIds: ['4481'], parent: '4459' },
+    'FCP.*PLATA.*2': { jokIds: ['4482'], parent: '4459' },
+    'FCP.*PLATA.*3': { jokIds: ['4483'], parent: '4459' },
   };
 
-  // Aplicar matching per noms per a Copa
+  // Aplicar matching per noms per a Copa — OVERRIDE el parent si match
   let nCopaNameMatched = 0;
-  for (const [pattern, jokIds] of Object.entries(copaNameMap)) {
+  for (const [pattern, config] of Object.entries(copaNameMap)) {
     const regex = new RegExp(pattern, 'i');
     for (const cat of Object.values(categories)) {
       for (const jokComp of cat) {
-        if (!idcToSidgad[jokComp.id] && regex.test(jokComp.name)) {
-          // Buscar el Sidgad parent pels matching
-          for (const [scId, sc] of Object.entries(sidgadComps)) {
-            if (sc.name && /copa.*(barcelona|federació)/i.test(sc.name)) {
-              jokComp.sidgadParentId = scId;
-              nCopaNameMatched++;
-              break;
-            }
-          }
+        if (regex.test(jokComp.name)) {
+          // OVERRIDE el parent correcte (indepedentment si tenia idcToSidgad)
+          const oldParent = jokComp.sidgadParentId;
+          jokComp.sidgadParentId = config.parent;
+          if (oldParent !== config.parent) nCopaNameMatched++;
         }
       }
     }
