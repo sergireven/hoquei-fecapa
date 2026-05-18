@@ -485,6 +485,12 @@ async function main() {
             const classHtmlAllGroups = await clickClassTab();
             if (classHtmlAllGroups) {
               console.log(`   HTML rebut: ${classHtmlAllGroups.length} bytes`);
+
+              // DEBUG: guardar el primer HTML de clasificació multi-grup per inspeccionar
+              const debugPath = require("path").join(__dirname, `../public/debug-classif-${compId}.html`);
+              require("fs").promises.writeFile(debugPath, classHtmlAllGroups).catch(() => {});
+              console.log(`   📄 HTML guardat a debug-classif-${compId}.html`);
+
               const classificationByGroup = parseClassificationByGroupSidgad(classHtmlAllGroups, uniqueIdcs);
               console.log(`   parseClassificationByGroupSidgad() retorna: ${Object.keys(classificationByGroup).length} grups`);
               if (Object.keys(classificationByGroup).length > 0) {
