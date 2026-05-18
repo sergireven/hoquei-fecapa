@@ -207,52 +207,6 @@ window.closeLoginModal = closeLoginModal;
 window.openUserModal   = openUserModal;
 window.closeUserModal  = closeUserModal;
 
-async function triggerScraper() {
-  const btn = event.target;
-  if (!currentUser?.email) {
-    alert("❌ Necessites estar autenticat");
-    return;
-  }
-
-  btn.disabled = true;
-  btn.style.opacity = "0.6";
-  const originalText = btn.textContent;
-  btn.textContent = "🔄 Executant...";
-
-  try {
-    const response = await fetch('/api/trigger-scraper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminEmail: currentUser.email })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      btn.style.background = "#16a34a";
-      btn.textContent = "✅ Scraper llançat!";
-      alert("✅ El GitHub Action s'ha llançat correctament.\nRevisa el progres a: github.com/sergireven/hoquei-fecapa/actions");
-      setTimeout(() => {
-        btn.style.background = "#e5001c";
-        btn.textContent = originalText;
-        btn.disabled = false;
-        btn.style.opacity = "1";
-      }, 3000);
-    } else {
-      alert("❌ Error: " + (data.error || response.statusText));
-      btn.disabled = false;
-      btn.style.opacity = "1";
-      btn.textContent = originalText;
-    }
-  } catch (e) {
-    alert("❌ Error de connexió: " + e.message);
-    btn.disabled = false;
-    btn.style.opacity = "1";
-    btn.textContent = originalText;
-  }
-}
-window.triggerScraper = triggerScraper;
-
 // Admin panel
 function openAdminPanel() {
   ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
@@ -312,11 +266,6 @@ async function renderAdminPanel() {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>
-    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Dades</div>
-      <button onclick="triggerScraper()" style="width:100%;background:#e5001c;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:10px;cursor:pointer;transition:all 0.3s">🚀 Actualitza dades FECAPA</button>
-      <div style="margin-top:8px;font-size:12px;color:#94a3b8">Dispara el GitHub Action per scrapejar les últimes dades i generar data.json</div>
     </div>`;
 }
 function adminToggleTeamField() {
