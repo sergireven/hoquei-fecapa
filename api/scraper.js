@@ -1112,6 +1112,101 @@ async function mergeSidgadCompetitions(categories, clubIndex) {
   console.log(`   🔗 Sidgad comps: ${mergedClass} classificacions, ${mergedCal} calendaris fusionats`);
 }
 
+// ── Merge jok.cat INTO sidgad (sidgad primary, jok.cat fallback) ────────────
+// Load sidgad as base, then fill in missing data from jok.cat
+async function mergejokIntoSidgad(categories) {
+  const cacheFile = path.join(__dirname, "../public/competicions-sidgad.json");
+  let sidgadComps;
+  try {
+    sidgadComps = JSON.parse(await fs.readFile(cacheFile, "utf8"));
+  } catch {
+    console.log("   ℹ️  competicions-sidgad.json no disponible, usant només jok.cat");
+    return categories;
+  }
+
+  // Build index of jok.cat competitions by normalized name
+  const normCompName = name => (name || "").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/\b(2025|2026|25|26|TEMP|SEASON|SAISON)\b/g, "").replace(/\s+/g, " ").trim();
+
+  const jokIndex = {}; // normName → jok comp
+  for (const comps of Object.values(categories)) {
+    for (const comp of comps) {
+      const key = normCompName(comp.name || "");
+      if (key && !jokIndex[key]) jokIndex[key] = comp;
+    }
+  }
+
+  // Merge: for each sidgad competition, fill in jok.cat data where sidgad is missing
+  let mergedCount = 0;
+  for (const sc of Object.values(sidgadComps)) {
+    const key = normCompName(sc.name || "");
+    const jokComp = jokIndex[key];
+    if (!jokComp) continue;
+
+    // 1. Classification: use sidgad if present, else use jok.cat
+    if (!sc.classification || sc.classification.length === 0) {
+      if (jokComp.classification && jokComp.classification.length > 0) {
+        sc.classification = jokComp.classification;
+      }
+    }
+
+    // 2. Calendar: merge best of both
+    if (!sc.matches || sc.matches.length === 0) {
+      if (jokComp.calendar && jokComp.calendar.length > 0) {
+        sc.matches = jokComp.calendar;
+      }
+    } else if (jokComp.calendar && jokComp.calendar.length > sc.matches.length) {
+      // If jok.cat has more matches, supplement sidgad with missing ones
+      const sidgadKeys = new Set(sc.matches.map(m => `${m.jornada}|${m.home}|${m.away}`));
+      const newMatches = jokComp.calendar.filter(m =>
+        !sidgadKeys.has(`${m.jornada}|${m.home}|${m.away}`)
+      );
+      sc.matches = sc.matches.concat(newMatches);
+    }
+
+    // 3. Merge acta links from jok.cat into sidgad calendar
+    if (jokComp.calendar) {
+      const actaMap = {};
+      for (const m of jokComp.calendar) {
+        if (!m.actaId) continue;
+        const key = `${m.jornada}|${m.home}|${m.away}`;
+        actaMap[key] = m.actaId;
+      }
+      for (const m of sc.matches) {
+        if (!m.actaId) {
+          const key = `${m.jornada}|${m.home}|${m.away}`;
+          if (actaMap[key]) m.actaId = actaMap[key];
+        }
+      }
+    }
+
+    mergedCount++;
+  }
+
+  // Update categories with merged sidgad data
+  for (const comps of Object.values(categories)) {
+    for (const jokComp of comps) {
+      const key = normCompName(jokComp.name || "");
+      const sidgadComp = Object.values(sidgadComps).find(s => normCompName(s.name) === key);
+      if (sidgadComp) {
+        // Use sidgad classification if present
+        if (sidgadComp.classification && sidgadComp.classification.length > 0) {
+          jokComp.classification = sidgadComp.classification;
+        }
+        // Merge sidgad matches with acta links from jok.cat
+        if (sidgadComp.matches && sidgadComp.matches.length > 0) {
+          jokComp.calendar = sidgadComp.matches;
+        }
+      }
+    }
+  }
+
+  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades`);
+  return categories;
+}
+
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
   console.log("🏒 FECAPA Scraper v5 — iniciant...\n");
@@ -1271,10 +1366,10 @@ async function main() {
     console.log(`   📁 actes/${slug}.json — ${count} actes, ${kb2} KB`);
   }
 
-  // Enriquiment addicional: equips per jugador + fusió sidgad
+  // Enriquiment addicional: equips per jugador + fusió sidgad (primari)
   buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
   await mergeSidgadData(output.jugadors);
-  await mergeSidgadCompetitions(output.categories, clubIndex);
+  await mergejokIntoSidgad(output.categories);  // Sidgad as primary, jok.cat fallback
 
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;

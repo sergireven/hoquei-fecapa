@@ -103,17 +103,17 @@ function parseGameReport(rawMatch, currentJornada) {
   let awayId = attrs.id_visitant || attrs["data-id-visitant"] || null;
 
   if (!home || !away) {
-    const localM  = html.match(/class='[^']*equip_local[^']*'[^>]*>([^<]+)<\/[^>]+>/i)
-                 || html.match(/class="[^"]*equip_local[^"]*"[^>]*>([^<]+)<\/[^>]+>/i);
-    const visitM  = html.match(/class='[^']*equip_visitant[^']*'[^>]*>([^<]+)<\/[^>]+>/i)
-                 || html.match(/class="[^"]*equip_visitant[^"]*"[^>]*>([^<]+)<\/[^>]+>/i);
+    const localM  = html.match(/class=['"]?[^"']*equip_local[^"']*['"]?[^>]*>([^<]+)<\/[^>]+>/i)
+                 || html.match(/<(?:span|div|td)[^>]*>[^<]*equip[_\s]*local[^<]*(?:<[^>]+>)*\s*([^<]+)<\/[^>]+>/i);
+    const visitM  = html.match(/class=['"]?[^"']*equip_visitant[^"']*['"]?[^>]*>([^<]+)<\/[^>]+>/i)
+                 || html.match(/<(?:span|div|td)[^>]*>[^<]*equip[_\s]*visitant[^<]*(?:<[^>]+>)*\s*([^<]+)<\/[^>]+>/i);
     if (localM)  home = localM[1].trim();
     if (visitM)  away = visitM[1].trim();
   }
   // Fallback: cerca links d'equip
   if (!home || !away) {
-    const teamLinks = [...html.matchAll(/href='[^']*\/equip\/(\d+)\/[^']*'[^>]*>([^<]+)<\/a>/gi)]
-                   .concat([...html.matchAll(/href="[^"]*\/equip\/(\d+)\/[^"]*"[^>]*>([^<]+)<\/a>/gi)]);
+    const teamLinks = [...html.matchAll(/href=['"]?[^'"]*\/equip\/(\d+)\/[^'"]*['"]?[^>]*>([^<]+)<\/a>/gi)]
+                   .concat([...html.matchAll(/href=['"]?[^'"]*\/equip\/(\d+)\/[^'"]*['"]?[^>]*>\s*<[^>]*>([^<]+)<\/[^>]+><\/a>/gi)]);
     if (teamLinks.length >= 1 && !home) { homeId = teamLinks[0][1]; home = teamLinks[0][2].trim(); }
     if (teamLinks.length >= 2 && !away) { awayId = teamLinks[1][1]; away = teamLinks[1][2].trim(); }
   }
@@ -129,11 +129,17 @@ function parseGameReport(rawMatch, currentJornada) {
     awayScore = parseInt(scoreM[2]);
     played = true;
   }
-  // Data i hora
-  const dateM = html.match(/(\d{2}[-\/]\d{2}(?:[-\/]\d{2,4})?)/);
+  // Data i hora — busca primer dates completes (DD/MM/YYYY), depois DD/MM
+  let date = null, time = null;
+  const fullDateM = html.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})\b/);
+  if (fullDateM) {
+    date = `${fullDateM[3]}-${String(fullDateM[2]).padStart(2, '0')}-${String(fullDateM[1]).padStart(2, '0')}`;
+  } else {
+    const shortDateM = html.match(/\b(\d{1,2})[-\/](\d{1,2})\b/);
+    if (shortDateM) date = `${String(shortDateM[2]).padStart(2, '0')}-${String(shortDateM[1]).padStart(2, '0')}`;
+  }
   const timeM = html.match(/(\d{2}:\d{2})/);
-  const date  = dateM ? dateM[1].substring(0, 5) : null;
-  const time  = timeM ? timeM[1] : null;
+  if (timeM) time = timeM[1];
 
   return { idp, idc, jornada, home, homeId, away, awayId, homeScore, awayScore, date, time, played };
 }
@@ -151,7 +157,7 @@ function parseClassificationSidgad(html) {
   if (!html || html.length < 50) return [];
   const rows = [];
 
-  // Intenta extreure files de taula <tr> amb dades de classificació
+  // Strategy 1: Taula <tr><td> estàndard
   const trMatches = html.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
   for (const tr of trMatches) {
     const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
@@ -167,14 +173,13 @@ function parseClassificationSidgad(html) {
     // Nom d'equip: primera cel·la de text llarg adjacent a la posició
     const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
     if (teamIdx < 0) continue;
-    // Elimina codis interns de sidgad (sufixos de 2-6 majúscules al final, p.ex. "CHFA", "NACC")
     const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
 
-    // Extreu teamId del HTML de la fila (link d'equip)
+    // Extreu teamId del HTML de la fila
     const teamIdM = tr.match(/\/equip\/(\d+)\//);
     const teamId  = teamIdM ? teamIdM[1] : null;
 
-    // Números restants (pts, pj, pg, pe, pp, gf, gc)
+    // Números restants
     const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
     if (nums.length < 3) continue;
     const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null] = nums;
@@ -182,9 +187,9 @@ function parseClassificationSidgad(html) {
     rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc });
   }
 
-  // Si no s'han trobat files via <tr>, intenta divs flex (similar a jok.cat)
+  // Strategy 2: divs flex (similar a jok.cat)
   if (rows.length === 0) {
-    const divRows = [...html.matchAll(/<div[^>]*class='[^']*(?:fila|row|clasificacion)[^']*'[^>]*>([\s\S]*?)<\/div>/gi)];
+    const divRows = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*(?:fila|row|clasificacion)[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)];
     for (const [, inner] of divRows) {
       const texts = [...inner.matchAll(/>([^<]+)</g)]
         .map(m => decodeHtmlEntities(m[1]).trim()).filter(Boolean);
