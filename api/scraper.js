@@ -1206,7 +1206,8 @@ async function mergejokIntoSidgad(categories) {
     // Hard exclusions
     if (sidgadKeywords.category !== jokKeywords.category) return -1;
     if (sidgadKeywords.region && jokKeywords.region && sidgadKeywords.region !== jokKeywords.region) return -1;
-    if (sidgadKeywords.division && jokKeywords.division && sidgadKeywords.division !== jokKeywords.division) return -1;
+    // If division is present in either comp, they must match (or both be absent)
+    if (sidgadKeywords.division !== jokKeywords.division) return -1;
     if (sidgadKeywords.is3x3 !== jokKeywords.is3x3) return -1;
     if (sidgadKeywords.isPreferent !== jokKeywords.isPreferent) return -1;
 
@@ -1247,14 +1248,38 @@ async function mergejokIntoSidgad(categories) {
   // Track parent-child relationships: sidgad → [jok.cat children]
   const sidgadChildren = {}; // sidgadId → { sidgadComp, jokChildren: [jokCompIds] }
 
-  // Mapa invers idc → { sidgadCompId, classificationByGroup }
+  // Mapa invers idc → { sidgadCompId, classificationByGroup, matchesByIdc }
   // Permet trobar directament la classificació d'un grup sidgad pel seu idc,
   // que coincideix amb l'ID de competició de jok.cat (p.ex. idc=4478 ↔ jok 4478)
-  const idcToSidgad = {}; // idc → { compId, classificationByGroup }
+  // Si no hi ha classificationByGroup (p.ex. Copes), al menys tenim matchesByIdc
+  const idcToSidgad = {}; // idc → { compId, compName, classificationByGroup, matchesByIdc }
+  const matchesByIdc = {}; // idc → { homeMatches, awayMatches } count
+
   for (const [scId, sc] of Object.entries(sidgadComps)) {
-    if (!sc.classificationByGroup) continue;
-    for (const idc of Object.keys(sc.classificationByGroup)) {
-      idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: sc.classificationByGroup };
+    // Build matchesByIdc: group matches by their idc
+    const idcMatches = {};
+    if (sc.matches) {
+      for (const match of sc.matches) {
+        const idc = match.idc || scId;
+        if (!idcMatches[idc]) idcMatches[idc] = { count: 0, hasData: false };
+        idcMatches[idc].count++;
+        if (match.home && match.away) idcMatches[idc].hasData = true;
+      }
+    }
+
+    // Register each idc: prioritat a classificationByGroup si té dades, sinó usa matches
+    const hasClassByGroup = sc.classificationByGroup && Object.keys(sc.classificationByGroup).length > 0;
+    if (hasClassByGroup) {
+      for (const idc of Object.keys(sc.classificationByGroup)) {
+        idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: sc.classificationByGroup, matchesByIdc: idcMatches[idc] };
+      }
+    } else if (Object.keys(idcMatches).length > 0) {
+      // No classificationByGroup o està buit, però has matches with idcs - register them anyway for calendar merge
+      for (const [idc, matchData] of Object.entries(idcMatches)) {
+        if (!idcToSidgad[idc]) {
+          idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: null, matchesByIdc: matchData };
+        }
+      }
     }
   }
 
@@ -1388,17 +1413,32 @@ async function mergejokIntoSidgad(categories) {
         // Classificació: prioritat 1 — grup exacte per idc (idc = ID de competició jok.cat)
         const idcMatch = idcToSidgad[jokComp.id];
         if (idcMatch) {
-          const groupClass = idcMatch.classificationByGroup[jokComp.id];
-          if (groupClass && groupClass.length > 0) {
-            jokComp.classification = groupClass;
-            jokComp.sidgadParentId = idcMatch.compId;
+          jokComp.sidgadParentId = idcMatch.compId;
+
+          // Intentar usar la classificació del grup si existeix
+          if (idcMatch.classificationByGroup && idcMatch.classificationByGroup[jokComp.id]) {
+            const groupClass = idcMatch.classificationByGroup[jokComp.id];
+            if (groupClass && groupClass.length > 0) {
+              jokComp.classification = groupClass;
+            }
+          }
+
+          // Si no tenim classificació de grup però tenim matches d'aquest idc, usar el parent's calendar
+          if ((!jokComp.classification || jokComp.classification.length === 0) && sidgadComp.matches && sidgadComp.matches.length > 0) {
+            const groupMatches = sidgadComp.matches.filter(m => m.idc === String(jokComp.id));
+            if (groupMatches.length > 0) {
+              jokComp.calendar = groupMatches;
+            } else {
+              // Fallback: usa tots els matches del parent
+              jokComp.calendar = sidgadComp.matches;
+            }
           }
         // Prioritat 2 — classificació global del pare sidgad (competicions d'un sol grup)
         } else if (sidgadComp.classification && sidgadComp.classification.length > 0) {
           jokComp.classification = sidgadComp.classification;
         }
-        // Merge sidgad calendar if present
-        if (sidgadComp.matches && sidgadComp.matches.length > 0) {
+        // Merge sidgad calendar if no idc-specific match found
+        if ((!jokComp.calendar || jokComp.calendar.length === 0) && sidgadComp.matches && sidgadComp.matches.length > 0) {
           jokComp.calendar = sidgadComp.matches;
         }
       }
@@ -1406,7 +1446,40 @@ async function mergejokIntoSidgad(categories) {
   }
 
   const nIdcMatched = Object.values(categories).flat().filter(c => idcToSidgad[c.id]).length;
-  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad, ${nIdcMatched} per idc directe`);
+
+  // Prioritat 3: Matching per NOMS de Copa (quan els idcs de Sidgad són incorrectes)
+  // Mapa manual de noms Copa → competicions jok.cat + parent Sidgad CORRECTE
+  const copaNameMap = {
+    // Copa Barcelona — parent 4452 (OVERRIDE si ja tinha parent incorrecte)
+    'BCN.*OR.*COPA.*1': { jokIds: ['4475'], parent: '4452' },
+    'BCN.*OR.*COPA.*2': { jokIds: ['4476'], parent: '4452' },
+    'BCN.*OR.*COPA.*3': { jokIds: ['4477'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*4': { jokIds: ['4478'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*5': { jokIds: ['4479'], parent: '4452' },
+    'BCN.*PLATA.*COPA.*6': { jokIds: ['4480'], parent: '4452' },
+    // Copa Federació — parent 4459 (per quan es scrapegin 4481-4483)
+    'FCP.*PLATA.*1': { jokIds: ['4481'], parent: '4459' },
+    'FCP.*PLATA.*2': { jokIds: ['4482'], parent: '4459' },
+    'FCP.*PLATA.*3': { jokIds: ['4483'], parent: '4459' },
+  };
+
+  // Aplicar matching per noms per a Copa — OVERRIDE el parent si match
+  let nCopaNameMatched = 0;
+  for (const [pattern, config] of Object.entries(copaNameMap)) {
+    const regex = new RegExp(pattern, 'i');
+    for (const cat of Object.values(categories)) {
+      for (const jokComp of cat) {
+        if (regex.test(jokComp.name)) {
+          // OVERRIDE el parent correcte (indepedentment si tenia idcToSidgad)
+          const oldParent = jokComp.sidgadParentId;
+          jokComp.sidgadParentId = config.parent;
+          if (oldParent !== config.parent) nCopaNameMatched++;
+        }
+      }
+    }
+  }
+
+  console.log(`   🔗 Sidgad (primary): ${mergedCount} competicions fusionades, ${Object.keys(sidgadParentMap).length} jok.cat assignats a parent sidgad, ${nIdcMatched} per idc directe${nCopaNameMatched > 0 ? `, ${nCopaNameMatched} per Copa name matching` : ''}`);
   return { categories, sidgadParentMap, sidgadChildren };
 }
 
