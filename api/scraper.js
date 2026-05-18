@@ -1022,6 +1022,151 @@ function normCompName(name) {
     .replace(/\b(2025|2026|25|26)\b/g, "").replace(/\s+/g, " ").trim();
 }
 
+function normTeamName(name) {
+  return (name || "").toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function hasValidDate(date) {
+  if (!date || typeof date !== "string") return false;
+  const m = date.trim().match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/);
+  if (!m) return false;
+  const d = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  return d >= 1 && d <= 31 && mo >= 1 && mo <= 12;
+}
+
+function hasValidTime(time) {
+  if (!time || typeof time !== "string") return false;
+  const m = time.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return false;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  return h >= 0 && h <= 23 && min >= 0 && min <= 59;
+}
+
+function buildSidgadCalendar(scMatches, jokComp) {
+  const baseByActa = {};
+  for (const m of (jokComp.calendar || [])) {
+    if (!m.actaId) continue;
+    baseByActa[String(m.actaId)] = m;
+  }
+
+  const parsed = [];
+  for (const m of (scMatches || [])) {
+    const actaId = m.idp ? String(m.idp) : null;
+    const base = actaId ? baseByActa[actaId] : null;
+
+    const home = m.home || base?.home || null;
+    const away = m.away || base?.away || null;
+    const date = hasValidDate(m.date) ? m.date : (base?.date || null);
+    const time = hasValidTime(m.time) ? m.time : (base?.time || null);
+
+    const row = {
+      jornada:   m.jornada ?? base?.jornada ?? null,
+      home,
+      away,
+      homeScore: m.homeScore ?? base?.homeScore ?? null,
+      awayScore: m.awayScore ?? base?.awayScore ?? null,
+      date,
+      time,
+      played:    Boolean(m.played || base?.played),
+      actaId,
+      idp:       actaId,
+      idc:       m.idc ? String(m.idc) : null,
+      actaSlug:  base?.actaSlug || null,
+      actaUrl:   base?.actaUrl || null,
+    };
+
+    // Sense equips no es pot mostrar ni creuar al front.
+    if (!row.home || !row.away) continue;
+    parsed.push(row);
+  }
+
+  const uniqueByKey = {};
+  for (const row of parsed) {
+    const key = row.actaId || `${row.jornada}|${row.home}|${row.away}|${row.date || ""}|${row.time || ""}`;
+    if (!uniqueByKey[key]) uniqueByKey[key] = row;
+  }
+  return Object.values(uniqueByKey);
+}
+
+function scoreClassificationQuality(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return 0;
+  let q = 0;
+  for (const r of rows) {
+    if (r.team) q += 1;
+    if (r.teamId) q += 2;
+    if (typeof r.pts === "number") q += 1;
+    if (typeof r.pj === "number") q += 1;
+  }
+  return q;
+}
+
+function scoreCalendarQuality(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return 0;
+  let q = 0;
+  for (const r of rows) {
+    if (r.home && r.away) q += 2;
+    if (r.actaId || r.idp) q += 1;
+    if (r.played && typeof r.homeScore === "number" && typeof r.awayScore === "number") q += 2;
+    if (hasValidDate(r.date)) q += 1;
+    if (hasValidTime(r.time)) q += 1;
+  }
+  return q;
+}
+
+function mergeOneSidgadCompetition(sc, jokComp, clubIndex) {
+  let classMerged = false;
+  let calMerged = false;
+
+  if (sc.classification && sc.classification.length > 0) {
+    const prevTeamIndex = {};
+    for (const row of (jokComp.classification || [])) {
+      if (!row.team) continue;
+      prevTeamIndex[normTeamName(row.team)] = { teamId: row.teamId, clubId: row.clubId };
+    }
+
+    const sidgadClass = sc.classification.map(row => {
+      const prev = prevTeamIndex[normTeamName(row.team)];
+      return {
+        ...row,
+        teamId: row.teamId || prev?.teamId || null,
+        clubId: row.clubId || prev?.clubId || null,
+      };
+    });
+
+    const qSidgad = scoreClassificationQuality(sidgadClass);
+    const qJok = scoreClassificationQuality(jokComp.classification || []);
+    const enoughRows = sidgadClass.length >= Math.max(4, Math.floor((jokComp.classification || []).length * 0.5));
+
+    if (qSidgad >= qJok || enoughRows) {
+      jokComp.classification = sidgadClass;
+      classMerged = true;
+
+      for (const row of jokComp.classification) {
+        if (!row.teamId || !clubIndex) continue;
+        if (!clubIndex[row.teamId]) clubIndex[row.teamId] = { name: row.team, clubId: row.clubId };
+        else if (row.clubId && !clubIndex[row.teamId].clubId) clubIndex[row.teamId].clubId = row.clubId;
+      }
+    }
+  }
+
+  if (sc.matches && sc.matches.length > 0) {
+    const sidgadCal = buildSidgadCalendar(sc.matches, jokComp);
+    const qSidgad = scoreCalendarQuality(sidgadCal);
+    const qJok = scoreCalendarQuality(jokComp.calendar || []);
+
+    if (sidgadCal.length > 0 && qSidgad >= qJok) {
+      jokComp.calendar = sidgadCal;
+      calMerged = true;
+    }
+  }
+
+  return { classMerged, calMerged };
+}
+
 async function mergeSidgadCompetitions(categories, clubIndex) {
   const compFile = path.join(__dirname, "../public/competicions-sidgad.json");
   let sidgadComps;
@@ -1032,16 +1177,14 @@ async function mergeSidgadCompetitions(categories, clubIndex) {
     return;
   }
 
-  // Normalització de noms per matching
-  const normTeamName = s => (s || "").toUpperCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim();
-
-  // Indexa les competicions jok.cat per nom normalitzat
-  const jokIndex = {}; // normName → comp object
+  // Indexa les competicions jok.cat per ID i per nom normalitzat
+  const jokById = {}; // comp.id(string) -> comp object
+  const jokIndex = {}; // normName -> comp object
   const collisions = new Set();
+
   for (const comps of Object.values(categories)) {
     for (const comp of comps) {
+      jokById[String(comp.id)] = comp;
       const key = normCompName(comp.name || "");
       if (!key) continue;
       if (jokIndex[key]) collisions.add(key);
@@ -1051,65 +1194,45 @@ async function mergeSidgadCompetitions(categories, clubIndex) {
   if (collisions.size > 0)
     console.log(`   ⚠️  Competicions amb nom normalitzat duplicat (no es fusionaran): ${[...collisions].join(", ")}`);
 
-  let mergedClass = 0, mergedCal = 0;
+  let mergedClass = 0, mergedCal = 0, mergedById = 0, mergedByName = 0;
   for (const sc of Object.values(sidgadComps)) {
+    const idTargets = new Set();
+
+    // 1) Matching principal per identificadors jok.cat (idc)
+    for (const id of (sc.jokCompIds || [])) {
+      const k = String(id || "").trim();
+      if (k && jokById[k]) idTargets.add(k);
+    }
+    for (const m of (sc.matches || [])) {
+      const k = String(m?.idc || "").trim();
+      if (k && jokById[k]) idTargets.add(k);
+    }
+
+    if (idTargets.size > 0) {
+      for (const id of idTargets) {
+        const jokComp = jokById[id];
+        if (!jokComp) continue;
+        const { classMerged, calMerged } = mergeOneSidgadCompetition(sc, jokComp, clubIndex);
+        if (classMerged) mergedClass++;
+        if (calMerged) mergedCal++;
+        if (classMerged || calMerged) mergedById++;
+      }
+      continue;
+    }
+
+    // 2) Fallback per nom (només quan no tenim idc)
     const key = normCompName(sc.name || "");
-    if (collisions.has(key)) continue; // ambigu, no fusionar
+    if (!key || collisions.has(key)) continue;
     const jokComp = jokIndex[key];
     if (!jokComp) continue;
 
-    if (sc.classification && sc.classification.length > 0) {
-      // Construeix índex de teamId/clubId de la classificació jok.cat anterior
-      const prevTeamIndex = {}; // normName → { teamId, clubId }
-      for (const row of (jokComp.classification || [])) {
-        if (row.team) prevTeamIndex[normTeamName(row.team)] = { teamId: row.teamId, clubId: row.clubId };
-      }
-
-      // Fusiona teamId/clubId de jok.cat als equips de sidgad per nom
-      jokComp.classification = sc.classification.map(row => {
-        const prev = prevTeamIndex[normTeamName(row.team)];
-        return {
-          ...row,
-          teamId: row.teamId || prev?.teamId || null,
-          clubId: row.clubId || prev?.clubId || null,
-        };
-      });
-
-      // Actualitza clubIndex amb qualsevol teamId nou de sidgad
-      for (const row of jokComp.classification) {
-        if (row.teamId && clubIndex) {
-          if (!clubIndex[row.teamId]) clubIndex[row.teamId] = { name: row.team, clubId: row.clubId };
-          else if (row.clubId && !clubIndex[row.teamId].clubId) clubIndex[row.teamId].clubId = row.clubId;
-        }
-      }
-      mergedClass++;
-    }
-
-    if (sc.matches && sc.matches.length > 0) {
-      // Converteix resultats sidgad al format de calendar jok.cat
-      const sidgadCal = sc.matches
-        .filter(m => m.home && m.away)
-        .map(m => ({
-          jornada:   m.jornada,
-          home:      m.home,
-          away:      m.away,
-          homeScore: m.homeScore,
-          awayScore: m.awayScore,
-          date:      m.date,
-          time:      m.time,
-          played:    m.played,
-          idp:       m.idp,
-        }));
-      if (sidgadCal.length > 0) {
-        if (sidgadCal.length >= (jokComp.calendar?.length || 0)) {
-          jokComp.calendar = sidgadCal;
-          mergedCal++;
-        }
-      }
-    }
+    const { classMerged, calMerged } = mergeOneSidgadCompetition(sc, jokComp, clubIndex);
+    if (classMerged) mergedClass++;
+    if (calMerged) mergedCal++;
+    if (classMerged || calMerged) mergedByName++;
   }
 
-  console.log(`   🔗 Sidgad comps: ${mergedClass} classificacions, ${mergedCal} calendaris fusionats`);
+  console.log(`   🔗 Sidgad comps: ${mergedClass} classificacions, ${mergedCal} calendaris fusionats (${mergedById} per ID, ${mergedByName} per nom)`);
 }
 
 // ── Main ──────────────────────────────────────────────────────

@@ -298,7 +298,18 @@ async function main() {
           }
         }
 
-        compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [] };
+        const jokCompIds = [...new Set(parsedMatches
+          .map(m => String(m.idc || "").trim())
+          .filter(Boolean))];
+
+        compData[compId] = {
+          id: compId,
+          name: compName,
+          sidgadCompId: compId,
+          jokCompIds,
+          matches: parsedMatches,
+          classification: [],
+        };
 
         // ── 2b. Classificació ────────────────────────────────
         const tabResult = await page.evaluate(() => {
