@@ -303,62 +303,152 @@ async function main() {
           }
         }
 
-        compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [] };
+        compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [], classificationByGroup: {} };
 
         // ── 2b. Classificació ────────────────────────────────
-        const tabResult = await page.evaluate(() => {
-          // Cerca en tot el document (pestanyes solen estar fora del contenidor del modal)
-          const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab']")];
-          // Coincideix tant "clasificación" (castellà, 1 's') com "classificació" (català, 2 's')
-          const tab = allClickable.find(el => {
-            const txt = el.textContent.trim();
-            const onclick = el.getAttribute("onclick") || "";
-            const href = el.getAttribute("href") || "";
-            return /class?ificaci/i.test(txt) || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
+        // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
+        const clickClassTab = async () => {
+          const found = await page.evaluate(() => {
+            const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab']")];
+            const tab = allClickable.find(el => {
+              const txt = el.textContent.trim();
+              const onclick = el.getAttribute("onclick") || "";
+              const href = el.getAttribute("href") || "";
+              return /class?ificaci/i.test(txt) || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
+            });
+            if (tab) { tab.click(); return true; }
+            return false;
           });
-          if (tab) { tab.click(); return { found: true, text: tab.textContent.trim().slice(0, 80) }; }
-
-          // Debug: mostra els primers elements clicables propers al modal
-          const modal = document.getElementById("tab_modal_contenido_competicion");
-          const nearby = [...(modal?.closest("div, table, section") || document).querySelectorAll("a, button, li[onclick], div[onclick]")]
-            .slice(0, 10).map(el => ({ tag: el.tagName, cls: el.className.slice(0, 40), txt: el.textContent.trim().slice(0, 50) }));
-          return { found: false, nearby };
-        });
-
-        if (!debugClassLogged && !tabResult.found) {
-          console.log(`\n--- DEBUG TAB CLASSIFICACIÓ (no trobat) comp ${compId} ---`);
-          console.log(JSON.stringify(tabResult.nearby, null, 2));
-          console.log("---\n");
-          debugClassLogged = true; // només logueja una vegada
-        }
-
-        if (tabResult.found) {
+          if (!found) return null;
           await page.waitForFunction(
-            () => {
-              const el = document.getElementById("tab_modal_contenido_competicion");
-              return el && el.innerHTML.length > 100;
-            },
+            () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 100; },
             { timeout: 5000 }
           ).catch(() => {});
+          return page.evaluate(() => document.getElementById("tab_modal_contenido_competicion")?.innerHTML || "");
+        };
 
-          const classHtml = await page.evaluate(() =>
-            document.getElementById("tab_modal_contenido_competicion")?.innerHTML || ""
-          );
+        // Helper: intenta seleccionar el grup amb el idc indicat al portal
+        const clickGroupTab = async (idc) => {
+          return page.evaluate(targetIdc => {
+            const candidates = [...document.querySelectorAll("[onclick], a, button, li, span, td")];
+            const el = candidates.find(e => {
+              const oc = e.getAttribute("onclick") || "";
+              const hr = e.getAttribute("href") || "";
+              const di = e.getAttribute("data-idc") || e.getAttribute("idc") || "";
+              // Coincideix si el valor idc apareix com a token sencer (no com a substring d'un nombre més gran)
+              const re = new RegExp("(?<![\\d])" + targetIdc + "(?![\\d])");
+              return re.test(oc) || re.test(hr) || di === String(targetIdc);
+            });
+            if (el) { el.click(); return { found: true, text: el.textContent.trim().slice(0, 60) }; }
+            // Debug: mostra elements amb onclick per ajudar a identificar l'estructura
+            const sample = candidates.filter(e => e.getAttribute("onclick"))
+              .slice(0, 8).map(e => ({ tag: e.tagName, oc: (e.getAttribute("onclick") || "").slice(0, 80), txt: e.textContent.trim().slice(0, 40) }));
+            return { found: false, sample };
+          }, idc);
+        };
 
-          const classification = parseClassificationSidgad(classHtml);
-          compData[compId].classification = classification;
+        // Grups únics (idc) presents en els partits d'aquesta competició
+        const uniqueIdcs = [...new Set(parsedMatches.map(m => m.idc).filter(Boolean))];
 
-          if (!debugClassLogged && classification.length > 0) {
-            console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
-            console.log(JSON.stringify(classification[0]));
+        // Detecció addicional de grups des del DOM:
+        // Busca elements [onclick] que continguin el compId — quan en un onclick
+        // apareix el compId + un altre número, és molt probable que sigui un selector de grup.
+        const domGroups = await page.evaluate(cid => {
+          const groups = [];
+          const seen = new Set([cid]);
+          for (const el of document.querySelectorAll("[onclick]")) {
+            const oc = el.getAttribute("onclick") || "";
+            if (!oc.includes(cid)) continue;
+            for (const [, n] of oc.matchAll(/\b(\d{4,5})\b/g)) {
+              if (seen.has(n)) continue;
+              seen.add(n);
+              groups.push({ idc: n, text: el.textContent.trim().slice(0, 50), onclick: oc.slice(0, 80) });
+            }
+          }
+          return groups;
+        }, compId);
+
+        // Fusió: idcs dels partits + idcs detectats al DOM (sense duplicats)
+        for (const { idc } of domGroups) {
+          if (!uniqueIdcs.includes(idc)) uniqueIdcs.push(idc);
+        }
+
+        if (domGroups.length > 0 && !debugCalLogged) {
+          console.log(`   🔍 Grups DOM comp ${compId}: ${domGroups.map(g => g.idc).join(", ")}`);
+        }
+
+        if (uniqueIdcs.length > 1) {
+          // Competició amb múltiples grups: navega a cada grup i obté la seva classificació
+          let debugGroupLogged = false;
+          for (const idc of uniqueIdcs) {
+            try {
+              // Torna a clicar la competició per reiniciar l'estat
+              await page.evaluate(id => document.getElementById(id)?.click(), compId);
+              await page.waitForFunction(
+                () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
+                { timeout: 6000 }
+              ).catch(() => {});
+
+              // Selecciona el grup
+              const groupResult = await clickGroupTab(idc);
+              if (!groupResult.found) {
+                if (!debugGroupLogged) {
+                  console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
+                  console.log(JSON.stringify(groupResult.sample, null, 2));
+                  console.log("---\n");
+                  debugGroupLogged = true;
+                }
+                continue;
+              }
+              await new Promise(r => setTimeout(r, 600));
+
+              // Obté la classificació del grup
+              const classHtml = await clickClassTab();
+              if (!classHtml) continue;
+              const classification = parseClassificationSidgad(classHtml);
+              if (classification.length > 0) {
+                compData[compId].classificationByGroup[idc] = classification;
+                if (!debugClassLogged) {
+                  console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
+                  console.log(JSON.stringify(classification[0]));
+                  console.log("---\n");
+                  debugClassLogged = true;
+                }
+              }
+            } catch { /* continua */ }
+          }
+        } else {
+          // Competició d'un sol grup: comportament original
+          const classHtml = await clickClassTab();
+          if (!classHtml && !debugClassLogged) {
+            const nearby = await page.evaluate(() => {
+              const modal = document.getElementById("tab_modal_contenido_competicion");
+              return [...(modal?.closest("div, table, section") || document).querySelectorAll("a, button, li[onclick], div[onclick]")]
+                .slice(0, 10).map(el => ({ tag: el.tagName, cls: el.className.slice(0, 40), txt: el.textContent.trim().slice(0, 50) }));
+            });
+            console.log(`\n--- DEBUG TAB CLASSIFICACIÓ (no trobat) comp ${compId} ---`);
+            console.log(JSON.stringify(nearby, null, 2));
             console.log("---\n");
             debugClassLogged = true;
+          }
+          if (classHtml) {
+            const classification = parseClassificationSidgad(classHtml);
+            compData[compId].classification = classification;
+            if (uniqueIdcs.length === 1) compData[compId].classificationByGroup[uniqueIdcs[0]] = classification;
+            if (!debugClassLogged && classification.length > 0) {
+              console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
+              console.log(JSON.stringify(classification[0]));
+              console.log("---\n");
+              debugClassLogged = true;
+            }
           }
         }
       } catch { /* continua */ }
     }
     console.log(`   Partits amb acta descoberts: ${matchIds.size}`);
-    console.log(`   Competicions amb dades: ${Object.keys(compData).length} (classificació: ${Object.values(compData).filter(c => c.classification.length > 0).length})`);
+    const nClassSingle = Object.values(compData).filter(c => c.classification.length > 0).length;
+    const nClassGroup  = Object.values(compData).filter(c => Object.keys(c.classificationByGroup || {}).length > 0).length;
+    console.log(`   Competicions amb dades: ${Object.keys(compData).length} (class. simple: ${nClassSingle}, class. per grup: ${nClassGroup})`);
 
     // ── 3. Carregar actes i extreure jugadors ─────────────────
     const discovered = {}; // id_player → { name, isGK, registeredTeam }
