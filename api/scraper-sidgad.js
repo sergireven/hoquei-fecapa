@@ -300,20 +300,33 @@ async function main() {
         compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [] };
 
         // ── 2b. Classificació ────────────────────────────────
-        const tabClicked = await page.evaluate(() => {
+        const tabResult = await page.evaluate(() => {
+          // Cerca en tot el document (pestanyes solen estar fora del contenidor del modal)
+          const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab']")];
+          // Coincideix tant "clasificación" (castellà, 1 's') com "classificació" (català, 2 's')
+          const tab = allClickable.find(el => {
+            const txt = el.textContent.trim();
+            const onclick = el.getAttribute("onclick") || "";
+            const href = el.getAttribute("href") || "";
+            return /class?ificaci/i.test(txt) || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
+          });
+          if (tab) { tab.click(); return { found: true, text: tab.textContent.trim().slice(0, 80) }; }
+
+          // Debug: mostra els primers elements clicables propers al modal
           const modal = document.getElementById("tab_modal_contenido_competicion");
-          const parent = modal?.parentElement || document;
-          const allClickable = [...parent.querySelectorAll("a, button, li, span, div[onclick]")];
-          const tab = allClickable.find(el =>
-            /clasificaci/i.test(el.textContent) ||
-            /clasificaci/i.test(el.getAttribute("onclick") || "") ||
-            /clasificaci/i.test(el.getAttribute("href") || "")
-          );
-          if (tab) { tab.click(); return true; }
-          return false;
+          const nearby = [...(modal?.closest("div, table, section") || document).querySelectorAll("a, button, li[onclick], div[onclick]")]
+            .slice(0, 10).map(el => ({ tag: el.tagName, cls: el.className.slice(0, 40), txt: el.textContent.trim().slice(0, 50) }));
+          return { found: false, nearby };
         });
 
-        if (tabClicked) {
+        if (!debugClassLogged && !tabResult.found) {
+          console.log(`\n--- DEBUG TAB CLASSIFICACIÓ (no trobat) comp ${compId} ---`);
+          console.log(JSON.stringify(tabResult.nearby, null, 2));
+          console.log("---\n");
+          debugClassLogged = true; // només logueja una vegada
+        }
+
+        if (tabResult.found) {
           await page.waitForFunction(
             () => {
               const el = document.getElementById("tab_modal_contenido_competicion");
