@@ -102,65 +102,7 @@ Vercel redesplega automàticament quan fas push.
 
 ---
 
-## Pas 6 — Configurar actualització des del panell admin (opcional)
-
-Per permetre als admins disparar el scraper des del panell admin:
-
-### 6.1 — Generar GitHub Personal Access Token
-
-1. Ves a: https://github.com/settings/personal-access-tokens/new
-2. Configuració:
-   - **Token name**: `hoquei-fecapa-scraper`
-   - **Expiration**: 90 days (o personalizat)
-   - **Repository access**: `Only select repositories` → selecciona `hoquei-fecapa`
-   - **Permissions**:
-     - Repository → `Actions` → `Read and write`
-3. Clica **"Generate token"** i **copia el token** (no el podràs veure de nou!)
-
-### 6.2 — Configurar el servidor API
-
-1. A la carpeta del projecte, crea `.env`:
-```bash
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxx  # El token que acabes de generar
-PORT=3001
-```
-
-2. Instal·la dependències:
-```bash
-npm install
-```
-
-3. Executar el servidor:
-```bash
-npm run server
-# O: npm start
-```
-
-El servidor estarà a `http://localhost:3001`
-
-### 6.3 — Desplegar a producció (Vercel)
-
-Si estan deployant a Vercel amb el servidor Node.js:
-
-1. Actualitza `vercel.json`:
-```json
-{
-  "builds": [{ "src": "api/server.js", "use": "@vercel/node" }],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "api/server.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ]
-}
-```
-
-2. A Vercel → Settings → Environment Variables → afegeix:
-   - `GITHUB_TOKEN`: el token generat més amunt
-
-3. Desplega amb `git push`
-
----
-
-## Pas 7 — Domini personalitzat (opcional)
+## Pas 6 — Domini personalitzat (opcional)
 
 A Vercel → Settings → Domains → afegeix el teu domini.
 Dominis .cat valen ~15€/any a https://www.nominalia.com o https://www.arsys.es
