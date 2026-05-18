@@ -1248,14 +1248,38 @@ async function mergejokIntoSidgad(categories) {
   // Track parent-child relationships: sidgad → [jok.cat children]
   const sidgadChildren = {}; // sidgadId → { sidgadComp, jokChildren: [jokCompIds] }
 
-  // Mapa invers idc → { sidgadCompId, classificationByGroup }
+  // Mapa invers idc → { sidgadCompId, classificationByGroup, matchesByIdc }
   // Permet trobar directament la classificació d'un grup sidgad pel seu idc,
   // que coincideix amb l'ID de competició de jok.cat (p.ex. idc=4478 ↔ jok 4478)
-  const idcToSidgad = {}; // idc → { compId, classificationByGroup }
+  // Si no hi ha classificationByGroup (p.ex. Copes), al menys tenim matchesByIdc
+  const idcToSidgad = {}; // idc → { compId, compName, classificationByGroup, matchesByIdc }
+  const matchesByIdc = {}; // idc → { homeMatches, awayMatches } count
+
   for (const [scId, sc] of Object.entries(sidgadComps)) {
-    if (!sc.classificationByGroup) continue;
-    for (const idc of Object.keys(sc.classificationByGroup)) {
-      idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: sc.classificationByGroup };
+    // Build matchesByIdc: group matches by their idc
+    const idcMatches = {};
+    if (sc.matches) {
+      for (const match of sc.matches) {
+        const idc = match.idc || scId;
+        if (!idcMatches[idc]) idcMatches[idc] = { count: 0, hasData: false };
+        idcMatches[idc].count++;
+        if (match.home && match.away) idcMatches[idc].hasData = true;
+      }
+    }
+
+    // Register each idc: prioritat a classificationByGroup si té dades, sinó usa matches
+    const hasClassByGroup = sc.classificationByGroup && Object.keys(sc.classificationByGroup).length > 0;
+    if (hasClassByGroup) {
+      for (const idc of Object.keys(sc.classificationByGroup)) {
+        idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: sc.classificationByGroup, matchesByIdc: idcMatches[idc] };
+      }
+    } else if (Object.keys(idcMatches).length > 0) {
+      // No classificationByGroup o està buit, però has matches with idcs - register them anyway for calendar merge
+      for (const [idc, matchData] of Object.entries(idcMatches)) {
+        if (!idcToSidgad[idc]) {
+          idcToSidgad[idc] = { compId: scId, compName: sc.name, classificationByGroup: null, matchesByIdc: matchData };
+        }
+      }
     }
   }
 
@@ -1389,17 +1413,32 @@ async function mergejokIntoSidgad(categories) {
         // Classificació: prioritat 1 — grup exacte per idc (idc = ID de competició jok.cat)
         const idcMatch = idcToSidgad[jokComp.id];
         if (idcMatch) {
-          const groupClass = idcMatch.classificationByGroup[jokComp.id];
-          if (groupClass && groupClass.length > 0) {
-            jokComp.classification = groupClass;
-            jokComp.sidgadParentId = idcMatch.compId;
+          jokComp.sidgadParentId = idcMatch.compId;
+
+          // Intentar usar la classificació del grup si existeix
+          if (idcMatch.classificationByGroup && idcMatch.classificationByGroup[jokComp.id]) {
+            const groupClass = idcMatch.classificationByGroup[jokComp.id];
+            if (groupClass && groupClass.length > 0) {
+              jokComp.classification = groupClass;
+            }
+          }
+
+          // Si no tenim classificació de grup però tenim matches d'aquest idc, usar el parent's calendar
+          if ((!jokComp.classification || jokComp.classification.length === 0) && sidgadComp.matches && sidgadComp.matches.length > 0) {
+            const groupMatches = sidgadComp.matches.filter(m => m.idc === String(jokComp.id));
+            if (groupMatches.length > 0) {
+              jokComp.calendar = groupMatches;
+            } else {
+              // Fallback: usa tots els matches del parent
+              jokComp.calendar = sidgadComp.matches;
+            }
           }
         // Prioritat 2 — classificació global del pare sidgad (competicions d'un sol grup)
         } else if (sidgadComp.classification && sidgadComp.classification.length > 0) {
           jokComp.classification = sidgadComp.classification;
         }
-        // Merge sidgad calendar if present
-        if (sidgadComp.matches && sidgadComp.matches.length > 0) {
+        // Merge sidgad calendar if no idc-specific match found
+        if ((!jokComp.calendar || jokComp.calendar.length === 0) && sidgadComp.matches && sidgadComp.matches.length > 0) {
           jokComp.calendar = sidgadComp.matches;
         }
       }
