@@ -2877,7 +2877,6 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
     winRate: last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0,
     topScorer,
     suspended,
-    yellowCardRisk,
     goalkeepers,
     winProbability,
     reinforcements,
