@@ -1021,6 +1021,22 @@ window.removeClubFav = key => {
 
 // ── CLUB TAB ──────────────────────────────────────────────────
 
+function competitionPriority(comp) {
+  if (!comp) return 0;
+  const name = String(comp.name || "").toUpperCase();
+  let score = 0;
+  if (/COPA|2\s*ª\s*FASE|2A\s*FASE|RANKING|FASE\s*FINAL/.test(name)) score += 1000;
+  if (comp.sidgadParentId) score += 300;
+  if (comp.classificationSource === "fecapa") score += 150;
+  score += parseInt(comp.id, 10) || 0;
+  return score;
+}
+
+function teamKeyFromRow(row) {
+  if (row?.teamId) return `id:${row.teamId}`;
+  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+}
+
 function buildClubMap() {
   const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
@@ -1034,8 +1050,16 @@ function buildClubMap() {
         }
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row);
-        if (!club.teams.some(t=>t.compId===comp.id&&t.teamName===row.team))
-          club.teams.push({ compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp) });
+        const key = teamKeyFromRow(row);
+        const existingIdx = club.teams.findIndex(t => t.teamKey === key);
+        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp), teamKey:key };
+        if (existingIdx < 0) {
+          club.teams.push(candidate);
+        } else {
+          const existing = club.teams[existingIdx];
+          const keepCandidate = competitionPriority(comp) > competitionPriority(findComp(existing.compId));
+          if (keepCandidate) club.teams[existingIdx] = candidate;
+        }
       }
     }
   }
@@ -1058,9 +1082,15 @@ function buildClubMap() {
     const main = clubMap.get(canonical);
     for (const key of keys) {
       if (key === canonical) continue;
-      for (const t of clubMap.get(key).teams)
-        if (!main.teams.some(x=>x.compId===t.compId&&x.teamName===t.teamName))
+      for (const t of clubMap.get(key).teams) {
+        const existingIdx = main.teams.findIndex(x => x.teamKey === t.teamKey);
+        if (existingIdx < 0) {
           main.teams.push(t);
+        } else {
+          const keepCandidate = competitionPriority(findComp(t.compId)) > competitionPriority(findComp(main.teams[existingIdx].compId));
+          if (keepCandidate) main.teams[existingIdx] = t;
+        }
+      }
       clubMap.delete(key);
     }
   }
