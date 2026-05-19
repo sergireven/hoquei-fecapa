@@ -1241,6 +1241,7 @@ async function mergejokIntoSidgad(categories) {
   const jokComps = []; // Store all jok.cat comps for flexible lookup
   for (const comps of Object.values(categories)) {
     for (const comp of comps) {
+      comp.classificationSource = (comp.classification && comp.classification.length > 0) ? "jok" : "none";
       jokComps.push({ comp, keywords: extractKeywords(comp.name || "") });
     }
   }
@@ -1420,6 +1421,7 @@ async function mergejokIntoSidgad(categories) {
             const groupClass = idcMatch.classificationByGroup[jokComp.id];
             if (groupClass && groupClass.length > 0) {
               jokComp.classification = groupClass;
+              jokComp.classificationSource = "fecapa";
             }
           }
 
@@ -1436,6 +1438,7 @@ async function mergejokIntoSidgad(categories) {
         // Prioritat 2 — classificació global del pare sidgad (competicions d'un sol grup)
         } else if (sidgadComp.classification && sidgadComp.classification.length > 0) {
           jokComp.classification = sidgadComp.classification;
+          jokComp.classificationSource = "fecapa";
         }
         // Merge sidgad calendar if no idc-specific match found
         if ((!jokComp.calendar || jokComp.calendar.length === 0) && sidgadComp.matches && sidgadComp.matches.length > 0) {
@@ -1481,6 +1484,7 @@ async function mergejokIntoSidgad(categories) {
             const groupClass = sidgadParent.classificationByGroup[jokComp.id];
             if (groupClass && groupClass.length > 0) {
               jokComp.classification = groupClass;
+              jokComp.classificationSource = "fecapa";
             }
           }
 
@@ -1493,6 +1497,14 @@ async function mergejokIntoSidgad(categories) {
           }
         }
       }
+    }
+  }
+
+  // Garantir que sempre hi hagi font de classificació coherent.
+  for (const comps of Object.values(categories)) {
+    for (const comp of comps) {
+      if (comp.classificationSource === "fecapa") continue;
+      comp.classificationSource = (comp.classification && comp.classification.length > 0) ? "jok" : "none";
     }
   }
 

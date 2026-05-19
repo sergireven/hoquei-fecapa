@@ -1,6 +1,7 @@
 // FECAPA app.js v8
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
+const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FAV_KEY  = "hoquei_favs_v8";
 
 // ── Supabase auth ─────────────────────────────────────────────
@@ -415,6 +416,89 @@ function shieldImg(clubId, size) {
   // clubId can be a full filename like "278_3.png" or just "278"
   const src = clubId.includes(".") ? SHIELD + clubId : SHIELD + clubId + ".gif";
   return `<img src="${src}" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
+}
+
+function normalizeCompKey(name) {
+  return String(name || "")
+    .replace(/\s*\((?:20\d{2}|\d{4})[-/]?\d{2,4}\)\s*/g, " ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function hasClassRows(rows) {
+  return Array.isArray(rows) && rows.some(r => r && String(r.team || "").trim());
+}
+
+function buildSidgadClassificationIndex(raw) {
+  const byCompId = new Map();
+  const byName = new Map();
+  const values = Object.values(raw || {});
+
+  for (const comp of values) {
+    if (!comp || typeof comp !== "object") continue;
+
+    const compNameKey = normalizeCompKey(comp.name);
+    const groups = comp.classificationByGroup || {};
+    const groupEntries = Object.entries(groups).filter(([, rows]) => hasClassRows(rows));
+    const flatRows = hasClassRows(comp.classification) ? comp.classification : null;
+
+    for (const [idc, rows] of groupEntries) {
+      if (!byCompId.has(String(idc))) byCompId.set(String(idc), rows);
+    }
+
+    if (flatRows) {
+      const idcs = [...new Set((comp.matches || []).map(m => String(m?.idc || "")).filter(Boolean))];
+      if (idcs.length === 1 && !byCompId.has(idcs[0])) byCompId.set(idcs[0], flatRows);
+      if (comp.id && !byCompId.has(String(comp.id))) byCompId.set(String(comp.id), flatRows);
+      if (compNameKey && !byName.has(compNameKey)) byName.set(compNameKey, flatRows);
+      continue;
+    }
+
+    if (compNameKey && groupEntries.length && !byName.has(compNameKey)) {
+      byName.set(compNameKey, groupEntries[0][1]);
+    }
+  }
+
+  return { byCompId, byName };
+}
+
+function applyClassificationSourceMerge() {
+  if (!DB?.categories) return;
+
+  const sidgad = DB._sidgadCompData || null;
+  const sidgadIdx = buildSidgadClassificationIndex(sidgad);
+
+  for (const comps of Object.values(DB.categories)) {
+    for (const comp of comps) {
+      const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
+      const sidgadRows = sidgadIdx.byCompId.get(String(comp.id))
+        || sidgadIdx.byName.get(normalizeCompKey(comp.name));
+
+      if (hasClassRows(sidgadRows)) {
+        comp.classification = sidgadRows;
+        comp.classificationSource = "fecapa";
+      } else if (hasClassRows(jokRows)) {
+        comp.classification = jokRows;
+        comp.classificationSource = "jok";
+      } else {
+        comp.classification = [];
+        comp.classificationSource = "none";
+      }
+    }
+  }
+}
+
+function classifSourceBadgeHtml(comp) {
+  const src = comp?.classificationSource;
+  if (src === "fecapa") {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>FECAPA</span></span>`;
+  }
+  if (src === "jok") {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
+  }
+  return "";
 }
 //-- Busca competicions
 function findComp(compId) {
@@ -1243,7 +1327,8 @@ function openDetail(compId,teamName,tab){
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
-  $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat`;
+  const srcLabel = detailComp.classificationSource === "fecapa" ? " · FECAPA" : (detailComp.classificationSource === "jok" ? " · jok.cat" : "");
+  $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat${srcLabel}`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
   renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
@@ -1431,8 +1516,10 @@ function setupListeners(){
 
 function renderDetailClassif(){
   const cl=detailComp.classification||[];
+  const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
   $("panel-classif").innerHTML=`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${sourceBadge}</div>
     <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f8fafc">
@@ -1583,6 +1670,13 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    try {
+      const sidgadRes = await fetch(SIDGAD_COMP_URL+"?t="+Date.now());
+      if (sidgadRes.ok) DB._sidgadCompData = JSON.parse(await sidgadRes.text());
+    } catch {}
+    applyClassificationSourceMerge();
+
     if (DB.lastUpdate) {
       const d = new Date(DB.lastUpdate);
       const fmt = new Intl.DateTimeFormat('ca', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
