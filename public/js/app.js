@@ -744,9 +744,12 @@ function playerTableHtml(players, teamName, teamColor) {
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#2563eb">B</div>
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#dc2626">V</div>`:""}
         </div>
-        ${players.map(p => `
+        ${players.map(p => {
+          const jid = p.jugadorId;
+          const playerNumber = jid && DB?.jugadors?.[jid]?.number;
+          return `
           <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
-            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#64748b">${p.number ?? "–"}</div>
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#64748b">${playerNumber ?? "–"}</div>
             <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
               ${(()=>{const m=p.url?.match(/\/jugador\/(\d+)\//);const jid=m?.[1];if(jid)return`<button class="player-name-btn" data-jid="${jid}">${esc(p.name)}</button>`;if(p.url)return`<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>`;return esc(p.name);})()}
             </div>
@@ -754,7 +757,8 @@ function playerTableHtml(players, teamName, teamColor) {
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.g?"900":"400"};color:${p.g?"#16a34a":"#cbd5e1"}">${p.g||"·"}</div>
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.b?"900":"400"};color:${p.b?"#2563eb":"#cbd5e1"}">${p.b||"·"}</div>
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.v?"900":"400"};color:${p.v?"#dc2626":"#cbd5e1"}">${p.v||"·"}</div>`:""}
-          </div>`).join("")}
+          </div>`;
+        }).join("")}
       </div>
     </div>`;
 }
@@ -769,50 +773,6 @@ function getVenueLinks(teamName) {
     <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
     <a href="https://maps.apple.com/?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">🗺️ Apple Maps →</a>
   </div>`;
-}
-
-async function enrichActaPlayerNumbers(acta) {
-  if (!acta.actaUrl && !acta.url) return;
-  try {
-    const url = acta.actaUrl || acta.url;
-    const actaId = url.match(/\/acta\/(\d+)/)?.[1];
-    if (!actaId) return;
-
-    const res = await fetch(`https://jok.cat/api/acta/${actaId}`);
-    if (!res.ok) return;
-    const data = await res.json();
-
-    let updated = false;
-    if (data.playerStats?.homePlayers) {
-      acta.playerStats.homePlayers.forEach((p, i) => {
-        if (data.playerStats.homePlayers[i]?.number != null) {
-          p.number = data.playerStats.homePlayers[i].number;
-          updated = true;
-        }
-      });
-    }
-    if (data.playerStats?.awayPlayers) {
-      acta.playerStats.awayPlayers.forEach((p, i) => {
-        if (data.playerStats.awayPlayers[i]?.number != null) {
-          p.number = data.playerStats.awayPlayers[i].number;
-          updated = true;
-        }
-      });
-    }
-
-    // Re-render player tables if numbers were updated
-    if (updated) {
-      const grid = document.querySelector('.acta-teams-grid');
-      if (grid) {
-        grid.innerHTML = `
-          ${playerTableHtml(acta.playerStats.homePlayers, acta.home, "#003da5")}
-          ${playerTableHtml(acta.playerStats.awayPlayers, acta.away, "#e5001c")}
-        `;
-      }
-    }
-  } catch (e) {
-    console.log("Could not enrich player numbers:", e.message);
-  }
 }
 
 function openActaDetail(acta) {
@@ -875,9 +835,8 @@ function openActaDetail(acta) {
   ["screen-home","screen-detail","screen-picker"].forEach(id => $(id).style.display="none");
   $("screen-acta").style.display = "flex";
   window.scrollTo(0, 0);
-
-  // Enrich player numbers async
-  enrichActaPlayerNumbers(acta);
+  // Enrich player numbers async (disabled - jok.cat API not accessible)
+  // enrichActaPlayerNumbers(acta);
 }
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
@@ -932,9 +891,18 @@ function matchCard(m, myTeam) {
     : "";
 
   // Afegir icona de ubicació si no és jugat i hi ha coordenades
-  const venueIcon = !played && venuesDB?.venues?.[m.home]?.coordinates
-    ? `<div style="text-align:center;margin-top:6px"><span style="background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px">📍</span></div>`
-    : "";
+  let venueIcon = "";
+  if (!played && venuesDB?.venues?.[m.home]) {
+    const coords = venuesDB.venues[m.home];
+    if (coords.lat && coords.lng) {
+      const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+      const mapsUrl = isApple
+        ? `https://maps.apple.com/?q=${coords.lat},${coords.lng}`
+        : `https://www.google.com/maps?q=${coords.lat},${coords.lng}`;
+      const mapsApp = `maps://?q=${coords.lat},${coords.lng}`;
+      venueIcon = `<div style="text-align:center;margin-top:6px"><a href="${isApple?mapsApp:mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;text-decoration:none;cursor:pointer">📍</a></div>`;
+    }
+  }
 
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
@@ -2508,6 +2476,7 @@ async function init(){
     try {
       const venuesRes = await fetch(VENUES_URL);
       if (venuesRes.ok) venuesDB = await venuesRes.json();
+      console.log("✓ Venues loaded:", Object.keys(venuesDB?.venues||{}).length, "teams");
     } catch(e) {
       console.log("Venues file not available:", e.message);
     }

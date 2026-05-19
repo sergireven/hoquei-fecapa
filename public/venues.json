@@ -1,33 +1,168 @@
 {
-  "description": "Venue coordinates database for hockey teams. Format: team_name -> {coordinates: {lat, lng}, addressName: string}",
   "venues": {
     "Sant Josep A": {
-      "coordinates": {
-        "lat": 41.6893214,
-        "lng": 1.5338014486005938
-      },
-      "addressName": "Sant Josep A"
+      "lat": 41.6893214,
+      "lng": 1.5338014486005938
     },
     "Ch Palafrugell": {
-      "coordinates": {
-        "lat": 42.0196,
-        "lng": 3.1769
-      },
-      "addressName": "Ch Palafrugell"
+      "lat": 42.0196,
+      "lng": 3.1769
     },
     "Martinelia Manlleu A": {
-      "coordinates": {
-        "lat": 42.1765,
-        "lng": 2.3945
-      },
-      "addressName": "Martinelia Manlleu A"
+      "lat": 42.1765,
+      "lng": 2.3945
     },
     "Patí Vic": {
-      "coordinates": {
-        "lat": 42.2361,
-        "lng": 1.8864
-      },
-      "addressName": "Patí Vic"
+      "lat": 42.2361,
+      "lng": 1.8864
+    },
+    "Se La Salle Bonanova C": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "Sant Josep De Badalona": {
+      "lat": 41.4493539,
+      "lng": 2.248254
+    },
+    "Se La Salle Bonanova D": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "Ch Mataró C": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "Ch Les Franqueses": {
+      "lat": 41.6695648,
+      "lng": 2.3254347
+    },
+    "Andorra Hc A": {
+      "lat": 42.501098,
+      "lng": 1.512947
+    },
+    "Ch Mataró B": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "Ch Mataró D": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "Andorra Hc B": {
+      "lat": 42.501098,
+      "lng": 1.512947
+    },
+    "Club Pati Tordera": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "Ch Mataró A": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "Se La Salle Bonanova A": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "Se La Salle Bonanova B": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "Club Pati Flix": {
+      "lat": 41.2340447,
+      "lng": 0.5560861
+    },
+    "Olímpic": {
+      "lat": 41.140386899999996,
+      "lng": 1.1120646868122246
+    },
+    "Ch Les Franqueses A": {
+      "lat": 41.6695648,
+      "lng": 2.3254347
+    },
+    "Ch Les Franqueses B": {
+      "lat": 41.6695648,
+      "lng": 2.3254347
+    },
+    "Montesquiu": {
+      "lat": 42.107284750000005,
+      "lng": 2.206816803562077
+    },
+    "Club Pati Tordera B": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "Club Pati Tordera A": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "Sant Josep": {
+      "lat": 41.6893214,
+      "lng": 1.5338014486005938
+    },
+    "Se La Salle Bonanova": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "Club Pati Tordera C": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "Club Pati Tordera D": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "Reus Deportiu": {
+      "lat": 41.16133177034519,
+      "lng": 1.1083091555314752
+    },
+    "Ch Mataró": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "Cn Reus Ploms": {
+      "lat": 41.15356795712746,
+      "lng": 1.1163122542419244
+    },
+    "Catalunya": {
+      "lat": 41.69783056065119,
+      "lng": 2.2780268740332597
+    },
+    "Cerdanyola Club Dhoquei": {
+      "lat": 41.49377955,
+      "lng": 2.1408671757492996
+    },
+    "Ch Santa Perpètua": {
+      "lat": 41.528489281969065,
+      "lng": 2.182243663242786
+    },
+    "Generali Hc Palau": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "Generali Hc Palau A": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "Generali Hc Palau B": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "Cp Roda": {
+      "lat": 41.5622626,
+      "lng": 1.9931723
+    },
+    "Unió Esportiva Dhorta": {
+      "lat": 41.43696085,
+      "lng": 2.142720961679914
+    },
+    "Hoquei Club Ripollet": {
+      "lat": 41.50152995,
+      "lng": 2.156936313636364
+    },
+    "Ce Arenys De Munt": {
+      "lat": 41.4278377,
+      "lng": 2.1935474
     }
   }
 }
