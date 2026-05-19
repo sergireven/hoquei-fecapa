@@ -1,0 +1,16 @@
+{
+  "description": "Venue coordinates database for hockey teams. Format: team_name -> {coordinates: {lat, lng}, addressName: string}",
+  "venues": {
+    "Sant Josep A": {
+      "coordinates": {
+        "lat": 41.6893214,
+        "lng": 1.5338014486005938
+      },
+      "addressName": "Sant Josep A"
+    },
+    "Example Team": {
+      "coordinates": null,
+      "addressName": "Example Team - Add coordinates from jok.cat"
+    }
+  }
+}

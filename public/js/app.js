@@ -1,6 +1,7 @@
 // FECAPA app.js v8
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
+const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
@@ -307,6 +308,7 @@ window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 
 let DB      = null;
+let venuesDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
@@ -735,7 +737,8 @@ function playerTableHtml(players, teamName, teamColor) {
     <div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:${teamColor};letter-spacing:.05em;margin-bottom:6px">${esc(teamName)}</div>
       <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;overflow:hidden">
-        <div style="display:flex;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+        <div style="display:flex;align-items:center;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+          <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</div>
           <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</div>
           ${hasStats?`<div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#16a34a">G</div>
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#2563eb">B</div>
@@ -743,6 +746,7 @@ function playerTableHtml(players, teamName, teamColor) {
         </div>
         ${players.map(p => `
           <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#64748b">${p.number ?? "–"}</div>
             <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
               ${(()=>{const m=p.url?.match(/\/jugador\/(\d+)\//);const jid=m?.[1];if(jid)return`<button class="player-name-btn" data-jid="${jid}">${esc(p.name)}</button>`;if(p.url)return`<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>`;return esc(p.name);})()}
             </div>
@@ -753,6 +757,18 @@ function playerTableHtml(players, teamName, teamColor) {
           </div>`).join("")}
       </div>
     </div>`;
+}
+
+function getVenueLinks(teamName) {
+  if (!venuesDB?.venues || !teamName) return "";
+  const venue = venuesDB.venues[teamName];
+  if (!venue?.coordinates) return "";
+  const { lat, lng } = venue.coordinates;
+  if (!lat || !lng) return "";
+  return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
+    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
+    <a href="https://maps.apple.com/?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">🗺️ Apple Maps →</a>
+  </div>`;
 }
 
 function openActaDetail(acta) {
@@ -803,6 +819,7 @@ function openActaDetail(acta) {
       ${actaUrl?`<div style="border-top:1px solid #f0f2f8;padding:10px 14px">
         <a href="${esc(actaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📄 Veure acta a jok.cat →</a>
       </div>`:""}
+      ${getVenueLinks(acta.home)}
     </div>
 
     <!-- Players -->
@@ -867,6 +884,11 @@ function matchCard(m, myTeam) {
     ? `<div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>`
     : "";
 
+  // Afegir icona de ubicació si no és jugat i hi ha coordenades
+  const venueIcon = !played && venuesDB?.venues?.[m.home]?.coordinates
+    ? `<div style="text-align:center;margin-top:6px"><span style="background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px">📍</span></div>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -882,6 +904,7 @@ function matchCard(m, myTeam) {
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
           ${actaBadge}
+          ${venueIcon}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
@@ -2433,6 +2456,14 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    // Load venues/coordinates
+    try {
+      const venuesRes = await fetch(VENUES_URL);
+      if (venuesRes.ok) venuesDB = await venuesRes.json();
+    } catch(e) {
+      console.log("Venues file not available:", e.message);
+    }
 
     applyClassificationSourceMerge();
 
