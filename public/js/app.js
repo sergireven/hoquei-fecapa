@@ -308,6 +308,7 @@ let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
 let allFilterCat  = "ALL";
 let allOnlyActive = true;  // hide 100% finished comps by default
+let allCompsOpenState = {};
 let clubSearch    = "";
 let selectedClub  = null;  // { name, teams:[{compId, teamName, teamId}] }
 
@@ -1197,19 +1198,272 @@ function renderClubDashboard() {
 }
 
 // ── ALL COMPS ─────────────────────────────────────────────────
+function normalizeCompName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function detectTier(nameNorm) {
+  if (/\bOR\b/.test(nameNorm)) return "OR";
+  if (/\bPLATA\b/.test(nameNorm)) return "PLATA";
+  if (/\bBRONZE\b/.test(nameNorm)) return "BRONZE";
+  if (/INICIACIO|INICIACI[OÓ]/.test(nameNorm)) return "INICIACIO";
+  return "ALTRES";
+}
+
+function detectZone(nameNorm) {
+  if (/\bGIRONA\b/.test(nameNorm)) return "Girona";
+  if (/\bTARRAGONA\b/.test(nameNorm)) return "Tarragona";
+  if (/\bBARCELONA\b|\bBCN\b/.test(nameNorm)) return "Barcelona";
+  if (/\bLLEIDA\b/.test(nameNorm)) return "Lleida";
+  return "Altres";
+}
+
+function tierLabel(t) {
+  if (t === "OR") return "Or";
+  if (t === "PLATA") return "Plata";
+  if (t === "BRONZE") return "Bronze";
+  if (t === "INICIACIO") return "Iniciació";
+  return "Altres";
+}
+
+function getCompHierarchy(comp) {
+  const n = normalizeCompName(comp?.name);
+  const tier = detectTier(n);
+  const tierOrder = { OR: 0, PLATA: 1, BRONZE: 2, INICIACIO: 3, ALTRES: 4 };
+  const zoneOrder = { Girona: 0, Tarragona: 1, Barcelona: 2, Lleida: 3, Altres: 4 };
+
+  if (/\bNACIONAL\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "Nacional Catalana", label: "Nacional Catalana", emoji: "👑", color: "#003da5", order: 10 },
+      level2: null,
+      level3: null,
+    };
+  }
+  if (/\b1[ªA]\b\s*\bCATAL/.test(n) || /\bPRIMERA\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "1ª Catalana", label: "1ª Catalana", emoji: "⭐", color: "#1a5dc7", order: 20 },
+      level2: null,
+      level3: null,
+    };
+  }
+  if (/\b2[ªA]\b\s*\bCATAL/.test(n) || /\bSEGONA\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "2ª Catalana", label: "2ª Catalana", emoji: "🔵", color: "#2563eb", order: 30 },
+      level2: null,
+      level3: null,
+    };
+  }
+  if (/\b3[ªA]\b\s*\bCATAL/.test(n) || /\bTERCERA\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "3ª Catalana", label: "3ª Catalana", emoji: "🟣", color: "#7c3aed", order: 40 },
+      level2: null,
+      level3: null,
+    };
+  }
+
+  if (/\bFEM\b|FEMENI|FEMENINA/.test(n)) {
+    return {
+      level1: { key: "Fem", label: "Fem", emoji: "♀", color: "#db2777", order: 50 },
+      level2: null,
+      level3: null,
+    };
+  }
+
+  const baseAge = /\bJUNIOR\b/.test(n) ? "Júnior"
+    : /\bJUVENIL\b/.test(n) ? "Juvenil"
+    : /\bINFANTIL\b/.test(n) ? "Infantil"
+    : /\bALEVI\b/.test(n) ? "Aleví"
+    : null;
+
+  if (baseAge) {
+    const ageOrder = { "Júnior": 100, "Juvenil": 110, "Infantil": 120, "Aleví": 130 };
+    return {
+      level1: {
+        key: baseAge,
+        label: baseAge,
+        emoji: baseAge === "Júnior" ? "🎯" : baseAge === "Juvenil" ? "⚡" : baseAge === "Infantil" ? "🏆" : "💪",
+        color: CAT_COLOR[baseAge] || "#6b7280",
+        order: ageOrder[baseAge],
+      },
+      level2: {
+        key: `${baseAge}::${tier}`,
+        label: tierLabel(tier),
+        order: tierOrder[tier],
+      },
+      level3: null,
+    };
+  }
+
+  const miniAge = /PREBENJAM[IÍ]/.test(n) || /\bPB\b/.test(n) ? "Prebenjamí"
+    : /\bBENJAM[IÍ]\b/.test(n) ? "Benjamí"
+    : null;
+
+  if (miniAge) {
+    const zone = detectZone(n);
+    const base = miniAge === "Benjamí" ? 200 : 240;
+    return {
+      level1: {
+        key: miniAge,
+        label: miniAge,
+        emoji: miniAge === "Benjamí" ? "🔥" : "⭐",
+        color: CAT_COLOR[miniAge] || "#6b7280",
+        order: base,
+      },
+      level2: {
+        key: `${miniAge}::${zone}`,
+        label: zone,
+        order: zoneOrder[zone],
+      },
+      level3: {
+        key: `${miniAge}::${zone}::${tier}`,
+        label: tierLabel(tier),
+        order: tierOrder[tier],
+      },
+    };
+  }
+
+  const fallback = getCatForComp(comp);
+  return {
+    level1: {
+      key: fallback,
+      label: fallback,
+      emoji: CAT_EMOJI[fallback] || "📋",
+      color: CAT_COLOR[fallback] || "#6b7280",
+      order: 900,
+    },
+    level2: null,
+    level3: null,
+  };
+}
+
+function buildCompsHierarchy() {
+  const allComps = [];
+  const seen = new Set();
+  for (const comps of Object.values(DB.categories || {})) {
+    for (const comp of comps) {
+      if (!comp?.id || seen.has(comp.id)) continue;
+      seen.add(comp.id);
+      allComps.push(comp);
+    }
+  }
+
+  const root = new Map();
+  for (const comp of allComps) {
+    const meta = getCompHierarchy(comp);
+    const l1 = meta.level1;
+    const l2 = meta.level2;
+    const l3 = meta.level3;
+
+    if (!root.has(l1.key)) {
+      root.set(l1.key, { ...l1, groups: new Map(), comps: [] });
+    }
+    const g1 = root.get(l1.key);
+
+    if (!l2) {
+      g1.comps.push(comp);
+      continue;
+    }
+
+    if (!g1.groups.has(l2.key)) {
+      g1.groups.set(l2.key, { ...l2, groups: new Map(), comps: [] });
+    }
+    const g2 = g1.groups.get(l2.key);
+
+    if (!l3) {
+      g2.comps.push(comp);
+      continue;
+    }
+
+    if (!g2.groups.has(l3.key)) {
+      g2.groups.set(l3.key, { ...l3, comps: [] });
+    }
+    g2.groups.get(l3.key).comps.push(comp);
+  }
+
+  const sortComps = list => list.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const sortMapEntries = map => [...map.entries()].sort((a, b) => (a[1].order - b[1].order) || a[1].label.localeCompare(b[1].label));
+
+  const level1 = sortMapEntries(root).map(([key, g1]) => {
+    sortComps(g1.comps);
+    const level2 = sortMapEntries(g1.groups).map(([k2, g2]) => {
+      sortComps(g2.comps);
+      const level3 = sortMapEntries(g2.groups).map(([k3, g3]) => {
+        sortComps(g3.comps);
+        return [k3, g3];
+      });
+      return [k2, { ...g2, groupsArr: level3 }];
+    });
+    return [key, { ...g1, groupsArr: level2 }];
+  });
+
+  return level1;
+}
+
 function renderAllComps(cursor) {
-  const catNames=Object.keys(DB.categories).filter(k=>DB.categories[k].length>0);
-  const allCats=["ALL",...catNames];
+  const hierarchy = buildCompsHierarchy();
+  const topKeys = hierarchy.map(([k]) => k);
+  if (allFilterCat !== "ALL" && !topKeys.includes(allFilterCat)) allFilterCat = "ALL";
+  const allCats=["ALL",...topKeys];
+
+  const filterComps = comps => comps.filter(c => {
+    if (allOnlyActive && !isActive(c)) return false;
+    if (!allSearch) return true;
+    const q = allSearch.toLowerCase();
+    return c.name.toLowerCase().includes(q) || (c.classification || []).some(r => r.team && r.team.toLowerCase().includes(q));
+  });
+
+  const computeCount = node => {
+    let total = filterComps(node.comps || []).length;
+    for (const [, g2] of (node.groupsArr || [])) {
+      total += filterComps(g2.comps || []).length;
+      for (const [, g3] of (g2.groupsArr || [])) total += filterComps(g3.comps || []).length;
+    }
+    return total;
+  };
+
+  const renderCompCard = (comp, color) => `
+    <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
+        <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
+        </div>
+        <span style="color:#cbd5e1;font-size:18px">›</span>
+      </div>
+      <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
+    </div>`;
+
+  const isNodeOpen = (nodeKey, defaultOpen) => {
+    if (Object.prototype.hasOwnProperty.call(allCompsOpenState, nodeKey)) return !!allCompsOpenState[nodeKey];
+    return !!defaultOpen;
+  };
+  window.toggleCompsNode = nodeKey => {
+    allCompsOpenState[nodeKey] = !isNodeOpen(nodeKey, false);
+    renderAllComps();
+  };
 
   const filterBar=`
     <div style="background:#fff;border-bottom:1px solid #e2e6ef;overflow-x:auto;white-space:nowrap">
       <div style="display:inline-flex;padding:0 12px">
-        ${allCats.map(cat=>{
-          const active=allFilterCat===cat, label=cat==="ALL"?"Totes":cat;
-          const emoji=cat==="ALL"?"🏒":(CAT_EMOJI[cat]||"📋");
-          const comps=cat==="ALL"?Object.values(DB.categories).flat():DB.categories[cat]||[];
-          const count=allOnlyActive?comps.filter(isActive).length:comps.length;
-          return `<button onclick="allFilterCat='${esc(cat)}';renderAllComps()" style="background:none;border:none;border-bottom:3px solid ${active?"#e5001c":"transparent"};font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active?"#e5001c":"#6b7a99"};padding:9px 10px 6px;cursor:pointer;white-space:nowrap;text-transform:uppercase">${emoji} ${label} <span style="font-size:10px;opacity:.6">${count}</span></button>`;
+        ${allCats.map(key=>{
+          const active=allFilterCat===key;
+          const meta = key === "ALL"
+            ? { label: "Totes", emoji: "🏒", count: hierarchy.reduce((acc, [,n]) => acc + computeCount(n), 0) }
+            : (() => {
+                const item = hierarchy.find(([k]) => k === key);
+                return item ? { label: item[1].label, emoji: item[1].emoji, count: computeCount(item[1]) } : null;
+              })();
+          if (!meta) return "";
+          const label = meta.label;
+          const emoji = meta.emoji || "📋";
+          const count = meta.count;
+          return `<button onclick="allFilterCat='${esc(key)}';renderAllComps()" style="background:none;border:none;border-bottom:3px solid ${active?"#e5001c":"transparent"};font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active?"#e5001c":"#6b7a99"};padding:9px 10px 6px;cursor:pointer;white-space:nowrap">${emoji} ${label} <span style="font-size:10px;opacity:.6">${count}</span></button>`;
         }).join("")}
       </div>
     </div>
@@ -1223,45 +1477,67 @@ function renderAllComps(cursor) {
       </label>
     </div>`;
 
-  let cats=allFilterCat==="ALL"?Object.entries(DB.categories):[[allFilterCat,DB.categories[allFilterCat]||[]]];
-  cats=cats.map(([cat,comps])=>[cat, comps.filter(c=>{
-    if (allOnlyActive && !isActive(c)) return false;
-    if (!allSearch) return true;
-    const q=allSearch.toLowerCase();
-    return c.name.toLowerCase().includes(q)||(c.classification||[]).some(r=>r.team&&r.team.toLowerCase().includes(q));
-  })]).filter(([,c])=>c.length>0);
+  const visibleTop = allFilterCat === "ALL"
+    ? hierarchy
+    : hierarchy.filter(([key]) => key === allFilterCat);
 
-  const compsHtml=cats.map(([cat,comps])=>{
-    if (!comps.length) return "";
-    const color=CAT_COLOR[cat]||"#666", emoji=CAT_EMOJI[cat]||"📋";
+  const compsHtml=visibleTop.map(([,meta])=>{
+    const color = meta.color || "#666";
+    const emoji = meta.emoji || "📋";
+    const label = meta.label || "Altres";
+    const key1 = `l1:${meta.key}`;
+    const open1 = isNodeOpen(key1, true);
+    const topLeafComps = filterComps(meta.comps || []);
+    const level2 = (meta.groupsArr || []).map(([,g2]) => {
+      const key2 = `l2:${meta.key}:${g2.key}`;
+      const open2 = isNodeOpen(key2, false);
+      const level2LeafComps = filterComps(g2.comps || []);
+      const level3 = (g2.groupsArr || []).map(([,g3]) => {
+        const key3 = `l3:${meta.key}:${g2.key}:${g3.key}`;
+        const open3 = isNodeOpen(key3, false);
+        const comps3 = filterComps(g3.comps || []);
+        if (!comps3.length) return "";
+        return `
+          <div style="margin-top:8px;padding-left:18px;border-left:2px solid #e2e6ef">
+            <button onclick="toggleCompsNode('${esc(key3)}')" style="width:100%;text-align:left;background:#f8fafc;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;margin-bottom:6px;font-size:12px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between">
+              <span>${g3.label} <span style="font-size:10px;color:#94a3b8">(${comps3.length})</span></span>
+              <span style="color:#94a3b8">${open3 ? '▾' : '▸'}</span>
+            </button>
+            ${open3 ? comps3.map(c=>renderCompCard(c, color)).join("") : ""}
+          </div>`;
+      }).join("");
+      if (!level2LeafComps.length && !level3) return "";
+      return `
+        <div style="margin-top:10px;padding-left:12px;border-left:3px solid ${color}33">
+          <button onclick="toggleCompsNode('${esc(key2)}')" style="width:100%;text-align:left;background:${color}14;border:1px solid ${color}33;border-radius:8px;padding:7px 9px;cursor:pointer;margin-bottom:6px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:${color};display:flex;align-items:center;justify-content:space-between">
+            <span>${g2.label} <span style="font-size:10px;color:#6b7a99">(${level2LeafComps.length + (g2.groupsArr||[]).reduce((a,[,x])=>a + filterComps(x.comps||[]).length,0)})</span></span>
+            <span style="color:${color}">${open2 ? '▾' : '▸'}</span>
+          </button>
+          ${open2 ? level2LeafComps.map(c=>renderCompCard(c, color)).join("") : ""}
+          ${open2 ? level3 : ""}
+        </div>`;
+    }).join("");
+
+    if (!topLeafComps.length && !level2) return "";
+
     return `
       <div style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:0 14px">
-          <span style="font-size:15px">${emoji}</span>
-          <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;text-transform:uppercase;color:${color}">${cat}</span>
-          <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${comps.length}</span>
-        </div>
         <div style="padding:0 14px">
-          ${comps.map(comp=>`
-            <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
-              <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
-                <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
-                </div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
-                </div>
-                <span style="color:#cbd5e1;font-size:18px">›</span>
-              </div>
-              <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
-            </div>`).join("")}
+          <button onclick="toggleCompsNode('${esc(key1)}')" style="width:100%;text-align:left;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 11px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="display:flex;align-items:center;gap:7px;min-width:0">
+              <span style="font-size:15px">${emoji}</span>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</span>
+              <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${computeCount(meta)}</span>
+            </span>
+            <span style="color:#94a3b8">${open1 ? '▾' : '▸'}</span>
+          </button>
+          ${open1 ? `<div style="margin-top:8px">${topLeafComps.map(c=>renderCompCard(c, color)).join("")}${level2}</div>` : ""}
         </div>
       </div>`;
-  }).join("");
+  }).filter(Boolean).join("");
 
   $("home-body").innerHTML=filterBar+`<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
-    cats.some(([,c])=>c.length)?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
+    compsHtml?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
   }</div>`;
   if (cursor !== undefined) {
     const inp = document.getElementById('all-search');
