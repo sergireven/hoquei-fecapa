@@ -2355,33 +2355,37 @@ function renderDetailClassif(){
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
 
-  // Calculate highlights from matches
+  // Calculate highlights from matches and classification
   const matches = detailComp.calendar || [];
   const played = matches.filter(m => m.homeScore != null && m.awayScore != null);
 
   const stats = {};
+  cl.forEach(r => {
+    stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, cards: 0 };
+  });
+
+  // Calculate shutouts and cards from actes
   played.forEach(m => {
-    // Goals for
-    if (!stats[m.home]) stats[m.home] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
-    if (!stats[m.away]) stats[m.away] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
-
-    stats[m.home].gf += m.homeScore;
-    stats[m.home].gc += m.awayScore;
-    stats[m.away].gf += m.awayScore;
-    stats[m.away].gc += m.homeScore;
-
     // Shutouts
-    if (m.awayScore === 0) stats[m.home].shutouts++;
-    if (m.homeScore === 0) stats[m.away].shutouts++;
+    if (m.awayScore === 0 && stats[m.home]) stats[m.home].shutouts++;
+    if (m.homeScore === 0 && stats[m.away]) stats[m.away].shutouts++;
 
-    // Cards (blaves/vermelles)
-    if (m.homeCards) stats[m.home].cards += (m.homeCards.filter(c => c === 'A' || c === 'B').length || 0);
-    if (m.awayCards) stats[m.away].cards += (m.awayCards.filter(c => c === 'A' || c === 'B').length || 0);
+    // Cards (blaves/vermelles) - review acta data
+    if (m.homeCards) {
+      const homeTeam = m.home;
+      const cardCount = (m.homeCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
+      if (stats[homeTeam]) stats[homeTeam].cards += cardCount;
+    }
+    if (m.awayCards) {
+      const awayTeam = m.away;
+      const cardCount = (m.awayCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
+      if (stats[awayTeam]) stats[awayTeam].cards += cardCount;
+    }
   });
 
   // Find highlight teams
   const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
-  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gf - b[1].gf)[0];
+  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gc - b[1].gc)[0];
   const mostCards = Object.entries(stats).sort((a,b) => b[1].cards - a[1].cards)[0];
   const mostShutouts = Object.entries(stats).sort((a,b) => b[1].shutouts - a[1].shutouts)[0];
 
@@ -2400,7 +2404,7 @@ function renderDetailClassif(){
 
   const highlightsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     ${highlightCard('⚽', 'Més Gols', topGoals?.[0], topGoals?.[1]?.gf || 0)}
-    ${highlightCard('🛡️', 'Menys Gols Rebuts', fewestGoals?.[0], fewestGoals?.[1]?.gf || 0)}
+    ${highlightCard('🛡️', 'Defensa (menys gols)', fewestGoals?.[0], fewestGoals?.[1]?.gc || 0)}
     ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.cards || 0)}
     ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
   </div>`;
