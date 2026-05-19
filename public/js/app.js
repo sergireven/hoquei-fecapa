@@ -802,9 +802,9 @@ async function enrichActaPlayerNumbers(acta) {
 
     // Re-render player tables if numbers were updated
     if (updated) {
-      const acta_bg = document.querySelector('[style*="display:grid"]');
-      if (acta_bg) {
-        acta_bg.innerHTML = `
+      const grid = document.querySelector('.acta-teams-grid');
+      if (grid) {
+        grid.innerHTML = `
           ${playerTableHtml(acta.playerStats.homePlayers, acta.home, "#003da5")}
           ${playerTableHtml(acta.playerStats.awayPlayers, acta.away, "#e5001c")}
         `;
