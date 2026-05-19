@@ -8,9 +8,26 @@
       },
       "addressName": "Sant Josep A"
     },
-    "Example Team": {
-      "coordinates": null,
-      "addressName": "Example Team - Add coordinates from jok.cat"
+    "Ch Palafrugell": {
+      "coordinates": {
+        "lat": 42.0196,
+        "lng": 3.1769
+      },
+      "addressName": "Ch Palafrugell"
+    },
+    "Martinelia Manlleu A": {
+      "coordinates": {
+        "lat": 42.1765,
+        "lng": 2.3945
+      },
+      "addressName": "Martinelia Manlleu A"
+    },
+    "Patí Vic": {
+      "coordinates": {
+        "lat": 42.2361,
+        "lng": 1.8864
+      },
+      "addressName": "Patí Vic"
     }
   }
 }
