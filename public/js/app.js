@@ -134,7 +134,12 @@ async function loginWithEmail() {
     _saveSoftSession(profile);
     await loadFavsFromCloud();
     closeLoginModal();
-    renderHome();
+    // Rerenderitza la vista actual (detall o home)
+    if (detailComp) {
+      renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+    } else {
+      renderHome();
+    }
     return;
   }
 
