@@ -926,10 +926,10 @@ function catSlug(catName) {
 // ── Categorise ────────────────────────────────────────────────
 function categorise(name) {
   const n = name.toUpperCase();
-  if (n.includes("NACIONAL"))                           return "Nacional Catalana";
-  if (n.match(/\b1[AÀ]\b/) || n.includes("1A CATAL"))  return "1ª Catalana";
-  if (n.match(/\b2[AÀ]\b/) || n.includes("2A CATAL"))  return "2ª Catalana";
-  if (n.match(/\b3[AÀ]\b/) || n.includes("3A CATAL"))  return "3ª Catalana";
+  if (/\bNACIONAL\b\s*CATAL|\bNAC\.?\s*CAT\b/.test(n))               return "Nacional Catalana";
+  if (/\b1[ªAÀ]\b\s*CATAL|\bPRIMERA\b\s*CATAL/.test(n))               return "1ª Catalana";
+  if (/\b2[ªAÀ]\b\s*CATAL|\bSEGONA\b\s*CATAL/.test(n))                return "2ª Catalana";
+  if (/\b3[ªAÀ]\b\s*CATAL|\bTERCERA\b\s*CATAL/.test(n))               return "3ª Catalana";
   if (n.includes("FEM") || n.includes("MINIFEM"))       return "Fem";
   if (n.includes("JÚNIOR") || n.includes("JUNIOR"))     return "Júnior";
   if (n.includes("JUVENIL"))                            return "Juvenil";
