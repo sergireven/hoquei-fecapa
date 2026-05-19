@@ -1,0 +1,580 @@
+{
+  "venues": {
+    "PAVELLÓ MUNICIPAL SOL I PRADÍS": {
+      "lat": 41.5411931,
+      "lng": 2.1168495
+    },
+    "PISTA 2 SABADELL": {
+      "lat": 41.539051650000005,
+      "lng": 2.1184562717752327
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS SABADELL": {
+      "lat": 41.539051650000005,
+      "lng": 2.1184562717752327
+    },
+    "LA BASSA DE SANT OLEGUER": {
+      "lat": 41.537227099999996,
+      "lng": 2.125745130396555
+    },
+    "ZONA ESPORTIVA MUNICIPAL MARIA REVERTER": {
+      "lat": 41.51988435,
+      "lng": 2.12925127396936
+    },
+    "PISTA POLIESPORTIVA DEL TURÓ POLINYA": {
+      "lat": 41.563712343063095,
+      "lng": 2.157489304446768
+    },
+    "COMPLEX ESPORTIU MUNICIPAL CAN XARAU": {
+      "lat": 41.49377955,
+      "lng": 2.1408671757492996
+    },
+    "PISTA LA BOINA CERDANYOLA": {
+      "lat": 41.49377955,
+      "lng": 2.1408671757492996
+    },
+    "PAVELLÓ RIPOLLET": {
+      "lat": 41.50152995,
+      "lng": 2.156936313636364
+    },
+    "POLIESPORTIU MUNICIPAL STA PERPETUA": {
+      "lat": 41.528489281969065,
+      "lng": 2.182243663242786
+    },
+    "PISTA EXTERIOR SANTA PERPETUA": {
+      "lat": 41.52971221688896,
+      "lng": 2.1878214421759896
+    },
+    "PAVELLÓ MUNICIPAL PALAU 2": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "PAVELLO PALAU PLEGAMANS": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "PISTA PALAU 2": {
+      "lat": 41.585571099999996,
+      "lng": 2.17592871740286
+    },
+    "PAVELLÓ DANI PEDROSA": {
+      "lat": 41.616037,
+      "lng": 2.0843513251010437
+    },
+    "CEM JAUME TUBAU SANT CUGAT": {
+      "lat": 41.47757132300057,
+      "lng": 2.081535719392697
+    },
+    "PAVELLÓ ESPORTIU MUNICIPAL ST CUGAT": {
+      "lat": 41.47011035,
+      "lng": 2.0838940499999996
+    },
+    "PAVELLO MOLLET": {
+      "lat": 41.54223665,
+      "lng": 2.208409477893458
+    },
+    "POLIESPORTIU MUNICIPAL LA MAURINA ANNEX": {
+      "lat": 41.562253460447884,
+      "lng": 1.9932302172852647
+    },
+    "POLIESPORTIU MUNICIPAL LA MAURINA": {
+      "lat": 41.5622626,
+      "lng": 1.9931723
+    },
+    "PAVELLÓ MUNICIPAL D HOQUEI TORRE ROJA": {
+      "lat": 41.636556601292,
+      "lng": 2.1579496235942424
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS LES CREMADES": {
+      "lat": 41.63735205,
+      "lng": 2.1588520062135927
+    },
+    "CAMPUS DE MUNDET UB": {
+      "lat": 41.43696085,
+      "lng": 2.142720961679914
+    },
+    "PISTA UE HORTA": {
+      "lat": 41.4336153,
+      "lng": 2.1610902
+    },
+    "PISTA LA CLOTA": {
+      "lat": 41.4265572,
+      "lng": 2.1494949
+    },
+    "COL·LEGI JESÚS, MARIA, I JOSEP": {
+      "lat": 41.4279137,
+      "lng": 2.1915293
+    },
+    "POLIESPORTIU MUNICIPAL CAMP DEL FERRO": {
+      "lat": 41.4278377,
+      "lng": 2.1935474
+    },
+    "CAMP DEL FERRO": {
+      "lat": 41.426262599462106,
+      "lng": 2.1927614098187256
+    },
+    "CENTRO DEPORTIVO MUNICIPAL DEL GUINARDÓ": {
+      "lat": 41.416844850000004,
+      "lng": 2.1735115672630076
+    },
+    "POLIESPORTIU LA SALLE": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "LA SALLE": {
+      "lat": 41.40767765,
+      "lng": 2.1317431942137333
+    },
+    "COL.LEGI ESCOLES PIAS DE SARRIA (CES)": {
+      "lat": 41.4067048,
+      "lng": 2.1240359
+    },
+    "PISTA MUNICIPAL LA SAGRERA": {
+      "lat": 41.419281,
+      "lng": 2.1908103
+    },
+    "PISTA ASME LA PAU": {
+      "lat": 41.4252196,
+      "lng": 2.2045023
+    },
+    "POLIESPORTIU MUNICIPAL DE MOLINS DE REI": {
+      "lat": 41.412482499999996,
+      "lng": 2.020124242040734
+    },
+    "BADALONA": {
+      "lat": 41.4493539,
+      "lng": 2.248254
+    },
+    "ESCOLA CLARET": {
+      "lat": 41.4057013,
+      "lng": 2.1668382
+    },
+    "CLOT DE LA MEL": {
+      "lat": 41.41196805,
+      "lng": 2.19470186418238
+    },
+    "IEM MARTORELL": {
+      "lat": 41.47701742982649,
+      "lng": 1.9189156699598355
+    },
+    "PAVELLÓ CAN BADELL": {
+      "lat": 41.67512065,
+      "lng": 2.2120351907249995
+    },
+    "PAVELLÓ FRANCESC CASSART": {
+      "lat": 41.69508785,
+      "lng": 2.165647123022242
+    },
+    "PAVELLÓ MUNICIPAL SALVADOR BOADA": {
+      "lat": 41.5547026,
+      "lng": 1.8911868676680244
+    },
+    "E MARISTES DE SANT JOAN": {
+      "lat": 41.3988852,
+      "lng": 2.1717356
+    },
+    "PAVELLO SANT JUST": {
+      "lat": 41.3882177,
+      "lng": 2.0753535
+    },
+    "PAVELLÓ D ESPORTS CAN VIOLÍ": {
+      "lat": 41.6591468,
+      "lng": 2.2547262
+    },
+    "JESUITES CASP": {
+      "lat": 41.3903539,
+      "lng": 2.1714885581486576
+    },
+    "PALAU BLAUGRANA": {
+      "lat": 41.3800239,
+      "lng": 2.120087756642532
+    },
+    "POLIESPORTIU CAN VIDALET": {
+      "lat": 41.37503875,
+      "lng": 2.098847015106735
+    },
+    "CT BARCINO": {
+      "lat": 41.3828939,
+      "lng": 2.1774322
+    },
+    "ESPAI ESPORTIU SANT ILDEFONS": {
+      "lat": 41.36633745,
+      "lng": 2.0811319768685044
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS CORBERA": {
+      "lat": 41.41422875000001,
+      "lng": 1.923217272862714
+    },
+    "PAVELLÓ MUNICIPAL PREMIÀ DE MAR": {
+      "lat": 41.49610795,
+      "lng": 2.3524539161060014
+    },
+    "CAMP MUNICIPAL DE PREMIÀ DE MAR": {
+      "lat": 41.49568135,
+      "lng": 2.3530171590504008
+    },
+    "COL·LEGI INTERNACIONAL SEK-CATALUNYA": {
+      "lat": 41.69783056065119,
+      "lng": 2.2780268740332597
+    },
+    "LES FRANQUESES": {
+      "lat": 41.6695648,
+      "lng": 2.3254347
+    },
+    "PAVELLÓ ESPORTIU MUNICIPAL CASTELLET": {
+      "lat": 41.661698883195974,
+      "lng": 1.8635596531075682
+    },
+    "PAVELLÓ DE MASQUEFA": {
+      "lat": 41.499360522423096,
+      "lng": 1.8131825940668789
+    },
+    "CEM SAGNIER": {
+      "lat": 41.3215697,
+      "lng": 2.0842267
+    },
+    "PAVELLÓ MUNICIPAL DE VILASSAR DE MAR": {
+      "lat": 41.508373,
+      "lng": 2.3976704
+    },
+    "PISTA TORRELLES": {
+      "lat": 41.3427049,
+      "lng": 1.9507523
+    },
+    "PAVELLÓ AIGUAFREDA": {
+      "lat": 41.768383444643845,
+      "lng": 2.2520771895396825
+    },
+    "PAVELLÓ MUNICIPAL DE NAVARCLES": {
+      "lat": 41.75027035,
+      "lng": 1.9060870718650629
+    },
+    "CH MATARO": {
+      "lat": 41.547340399999996,
+      "lng": 2.4374598493816153
+    },
+    "POLIESPORTIU PIERA": {
+      "lat": 41.5216571,
+      "lng": 1.744253411490409
+    },
+    "CLUB ESPORTIU NOIA": {
+      "lat": 41.4220635,
+      "lng": 1.7837285
+    },
+    "PAVELLÓ MUNICIPAL PUJOLET": {
+      "lat": 41.72929705,
+      "lng": 1.8217897
+    },
+    "ANNEXA PAVELLO PUJOLET": {
+      "lat": 41.72929705,
+      "lng": 1.8217897
+    },
+    "PAVELLÓ  MUNICIPAL TORRELAVIT": {
+      "lat": 41.448414007778744,
+      "lng": 1.7287138662153552
+    },
+    "PAVELLÓ MUNICIPAL CAPELLADES": {
+      "lat": 41.527116750000005,
+      "lng": 1.684038248837543
+    },
+    "PAVELLÓ MUNICIPAL DE TONA": {
+      "lat": 41.846801049999996,
+      "lng": 2.2183119740760766
+    },
+    "PAVELLO RIUDEBITLLES": {
+      "lat": 41.4492924,
+      "lng": 1.6992846448836523
+    },
+    "CAMP MUNICIPAL D ESPORTS": {
+      "lat": 41.6915897,
+      "lng": 2.4885309
+    },
+    "PAVELLÓ FONS DE LES CREUS": {
+      "lat": 41.582275550000006,
+      "lng": 2.543467396279633
+    },
+    "PAVELLÓ D ESPORTS EL PUJOLÓ": {
+      "lat": 41.87171255,
+      "lng": 2.281704798512718
+    },
+    "COMPLEX ESPORTIU DE LES COMES": {
+      "lat": 41.59329414065353,
+      "lng": 1.6214640761267978
+    },
+    "PAVELLÓ IGUALADA": {
+      "lat": 41.59329414065353,
+      "lng": 1.6214640761267978
+    },
+    "PISTA POLIVALENT IGUALADA": {
+      "lat": 41.59329414065353,
+      "lng": 1.6214640761267978
+    },
+    "PISTA CANET": {
+      "lat": 41.5885457,
+      "lng": 2.5817389
+    },
+    "PAVELLÓ CAN PASSANALS": {
+      "lat": 41.5724783,
+      "lng": 1.6103243
+    },
+    "POLIESPORTIU DE VILAFRANCA": {
+      "lat": 41.3473941,
+      "lng": 1.687258032961421
+    },
+    "ANNEX POLIESPORTIU VILAFRANCA": {
+      "lat": 41.3473941,
+      "lng": 1.687258032961421
+    },
+    "PAVELLO RIBES": {
+      "lat": 41.26018225,
+      "lng": 1.7801581876054933
+    },
+    "PISTA POLIESPORTIVA MONJOS": {
+      "lat": 41.3222678,
+      "lng": 1.6652454
+    },
+    "PAVELLO ESPORTIU CP VIC": {
+      "lat": 41.93257035,
+      "lng": 2.2394936875417404
+    },
+    "PISTA 2 CP VIC": {
+      "lat": 41.93257035,
+      "lng": 2.2394936875417404
+    },
+    "POLIESPORTIU MUNICIPAL BREDA": {
+      "lat": 41.74706465,
+      "lng": 2.562914995049204
+    },
+    "PAVELLO CP MONJOS": {
+      "lat": 41.32508570277933,
+      "lng": 1.656631122783085
+    },
+    "PISTA MUNICIPAL FOLGUEROLES": {
+      "lat": 41.9382125,
+      "lng": 2.3190131
+    },
+    "PAVELLÓ DE LES CASERNES": {
+      "lat": 41.2288645,
+      "lng": 1.726190987076221
+    },
+    "ANNEX PAVELLÓ DE LES CASERNES": {
+      "lat": 41.228419,
+      "lng": 1.7266431
+    },
+    "PAVELLÓ FOLGUEROLES LES ALZINES": {
+      "lat": 41.9395007,
+      "lng": 2.3193544
+    },
+    "SANT JOSEP ANOIA": {
+      "lat": 41.6893214,
+      "lng": 1.5338014486005938
+    },
+    "PISTA MANLLEU": {
+      "lat": 41.997472349999995,
+      "lng": 2.275036739985278
+    },
+    "PAVELLÓ MUNICIPAL RODA DE TER": {
+      "lat": 41.988645638884606,
+      "lng": 2.3138138891856164
+    },
+    "POLIESPORTIU MUNICIPAL CUBELLES": {
+      "lat": 41.2012127,
+      "lng": 1.6713839
+    },
+    "PISTA CUBELLES": {
+      "lat": 41.2012127,
+      "lng": 1.6713839
+    },
+    "PAVELLÓ ST.HIPÒLIT DE VOLTREGÀ": {
+      "lat": 42.0138248,
+      "lng": 2.236984
+    },
+    "PISTA 2 SANT HIPOLIT DE VOLTREGA": {
+      "lat": 42.0138248,
+      "lng": 2.236984
+    },
+    "PAVELLÓ MUNICIPAL MALGRAT": {
+      "lat": 41.64476485,
+      "lng": 2.735147411067911
+    },
+    "TORDERA": {
+      "lat": 41.6977173,
+      "lng": 2.7172987
+    },
+    "MASIES DE VOLTREGA": {
+      "lat": 42.0402175,
+      "lng": 2.2313346
+    },
+    "POLIESPORTIU MUNICIPAL LA NORIA": {
+      "lat": 41.85975465115481,
+      "lng": 2.661469299999662
+    },
+    "PAVELLO SHUM": {
+      "lat": 41.7772608,
+      "lng": 2.7298503
+    },
+    "POLIESPORTIU MUNICIPAL DE CALAFELL": {
+      "lat": 41.194135349999996,
+      "lng": 1.5706914689878073
+    },
+    "CLUB D ESPORTS VENDRELL": {
+      "lat": 41.22340751708,
+      "lng": 1.538213095457671
+    },
+    "PAVELLO MONTESQUIU": {
+      "lat": 42.107284750000005,
+      "lng": 2.206816803562077
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS LLORET": {
+      "lat": 41.7032646,
+      "lng": 2.8428764
+    },
+    "PAVELLÓ MUNICIPAL CALDES  DE MALAVELLA": {
+      "lat": 41.8381079,
+      "lng": 2.7985462340919565
+    },
+    "POLIESPORTIU RIPOLL": {
+      "lat": 42.192001649999995,
+      "lng": 2.195365392460311
+    },
+    "PAVELLÓ FOMENT DEPORTIU CASSANENC": {
+      "lat": 41.8817514,
+      "lng": 2.8778706
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS DE SALT": {
+      "lat": 41.9740984,
+      "lng": 2.800604
+    },
+    "PAVELLÓ LLUÍS BACHS": {
+      "lat": 41.97208465,
+      "lng": 2.8105885350334776
+    },
+    "PISTA THORO": {
+      "lat": 41.9577606,
+      "lng": 2.8276424
+    },
+    "PAVELLÓ MUNICIPAL JOANA BALLART": {
+      "lat": 41.288181550000004,
+      "lng": 1.2587445535714297
+    },
+    "PISTA POLIESPORTIVA DEL VILAR": {
+      "lat": 41.2893003076385,
+      "lng": 1.257164905815213
+    },
+    "MUNICIPAL D ESPORTS I LLEURE D OLOT": {
+      "lat": 42.1745216,
+      "lng": 2.4836024
+    },
+    "PAVELLÓ DEL CASAL MONTBLANQUI": {
+      "lat": 41.37595386115509,
+      "lng": 1.1651508448047359
+    },
+    "PAVELLÓ DEL PLA DE L AMETLLER": {
+      "lat": 42.10929885,
+      "lng": 2.7725037356449738
+    },
+    "PAVELLO RIBES DE FRESER": {
+      "lat": 42.3053181,
+      "lng": 2.169703426132738
+    },
+    "PAVELLÓ MUNICIPAL L ESPLUGA DE FRANCOLÍ": {
+      "lat": 41.394870850000004,
+      "lng": 1.0936720282307382
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS DE VILA-SECA": {
+      "lat": 41.080805999999995,
+      "lng": 1.1801096000000069
+    },
+    "CN REUS PLOMS": {
+      "lat": 41.15356795712746,
+      "lng": 1.1163122542419244
+    },
+    "PAVELLO REUS DEPORTIU": {
+      "lat": 41.16133177034519,
+      "lng": 1.1083091555314752
+    },
+    "PISTA EXTERIOR REUS DEPORTIU": {
+      "lat": 41.16133177034519,
+      "lng": 1.1083091555314752
+    },
+    "PAVELLÓ OLIMPIC REUS": {
+      "lat": 41.140386899999996,
+      "lng": 1.1120646868122246
+    },
+    "PAVELLÓ CELIA ARTIGA": {
+      "lat": 41.1587284,
+      "lng": 1.0877797
+    },
+    "PAVELLÓ DE PATINATGE PALAFRUGELL": {
+      "lat": 41.90997625,
+      "lng": 3.162887143562565
+    },
+    "POLIESPORTIU MUNICIPAL DE VILA-SANA": {
+      "lat": 41.662892049999996,
+      "lng": 0.9264134744389818
+    },
+    "PAVELLÓ MUNICIPAL MOLLERUSSA": {
+      "lat": 41.6220499,
+      "lng": 0.8936229
+    },
+    "CAMBRILS ESPORT": {
+      "lat": 41.078438336324425,
+      "lng": 1.044523016424259
+    },
+    "PISTA 1 LA SEU D URGELL": {
+      "lat": 42.35997570749115,
+      "lng": 1.5031613193800726
+    },
+    "PISTA 2 LA SEU D URGELL": {
+      "lat": 42.35997570749115,
+      "lng": 1.5031613193800726
+    },
+    "POLIESPORTIU MUNICIPAL DE JUNEDA": {
+      "lat": 41.547322949999995,
+      "lng": 0.8287796176322134
+    },
+    "PAVELLÓ ESPORTIU RAFEL MORA": {
+      "lat": 42.2685064,
+      "lng": 2.9520242385343085
+    },
+    "PAVELLÓ POLIESPORTIU DE BELL-LLOC": {
+      "lat": 41.629528050000005,
+      "lng": 0.7722572840479274
+    },
+    "POLIESPORTIU SANT JULIÀ DE LORIA": {
+      "lat": 42.4982065,
+      "lng": 1.50468
+    },
+    "ANDORRA HC": {
+      "lat": 42.501098,
+      "lng": 1.512947
+    },
+    "PAVELLÓ DE LA BORDETA": {
+      "lat": 41.60137625,
+      "lng": 0.6457034101433277
+    },
+    "COL·LEGI SANT IGNASI": {
+      "lat": 41.613386,
+      "lng": 0.6145717
+    },
+    "PAVELLO MUNICIPAL ONZE DE SETEMBRE": {
+      "lat": 41.623291,
+      "lng": 0.611307669850872
+    },
+    "PAVELLO LLEIDA": {
+      "lat": 41.5722584,
+      "lng": 0.6017694360681389
+    },
+    "PAVELLÓ MUNICIPAL D ESPORTS ANTONI ROURE": {
+      "lat": 41.66083262218849,
+      "lng": 0.5546156471531607
+    },
+    "PAVELLÓ POLIVALENT ALPICAT": {
+      "lat": 41.66981165,
+      "lng": 0.5509656815495315
+    },
+    "FLIX": {
+      "lat": 41.2340447,
+      "lng": 0.5560861
+    }
+  }
+}
