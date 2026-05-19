@@ -1689,16 +1689,26 @@ async function main() {
     console.log(`   📁 actes/${slug}.json — ${count} actes, ${kb2} KB`);
   }
 
-  // Enriquiment addicional: equips per jugador + fusió sidgad (primari)
+  // Enriquiment addicional: equips per jugador
   buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
   await mergeSidgadData(output.jugadors);
-  const { sidgadParentMap, sidgadChildren } = await mergejokIntoSidgad(output.categories);
+
+  // MODE JOK.CAT PUR:
+  // mantenim l'estructura creada però no alterem categories/classificacions
+  // amb fusions de competicions SIDGAD.
+  for (const comps of Object.values(output.categories)) {
+    for (const comp of comps) {
+      comp.classificationSource = (comp.classification && comp.classification.length > 0) ? "jok" : "none";
+    }
+  }
+  const sidgadParentMap = {};
+  const sidgadChildren = {};
 
   // Write main data.json without actes, with actesIndex
   const { actes: _actes, ...outputMain } = output;
   outputMain.actesIndex = actesIndex;
-  outputMain.sidgadParentMap = sidgadParentMap;   // jokId → { id, name } of sidgad parent
-  outputMain.sidgadChildren  = sidgadChildren;    // sidgadId → { sidgadName, jokChildren[] }
+  outputMain.sidgadParentMap = sidgadParentMap;
+  outputMain.sidgadChildren  = sidgadChildren;
   outputMain.lastUpdate = new Date().toISOString();
 
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
