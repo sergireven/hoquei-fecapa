@@ -390,6 +390,7 @@ async function main() {
 
         // ── 2b. Classificació ────────────────────────────────
         // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
+        let classTabMeta = { file: "", filter: "0" };
         const clickClassTab = async () => {
           const tabInfo = await page.evaluate(() => {
             // 1) Camí preferit: botó oficial de classificacions.
@@ -427,6 +428,11 @@ async function main() {
             return { found: false, file: "", filter: "0" };
           });
           if (!tabInfo?.found) return null;
+
+          classTabMeta = {
+            file: tabInfo.file || "",
+            filter: tabInfo.filter || "0",
+          };
 
           const looksLikeClassification = (html) => {
             const h = String(html || "");
@@ -540,7 +546,44 @@ async function main() {
                   }];
                   console.log(`   ↪️  Fallback a classificació única: ${flatClassification.length} equips`);
                 } else {
-                  console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
+                  // Fallback robust: forçar càrrega de classificació per cada idc
+                  // utilitzant el mateix "file" de la pestanya Classificació.
+                  if (classTabMeta.file && uniqueIdcs.length > 0) {
+                    for (const idc of uniqueIdcs) {
+                      const classHtmlByIdc = await jqLoad(
+                        page,
+                        "tab_modal_contenido_competicion",
+                        classTabMeta.file,
+                        {
+                          filter: String(idc),
+                          idc: String(idc),
+                          idm: IDM,
+                        },
+                        10000
+                      );
+                      const byIdc = parseClassificationSidgad(classHtmlByIdc);
+                      if (byIdc.length === 0) continue;
+
+                      hasGroupData = true;
+                      compData[compId].classificationByGroup[String(idc)] = byIdc;
+                      const groupName = `Grup ${idc}`;
+                      compData[compId].classificationByGroupName[groupName] = byIdc;
+                      compData[compId].hierarchy.groups.push({
+                        key: String(idc),
+                        idc: String(idc),
+                        name: groupName,
+                        teams: byIdc.length,
+                      });
+                    }
+
+                    if (hasGroupData) {
+                      console.log(`   ↪️  Fallback per idc: ${Object.keys(compData[compId].classificationByGroup).length} grup(s) detectat(s)`);
+                    } else {
+                      console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
+                    }
+                  } else {
+                    console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
+                  }
                 }
               }
             } else {
