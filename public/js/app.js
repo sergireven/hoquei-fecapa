@@ -2467,6 +2467,7 @@ async function init(){
     try {
       const venuesRes = await fetch(VENUES_URL);
       if (venuesRes.ok) venuesDB = await venuesRes.json();
+      console.log("✓ Venues loaded:", Object.keys(venuesDB?.venues||{}).length, "teams");
     } catch(e) {
       console.log("Venues file not available:", e.message);
     }
