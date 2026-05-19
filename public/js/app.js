@@ -467,19 +467,10 @@ function buildSidgadClassificationIndex(raw) {
 function applyClassificationSourceMerge() {
   if (!DB?.categories) return;
 
-  const sidgad = DB._sidgadCompData || null;
-  const sidgadIdx = buildSidgadClassificationIndex(sidgad);
-
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
       const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
-      const sidgadRows = sidgadIdx.byCompId.get(String(comp.id))
-        || sidgadIdx.byName.get(normalizeCompKey(comp.name));
-
-      if (hasClassRows(sidgadRows)) {
-        comp.classification = sidgadRows;
-        comp.classificationSource = "fecapa";
-      } else if (hasClassRows(jokRows)) {
+      if (hasClassRows(jokRows)) {
         comp.classification = jokRows;
         comp.classificationSource = "jok";
       } else {
@@ -1701,10 +1692,6 @@ async function init(){
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
 
-    try {
-      const sidgadRes = await fetch(SIDGAD_COMP_URL+"?t="+Date.now());
-      if (sidgadRes.ok) DB._sidgadCompData = JSON.parse(await sidgadRes.text());
-    } catch {}
     applyClassificationSourceMerge();
 
     if (DB.lastUpdate) {
