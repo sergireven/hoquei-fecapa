@@ -2779,9 +2779,26 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes) {
   }
   const avgAge = agesInTeam.length > 0 ? Math.round(agesInTeam.reduce((a,b) => a+b, 0) / agesInTeam.length) : "—";
 
-  // 8. Sancionats
+  // 8. Sancionats y Azules (Blaves)
   const suspended = [];
   const yellowCardRisk = [];
+  let totalYellowCards = 0;
+  let matchesWithCards = 0;
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    let cardsThisMatch = 0;
+    for (const p of players) {
+      const cardCount = p.b || 0;
+      totalYellowCards += cardCount;
+      cardsThisMatch += cardCount;
+    }
+    if (cardsThisMatch > 0) matchesWithCards++;
+  }
+  const avgYellowCards = matchesWithCards > 0 ? (totalYellowCards / matchesWithCards).toFixed(1) : 0;
 
   // 9. Porters
   let goalkeepers = 0;
@@ -2821,7 +2838,9 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes) {
     winProbability,
     reinforcements,
     avgAge,
-    improvement
+    improvement,
+    totalYellowCards,
+    avgYellowCards
   };
 }
 
@@ -2986,11 +3005,19 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
             ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
           </div>
+          <div style="font-size: 10px; color: #991b1b; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fca5a5">
+            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
+            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+          </div>
         </div>
         ` : `
         <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Sancionats</div>
           <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Cap</div>
+          <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
+            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
+            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+          </div>
         </div>
         `}
 
@@ -3000,11 +3027,19 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 13px; color: #78350f; margin-top: 8px; line-height: 1.4">
             ${metrics.yellowCardRisk.map(p => `<div>• ${p}</div>`).join('')}
           </div>
+          <div style="font-size: 10px; color: #713f12; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fde047">
+            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
+            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+          </div>
         </div>
         ` : `
         <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Blaves</div>
           <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlats</div>
+          <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
+            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
+            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+          </div>
         </div>
         `}
 
