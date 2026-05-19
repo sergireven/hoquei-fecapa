@@ -1446,6 +1446,35 @@ function renderClubDashboard() {
       <div style="flex:1;min-width:0">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
         <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+        ${(() => {
+          // Get unique addresses from teams
+          const addresses = new Map();
+          sorted.forEach(t => {
+            if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
+              const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
+              if (!addresses.has(key)) {
+                addresses.set(key, {
+                  lat: venuesDB.venues[t.teamName].lat,
+                  lng: venuesDB.venues[t.teamName].lng,
+                  address: venuesDB.venues[t.teamName].address
+                });
+              }
+            }
+          });
+
+          if (addresses.size === 0) return '';
+
+          return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
+            Array.from(addresses.values()).map(loc => {
+              const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+              const mapsUrl = isApple
+                ? \`https://maps.apple.com/?q=\${loc.lat},\${loc.lng}\`
+                : \`https://www.google.com/maps?q=\${loc.lat},\${loc.lng}\`;
+              const shortAddr = loc.address.split(',')[0];
+              return \`<a href="\${mapsUrl}" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\${loc.address}">\${shortAddr}</a>\`;
+            }).join('') +
+            '</div>';
+        })()}
       </div>
       <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
