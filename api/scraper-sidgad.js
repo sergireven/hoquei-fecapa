@@ -153,6 +153,30 @@ function decodeHtmlEntities(s) {
     .replace(/&[a-z]+;/gi, " ");
 }
 
+function normalizeText(s) {
+  return decodeHtmlEntities(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferCategoryFromCompetitionName(name) {
+  const n = normName(name || "");
+  if (n.includes("PREBENJAMI")) return "PREBENJAMI";
+  if (n.includes("BENJAMI")) return "BENJAMI";
+  if (n.includes("ALEVI")) return "ALEVI";
+  if (n.includes("INFANTIL")) return "INFANTIL";
+  if (n.includes("JUVENIL")) return "JUVENIL";
+  if (n.includes("JUNIOR")) return "JUNIOR";
+  if (n.includes("FEM")) return "FEM";
+  if (n.includes("VETERANS")) return "VETERANS";
+  if (n.includes("NACIONAL CATALANA")) return "NACIONAL CATALANA";
+  if (n.includes("PRIMERA CATALANA")) return "PRIMERA CATALANA";
+  if (n.includes("SEGONA CATALANA")) return "SEGONA CATALANA";
+  if (n.includes("TERCERA CATALANA")) return "TERCERA CATALANA";
+  return null;
+}
+
 function parseClassificationSidgad(html) {
   if (!html || html.length < 50) return [];
   const rows = [];
@@ -205,100 +229,36 @@ function parseClassificationSidgad(html) {
   return rows;
 }
 
-// Parser classificacions de Copa separades per grups (per ordre d'aparició)
-// Retorna un object mapejat: { idc → classification }
+// Parser classificacions separades per grups.
+// Llegeix títols de grup (div_titulo_fase_idc) + taules i retorna
+// un format jeràrquic i, alhora, un mapa idc -> classificació per compatibilitat.
 function parseClassificationByGroupSidgad(html, uniqueIdcs) {
-  if (!html || html.length < 50 || !uniqueIdcs || uniqueIdcs.length === 0) return {};
-  const result = {};
+  if (!html || html.length < 50) return { byIdc: {}, groups: [] };
 
-  // Estratègia: cada <table> o <div class="taula"> probablement conté un grup
-  // Els grups apareixen en ordre: OR 1, OR 2, OR 3, PLATA 4, PLATA 5, PLATA 6
-  // Els idcs en uniqueIdcs estan en el mateix ordre (esperat)
+  const byIdc = {};
+  const groups = [];
 
-  // Buscar TOTES les taules de clasificació
-  const tableMatches = html.match(/<table[^>]*>([\s\S]*?)<\/table>/gi) || [];
+  const titles = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)]
+    .map(m => normalizeText(m[1]))
+    .filter(Boolean);
 
-  for (let tableIdx = 0; tableIdx < tableMatches.length && tableIdx < uniqueIdcs.length; tableIdx++) {
-    const table = tableMatches[tableIdx];
-    const classification = [];
-    const trMatches = table.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+  const tables = html.match(/<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>[\s\S]*?<\/table>/gi)
+    || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
+    || [];
 
-    for (const tr of trMatches) {
-      const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
-        decodeHtmlEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
-      );
-      if (cells.length < 5) continue;
+  for (let i = 0; i < tables.length; i++) {
+    const classification = parseClassificationSidgad(tables[i]);
+    if (classification.length === 0) continue;
 
-      // Posició
-      const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
-      if (posIdx < 0) continue;
-      const pos = parseInt(cells[posIdx]);
+    const idcHint = (uniqueIdcs && uniqueIdcs[i]) ? String(uniqueIdcs[i]) : null;
+    const groupName = titles[i] || `Grup ${i + 1}`;
+    const key = idcHint || `group_${i + 1}`;
 
-      // Nom d'equip
-      const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
-      if (teamIdx < 0) continue;
-      const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
-
-      // TeamId
-      const teamIdM = tr.match(/\/equip\/(\d+)\//);
-      const teamId = teamIdM ? teamIdM[1] : null;
-
-      // Números: Pts, J, G, E, P, F, C, GAV, PEN
-      const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
-      if (nums.length < 3) continue;
-      const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
-
-      classification.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
-    }
-
-    if (classification.length > 0) {
-      // Assignar al idc en ordre d'aparició
-      const idc = uniqueIdcs[tableIdx];
-      result[idc] = classification;
-    }
+    groups.push({ order: i + 1, key, idc: idcHint, name: groupName, classification });
+    byIdc[key] = classification;
   }
 
-  // Si no trobem taules, intentar amb divs
-  if (Object.keys(result).length === 0) {
-    const divMatches = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*(?:taula|table|clasificacio|classification)[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)];
-
-    for (let divIdx = 0; divIdx < divMatches.length && divIdx < uniqueIdcs.length; divIdx++) {
-      const [, divContent] = divMatches[divIdx];
-      const classification = [];
-      const trMatches = divContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-
-      for (const tr of trMatches) {
-        const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
-          decodeHtmlEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
-        );
-        if (cells.length < 5) continue;
-
-        const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
-        if (posIdx < 0) continue;
-        const pos = parseInt(cells[posIdx]);
-
-        const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
-        if (teamIdx < 0) continue;
-        const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
-
-        const teamIdM = tr.match(/\/equip\/(\d+)\//);
-        const teamId = teamIdM ? teamIdM[1] : null;
-
-        const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
-        if (nums.length < 3) continue;
-        const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
-
-        classification.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
-      }
-
-      if (classification.length > 0) {
-        const idc = uniqueIdcs[divIdx];
-        result[idc] = classification;
-      }
-    }
-  }
-
-  return Object.keys(result).length > 0 ? result : {};
+  return { byIdc, groups };
 }
 
 // Executa jQuery.load dins la pàgina i retorna el HTML del contenidor
@@ -399,7 +359,21 @@ async function main() {
           }
         }
 
-        compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [], classificationByGroup: {} };
+        const categoryName = inferCategoryFromCompetitionName(compName);
+        compData[compId] = {
+          id: compId,
+          name: compName,
+          category: categoryName,
+          matches: parsedMatches,
+          classification: [],
+          classificationByGroup: {},
+          classificationByGroupName: {},
+          hierarchy: {
+            category: categoryName,
+            competition: { id: compId, name: compName },
+            groups: [],
+          },
+        };
 
         // ── 2b. Classificació ────────────────────────────────
         // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
@@ -491,18 +465,26 @@ async function main() {
               require("fs").promises.writeFile(debugPath, classHtmlAllGroups).catch(() => {});
               console.log(`   📄 HTML guardat a debug-classif-${compId}.html`);
 
-              const classificationByGroup = parseClassificationByGroupSidgad(classHtmlAllGroups, uniqueIdcs);
-              console.log(`   parseClassificationByGroupSidgad() retorna: ${Object.keys(classificationByGroup).length} grups`);
-              if (Object.keys(classificationByGroup).length > 0) {
+              const grouped = parseClassificationByGroupSidgad(classHtmlAllGroups, uniqueIdcs);
+              console.log(`   parseClassificationByGroupSidgad() retorna: ${grouped.groups.length} grups`);
+              if (grouped.groups.length > 0) {
                 // Éxit: tenim classificacions per grups
-                for (const [groupName, classification] of Object.entries(classificationByGroup)) {
-                  compData[compId].classificationByGroup[groupName] = classification;
+                for (const g of grouped.groups) {
+                  compData[compId].classificationByGroup[g.key] = g.classification;
+                  compData[compId].classificationByGroupName[g.name] = g.classification;
                 }
-                console.log(`   ✓ Guardades ${Object.keys(classificationByGroup).length} classificacions de grups\n`);
+                compData[compId].hierarchy.groups = grouped.groups.map(g => ({
+                  key: g.key,
+                  idc: g.idc,
+                  name: g.name,
+                  teams: g.classification.length,
+                }));
+
+                console.log(`   ✓ Guardades ${grouped.groups.length} classificacions de grups\n`);
                 if (!debugClassLogged) {
-                  console.log(`\n--- CLASSIFICACIONS GRUPS comp ${compId} (${Object.keys(classificationByGroup).length} grups) ---`);
-                  const firstGroup = Object.entries(classificationByGroup)[0];
-                  console.log(`   Primer grup: ${firstGroup[0]} - ${firstGroup[1].length} equips`);
+                  console.log(`\n--- CLASSIFICACIONS GRUPS comp ${compId} (${grouped.groups.length} grups) ---`);
+                  const firstGroup = grouped.groups[0];
+                  console.log(`   Primer grup: ${firstGroup.name} (${firstGroup.key}) - ${firstGroup.classification.length} equips`);
                   console.log("---\n");
                   debugClassLogged = true;
                 }
@@ -553,6 +535,14 @@ async function main() {
                 const classification = parseClassificationSidgad(classHtml);
                 if (classification.length > 0) {
                   compData[compId].classificationByGroup[idc] = classification;
+                  const groupName = `Grup ${idc}`;
+                  compData[compId].classificationByGroupName[groupName] = classification;
+                  compData[compId].hierarchy.groups.push({
+                    key: idc,
+                    idc,
+                    name: groupName,
+                    teams: classification.length,
+                  });
                   if (!debugClassLogged) {
                     console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
                     console.log(JSON.stringify(classification[0]));
@@ -582,7 +572,17 @@ async function main() {
           if (classHtml) {
             const classification = parseClassificationSidgad(classHtml);
             compData[compId].classification = classification;
-            if (uniqueIdcs.length === 1) compData[compId].classificationByGroup[uniqueIdcs[0]] = classification;
+            if (uniqueIdcs.length === 1) {
+              const idc = uniqueIdcs[0];
+              compData[compId].classificationByGroup[idc] = classification;
+              compData[compId].classificationByGroupName[compName] = classification;
+              compData[compId].hierarchy.groups = [{
+                key: String(idc),
+                idc: String(idc),
+                name: compName,
+                teams: classification.length,
+              }];
+            }
             if (!debugClassLogged && classification.length > 0) {
               console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
               console.log(JSON.stringify(classification[0]));
