@@ -1399,7 +1399,7 @@ function getCatForComp(comp) {
 
 window.selectClub = function(key) {
   const entry = buildClubMap().get(key);
-  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); }
+  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); window.scrollTo(0,0); }
 };
 
 function renderClubDashboard() {
@@ -1440,47 +1440,49 @@ function renderClubDashboard() {
   }).join("");
 
   $("home-body").innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
-      ${shieldImg(club.clubId,36)}
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
-        <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
-        ${(() => {
-          // Get unique addresses from teams
-          const addresses = new Map();
-          sorted.forEach(t => {
-            if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
-              const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
-              if (!addresses.has(key)) {
-                addresses.set(key, {
-                  lat: venuesDB.venues[t.teamName].lat,
-                  lng: venuesDB.venues[t.teamName].lng,
-                  address: venuesDB.venues[t.teamName].address
-                });
+    <div style="position:sticky;top:0;z-index:100;background:linear-gradient(to bottom,#fff,rgba(255,255,255,.98));padding:8px 0;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,30,80,.04);border-bottom:1px solid #f0f2f8">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
+        ${shieldImg(club.clubId,36)}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
+          <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+          ${(() => {
+            // Get unique addresses from teams
+            const addresses = new Map();
+            sorted.forEach(t => {
+              if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
+                const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
+                if (!addresses.has(key)) {
+                  addresses.set(key, {
+                    lat: venuesDB.venues[t.teamName].lat,
+                    lng: venuesDB.venues[t.teamName].lng,
+                    address: venuesDB.venues[t.teamName].address
+                  });
+                }
               }
-            }
-          });
+            });
 
-          if (addresses.size === 0) return '';
+            if (addresses.size === 0) return '';
 
-          return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
-            Array.from(addresses.values()).map(loc => {
-              const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
-              const mapsUrl = isApple
-                ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
-                : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
-              const shortAddr = loc.address.split(',')[0];
-              return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
-            }).join('') +
-            '</div>';
-        })()}
+            return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
+              Array.from(addresses.values()).map(loc => {
+                const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+                const mapsUrl = isApple
+                  ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
+                  : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                const shortAddr = loc.address.split(',')[0];
+                return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
+              }).join('') +
+              '</div>';
+          })()}
+        </div>
+        <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
+          En curs
+        </label>
       </div>
-      <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
-        <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
-        En curs
-      </label>
     </div>
     ${teamCards||`<p style="text-align:center;padding:32px;color:#94a3b8">Cap equip actiu</p>`}`;
 }
@@ -2355,33 +2357,37 @@ function renderDetailClassif(){
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
 
-  // Calculate highlights from matches
+  // Calculate highlights from matches and classification
   const matches = detailComp.calendar || [];
   const played = matches.filter(m => m.homeScore != null && m.awayScore != null);
 
   const stats = {};
+  cl.forEach(r => {
+    stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, cards: 0 };
+  });
+
+  // Calculate shutouts and cards from actes
   played.forEach(m => {
-    // Goals for
-    if (!stats[m.home]) stats[m.home] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
-    if (!stats[m.away]) stats[m.away] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
-
-    stats[m.home].gf += m.homeScore;
-    stats[m.home].gc += m.awayScore;
-    stats[m.away].gf += m.awayScore;
-    stats[m.away].gc += m.homeScore;
-
     // Shutouts
-    if (m.awayScore === 0) stats[m.home].shutouts++;
-    if (m.homeScore === 0) stats[m.away].shutouts++;
+    if (m.awayScore === 0 && stats[m.home]) stats[m.home].shutouts++;
+    if (m.homeScore === 0 && stats[m.away]) stats[m.away].shutouts++;
 
-    // Cards (blaves/vermelles)
-    if (m.homeCards) stats[m.home].cards += (m.homeCards.filter(c => c === 'A' || c === 'B').length || 0);
-    if (m.awayCards) stats[m.away].cards += (m.awayCards.filter(c => c === 'A' || c === 'B').length || 0);
+    // Cards (blaves/vermelles) - review acta data
+    if (m.homeCards) {
+      const homeTeam = m.home;
+      const cardCount = (m.homeCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
+      if (stats[homeTeam]) stats[homeTeam].cards += cardCount;
+    }
+    if (m.awayCards) {
+      const awayTeam = m.away;
+      const cardCount = (m.awayCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
+      if (stats[awayTeam]) stats[awayTeam].cards += cardCount;
+    }
   });
 
   // Find highlight teams
   const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
-  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gf - b[1].gf)[0];
+  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gc - b[1].gc)[0];
   const mostCards = Object.entries(stats).sort((a,b) => b[1].cards - a[1].cards)[0];
   const mostShutouts = Object.entries(stats).sort((a,b) => b[1].shutouts - a[1].shutouts)[0];
 
@@ -2400,7 +2406,7 @@ function renderDetailClassif(){
 
   const highlightsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     ${highlightCard('⚽', 'Més Gols', topGoals?.[0], topGoals?.[1]?.gf || 0)}
-    ${highlightCard('🛡️', 'Menys Gols Rebuts', fewestGoals?.[0], fewestGoals?.[1]?.gf || 0)}
+    ${highlightCard('🛡️', 'Defensa (menys gols)', fewestGoals?.[0], fewestGoals?.[1]?.gc || 0)}
     ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.cards || 0)}
     ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
   </div>`;
