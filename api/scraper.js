@@ -1478,6 +1478,18 @@ async function mergejokIntoSidgad(categories) {
           jokComp.sidgadParentId = config.parent;
           if (oldParent !== config.parent) nCopaNameMatched++;
 
+          // Recalcular sidgadId perquè sigui coherent amb el nou parent.
+          const num = trailingNum(jokComp.name);
+          const div = extractKeywords(jokComp.name || "").division;
+          jokComp.sidgadId = (num != null)
+            ? (div ? `${config.parent}-${div}-${num}` : `${config.parent}-${num}`)
+            : `${config.parent}-${jokComp.id}`;
+          sidgadParentMap[jokComp.id] = {
+            sidgadId: config.parent,
+            sidgadName: sidgadComps[config.parent]?.name || "",
+            virtualId: jokComp.sidgadId,
+          };
+
           // Carregar classificació de Sidgad per a aquest grup (idc)
           const sidgadParent = sidgadComps[config.parent];
           if (sidgadParent && sidgadParent.classificationByGroup && sidgadParent.classificationByGroup[jokComp.id]) {
