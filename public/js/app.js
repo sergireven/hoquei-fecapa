@@ -1468,10 +1468,10 @@ function renderClubDashboard() {
             Array.from(addresses.values()).map(loc => {
               const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
               const mapsUrl = isApple
-                ? \`https://maps.apple.com/?q=\${loc.lat},\${loc.lng}\`
-                : \`https://www.google.com/maps?q=\${loc.lat},\${loc.lng}\`;
+                ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
+                : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
               const shortAddr = loc.address.split(',')[0];
-              return \`<a href="\${mapsUrl}" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\${loc.address}">\${shortAddr}</a>\`;
+              return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
             }).join('') +
             '</div>';
         })()}
