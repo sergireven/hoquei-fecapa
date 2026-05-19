@@ -904,12 +904,9 @@ function matchCard(m, myTeam) {
     }
   }
 
-  // Icona d'análisi de rival (només admin, partits futurs)
-  const rivalTeam = myTeam ? (riH ? m.away : m.home) : null;
-  const rivalAnalysisIcon = !played && !myTeam && currentProfile?.role === "admin" && rivalTeam
-    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(rivalTeam)}', '${m.compId}')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:2px" title="Análisi del rival">🔍</button>`
-    : !played && myTeam && currentProfile?.role === "admin"
-    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(rivalTeam)}', '${m.compId}')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:2px" title="Análisi del rival">🔍</button>`
+  // Icones d'anàlisi (només admin, partits futurs)
+  const rivalAnalysisIcon = !played && currentProfile?.role === "admin"
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${m.compId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button> <button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${m.compId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
@@ -1449,7 +1446,7 @@ function renderClubDashboard() {
   }).join("");
 
   $("home-body").innerHTML = `
-    <div style="position:sticky;top:0;z-index:100;background:linear-gradient(to bottom,#fff,rgba(255,255,255,.98));padding:8px 0;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,30,80,.04);border-bottom:1px solid #f0f2f8">
+    <div style="position:relative;background:linear-gradient(to bottom,#fff,rgba(255,255,255,.98));padding:8px 0;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,30,80,.04);border-bottom:1px solid #f0f2f8">
       <div style="display:flex;align-items:center;gap:10px">
         <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
         ${shieldImg(club.clubId,36)}
@@ -2720,8 +2717,26 @@ window.openRivalAnalysis = function(teamName, compId) {
   if (currentProfile?.role !== "admin") return;
 
   const comp = findComp(compId);
-  const metrics = calculateRivalMetrics(teamName, comp);
+  if (!comp) {
+    console.error("Competició no trobada:", compId);
+    alert("Competició no trobada");
+    return;
+  }
 
+  if (!comp.classification || comp.classification.length === 0) {
+    alert("Aquesta competició no té classificació");
+    return;
+  }
+
+  const teamInClassif = comp.classification.find(r => r.team === teamName);
+  if (!teamInClassif) {
+    console.error("Equip no trobat en classificació:", teamName);
+    console.log("Equips disponibles:", comp.classification.map(r => r.team));
+    alert(`Equip "${teamName}" no trobat en la classificació`);
+    return;
+  }
+
+  const metrics = calculateRivalMetrics(teamName, comp);
   if (!metrics) {
     alert("No es pot calcular l'anàlisi d'aquest equip");
     return;
