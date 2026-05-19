@@ -2780,26 +2780,52 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   }
   const avgAge = agesInTeam.length > 0 ? Math.round(agesInTeam.reduce((a,b) => a+b, 0) / agesInTeam.length) : "—";
 
-  // 8. Sancionats y Azules (Blaves)
+  // 8. Sancionats, Blaves i Vermelles
   const suspended = [];
-  const yellowCardRisk = [];
   let totalYellowCards = 0;
-  let matchesWithCards = 0;
+  let totalRedCards = 0;
+  let matchesWithYellowCards = 0;
+  let matchesWithRedCards = 0;
+  const playerCards = {};
+
   for (const acta of Object.values(acteData)) {
     if (String(acta.compId) !== String(comp.id)) continue;
     const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
     const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
     if (!isHome && !isAway) continue;
     const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
-    let cardsThisMatch = 0;
+
+    let yellowThisMatch = 0, redThisMatch = 0;
     for (const p of players) {
-      const cardCount = p.b || 0;
-      totalYellowCards += cardCount;
-      cardsThisMatch += cardCount;
+      if (!p.jugadorId) continue;
+      if (!playerCards[p.jugadorId]) {
+        playerCards[p.jugadorId] = { name: p.name, blaves: 0, vermelles: 0 };
+      }
+      const yellowCount = p.b || 0;
+      const redCount = p.v || 0;
+      playerCards[p.jugadorId].blaves += yellowCount;
+      playerCards[p.jugadorId].vermelles += redCount;
+      totalYellowCards += yellowCount;
+      totalRedCards += redCount;
+      yellowThisMatch += yellowCount;
+      redThisMatch += redCount;
     }
-    if (cardsThisMatch > 0) matchesWithCards++;
+    if (yellowThisMatch > 0) matchesWithYellowCards++;
+    if (redThisMatch > 0) matchesWithRedCards++;
   }
-  const avgYellowCards = matchesWithCards > 0 ? (totalYellowCards / matchesWithCards).toFixed(1) : 0;
+
+  // Identify suspended players
+  for (const [pid, cards] of Object.entries(playerCards)) {
+    if (cards.blaves >= 5) {
+      suspended.push(`${cards.name} (${cards.blaves} blaves)`);
+    }
+    if (cards.vermelles > 0) {
+      suspended.push(`${cards.name} (vermella)`);
+    }
+  }
+
+  const avgYellowCards = matchesWithYellowCards > 0 ? (totalYellowCards / matchesWithYellowCards).toFixed(1) : 0;
+  const avgRedCards = matchesWithRedCards > 0 ? (totalRedCards / matchesWithRedCards).toFixed(1) : 0;
 
   // 9. Porters
   let goalkeepers = 0;
@@ -2858,7 +2884,9 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
     avgAge,
     improvement,
     totalYellowCards,
-    avgYellowCards
+    avgYellowCards,
+    totalRedCards,
+    avgRedCards
   };
 }
 
@@ -2931,22 +2959,11 @@ function showRivalModal(metrics, teamName) {
     padding: 16px;
   `;
 
-  const summary = `
-    <strong style="color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">
-    ${teamName}</strong> és un equip en ${metrics.winRate >= 60 ? 'ascens ('+metrics.winRate+'% W últims 5)' : 'defensiva'}.
-    Punt fort: ${metrics.goalsFor >= 1.5 ? 'atac potent' : 'defensa sòlida'}.
-    Marca ${metrics.avgGoals} gols/partit. Porta ${metrics.shutouts} porteries a zero.
-  `;
-
   modal.innerHTML = `
     <div style="background: white; border-radius: 16px; padding: 24px; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3)">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
         <h2 style="margin: 0; font-family: 'Barlow Condensed'; font-size: 24px; font-weight: 900">${teamName}</h2>
         <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
-      </div>
-
-      <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.6">
-        ${summary}
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
@@ -3022,44 +3039,22 @@ function showRivalModal(metrics, teamName) {
 
         ${metrics.suspended && metrics.suspended.length > 0 ? `
         <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1">
-          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">🚫 Sancionats</div>
+          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">⚠️ Targetes</div>
           <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
             ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
           </div>
           <div style="font-size: 10px; color: #991b1b; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fca5a5">
-            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
-            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
           </div>
         </div>
         ` : `
         <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Sancionats</div>
-          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Cap</div>
+          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Targetes</div>
+          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlades</div>
           <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
-            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
-            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
-          </div>
-        </div>
-        `}
-
-        ${metrics.yellowCardRisk && metrics.yellowCardRisk.length > 0 ? `
-        <div style="background: #fef08a; border-radius: 12px; padding: 16px; grid-column: span 1">
-          <div style="font-size: 12px; color: #713f12; text-transform: uppercase; font-weight: 700">⚠️ Risc Vermella</div>
-          <div style="font-size: 13px; color: #78350f; margin-top: 8px; line-height: 1.4">
-            ${metrics.yellowCardRisk.map(p => `<div>• ${p}</div>`).join('')}
-          </div>
-          <div style="font-size: 10px; color: #713f12; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fde047">
-            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
-            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
-          </div>
-        </div>
-        ` : `
-        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Blaves</div>
-          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlats</div>
-          <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
-            <div>📋 Azules totals: ${metrics.totalYellowCards}</div>
-            <div>Mitjana: ${metrics.avgYellowCards}/partit</div>
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
           </div>
         </div>
         `}
