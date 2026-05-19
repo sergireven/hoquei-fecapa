@@ -2965,7 +2965,7 @@ function showRivalModal(metrics, teamName) {
         <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px">
         <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Posició</div>
           <div style="font-size: 32px; font-weight: 900; color: #e5001c">${metrics.position}º</div>
