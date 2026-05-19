@@ -904,6 +904,14 @@ function matchCard(m, myTeam) {
     }
   }
 
+  // Icona d'análisi de rival (només admin, partits futurs)
+  const rivalTeam = myTeam ? (riH ? m.away : m.home) : null;
+  const rivalAnalysisIcon = !played && !myTeam && currentProfile?.role === "admin" && rivalTeam
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(rivalTeam)}', '${m.compId}')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:2px" title="Análisi del rival">🔍</button>`
+    : !played && myTeam && currentProfile?.role === "admin"
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(rivalTeam)}', '${m.compId}')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:2px" title="Análisi del rival">🔍</button>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -924,6 +932,7 @@ function matchCard(m, myTeam) {
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
+          ${rivalAnalysisIcon && !riA ? rivalAnalysisIcon : ""}
         </div>
       </div>
       ${badge}
@@ -2592,4 +2601,174 @@ async function init(){
     $("loading-note").innerHTML=`<span style="color:#e5001c;font-weight:700">⚠️ Error</span><br/><span style="font-size:12px;color:#6b7a99">${esc(e.message)}</span>`;
   }
 }
+
+// ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
+function calculateRivalMetrics(teamName, comp) {
+  if (!comp) return null;
+
+  const matches = comp.calendar || [];
+  const classif = comp.classification || [];
+
+  // Get team row from classification
+  const teamRow = classif.find(r => r.team === teamName);
+  if (!teamRow) return null;
+
+  // Get matches for this team
+  const teamMatches = matches.filter(m =>
+    (m.homeScore != null && m.awayScore != null) &&
+    (m.home === teamName || m.away === teamName)
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 1. Trend últims 5 partits
+  const last5 = teamMatches.slice(0, 5);
+  let trend = { w: 0, d: 0, l: 0 };
+  last5.forEach(m => {
+    const isHome = m.home === teamName;
+    const myScore = isHome ? m.homeScore : m.awayScore;
+    const theirScore = isHome ? m.awayScore : m.homeScore;
+    if (myScore > theirScore) trend.w++;
+    else if (myScore === theirScore) trend.d++;
+    else trend.l++;
+  });
+
+  // 2. Jugadores per partit (rotació)
+  const playersByMatch = {};
+  teamMatches.forEach(m => {
+    const isHome = m.home === teamName;
+    const players = isHome ? (m.homePlayers || []) : (m.awayPlayers || []);
+    playersByMatch[m.date] = players.length;
+  });
+  const avgPlayersPerMatch = Object.values(playersByMatch).reduce((a,b) => a+b, 0) / Object.keys(playersByMatch).length || 0;
+
+  // 3. Gols promig
+  const totalGoals = teamMatches.reduce((sum, m) => {
+    const isHome = m.home === teamName;
+    return sum + (isHome ? m.homeScore : m.awayScore);
+  }, 0);
+  const avgGoals = totalGoals / teamMatches.length || 0;
+
+  // 4. Porteries a zero
+  const shutouts = teamMatches.filter(m => {
+    const isHome = m.home === teamName;
+    return isHome ? m.awayScore === 0 : m.homeScore === 0;
+  }).length;
+
+  // 5. Gols a favor y en contra
+  const goalsFor = teamRow.gf || 0;
+  const goalsAgainst = teamRow.gc || 0;
+
+  return {
+    teamName,
+    trend,
+    avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
+    avgGoals: Math.round(avgGoals * 100) / 100,
+    shutouts,
+    totalMatches: teamMatches.length,
+    points: teamRow.pts || 0,
+    position: teamRow.pos || "?",
+    goalsFor,
+    goalsAgainst,
+    goalsDiff: goalsFor - goalsAgainst,
+    winRate: Math.round(trend.w / last5.length * 100 || 0)
+  };
+}
+
+window.openRivalAnalysis = function(teamName, compId) {
+  if (currentProfile?.role !== "admin") return;
+
+  const comp = findComp(compId);
+  const metrics = calculateRivalMetrics(teamName, comp);
+
+  if (!metrics) {
+    alert("No es pot calcular l'anàlisi d'aquest equip");
+    return;
+  }
+
+  showRivalModal(metrics, teamName);
+};
+
+function showRivalModal(metrics, teamName) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  `;
+
+  const summary = `
+    <strong style="color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">
+    ${teamName}</strong> és un equip en ${metrics.winRate >= 60 ? 'ascens ('+metrics.winRate+'% W últims 5)' : 'defensiva'}.
+    Punt fort: ${metrics.goalsFor >= 1.5 ? 'atac potent' : 'defensa sòlida'}.
+    Marca ${metrics.avgGoals} gols/partit. Porta ${metrics.shutouts} porteries a zero.
+  `;
+
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 16px; padding: 24px; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3)">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
+        <h2 style="margin: 0; font-family: 'Barlow Condensed'; font-size: 24px; font-weight: 900">${teamName}</h2>
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
+      </div>
+
+      <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.6">
+        ${summary}
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Posició</div>
+          <div style="font-size: 32px; font-weight: 900; color: #e5001c">${metrics.position}º</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.points} pts</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Trend Últim 5</div>
+          <div style="font-size: 24px; font-weight: 900; margin: 8px 0">
+            <span style="color: #16a34a">${metrics.trend.w}V</span>
+            <span style="color: #d97706"> ${metrics.trend.d}E</span>
+            <span style="color: #dc2626"> ${metrics.trend.l}L</span>
+          </div>
+          <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Promig</div>
+          <div style="font-size: 32px; font-weight: 900; color: #003da5">${metrics.avgGoals}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Diferencial</div>
+          <div style="font-size: 32px; font-weight: 900; color: ${metrics.goalsDiff > 0 ? '#16a34a' : '#dc2626'}">${metrics.goalsDiff > 0 ? '+' : ''}${metrics.goalsDiff}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.goalsFor} a favor, ${metrics.goalsAgainst} contra</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Porteries a 0</div>
+          <div style="font-size: 32px; font-weight: 900; color: #1d4ed8">${metrics.shutouts}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">últims ${metrics.totalMatches} partits</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Jugadors/Partit</div>
+          <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">rotació baixa</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.remove();
+  };
+}
+
 init();
