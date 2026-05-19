@@ -737,7 +737,8 @@ function playerTableHtml(players, teamName, teamColor) {
     <div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:${teamColor};letter-spacing:.05em;margin-bottom:6px">${esc(teamName)}</div>
       <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;overflow:hidden">
-        <div style="display:flex;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+        <div style="display:flex;align-items:center;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+          <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</div>
           <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</div>
           ${hasStats?`<div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#16a34a">G</div>
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#2563eb">B</div>
@@ -745,6 +746,7 @@ function playerTableHtml(players, teamName, teamColor) {
         </div>
         ${players.map(p => `
           <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#64748b">${p.number ?? "–"}</div>
             <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
               ${(()=>{const m=p.url?.match(/\/jugador\/(\d+)\//);const jid=m?.[1];if(jid)return`<button class="player-name-btn" data-jid="${jid}">${esc(p.name)}</button>`;if(p.url)return`<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>`;return esc(p.name);})()}
             </div>
@@ -882,6 +884,11 @@ function matchCard(m, myTeam) {
     ? `<div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>`
     : "";
 
+  // Afegir icona de ubicació si no és jugat i hi ha coordenades
+  const venueIcon = !played && venuesDB?.venues?.[m.home]?.coordinates
+    ? `<div style="text-align:center;margin-top:6px"><span style="background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px">📍</span></div>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -897,6 +904,7 @@ function matchCard(m, myTeam) {
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
           ${actaBadge}
+          ${venueIcon}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
