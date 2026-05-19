@@ -627,6 +627,172 @@ function findComp(compId) {
   }
   return null;
 }
+
+const teamMapCache = new Map();
+
+function normTeamName(name) {
+  return String(name || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function baseTeamName(name) {
+  return normTeamName(name).replace(/\s+[a-e]$/, "").trim();
+}
+
+function getTeamIdFromComp(comp, teamName) {
+  if (!comp || !teamName) return null;
+  const rows = Array.isArray(comp.classification) ? comp.classification : [];
+  if (!rows.length) return null;
+
+  const target = normTeamName(teamName);
+  const targetBase = baseTeamName(teamName);
+
+  const exact = rows.find(r => r?.teamId && normTeamName(r.team) === target);
+  if (exact?.teamId) return String(exact.teamId);
+
+  const exactBase = rows.find(r => r?.teamId && baseTeamName(r.team) === targetBase);
+  if (exactBase?.teamId) return String(exactBase.teamId);
+
+  const fuzzy = rows.find(r => {
+    if (!r?.teamId || !r.team) return false;
+    const n = normTeamName(r.team);
+    const b = baseTeamName(r.team);
+    return n.includes(targetBase) || targetBase.includes(n) || b.includes(targetBase) || targetBase.includes(b);
+  });
+  return fuzzy?.teamId ? String(fuzzy.teamId) : null;
+}
+
+async function searchJokTeamId(teamName) {
+  if (!teamName) return null;
+  try {
+    const q = encodeURIComponent(teamName);
+    const res = await fetch(`https://jok.cat/api/search/teams/${q}`);
+    if (!res.ok) return null;
+    const arr = await res.json();
+    if (!Array.isArray(arr) || !arr.length) return null;
+
+    const target = normTeamName(teamName);
+    const targetBase = baseTeamName(teamName);
+
+    let best = null;
+    let bestScore = -1;
+    for (const item of arr) {
+      const cand = normTeamName(item?.teamName || "");
+      const candBase = baseTeamName(item?.teamName || "");
+      let score = 0;
+      if (cand === target) score += 100;
+      if (candBase === targetBase) score += 90;
+      if (cand.includes(targetBase) || targetBase.includes(cand)) score += 25;
+      if (candBase.includes(targetBase) || targetBase.includes(candBase)) score += 25;
+      if (String(item?.seasonName || "").includes("2025")) score += 5;
+      if (score > bestScore && item?.idTeam) {
+        bestScore = score;
+        best = item;
+      }
+    }
+    return best?.idTeam ? String(best.idTeam) : null;
+  } catch {
+    return null;
+  }
+}
+
+function toNumberOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractCoordsDeep(node) {
+  if (!node) return null;
+  const latKeys = ["lat", "latitude", "latitud", "y", "coordlat", "coord_lat"];
+  const lonKeys = ["lon", "lng", "long", "longitude", "longitud", "x", "coordlon", "coord_lng", "coord_long"];
+
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = extractCoordsDeep(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof node !== "object") return null;
+
+  const keys = Object.keys(node);
+  const latKey = keys.find(k => latKeys.includes(String(k).toLowerCase()));
+  const lonKey = keys.find(k => lonKeys.includes(String(k).toLowerCase()));
+  if (latKey && lonKey) {
+    const lat = toNumberOrNull(node[latKey]);
+    const lon = toNumberOrNull(node[lonKey]);
+    if (lat != null && lon != null) return { lat, lon };
+  }
+
+  for (const value of Object.values(node)) {
+    const found = extractCoordsDeep(value);
+    if (found) return found;
+  }
+  return null;
+}
+
+function buildMapTarget(label, coords) {
+  const safeLabel = String(label || "Pavello").trim() || "Pavello";
+  if (coords?.lat != null && coords?.lon != null) {
+    const ll = `${coords.lat},${coords.lon}`;
+    return {
+      label: safeLabel,
+      hasCoords: true,
+      google: `https://www.google.com/maps?q=${encodeURIComponent(ll)}`,
+      apple: `https://maps.apple.com/?ll=${encodeURIComponent(ll)}&q=${encodeURIComponent(safeLabel)}`,
+    };
+  }
+  return {
+    label: safeLabel,
+    hasCoords: false,
+    google: `https://www.google.com/maps?q=${encodeURIComponent(safeLabel)}`,
+    apple: `https://maps.apple.com/?q=${encodeURIComponent(safeLabel)}`,
+  };
+}
+
+function openBestMapUrl(target) {
+  if (!target) return;
+  const ua = navigator.userAgent || "";
+  const isApple = /iPad|iPhone|iPod|Macintosh/i.test(ua);
+  const url = isApple ? target.apple : target.google;
+  if (url) window.open(url, "_blank", "noopener,noreferrer");
+}
+
+async function resolveHomeVenueMapTarget(compId, homeTeam) {
+  const key = `${compId || ""}::${baseTeamName(homeTeam)}`;
+  if (teamMapCache.has(key)) return teamMapCache.get(key);
+
+  const comp = compId ? findComp(compId) : null;
+  let teamId = getTeamIdFromComp(comp, homeTeam);
+  if (!teamId) teamId = await searchJokTeamId(homeTeam);
+
+  let target = null;
+  if (teamId) {
+    try {
+      const res = await fetch(`https://jok.cat/api/team/${encodeURIComponent(teamId)}`);
+      if (res.ok) {
+        const payload = await res.json();
+        const info = payload?.teamInfo?.[0] || {};
+        const label = info.clubName || info.teamName || homeTeam;
+        const coords = extractCoordsDeep(payload);
+        target = buildMapTarget(label, coords);
+      }
+    } catch {}
+  }
+
+  if (!target) target = buildMapTarget(homeTeam, null);
+  teamMapCache.set(key, target);
+  return target;
+}
+
+window.openMatchVenue = async function(compId, homeTeam) {
+  const target = await resolveHomeVenueMapTarget(compId, homeTeam);
+  openBestMapUrl(target);
+};
 // -- Busca actes (cerca en el cache de categories carregades)
 const actesCache = {}; // catSlug → { actaId: actaData }
 
@@ -844,7 +1010,7 @@ function getLastAndNext(matches, teamName) {
 }
 
 // ── Match card ────────────────────────────────────────────────
-function matchCard(m, myTeam) {
+function matchCard(m, myTeam, compId) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const cidH   = getClubId(m.home), cidA = getClubId(m.away);
@@ -867,6 +1033,10 @@ function matchCard(m, myTeam) {
     ? `<div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>`
     : "";
 
+  const venueBtn = !played
+    ? `<button onclick="event.stopPropagation();openMatchVenue('${esc(compId||"")}','${esc(m.home||"")}')" title="Obrir mapa del pavello local" style="margin-top:6px;background:#ecfeff;color:#0f766e;border:1px solid #99f6e4;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;cursor:pointer">📍 Mapa</button>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -882,6 +1052,7 @@ function matchCard(m, myTeam) {
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
           ${actaBadge}
+          ${venueBtn}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
@@ -1159,8 +1330,8 @@ function buildFavCard(fav) {
       </div>
       ${classifHtml}
       <div style="padding:9px 12px">
-        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName)}`:""}
-        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName)}`:""}
+        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName,comp.id)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,comp.id)}`:""}
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
@@ -1389,8 +1560,8 @@ function renderClubDashboard() {
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
         </div>
         <div style="padding:7px 10px">
-          ${last?matchCard(last,t.teamName):""}
-          ${next?matchCard(next,t.teamName):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
+          ${last?matchCard(last,t.teamName,comp.id):""}
+          ${next?matchCard(next,t.teamName,comp.id):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
         </div>
       </div>`;
   }).join("");
@@ -2324,7 +2495,7 @@ function renderDetailCalendar(){
   $("panel-calendar").innerHTML=chips+Object.entries(byJ).map(([j,ms])=>`
     <div style="margin-bottom:10px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-      ${ms.map(m=>matchCard(m,detailTeam)).join("")}
+      ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
     </div>`).join("");
 }
 window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); };
