@@ -1470,9 +1470,15 @@ async function mergejokIntoSidgad(categories) {
   let nCopaNameMatched = 0;
   for (const [pattern, config] of Object.entries(copaNameMap)) {
     const regex = new RegExp(pattern, 'i');
+    const allowedJokIds = new Set((config.jokIds || []).map(String));
     for (const cat of Object.values(categories)) {
       for (const jokComp of cat) {
-        if (regex.test(jokComp.name)) {
+        const jokId = String(jokComp.id);
+        const byId = allowedJokIds.size > 0 && allowedJokIds.has(jokId);
+        const byName = regex.test(jokComp.name);
+        // Si la regla defineix jokIds, només aplica a aquests IDs.
+        // El regex queda com a suport/validació, no com a selector global.
+        if (allowedJokIds.size > 0 ? byId : byName) {
           // OVERRIDE el parent correcte (indepedentment si tenia idcToSidgad)
           const oldParent = jokComp.sidgadParentId;
           jokComp.sidgadParentId = config.parent;
