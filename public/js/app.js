@@ -1368,13 +1368,19 @@ function renderClubTab(cursor) {
         </label>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
-        ${filtered.map(([key,club])=>`
+        ${filtered.map(([key,club])=>{
+          // Check how many teams have venues mapped
+          const teamsWithVenue = club.teams.filter(t=>venuesDB?.venues?.[t.teamName]?.lat).length;
+          const venueIcon = teamsWithVenue > 0 ? "📍" : "❌";
+          const venuePercent = club.teams.length > 0 ? Math.round(teamsWithVenue / club.teams.length * 100) : 0;
+          return `
           <div onclick="selectClub('${esc(key)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .15s;text-align:center;position:relative" onmouseover="this.style.borderColor='#003da5';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
             <button onclick="event.stopPropagation();toggleClubFav('${esc(key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubTab()" style="position:absolute;top:5px;right:5px;background:none;border:none;font-size:15px;cursor:pointer;padding:2px;line-height:1">${isClubFav(key)?"⭐":"☆"}</button>
             ${shieldImg(club.clubId,36)}
             <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.2">${esc(club.displayName)}</div>
-            <div style="font-size:10px;color:#94a3b8">${club.teams.length} equip${club.teams.length!==1?"s":""}</div>
-          </div>`).join("")}
+            <div style="font-size:10px;color:#94a3b8"><span title="${teamsWithVenue}/${club.teams.length} equips amb ubicació">${club.teams.length} equip${club.teams.length!==1?"s":""} <span style="font-size:12px;margin-left:2px">${venueIcon}</span></span></div>
+          </div>`;
+        }).join("")}
       </div>
       ${!filtered.length?`<p style="text-align:center;padding:32px;color:#94a3b8">Cap club trobat per «${esc(clubSearch)}»</p>`:""}
     </div>`;
