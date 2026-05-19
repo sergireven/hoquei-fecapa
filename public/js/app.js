@@ -2982,19 +2982,19 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de gols marcats ÷ total de partits jugats">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Promig</div>
           <div style="font-size: 32px; font-weight: 900; color: #003da5">${metrics.avgGoals}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols en contra (GC) ÷ total de partits jugats">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Rebuts</div>
           <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.avgGoalsAgainst}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols a favor − Gols en contra">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Diferencial</div>
           <div style="font-size: 32px; font-weight: 900; color: ${metrics.goalsDiff > 0 ? '#16a34a' : '#dc2626'}">${metrics.goalsDiff > 0 ? '+' : ''}${metrics.goalsDiff}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.goalsFor} a favor, ${metrics.goalsAgainst} contra</div>
@@ -3006,7 +3006,7 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">últims ${metrics.totalMatches} partits</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de jugadors en cada acta ÷ total de partits">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Media jugadors convocats</div>
           <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">jugadors</div>
@@ -3024,20 +3024,20 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 11px; color: #0c4a6e; margin-top: 4px">porteries</div>
         </div>
 
-        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center" title="Suma d'edats dels jugadors ÷ total de jugadors">
           <div style="font-size: 12px; color: #5b21b6; text-transform: uppercase; font-weight: 700">📊 Mitjana Edat</div>
           <div style="font-size: 32px; font-weight: 900; color: #a855f7">${metrics.avgAge}</div>
           <div style="font-size: 11px; color: #5b21b6; margin-top: 4px">anys</div>
         </div>
 
-        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="Calculat com a (victòries / últims 5 partits) * 100">
+        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="(Victòries / últims 5 partits) * 100, mostrat com a probabilitat inversa vs rival">
           <div style="font-size: 12px; color: #7f1d1d; text-transform: uppercase; font-weight: 700">📈 Probabilitat Victòria</div>
           <div style="font-size: 32px; font-weight: 900; color: #dc2626">${100 - metrics.winProbability}%</div>
           <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">estimat</div>
         </div>
 
         ${metrics.suspended && metrics.suspended.length > 0 ? `
-        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1">
+        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
           <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">⚠️ Targetes</div>
           <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
             ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
@@ -3048,7 +3048,7 @@ function showRivalModal(metrics, teamName) {
           </div>
         </div>
         ` : `
-        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
           <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Targetes</div>
           <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlades</div>
           <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
@@ -3059,7 +3059,7 @@ function showRivalModal(metrics, teamName) {
         `}
 
         ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
-        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
             ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
@@ -3067,7 +3067,7 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
         </div>
         ` : `
-        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #4b5563; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 13px; font-weight: 700; color: #6b7280; margin-top: 8px">Mateixa plantilla</div>
         </div>
