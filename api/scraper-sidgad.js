@@ -593,10 +593,13 @@ async function main() {
             console.log(`   ❌ ERROR: ${e.message}\n`);
           }
 
-          // Si no tenim resultats, intentar l'alternativa: clickar cada grup individualment (antiga lógica)
-          if (!hasGroupData && Object.keys(compData[compId].classificationByGroup).length === 0) {
+          // Si encara falten grups, intentar l'alternativa: clickar cada grup individualment (antiga lógica)
+          // Important: el fallback per idc pot recuperar només una part dels grups.
+          const recoveredIdcs = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
+          const pendingIdcs = uniqueIdcs.map(String).filter(idc => !recoveredIdcs.has(idc));
+          if (pendingIdcs.length > 0) {
             let debugGroupLogged = false;
-            for (const idc of uniqueIdcs) {
+            for (const idc of pendingIdcs) {
               try {
                 // Torna a clicar la competició per reiniciar l'estat
                 await page.evaluate(id => document.getElementById(id)?.click(), compId);
@@ -648,6 +651,10 @@ async function main() {
               } catch (e) {
                 console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
               }
+            }
+
+            if (Object.keys(compData[compId].classificationByGroup).length > recoveredIdcs.size) {
+              hasGroupData = true;
             }
           }
         } else {
