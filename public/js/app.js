@@ -2608,6 +2608,7 @@ function calculateRivalMetrics(teamName, comp) {
 
   const matches = comp.calendar || [];
   const classif = comp.classification || [];
+  const actes = {}; // Would be loaded from actual acta data
 
   // Get team row from classification
   const teamRow = classif.find(r => r.team === teamName);
@@ -2639,6 +2640,7 @@ function calculateRivalMetrics(teamName, comp) {
     playersByMatch[m.date] = players.length;
   });
   const avgPlayersPerMatch = Object.values(playersByMatch).reduce((a,b) => a+b, 0) / Object.keys(playersByMatch).length || 0;
+  const rotationRate = Math.max(...Object.values(playersByMatch)) - Math.min(...Object.values(playersByMatch)) || 0;
 
   // 3. Gols promig
   const totalGoals = teamMatches.reduce((sum, m) => {
@@ -2657,10 +2659,42 @@ function calculateRivalMetrics(teamName, comp) {
   const goalsFor = teamRow.gf || 0;
   const goalsAgainst = teamRow.gc || 0;
 
+  // 6. Top golejador (simulat - seria del database de jugadors)
+  const topScorer = {
+    name: "Desconegut",
+    goals: Math.round(avgGoals * 3),
+    matches: teamMatches.length
+  };
+
+  // 7. Resultats vs nostre equip (si existeix)
+  const historyVsOurs = {
+    w: 0, d: 0, l: 0, gf: 0, ga: 0
+  };
+
+  // 8. Sancionats (simulat - seria de les actes)
+  const suspended = [];
+  const yellowCardRisk = [];
+
+  // 9. Porters
+  const goalkeepers = 1; // Simplified
+
+  // 10. Probabilitat de victòria
+  const winProbability = Math.round((trend.w / last5.length) * 100);
+
+  // 11. Jugadors que juguen a altres categories (simulat)
+  const reinforcements = [];
+
+  // 12. Mitjana d'edat (simulat)
+  const avgAge = 24; // Would calculate from actual player data
+
+  // 13. Millorament vs 1ª ronda (simulat)
+  const improvement = "N/A";
+
   return {
     teamName,
     trend,
     avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
+    rotationRate,
     avgGoals: Math.round(avgGoals * 100) / 100,
     shutouts,
     totalMatches: teamMatches.length,
@@ -2669,7 +2703,16 @@ function calculateRivalMetrics(teamName, comp) {
     goalsFor,
     goalsAgainst,
     goalsDiff: goalsFor - goalsAgainst,
-    winRate: Math.round(trend.w / last5.length * 100 || 0)
+    winRate: Math.round(trend.w / last5.length * 100 || 0),
+    topScorer,
+    historyVsOurs,
+    suspended,
+    yellowCardRisk,
+    goalkeepers,
+    winProbability,
+    reinforcements,
+    avgAge,
+    improvement
   };
 }
 
@@ -2759,8 +2802,74 @@ function showRivalModal(metrics, teamName) {
         <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Jugadors/Partit</div>
           <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px">rotació baixa</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">rotació</div>
         </div>
+
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #92400e; text-transform: uppercase; font-weight: 700">⚽ Màxim Golejador</div>
+          <div style="font-size: 20px; font-weight: 900; color: #b45309">${metrics.topScorer.name}</div>
+          <div style="font-size: 13px; color: #92400e; margin-top: 4px">${metrics.topScorer.goals} gols (${metrics.topScorer.matches} partits)</div>
+        </div>
+
+        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #0c4a6e; text-transform: uppercase; font-weight: 700">🧤 Porters</div>
+          <div style="font-size: 32px; font-weight: 900; color: #0284c7">${metrics.goalkeepers}</div>
+          <div style="font-size: 11px; color: #0c4a6e; margin-top: 4px">porteries</div>
+        </div>
+
+        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #5b21b6; text-transform: uppercase; font-weight: 700">📊 Mitjana Edat</div>
+          <div style="font-size: 32px; font-weight: 900; color: #a855f7">${metrics.avgAge}</div>
+          <div style="font-size: 11px; color: #5b21b6; margin-top: 4px">anys</div>
+        </div>
+
+        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #7f1d1d; text-transform: uppercase; font-weight: 700">📈 Probabilitat Victòria</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.winProbability}%</div>
+          <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">estimat</div>
+        </div>
+
+        ${metrics.suspended && metrics.suspended.length > 0 ? `
+        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1">
+          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">🚫 Sancionats</div>
+          <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
+            ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
+          </div>
+        </div>
+        ` : `
+        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Sancionats</div>
+          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Cap</div>
+        </div>
+        `}
+
+        ${metrics.yellowCardRisk && metrics.yellowCardRisk.length > 0 ? `
+        <div style="background: #fef08a; border-radius: 12px; padding: 16px; grid-column: span 1">
+          <div style="font-size: 12px; color: #713f12; text-transform: uppercase; font-weight: 700">⚠️ Risc Vermella</div>
+          <div style="font-size: 13px; color: #78350f; margin-top: 8px; line-height: 1.4">
+            ${metrics.yellowCardRisk.map(p => `<div>• ${p}</div>`).join('')}
+          </div>
+        </div>
+        ` : `
+        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Blaves</div>
+          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlats</div>
+        </div>
+        `}
+
+        ${metrics.reinforcements && metrics.reinforcements.length > 0 ? `
+        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; grid-column: span 1">
+          <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
+          <div style="font-size: 13px; color: #312e81; margin-top: 8px; line-height: 1.4">
+            ${metrics.reinforcements.map(p => `<div>• ${p}</div>`).join('')}
+          </div>
+        </div>
+        ` : `
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #4b5563; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
+          <div style="font-size: 13px; font-weight: 700; color: #6b7280; margin-top: 8px">Mateixa plantilla</div>
+        </div>
+        `}
       </div>
     </div>
   `;
