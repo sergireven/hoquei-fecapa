@@ -443,6 +443,58 @@ const CAT_COLOR = {
   "Veterans":"#6b7280","Altres":"#6b7280",
 };
 
+function getPlayerSourceCatCounts(player) {
+  const out = {};
+  for (const src of (player?.sources || [])) {
+    const cat = DB?.actesIndex?.[String(src?.id)];
+    if (!cat) continue;
+    out[cat] = (out[cat] || 0) + 1;
+  }
+  return out;
+}
+
+function normalizePlayerTeamStatsForDisplay(player) {
+  const teamStats = [...(player?.teamStats || [])];
+  if (teamStats.length <= 1) return teamStats;
+
+  const uniqueCats = [...new Set(teamStats.map(t => t.cat).filter(Boolean))];
+  const srcCatCounts = Object.entries(getPlayerSourceCatCounts(player));
+
+  // Heuristic fix: if all teams have same category but sources clearly span multiple categories,
+  // distribute categories by prominence (most matches team -> most frequent source category).
+  if (uniqueCats.length === 1 && srcCatCounts.length > 1) {
+    const catsSorted = srcCatCounts.sort((a,b) => b[1]-a[1]).map(([cat]) => cat);
+    const teamsSorted = [...teamStats].sort((a,b) => (b.count||0) - (a.count||0));
+    const assigned = teamsSorted.map((t, i) => ({ ...t, cat: catsSorted[i] || catsSorted[0] || t.cat }));
+    return assigned;
+  }
+
+  return teamStats;
+}
+
+async function enrichPlayerOnDemand(jid) {
+  const player = DB?.jugadors?.[jid];
+  if (!player) return;
+  if (Array.isArray(player.careerStats) && player.careerStats.length) return;
+  try {
+    const res = await fetch(`https://jok.cat/api/player/${jid}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (Array.isArray(data.playerStats) && data.playerStats.length) {
+      player.careerStats = data.playerStats.map(s => ({
+        seasonName:   s.seasonName,
+        total_goals:  +s.total_goals,
+        match_count:  +s.match_count,
+        total_blue:   +s.total_blue,
+        total_red:    +s.total_red,
+      }));
+    }
+    const info = data.playerInfo?.[0];
+    if (info?.number != null && player.number == null) player.number = info.number;
+  } catch {}
+}
+
 // ── Club ID lookups ───────────────────────────────────────────
 function getClubIdByTeamId(teamId) {
   if (!DB||!teamId) return null;
@@ -879,7 +931,7 @@ function renderJugadorsTab(refreshOnly = false) {
   const playerRow = (jid, player, dndType = null) => {
     const name = fmtName(player);
     const age  = calcAge(player.birthDate);
-    const team = player.teamStats?.[0];
+    const team = normalizePlayerTeamStatsForDisplay(player)?.[0];
     const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : null;
     const fav  = isPlayerFav(jid);
     const sub  = [
@@ -1016,7 +1068,7 @@ function buildPlayerFavCard(jid) {
   const p = DB?.jugadors?.[jid];
   if (!p) return "";
   const name = p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
-  const team = p.teamStats?.[0];
+  const team = normalizePlayerTeamStatsForDisplay(p)?.[0];
   const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : "";
   return `
     <div draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #1a5dc7;border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
@@ -2046,7 +2098,8 @@ function openDetail(compId,teamName,tab){
 window.openDetail=openDetail;
 
 // ── Fitxa de jugador (bottom sheet) ──────────────────────────
-function openPlayerModal(jid, fallbackName) {
+async function openPlayerModal(jid, fallbackName) {
+  await enrichPlayerOnDemand(jid);
   const player = DB?.jugadors?.[jid];
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
   const name   = (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : null)
@@ -2054,7 +2107,8 @@ function openPlayerModal(jid, fallbackName) {
                || "Jugador";
 
   // Team i categoria del teamStats principal
-  const firstTeam  = player?.teamStats?.[0];
+  const fixedTeamStats = normalizePlayerTeamStatsForDisplay(player);
+  const firstTeam  = fixedTeamStats?.[0];
   const teamSuffix = firstTeam ? `, ${firstTeam.team}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
   const url    = player?.url || `https://jok.cat/jugador/${jid}`;
@@ -2104,7 +2158,7 @@ function openPlayerModal(jid, fallbackName) {
     `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
 
   // ── Equips (teamStats del scraper) ────────────────────────────
-  const teamStats = player?.teamStats || [];
+  const teamStats = fixedTeamStats || [];
 
   // Fallback: categories des de sources si no hi ha teamStats
   const catCounts = {};
