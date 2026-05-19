@@ -2354,8 +2354,60 @@ function renderDetailClassif(){
   const cl=detailComp.classification||[];
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
+
+  // Calculate highlights from matches
+  const matches = detailComp.calendar || [];
+  const played = matches.filter(m => m.homeScore != null && m.awayScore != null);
+
+  const stats = {};
+  played.forEach(m => {
+    // Goals for
+    if (!stats[m.home]) stats[m.home] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
+    if (!stats[m.away]) stats[m.away] = { gf: 0, gc: 0, shutouts: 0, cards: 0 };
+
+    stats[m.home].gf += m.homeScore;
+    stats[m.home].gc += m.awayScore;
+    stats[m.away].gf += m.awayScore;
+    stats[m.away].gc += m.homeScore;
+
+    // Shutouts
+    if (m.awayScore === 0) stats[m.home].shutouts++;
+    if (m.homeScore === 0) stats[m.away].shutouts++;
+
+    // Cards (blaves/vermelles)
+    if (m.homeCards) stats[m.home].cards += (m.homeCards.filter(c => c === 'A' || c === 'B').length || 0);
+    if (m.awayCards) stats[m.away].cards += (m.awayCards.filter(c => c === 'A' || c === 'B').length || 0);
+  });
+
+  // Find highlight teams
+  const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
+  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gf - b[1].gf)[0];
+  const mostCards = Object.entries(stats).sort((a,b) => b[1].cards - a[1].cards)[0];
+  const mostShutouts = Object.entries(stats).sort((a,b) => b[1].shutouts - a[1].shutouts)[0];
+
+  const highlightCard = (emoji, label, team, value) => {
+    if (!team) return '';
+    return `<div style="flex:1;min-width:150px;background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">${emoji}</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:6px">${label}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px">
+        ${shieldImg(rowClubId(cl.find(r=>r.team===team)),20)}
+        <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.3">${esc(team)}</div>
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#e5001c">${value}</div>
+    </div>`;
+  };
+
+  const highlightsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    ${highlightCard('⚽', 'Més Gols', topGoals?.[0], topGoals?.[1]?.gf || 0)}
+    ${highlightCard('🛡️', 'Menys Gols Rebuts', fewestGoals?.[0], fewestGoals?.[1]?.gf || 0)}
+    ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.cards || 0)}
+    ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
+  </div>`;
+
   $("panel-classif").innerHTML=`
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${sourceBadge}</div>
+    ${highlightsHtml}
     <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f8fafc">
