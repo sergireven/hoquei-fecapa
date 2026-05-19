@@ -1,6 +1,7 @@
 // FECAPA app.js v8
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
+const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
@@ -307,6 +308,7 @@ window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 
 let DB      = null;
+let venuesDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
@@ -755,6 +757,18 @@ function playerTableHtml(players, teamName, teamColor) {
     </div>`;
 }
 
+function getVenueLinks(teamName) {
+  if (!venuesDB?.venues || !teamName) return "";
+  const venue = venuesDB.venues[teamName];
+  if (!venue?.coordinates) return "";
+  const { lat, lng } = venue.coordinates;
+  if (!lat || !lng) return "";
+  return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
+    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
+    <a href="https://maps.apple.com/?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">🗺️ Apple Maps →</a>
+  </div>`;
+}
+
 function openActaDetail(acta) {
   let homePlayers, awayPlayers;
   if (acta.playerStats) {
@@ -803,6 +817,7 @@ function openActaDetail(acta) {
       ${actaUrl?`<div style="border-top:1px solid #f0f2f8;padding:10px 14px">
         <a href="${esc(actaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📄 Veure acta a jok.cat →</a>
       </div>`:""}
+      ${getVenueLinks(acta.home)}
     </div>
 
     <!-- Players -->
@@ -2433,6 +2448,14 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    // Load venues/coordinates
+    try {
+      const venuesRes = await fetch(VENUES_URL);
+      if (venuesRes.ok) venuesDB = await venuesRes.json();
+    } catch(e) {
+      console.log("Venues file not available:", e.message);
+    }
 
     applyClassificationSourceMerge();
 
