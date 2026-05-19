@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<!-- saved from url=(0033)https://hoquei-fecapa.vercel.app/ -->
+<html lang="ca"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FECAPA · Hoquei Patins Catalunya</title>
+  <link href="./FECAPA · Hoquei Patins Catalunya_files/css2" rel="stylesheet">
+  <script src="./FECAPA · Hoquei Patins Catalunya_files/supabase.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',sans-serif;background:#f0f4f8;color:#1a2035;min-height:100vh}
+    button,input,select{font-family:inherit}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-thumb{background:#e2e6ef;border-radius:4px}
+    a{color:#003da5}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Loading */
+    #screen-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:14px;background:#fff}
+    .loading-logo{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:#e5001c}
+    .loading-sub{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#6b7a99;letter-spacing:.15em;text-transform:uppercase}
+    .spinner{width:34px;height:34px;border:3px solid #f0f4f8;border-top-color:#e5001c;border-radius:50%;animation:spin .7s linear infinite}
+
+    /* Screens */
+    #screen-home,#screen-picker,#screen-detail,#screen-acta{display:none;flex-direction:column;min-height:100vh}
+
+    /* Home header */
+    .home-header{background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 16px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)}
+    .home-header-inner{max-width:620px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+    .home-logo{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900}
+    .home-logo span{color:#e5001c}
+    .btn-icon{background:#f0f4f8;border:1px solid #e2e6ef;border-radius:10px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#1a2035}
+    #home-body{max-width:620px;margin:0 auto;width:100%;padding:16px 14px 32px}
+
+    /* Picker */
+    .picker-header{background:linear-gradient(135deg,#003da5 0%,#001f6e 60%,#e5001c 100%);padding:16px 16px 20px;display:flex;align-items:center;gap:12px}
+    .back-btn-picker{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
+    .picker-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#fff}
+    #picker-content{flex:1;overflow-y:auto}
+
+    /* Detail header */
+    .detail-header{background:linear-gradient(135deg,#003da5 0%,#001850 100%);padding:12px 14px 0;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,20,60,.3)}
+    .detail-header-inner{max-width:680px;margin:0 auto}
+    #back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px}
+    #detail-comp-name{font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,22px);font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.1;margin-bottom:3px}
+    #detail-meta{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:10px}
+    .detail-tabs{display:flex;gap:2px;overflow-x:auto}
+    .detail-tab{background:none;border:none;border-bottom:3px solid transparent;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.55);padding:9px 14px;cursor:pointer}
+    .detail-tab.active{color:#fff;border-bottom-color:#f0a500}
+    .detail-body{flex:1;max-width:680px;margin:0 auto;width:100%;padding:16px 12px 32px}
+    .panel{display:none}
+    .panel.active{display:block;animation:fadeUp .2s ease}
+
+    /* Filter tabs (for future use) */
+    .filter-wrap{background:#fff;border-bottom:1px solid #e2e6ef;overflow-x:auto;white-space:nowrap}
+    .filter-inner{display:inline-flex;padding:0 14px}
+    .filter-btn{background:none;border:none;border-bottom:3px solid transparent;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#6b7a99;padding:10px 12px 7px;cursor:pointer}
+    .filter-btn.active{color:#e5001c;border-bottom-color:#e5001c}
+
+    select{appearance:auto}
+    @media(max-width:500px){
+      .acta-teams-grid{grid-template-columns:1fr!important}
+    }
+      /* Mobile: larger base font sizes */
+      body { font-size: 15px; }
+      .detail-tab { font-size: 13px; padding: 9px 10px 6px; }
+      #detail-comp-name { font-size: 16px; }
+    }
+    @media(max-width:400px){
+      #detail-comp-name { font-size: 15px; }
+    }
+
+    /* Player modal (bottom sheet) */
+    #player-modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none}
+    #player-modal{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;z-index:201;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);box-shadow:0 -6px 30px rgba(0,20,60,.22)}
+    #player-modal.pm-open{transform:translateY(0)}
+    .pm-stat{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;padding:10px 4px}
+    .pm-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1}
+    .pm-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em;text-align:center}
+    .pm-section{padding:14px 16px;border-top:1px solid #f0f2f8}
+    .pm-section-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.1em;margin-bottom:10px}
+    .player-name-btn{color:#003da5;font-weight:600;cursor:pointer;border-bottom:1px dotted #003da5;background:none;border-top:none;border-left:none;border-right:none;padding:0;font-size:inherit;font-family:inherit}
+    /* Login/user modals (bottom sheet) */
+    #login-modal-bd,#user-modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none}
+    #login-modal,#user-modal{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;max-height:80vh;overflow-y:auto;z-index:301;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);box-shadow:0 -6px 30px rgba(0,20,60,.22)}
+    #login-modal.lm-open,#user-modal.lm-open{transform:translateY(0)}
+    /* Admin panel screen */
+    #screen-admin{display:none;flex-direction:column;min-height:100vh}
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-loading" style="display: none;">
+  <div class="loading-logo">🏒 FECAPA</div>
+  <div class="loading-sub">Hoquei Patins Catalunya</div>
+  <div class="spinner"></div>
+  <div id="loading-note" style="font-size:13px;color:#6b7a99">Carregant dades...</div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" style="display: none;">
+  <div id="home-header" style="background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 14px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)">
+    <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
+      <div style="display:flex;gap:6px;align-items:center"><button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button><button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>
+    </div>
+    <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
+      <button onclick="setHomeTab(&#39;favs&#39;)" style="flex:1;background:#1a2035;color:#fff;border:1.5px solid #1a2035;border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus (3)</button>
+      <button onclick="setHomeTab(&#39;club&#39;)" style="flex:1;background:#f0f4f8;color:#6b7a99;border:1.5px solid #e2e6ef;border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🏟 Club</button>
+      <button onclick="setHomeTab(&#39;all&#39;)" style="flex:1;background:#f0f4f8;color:#6b7a99;border:1.5px solid #e2e6ef;border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🔍 Comps</button>
+      <button onclick="setHomeTab(&#39;jugadors&#39;)" style="flex:1;background:#f0f4f8;color:#6b7a99;border:1.5px solid #e2e6ef;border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">👤 Jugadors</button>
+    </div></div>
+  <div id="home-body" style="max-width:680px;margin:0 auto;width:100%;padding:14px 14px 32px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
+      <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="36" height="36" style="object-fit:contain;background:#f5f7fc;border-radius:8px;padding:2px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:20px;font-weight:900">CLUB HOQUEI RIPOLLET</div>
+        <div style="font-size:11px;color:#94a3b8">51 equips · en curs</div>
+      </div>
+      <button onclick="toggleClubFav(&#39;club hoquei ripollet&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;278.gif&#39;);renderClubDashboard()" style="background:#fef9c3;border:1px solid #fcd34d;border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">⭐</button>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
+        <input type="checkbox" checked="" onchange="allOnlyActive=this.checked;selectedClub=null;selectClub(&#39;club hoquei ripollet&#39;)" style="accent-color:#003da5">
+        En curs
+      </label>
+    </div>
+    
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4305&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 3</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4307&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 4</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4308&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 6</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4310&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4311&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI OR 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4301&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI OR 2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4302&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI OR 3</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4303&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PREBENJAMÍ OR GIRONA</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4211&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI BRONZE 2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4198&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA PREBENJAMÍ PLATA FASE 2 GRUP A</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4556&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA PREBENJAMÍ PLATA FASE 2 GRUP B</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4557&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA PREBENJAMÍ PLATA FASE 2 GRUP C</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4559&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA PREBENJAMÍ PLATA FASE 2 GRUP D</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4561&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4191&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI PLATA 5</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4195&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PREBENJAMI OR 3</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4189&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ch Ripollet D</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PB-INICIACIÓ 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 37pts</span>
+          <button onclick="openDetail(&#39;4317&#39;,&#39;Ch Ripollet D&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+    <div onclick="openActa(&#39;134507&#39;,&#39;https://jok.cat/acta/134507/CLUB+HOQUEI+RIPOLLET+D-CP+VILAFRANCA+BYACCUOR&#39;)" style="background:#fff;border:1.5px solid #16a34a;border-left:4px solid #16a34a;border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:800;color:#003da5;text-align:right;line-height:1.3;overflow-wrap:anywhere">Ch Ripollet D</span>
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+        </div>
+        <div style="flex-shrink:0;text-align:center;min-width:68px">
+          <div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:48px;text-align:center">4 - 1</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">03-05</div>
+          <div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/301.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:500;color:#334155;text-align:left;line-height:1.3;overflow-wrap:anywhere">Cp Vilafranca Byaccuor</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:5px"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;padding:2px 10px;border-radius:6px">Victòria</span></div>
+    </div>
+          
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:800;color:#003da5;text-align:right;line-height:1.3;overflow-wrap:anywhere">Ch Ripollet D</span>
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+        </div>
+        <div style="flex-shrink:0;text-align:center;min-width:68px">
+          <div style="background:#1a5dc7;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;min-width:48px;text-align:center">VS</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">01-03 · 10:00</div>
+          
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:500;color:#334155;text-align:left;line-height:1.3;overflow-wrap:anywhere">Cpi Sant Ignasi B</span>
+        </div>
+      </div>
+      
+    </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #d97706;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">⭐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ch Ripollet D</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN PB-INICIACIÓ 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 18pts</span>
+          <button onclick="openDetail(&#39;4200&#39;,&#39;Ch Ripollet D&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+    <div onclick="openActa(&#39;125037&#39;,&#39;https://jok.cat/acta/125037/CLUB+HOQUEI+RIPOLLET+D-CLUB+HOQUEI+SANTA+PERP%C3%88TUA+C&#39;)" style="background:#fff;border:1.5px solid #16a34a;border-left:4px solid #16a34a;border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:800;color:#003da5;text-align:right;line-height:1.3;overflow-wrap:anywhere">Ch Ripollet D</span>
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+        </div>
+        <div style="flex-shrink:0;text-align:center;min-width:68px">
+          <div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:48px;text-align:center">4 - 0</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">30-11</div>
+          <div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/291_3.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:500;color:#334155;text-align:left;line-height:1.3;overflow-wrap:anywhere">Ch Santa Perpètua C</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:5px"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;padding:2px 10px;border-radius:6px">Victòria</span></div>
+    </div>
+          
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:800;color:#003da5;text-align:right;line-height:1.3;overflow-wrap:anywhere">Ch Ripollet D</span>
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+        </div>
+        <div style="flex-shrink:0;text-align:center;min-width:68px">
+          <div style="background:#1a5dc7;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;min-width:48px;text-align:center">VS</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">16-11 · 10:00</div>
+          
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
+          <span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span>
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:500;color:#334155;text-align:left;line-height:1.3;overflow-wrap:anywhere">Cerdanyola Club Dhoquei</span>
+        </div>
+      </div>
+      
+    </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 1 GRUP A</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4216&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 1 GRUP B</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4217&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 2 GRUP A</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4550&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 2 GRUP B</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4553&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 2 GRUP C</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4554&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ PLATA FASE 2 GRUP D</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4555&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GIRONA BENJAMÍ OR</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4221&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BENJAMÍ PLATA 2ª FASE</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4513&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">SEMIFINALS COPA BENJAMI PLATA TARRAGONA</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">4è · 12pts</span>
+          <button onclick="openDetail(&#39;4602&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR COPA BCN 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4475&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR COPA BCN 2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4476&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR COPA BCN 3</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4477&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA BCN 4</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4478&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA BCN 5</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4479&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA BCN 6</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4480&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR 13 AL 16</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4632&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR 17 AL 20</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4633&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR 21 AL 24</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4634&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ OR 9 AL 12</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4635&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA FCP 1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4481&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA FCP 2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4482&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #dc2626;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🔥</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET C</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BCN BENJAMÍ PLATA COPA FCP 3</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#d97706;flex-shrink:0">1è · 38pts</span>
+          <button onclick="openDetail(&#39;4483&#39;,&#39;CLUB HOQUEI RIPOLLET C&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #0891b2;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🏆</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET B</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">FASES FINALS COPA CATALUNYA 3X3 INFANTIL OR</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#64748b;flex-shrink:0">2è · 9pts</span>
+          <button onclick="openDetail(&#39;4530&#39;,&#39;CLUB HOQUEI RIPOLLET B&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR 5</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4092&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR 6</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4093&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR RK1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4353&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR RK2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4354&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR CC1</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4355&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR CC2</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4356&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR 21 AL 24</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4625&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #ea580c;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🎯</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CLUB HOQUEI RIPOLLET</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JÚNIOR OR 17 AL 20</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 56pts</span>
+          <button onclick="openDetail(&#39;4626&#39;,&#39;CLUB HOQUEI RIPOLLET&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+          <p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid #6b7280;border-radius:12px;overflow:hidden;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
+          <span style="font-size:14px">🧓</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Club Hoquei Ripollet</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">LCV GRUP C</div>
+          </div>
+          <span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:16px;font-weight:900;color:#6b7a99;flex-shrink:0">6è · 7pts</span>
+          <button onclick="openDetail(&#39;4270&#39;,&#39;Club Hoquei Ripollet&#39;,&#39;classif&#39;)" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
+        </div>
+        <div style="padding:7px 10px">
+          
+    <div onclick="openActa(&#39;130309&#39;,&#39;https://jok.cat/acta/130309/OXIGEN+PHC+SANT+CUGAT+B-CLUB+HOQUEI+RIPOLLET&#39;)" style="background:#fff;border:1.5px solid #d97706;border-left:4px solid #d97706;border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:500;color:#334155;text-align:right;line-height:1.3;overflow-wrap:anywhere">Oxigen Sant Cugat B</span>
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/282.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+        </div>
+        <div style="flex-shrink:0;text-align:center;min-width:68px">
+          <div style="background:#e5001c;color:#fff;border-radius:8px;padding:4px 12px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:clamp(17px,5vw,20px);font-weight:900;line-height:1.1;white-space:nowrap;min-width:48px;text-align:center">6 - 6</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">12-12</div>
+          <div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
+          <img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt="">
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:800;color:#003da5;text-align:left;line-height:1.3;overflow-wrap:anywhere">Club Hoquei Ripollet</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:5px"><span style="background:#fef3c7;color:#b45309;font-size:11px;font-weight:700;padding:2px 10px;border-radius:6px">Empat</span></div>
+    </div>
+          
+        </div>
+      </div></div>
+</div>
+
+<!-- PICKER -->
+<div id="screen-picker" style="display:none">
+  <div class="picker-header">
+    <button class="back-btn-picker" onclick="document.getElementById(&#39;screen-picker&#39;).style.display=&#39;none&#39;;document.getElementById(&#39;screen-home&#39;).style.display=&#39;flex&#39;;">← Enrere</button>
+    <div class="picker-title">Afegir equip favorit</div>
+  </div>
+  <div id="picker-content" style="flex:1;overflow-y:auto"></div>
+</div>
+
+<!-- DETAIL -->
+<div id="screen-detail" style="display: flex;">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="back-btn">← Enrere</button></div>
+      <div id="detail-comp-name">BCN BENJAMÍ PLATA COPA BCN 4</div>
+      <div id="detail-meta">56 equips · 86% jugat · jok.cat</div>
+      <div class="detail-tabs">
+        <button class="detail-tab active" data-tab="classif">Classificació</button>
+        <button class="detail-tab" data-tab="calendar">Calendari</button>
+        <button class="detail-tab" data-tab="jugadors">Jugadors</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail-body">
+    <div id="panel-classif" class="panel active">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span></div>
+    <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:8px 6px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">#</th><th style="padding:8px 6px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:left;border-bottom:1px solid #e2e6ef">Equip</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">PJ</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">G</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">E</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">Pe</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">GF</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">GC</th><th style="padding:8px 4px;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#e5001c;text-transform:uppercase;text-align:center;border-bottom:1px solid #e2e6ef">Pts</th>
+        </tr></thead>
+        <tbody><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥇</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">47</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">23</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">39</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥈</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/236.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">ROTOTANK BIGUES I RIELLS</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">11</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">5</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">46</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">34</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">33</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥉</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/261_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">FUTBOL CLUB MARTINENC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">15</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">8</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">39</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">35</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">27</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">4</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/240.PNG" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">AE CASP</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">6</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">41</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">30</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">22</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">5</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/297_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB PATI TORDERA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">15</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">6</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">7</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">39</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">38</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">20</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">6</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/259.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">MARTINELIA MANLLEU C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">6</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">30</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">37</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">16</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">7</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI SANTA PERPÈTUA B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">31</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">41</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">13</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">8</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/302.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CP VILANOVA C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">27</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">44</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">9</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">9</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/252_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">IGUALADA HC C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">10</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">25</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">43</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">6</td>
+          </tr><tr style="background:#eff6ff;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥇</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:800;color:#003da5">CLUB HOQUEI RIPOLLET C</span><span style="color:#e5001c;font-size:10px">◀</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">12</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">50</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#e5001c">38</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥈</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/287.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">SANT JOSEP DE BADALONA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">39</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">21</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">29</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥉</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/275.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI PRAT</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">41</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">22</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">28</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">4</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/281.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CP SANT CELONI B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">7</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">7</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">31</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">39</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">21</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">5</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/443.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI CLARET C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">5</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">7</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">32</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">36</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">17</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">6</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">OXIGEN PHC SANT CUGAT F</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">14</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">29</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">43</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">13</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">7</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/263.PNG" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CH MATARÓ D</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">15</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">11</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">26</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">42</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">11</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">8</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB PATÍ CENTELLES</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">9</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">23</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">39</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">10</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">9</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/551.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">SFERIC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">12</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">3</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">8</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">28</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">41</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">10</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥇</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/237.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CH CALDES RECAM LÀSER C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">15</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">56</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">15</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">45</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥈</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI MOLINS DE REI</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">51</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">21</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">40</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥉</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CAPELLADES HC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">11</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">5</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">49</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">28</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">33</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">4</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA F</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">10</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">42</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">33</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">32</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">5</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/266_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">MOLLET HC C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">7</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">8</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">38</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">35</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">22</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">6</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">HOQUEI CLUB PIERA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">6</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">8</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">33</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">41</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">20</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">7</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA D</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">6</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">10</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">27</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">44</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">18</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">8</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CP MANRESA B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">4</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">10</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">34</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">46</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">14</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">9</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/244.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CERDANYOLA CH B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">24</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">54</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">5</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">10</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI SANT IGNASI E</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">16</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">1</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">2</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">13</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">20</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">57</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">5</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥇</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/244.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CERDANYOLA CH B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥈</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/281.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CP SANT CELONI B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center">🥉</td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">HOQUEI CLUB PIERA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">4</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/443.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI CLARET C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">5</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/236.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">ROTOTANK BIGUES I RIELLS</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">6</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">7</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB PATÍ CENTELLES</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">8</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/275.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI PRAT</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">9</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI SANTA PERPÈTUA B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:#eff6ff;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">10</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:800;color:#003da5">CLUB HOQUEI RIPOLLET C</span><span style="color:#e5001c;font-size:10px">◀</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#e5001c">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">11</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CP MANRESA B</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">12</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/252_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">IGUALADA HC C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">13</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CLUB HOQUEI MOLINS DE REI</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">14</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/261_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">FUTBOL CLUB MARTINENC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">15</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">CAPELLADES HC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">16</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/266_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">MOLLET HC C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">17</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/287.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">SANT JOSEP DE BADALONA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">18</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/297_1.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CLUB PATI TORDERA</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">19</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA F</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">20</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/240.PNG" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">AE CASP</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">21</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="width:22px;height:22px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span><span style="font-size:13px;font-weight:500;color:#334155">OXIGEN PHC SANT CUGAT F</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">22</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/551.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">SFERIC</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">23</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/259.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">MARTINELIA MANLLEU C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">24</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/263.PNG" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CH MATARÓ D</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">25</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI SANT IGNASI E</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">26</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/398.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CPI LA SAGRERA D</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">27</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/302.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CP VILANOVA C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr><tr style="background:transparent;border-bottom:1px solid #f0f2f8">
+            <td style="padding:9px 6px;text-align:center"><span style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:13px;font-weight:800;color:#6b7a99">28</span></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><img src="./FECAPA · Hoquei Patins Catalunya_files/237.png" width="22" height="22" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""><span style="font-size:13px;font-weight:500;color:#334155">CH CALDES RECAM LÀSER C</span></div></td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#d97706">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#dc2626">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;color:#94a3b8">0</td>
+            <td style="padding:9px 4px;text-align:center;font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:15px;font-weight:900;color:#1a2035">0</td>
+          </tr></tbody>
+      </table>
+    </div></div>
+    <div id="panel-calendar" class="panel"><div style="margin-bottom:10px">
+    <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <button onclick="setCalTeam(null)" style="background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">Tots</button>
+      <button onclick="setCalTeam(&#39;Ch Mataró B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/263.PNG" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Mataró B</button><button onclick="setCalTeam(&#39;Ch Navarcles A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><span style="width:16px;height:16px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span> Navarcles A</button><button onclick="setCalTeam(&#39;Ch Ripollet B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Ripollet B</button><button onclick="setCalTeam(&#39;Ch Ripollet C&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Ripollet C</button><button onclick="setCalTeam(&#39;Cp Folgueroles A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/250.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Folgueroles A</button><button onclick="setCalTeam(&#39;Cp Masquefa A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/262_2.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Masquefa A</button><button onclick="setCalTeam(&#39;Mollet Hc B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/266_1.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Mollet Hc B</button><button onclick="setCalTeam(&#39;Se La Salle Bonanova A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><span style="width:16px;height:16px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span> Se La Salle Bonanova A</button>
+    </div>
+  </div></div>
+    <div id="panel-jugadors" class="panel"><div style="margin-bottom:10px">
+    <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <button onclick="setJugadorsTeam(null)" style="background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">Tots</button>
+      <button onclick="setJugadorsTeam(&#39;Ch Mataró B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/263.PNG" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Mataró B</button><button onclick="setJugadorsTeam(&#39;Ch Navarcles A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><span style="width:16px;height:16px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span> Navarcles A</button><button onclick="setJugadorsTeam(&#39;Ch Ripollet B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Ripollet B</button><button onclick="setJugadorsTeam(&#39;Ch Ripollet C&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/278.gif" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Ripollet C</button><button onclick="setJugadorsTeam(&#39;Cp Folgueroles A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/250.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Folgueroles A</button><button onclick="setJugadorsTeam(&#39;Cp Masquefa A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/262_2.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Masquefa A</button><button onclick="setJugadorsTeam(&#39;Mollet Hc B&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><img src="./FECAPA · Hoquei Patins Catalunya_files/266_1.png" width="16" height="16" style="object-fit:contain;background:#f5f7fc;border-radius:4px;padding:1px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility=&#39;hidden&#39;" alt=""> Mollet Hc B</button><button onclick="setJugadorsTeam(&#39;Se La Salle Bonanova A&#39;)" style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border:1.5px solid #e2e6ef;border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:#334155;cursor:pointer"><span style="width:16px;height:16px;background:#e8ecf4;border-radius:4px;display:inline-block;flex-shrink:0"></span> Se La Salle Bonanova A</button>
+    </div>
+  </div><div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div></div>
+  </div>
+</div>
+
+<!-- ACTA DETAIL -->
+<div id="screen-acta" style="display:none">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="acta-back-btn">← Enrere</button></div>
+      <div id="acta-header-title" style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:clamp(14px,4vw,19px);font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.15;margin-bottom:3px"></div>
+      <div id="acta-header-meta" style="font-size:11px;color:rgba(255,255,255,.6);padding-bottom:12px"></div>
+    </div>
+  </div>
+  <div id="acta-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
+</div>
+
+
+<span id="hero-season" style="display:none"></span>
+<span id="hero-sub" style="display:none"></span>
+
+<div id="last-update-bar" style="display: block; text-align: center; padding: 8px 14px; font-size: 11px; color: rgb(107, 122, 153); background: rgb(240, 244, 248); border-top: 1px solid rgb(226, 230, 239);">Darrera actualització: dimarts, 19 de maig del 2026, a les 12:27</div>
+
+<!-- Player modal (bottom sheet) -->
+<div id="player-modal-bd" onclick="closePlayerModal()"></div>
+<div id="player-modal" role="dialog" aria-modal="true">
+  <div id="player-modal-body"></div>
+</div>
+
+<!-- Login modal (bottom sheet) -->
+<div id="login-modal-bd" onclick="closeLoginModal()"></div>
+<div id="login-modal" role="dialog" aria-modal="true">
+  <div id="login-modal-body"></div>
+</div>
+
+<!-- User menu modal (bottom sheet) -->
+<div id="user-modal-bd" onclick="closeUserModal()"></div>
+<div id="user-modal" role="dialog" aria-modal="true">
+  <div id="user-modal-body"></div>
+</div>
+
+<!-- Admin panel -->
+<div id="screen-admin" style="display:none">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="admin-back-btn" onclick="closeAdminPanel()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">← Enrere</button></div>
+      <div style="font-family:&#39;Barlow Condensed&#39;,sans-serif;font-size:20px;font-weight:900;color:#fff;margin:8px 0 4px">Panell d'administrador</div>
+    </div>
+  </div>
+  <div id="admin-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
+</div>
+
+<script src="./FECAPA · Hoquei Patins Catalunya_files/app.js"></script>
+
+
+</body></html>
