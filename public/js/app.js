@@ -1349,7 +1349,14 @@ function openDetail(compId,teamName,tab){
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
   const srcLabel = detailComp.classificationSource === "fecapa" ? " · FECAPA" : (detailComp.classificationSource === "jok" ? " · jok.cat" : "");
-  $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat${srcLabel}`;
+  const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
+  const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
+  const eqLabel = (detailComp.classification||[]).length; 
+  $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
+    <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
+    <span style="opacity:.7">${srcLabel}</span>
+  </div>`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
   renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
