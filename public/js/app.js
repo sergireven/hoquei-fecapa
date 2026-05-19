@@ -136,7 +136,7 @@ async function loginWithEmail() {
     closeLoginModal();
     // Rerenderitza la vista actual (detall o home)
     if (detailComp) {
-      renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+      await renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
     } else {
       renderHome();
     }
@@ -2217,7 +2217,7 @@ function openDetail(compId,teamName,tab){
   </div>`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
   window.scrollTo(0,0);
 }
 window.openDetail=openDetail;
@@ -2402,7 +2402,7 @@ function setupListeners(){
   });
 }
 
-function renderDetailClassif(){
+async function renderDetailClassif(){
   const cl=detailComp.classification||[];
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
@@ -2416,24 +2416,35 @@ function renderDetailClassif(){
     stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, cards: 0 };
   });
 
-  // Calculate shutouts and cards from actes
+  // Calculate shutouts
   played.forEach(m => {
-    // Shutouts
     if (m.awayScore === 0 && stats[m.home]) stats[m.home].shutouts++;
     if (m.homeScore === 0 && stats[m.away]) stats[m.away].shutouts++;
-
-    // Cards (blaves/vermelles) - review acta data
-    if (m.homeCards) {
-      const homeTeam = m.home;
-      const cardCount = (m.homeCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
-      if (stats[homeTeam]) stats[homeTeam].cards += cardCount;
-    }
-    if (m.awayCards) {
-      const awayTeam = m.away;
-      const cardCount = (m.awayCards.split('').filter(c => c === 'A' || c === 'B') || []).length;
-      if (stats[awayTeam]) stats[awayTeam].cards += cardCount;
-    }
   });
+
+  // Calculate cards (blaves/vermelles) from actes
+  const catSlug = getCatSlugForComp(detailComp);
+  if (catSlug) {
+    const actes = await loadCatActes(catSlug);
+    const compIdStr = String(detailComp.id);
+
+    for (const acta of Object.values(actes)) {
+      if (String(acta.compId) !== compIdStr) continue;
+      const countCards = (players) => {
+        let count = 0;
+        for (const p of (players || [])) {
+          count += (p.b || 0) + (p.v || 0);
+        }
+        return count;
+      };
+
+      const homeCards = countCards(acta.playerStats?.homePlayers || []);
+      const awayCards = countCards(acta.playerStats?.awayPlayers || []);
+
+      if (stats[acta.home]) stats[acta.home].cards += homeCards;
+      if (stats[acta.away]) stats[acta.away].cards += awayCards;
+    }
+  }
 
   // Find highlight teams
   const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
@@ -2609,7 +2620,7 @@ async function renderDetailJugadors(){
 
 function setJugadorsTeam(team) {
   detailTeam = team;
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
 }
 
 // ── Init ──────────────────────────────────────────────────────
