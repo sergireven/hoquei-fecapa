@@ -1399,7 +1399,7 @@ function getCatForComp(comp) {
 
 window.selectClub = function(key) {
   const entry = buildClubMap().get(key);
-  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); }
+  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); window.scrollTo(0,0); }
 };
 
 function renderClubDashboard() {
@@ -1440,47 +1440,49 @@ function renderClubDashboard() {
   }).join("");
 
   $("home-body").innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
-      ${shieldImg(club.clubId,36)}
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
-        <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
-        ${(() => {
-          // Get unique addresses from teams
-          const addresses = new Map();
-          sorted.forEach(t => {
-            if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
-              const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
-              if (!addresses.has(key)) {
-                addresses.set(key, {
-                  lat: venuesDB.venues[t.teamName].lat,
-                  lng: venuesDB.venues[t.teamName].lng,
-                  address: venuesDB.venues[t.teamName].address
-                });
+    <div style="position:sticky;top:0;z-index:100;background:linear-gradient(to bottom,#fff,rgba(255,255,255,.98));padding:8px 0;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,30,80,.04);border-bottom:1px solid #f0f2f8">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
+        ${shieldImg(club.clubId,36)}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
+          <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+          ${(() => {
+            // Get unique addresses from teams
+            const addresses = new Map();
+            sorted.forEach(t => {
+              if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
+                const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
+                if (!addresses.has(key)) {
+                  addresses.set(key, {
+                    lat: venuesDB.venues[t.teamName].lat,
+                    lng: venuesDB.venues[t.teamName].lng,
+                    address: venuesDB.venues[t.teamName].address
+                  });
+                }
               }
-            }
-          });
+            });
 
-          if (addresses.size === 0) return '';
+            if (addresses.size === 0) return '';
 
-          return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
-            Array.from(addresses.values()).map(loc => {
-              const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
-              const mapsUrl = isApple
-                ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
-                : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
-              const shortAddr = loc.address.split(',')[0];
-              return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
-            }).join('') +
-            '</div>';
-        })()}
+            return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
+              Array.from(addresses.values()).map(loc => {
+                const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+                const mapsUrl = isApple
+                  ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
+                  : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                const shortAddr = loc.address.split(',')[0];
+                return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
+              }).join('') +
+              '</div>';
+          })()}
+        </div>
+        <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
+          En curs
+        </label>
       </div>
-      <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
-        <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
-        En curs
-      </label>
     </div>
     ${teamCards||`<p style="text-align:center;padding:32px;color:#94a3b8">Cap equip actiu</p>`}`;
 }
