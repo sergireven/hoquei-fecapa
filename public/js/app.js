@@ -867,7 +867,7 @@ function getLastAndNext(matches, teamName) {
 }
 
 // ── Match card ────────────────────────────────────────────────
-function matchCard(m, myTeam) {
+function matchCard(m, myTeam, compId) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const cidH   = getClubId(m.home), cidA = getClubId(m.away);
@@ -905,8 +905,14 @@ function matchCard(m, myTeam) {
   }
 
   // Icones d'anàlisi (només admin, partits futurs)
-  const rivalAnalysisIcon = !played && currentProfile?.role === "admin"
-    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${m.compId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button> <button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${m.compId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+  const effectiveCompId = compId || m.compId;
+
+  const homeAnalysisIcon = !played && currentProfile?.role === "admin" && effectiveCompId
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+    : "";
+
+  const awayAnalysisIcon = !played && currentProfile?.role === "admin" && effectiveCompId
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
@@ -918,6 +924,7 @@ function matchCard(m, myTeam) {
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
+          ${homeAnalysisIcon}
           ${shieldImg(cidH,22)}
         </div>
         <div style="flex-shrink:0;text-align:center;min-width:68px">
@@ -928,8 +935,8 @@ function matchCard(m, myTeam) {
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
+          ${awayAnalysisIcon}
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
-          ${rivalAnalysisIcon && !riA ? rivalAnalysisIcon : ""}
         </div>
       </div>
       ${badge}
@@ -2458,10 +2465,15 @@ function renderDetailCalendar(){
   const matches=detailTeam?all.filter(m=>teamIn(m.home,detailTeam)||teamIn(m.away,detailTeam)):all;
   const byJ={};
   matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
-  $("panel-calendar").innerHTML=chips+Object.entries(byJ).map(([j,ms])=>`
+  const sortedJornades=Object.entries(byJ).sort((a,b)=>{
+    const getNum=k=>{const m=k[0].match(/Jornada (\d+)/);return m?parseInt(m[1]):-1;};
+    const numA=getNum(a), numB=getNum(b);
+    return numA===-1||numB===-1?0:numB-numA;
+  });
+  $("panel-calendar").innerHTML=chips+sortedJornades.map(([j,ms])=>`
     <div style="margin-bottom:10px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-      ${ms.map(m=>matchCard(m,detailTeam)).join("")}
+      ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
     </div>`).join("");
 }
 window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); };
@@ -2716,9 +2728,12 @@ function calculateRivalMetrics(teamName, comp) {
 window.openRivalAnalysis = function(teamName, compId) {
   if (currentProfile?.role !== "admin") return;
 
+  console.log("openRivalAnalysis called with:", { teamName, compId });
+
   const comp = findComp(compId);
   if (!comp) {
     console.error("Competició no trobada:", compId);
+    console.log("Competicions disponibles:", Object.values(DB?.categories || {}).flat().map(c => ({ id: c.id, name: c.name })));
     alert("Competició no trobada");
     return;
   }
