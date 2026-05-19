@@ -429,6 +429,7 @@ let jugadorComposing = false;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;");
+const decodeHtml = s => String(s||"").replace(/&#039;/g,"'").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"');
 
 const CAT_EMOJI = {
   "Nacional Catalana":"👑","1ª Catalana":"⭐","2ª Catalana":"🔵","3ª Catalana":"🟣",
@@ -879,6 +880,15 @@ function matchCard(m, myTeam, compId) {
   const acta   = getMatchActa(m);
   const hasActa = !!(acta && (acta.actaUrl || acta.url));
 
+  // Debug logging
+  const effectiveCompId = compId || m.compId;
+  if (!played) {
+    console.log("Match card - played:", played, "compId param:", compId, "m.compId:", m.compId, "effectiveCompId:", effectiveCompId);
+    if (!effectiveCompId) {
+      console.warn("NO COMPID FOR MATCH:", { home: m.home, away: m.away });
+    }
+  }
+
   let border="#e2e6ef", badge="";
   if (played && myTeam) {
     const draw=m.homeScore===m.awayScore, win=riH?m.homeScore>m.awayScore:m.awayScore>m.homeScore;
@@ -909,15 +919,13 @@ function matchCard(m, myTeam, compId) {
     }
   }
 
-  // Icones d'anàlisi (només admin, partits futurs)
-  const effectiveCompId = compId || m.compId;
-
-  const homeAnalysisIcon = !played && currentProfile?.role === "admin" && effectiveCompId
-    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+  // Icones d'anàlisi (mostrar per a tots els usuaris)
+  const homeAnalysisIcon = !played && effectiveCompId
+    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
     : "";
 
-  const awayAnalysisIcon = !played && currentProfile?.role === "admin" && effectiveCompId
-    ? `<button onclick="event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+  const awayAnalysisIcon = !played && effectiveCompId
+    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
@@ -1215,8 +1223,8 @@ function buildFavCard(fav) {
       </div>
       ${classifHtml}
       <div style="padding:9px 12px">
-        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName)}`:""}
-        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName)}`:""}
+        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName,fav.compId)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId)}`:""}
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
@@ -1422,7 +1430,7 @@ window.selectClub = function(key) {
 
 function renderClubDashboard() {
   const club = selectedClub;
-  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Fem","Veterans","Altres"];
+  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Veterans","Altres","Fem"];
 
   // Sort teams by category order
   const sorted = [...club.teams].sort((a,b)=>{
@@ -1444,15 +1452,15 @@ function renderClubDashboard() {
         <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
           <span style="font-size:14px">${catEmoji}</span>
           <div style="flex:1;min-width:0">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.teamName)}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${decodeHtml(t.teamName)}</div>
             <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
         </div>
         <div style="padding:7px 10px">
-          ${last?matchCard(last,t.teamName):""}
-          ${next?matchCard(next,t.teamName):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
+          ${last?matchCard(last,t.teamName,t.compId):""}
+          ${next?matchCard(next,t.teamName,t.compId):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
         </div>
       </div>`;
   }).join("");
@@ -1558,17 +1566,19 @@ function getCompHierarchy(comp) {
     };
   }
   if (/\b1[ªA]\s*\bCATAL/.test(n) || /\bPRIMERA\b\s*\bCATAL/.test(n)) {
+    const gender = /\bFEM\b|FEMENI|FEMENINA/.test(n) ? "Femenina" : "Masculina";
     return {
       level1: { key: "1ª Catalana", label: "1ª Catalana", emoji: "⭐", color: "#1a5dc7", order: 20 },
-      level2: null,
+      level2: { key: `1ª Catalana::${gender}`, label: gender, order: gender === "Femenina" ? 1 : 0 },
       level3: null,
       level4: null,
     };
   }
   if (/\b2[ªA]\s*\bCATAL/.test(n) || /\bSEGONA\b\s*\bCATAL/.test(n)) {
+    const gender = /\bFEM\b|FEMENI|FEMENINA/.test(n) ? "Femenina" : "Masculina";
     return {
       level1: { key: "2ª Catalana", label: "2ª Catalana", emoji: "🔵", color: "#2563eb", order: 30 },
-      level2: null,
+      level2: { key: `2ª Catalana::${gender}`, label: gender, order: gender === "Femenina" ? 1 : 0 },
       level3: null,
       level4: null,
     };
@@ -1583,10 +1593,29 @@ function getCompHierarchy(comp) {
   }
 
   if (/\bFEM\b|FEMENI|FEMENINA/.test(n)) {
+    // Extract age/category from FEM11, FEM 11, FEM13, FEM 13, FEM17, FEM 17, MINIFEM, etc
+    let femCategory = "Fem";
+    let categoryOrder = 0;
+
+    if (/MINIFEM/.test(n)) {
+      femCategory = "MiniFem";
+      categoryOrder = 0;
+    } else if (/FEM\s*11/.test(n)) {
+      femCategory = "FEM 11";
+      categoryOrder = 1;
+    } else if (/FEM\s*13/.test(n)) {
+      femCategory = "FEM 13";
+      categoryOrder = 2;
+    } else if (/FEM\s*17/.test(n)) {
+      femCategory = "FEM 17";
+      categoryOrder = 3;
+    }
+
+    const tier = detectTier(n);
     return {
       level1: { key: "Fem", label: "Fem", emoji: "♀", color: "#db2777", order: 50 },
-      level2: null,
-      level3: null,
+      level2: { key: `Fem::${femCategory}`, label: femCategory, order: categoryOrder },
+      level3: { key: `Fem::${femCategory}::${tier}`, label: tierLabel(tier), order: tierOrder[tier] },
       level4: null,
     };
   }
@@ -1988,7 +2017,7 @@ function renderAllComps(cursor) {
         const statsKey3 = `stats:${key3}`;
         const open3 = isNodeOpen(key3, false);
         const statsOpen3 = isNodeOpen(statsKey3, false);
-        const isMiniCat = ["Benjamí", "Prebenjamí"].includes(meta.key);
+        const isMiniCat = ["Benjamí", "Prebenjamí", "Fem"].includes(meta.key);
         const isBenjami = meta.key === "Benjamí";
         const comps3 = filterComps(g3.comps || []);
         const level4 = (g3.groupsArr || []).map(([,g4]) => {
@@ -2034,6 +2063,8 @@ function renderAllComps(cursor) {
           </div>`;
       }).join("");
       const isAgeCat = ["Júnior","Juvenil","Infantil","Aleví"].includes(meta.key);
+      const isCatalonaCat = ["1ª Catalana","2ª Catalana"].includes(meta.key);
+      const showStatsL2 = isAgeCat || isCatalonaCat;
       const fav2 = isLevelFav(key2);
       const statsKey2 = `stats:${key2}`;
       const statsOpen2 = isNodeOpen(statsKey2, false);
@@ -2047,7 +2078,7 @@ function renderAllComps(cursor) {
               <span style="color:${color};flex-shrink:0">${open2 ? '▾' : '▸'}</span>
             </button>
             <button onclick="toggleLevelFavNode('${esc(key2)}','${esc(meta.key)}','${esc(g2.key)}','','','${esc(g2.label)}','${esc(meta.label + ' › ' + g2.label)}','${esc(color)}','🥈')" style="background:${fav2?'#fef9c3':'#f0f4f8'};color:${fav2?'#a16207':'#6b7a99'};border:1.5px solid ${fav2?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:7px 9px;cursor:pointer;font-size:14px;flex-shrink:0" title="Favorit de nivell">${fav2?'★':'☆'}</button>
-            ${isAgeCat ? `<button data-sk="${esc(statsKey2)}" data-nk="${esc(key2)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen2?color:'#f0f4f8'};color:${statsOpen2?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen2?color:'#e2e6ef'};border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;flex-shrink:0" title="Rànquing del grup">📊</button>` : ""}
+            ${showStatsL2 ? `<button data-sk="${esc(statsKey2)}" data-nk="${esc(key2)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen2?color:'#f0f4f8'};color:${statsOpen2?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen2?color:'#e2e6ef'};border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;flex-shrink:0" title="Rànquing del grup">📊</button>` : ""}
           </div>
           ${open2 ? level2LeafComps.map(c=>renderCompCard(c, color)).join("") : ""}
           ${open2 ? level3 : ""}
@@ -2058,7 +2089,8 @@ function renderAllComps(cursor) {
 
     const isAgeCatL1 = ["Júnior","Juvenil","Infantil","Aleví"].includes(meta.key);
     const isMiniCatL1 = ["Benjamí", "Prebenjamí"].includes(meta.key);
-    const showL1Stats = !isAgeCatL1 && !isMiniCatL1;
+    const isCatalonaCatL1 = ["1ª Catalana","2ª Catalana"].includes(meta.key);
+    const showL1Stats = !isAgeCatL1 && !isMiniCatL1 && !isCatalonaCatL1;
     const statsKey1 = `stats:${meta.key}`;
     const fav1 = isLevelFav(key1);
     const statsOpen1 = isNodeOpen(statsKey1, false);
@@ -2458,6 +2490,7 @@ function renderDetailClassif(){
 
 function renderDetailCalendar(){
   const all=detailComp.calendar||[];
+  console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
   if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
   const names=[...new Set([...all.map(m=>m.home),...all.map(m=>m.away)].filter(Boolean))].sort();
   const chips=`<div style="margin-bottom:10px">
@@ -2616,29 +2649,59 @@ async function init(){
   }
 }
 
+function normalizeTeamName(name) {
+  if (!name) return "";
+  return String(name)
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[''´`]/g, "")
+    .replace(/[-–—]/g, "-")
+    .replace(/[àáäâ]/g, "a")
+    .replace(/[èéëê]/g, "e")
+    .replace(/[ìíïî]/g, "i")
+    .replace(/[òóöô]/g, "o")
+    .replace(/[ùúüû]/g, "u")
+    .replace(/ç/g, "c")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 // ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
-function calculateRivalMetrics(teamName, comp) {
+function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   if (!comp) return null;
 
   const matches = comp.calendar || [];
   const classif = comp.classification || [];
-  const actes = {}; // Would be loaded from actual acta data
+  const acteData = actes || {};
+  const allActesData = allActes || {};
 
   // Get team row from classification
-  const teamRow = classif.find(r => r.team === teamName);
+  let teamRow = teamInClassif;
+  if (!teamRow) {
+    teamRow = classif.find(r => r.team === teamName);
+  }
   if (!teamRow) return null;
+
+  // Match team name from calendar
+  const calTeamName = [...new Set([...matches.map(m => m.home), ...matches.map(m => m.away)].filter(Boolean))].find(t =>
+    normalizeTeamName(t) === normalizeTeamName(teamName)
+  ) || teamName;
 
   // Get matches for this team
   const teamMatches = matches.filter(m =>
     (m.homeScore != null && m.awayScore != null) &&
-    (m.home === teamName || m.away === teamName)
+    (normalizeTeamName(m.home) === normalizeTeamName(calTeamName) || normalizeTeamName(m.away) === normalizeTeamName(calTeamName))
   ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // 1. Trend últims 5 partits
   const last5 = teamMatches.slice(0, 5);
   let trend = { w: 0, d: 0, l: 0 };
   last5.forEach(m => {
-    const isHome = m.home === teamName;
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
     const myScore = isHome ? m.homeScore : m.awayScore;
     const theirScore = isHome ? m.awayScore : m.homeScore;
     if (myScore > theirScore) trend.w++;
@@ -2646,26 +2709,29 @@ function calculateRivalMetrics(teamName, comp) {
     else trend.l++;
   });
 
-  // 2. Jugadores per partit (rotació)
+  // 2. Jugadores per partit (rotació) - from actes
   const playersByMatch = {};
-  teamMatches.forEach(m => {
-    const isHome = m.home === teamName;
-    const players = isHome ? (m.homePlayers || []) : (m.awayPlayers || []);
-    playersByMatch[m.date] = players.length;
-  });
-  const avgPlayersPerMatch = Object.values(playersByMatch).reduce((a,b) => a+b, 0) / Object.keys(playersByMatch).length || 0;
-  const rotationRate = Math.max(...Object.values(playersByMatch)) - Math.min(...Object.values(playersByMatch)) || 0;
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    playersByMatch[acta.matchDate || acta.date] = players.length;
+  }
+  const playerCounts = Object.values(playersByMatch);
+  const avgPlayersPerMatch = playerCounts.length > 0 ? playerCounts.reduce((a,b) => a+b, 0) / playerCounts.length : 0;
 
   // 3. Gols promig
   const totalGoals = teamMatches.reduce((sum, m) => {
-    const isHome = m.home === teamName;
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
     return sum + (isHome ? m.homeScore : m.awayScore);
   }, 0);
-  const avgGoals = totalGoals / teamMatches.length || 0;
+  const avgGoals = teamMatches.length > 0 ? totalGoals / teamMatches.length : 0;
 
   // 4. Porteries a zero
   const shutouts = teamMatches.filter(m => {
-    const isHome = m.home === teamName;
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
     return isHome ? m.awayScore === 0 : m.homeScore === 0;
   }).length;
 
@@ -2673,43 +2739,134 @@ function calculateRivalMetrics(teamName, comp) {
   const goalsFor = teamRow.gf || 0;
   const goalsAgainst = teamRow.gc || 0;
 
-  // 6. Top golejador (simulat - seria del database de jugadors)
-  const topScorer = {
-    name: "Desconegut",
-    goals: Math.round(avgGoals * 3),
-    matches: teamMatches.length
-  };
+  // 6. Top golejador - from actes
+  const playerStats = {};
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    for (const p of players) {
+      if (!p.jugadorId) continue;
+      if (!playerStats[p.jugadorId]) {
+        playerStats[p.jugadorId] = { name: p.name, goals: 0, matches: 0 };
+      }
+      playerStats[p.jugadorId].goals += p.g || 0;
+      playerStats[p.jugadorId].matches += 1;
+    }
+  }
+  const topScorer = Object.values(playerStats).length > 0
+    ? Object.values(playerStats).reduce((a, b) => a.goals > b.goals ? a : b)
+    : { name: "—", goals: 0, matches: 0 };
 
-  // 7. Resultats vs nostre equip (si existeix)
-  const historyVsOurs = {
-    w: 0, d: 0, l: 0, gf: 0, ga: 0
-  };
+  // 7. Mitjana d'edat - from DB.jugadors
+  const agesInTeam = [];
+  for (const pid of Object.keys(playerStats)) {
+    const player = DB.jugadors?.[pid];
+    if (player?.birthDate) {
+      const bd = player.birthDate;
+      const pts = bd.split(/[\/\-]/);
+      const dob = pts[0].length === 4
+        ? new Date(`${pts[0]}-${pts[1]}-${pts[2]}`)
+        : new Date(`${pts[2]}-${pts[1]}-${pts[0]}`);
+      if (!isNaN(dob)) {
+        const now = new Date();
+        const y = now.getFullYear() - dob.getFullYear();
+        const age = y - (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+        if (age > 0 && age < 100) agesInTeam.push(age);
+      }
+    }
+  }
+  const avgAge = agesInTeam.length > 0 ? Math.round(agesInTeam.reduce((a,b) => a+b, 0) / agesInTeam.length) : "—";
 
-  // 8. Sancionats (simulat - seria de les actes)
+  // 8. Sancionats, Blaves i Vermelles
   const suspended = [];
-  const yellowCardRisk = [];
+  let totalYellowCards = 0;
+  let totalRedCards = 0;
+  let matchesWithYellowCards = 0;
+  let matchesWithRedCards = 0;
+  const playerCards = {};
+
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+
+    let yellowThisMatch = 0, redThisMatch = 0;
+    for (const p of players) {
+      if (!p.jugadorId) continue;
+      if (!playerCards[p.jugadorId]) {
+        playerCards[p.jugadorId] = { name: p.name, blaves: 0, vermelles: 0 };
+      }
+      const yellowCount = p.b || 0;
+      const redCount = p.v || 0;
+      playerCards[p.jugadorId].blaves += yellowCount;
+      playerCards[p.jugadorId].vermelles += redCount;
+      totalYellowCards += yellowCount;
+      totalRedCards += redCount;
+      yellowThisMatch += yellowCount;
+      redThisMatch += redCount;
+    }
+    if (yellowThisMatch > 0) matchesWithYellowCards++;
+    if (redThisMatch > 0) matchesWithRedCards++;
+  }
+
+  // Identify suspended players
+  for (const [pid, cards] of Object.entries(playerCards)) {
+    if (cards.blaves >= 5) {
+      suspended.push(`${cards.name} (${cards.blaves} blaves)`);
+    }
+    if (cards.vermelles > 0) {
+      suspended.push(`${cards.name} (vermella)`);
+    }
+  }
+
+  const avgYellowCards = matchesWithYellowCards > 0 ? (totalYellowCards / matchesWithYellowCards).toFixed(1) : 0;
+  const avgRedCards = matchesWithRedCards > 0 ? (totalRedCards / matchesWithRedCards).toFixed(1) : 0;
 
   // 9. Porters
-  const goalkeepers = 1; // Simplified
+  let goalkeepers = 0;
+  for (const pid of Object.keys(playerStats)) {
+    const player = DB.jugadors?.[pid];
+    if (player?.isGK) goalkeepers++;
+  }
+  if (goalkeepers === 0) goalkeepers = 1;
 
   // 10. Probabilitat de victòria
-  const winProbability = Math.round((trend.w / last5.length) * 100);
+  const winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
 
-  // 11. Jugadors que juguen a altres categories (simulat)
-  const reinforcements = [];
+  // 11. Jugadors que juguen a altres categories (refuerzos)
+  const playerInOtherCat = new Set();
+  for (const categoryActes of Object.values(allActesData)) {
+    for (const acta of Object.values(categoryActes)) {
+      if (String(acta.compId) === String(comp.id)) continue;
+      const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+      const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+      if (!isHome && !isAway) continue;
+      const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+      for (const p of players) {
+        if (p.jugadorId && playerStats[p.jugadorId]) {
+          playerInOtherCat.add(p.jugadorId);
+        }
+      }
+    }
+  }
+  const fixedPlayers = Object.keys(playerStats).length - playerInOtherCat.size;
+  const reinforcementRatio = fixedPlayers > 0 ? (playerInOtherCat.size / Object.keys(playerStats).length).toFixed(2) : "0.00";
+  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${Object.keys(playerStats).length} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
 
-  // 12. Mitjana d'edat (simulat)
-  const avgAge = 24; // Would calculate from actual player data
-
-  // 13. Millorament vs 1ª ronda (simulat)
+  // 12. Millorament vs 1ª ronda
   const improvement = "N/A";
 
   return {
-    teamName,
+    teamName: calTeamName,
     trend,
     avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
-    rotationRate,
     avgGoals: Math.round(avgGoals * 100) / 100,
+    avgGoalsAgainst: teamMatches.length > 0 ? Math.round((goalsAgainst / teamRow.pj) * 100) / 100 : 0,
     shutouts,
     totalMatches: teamMatches.length,
     points: teamRow.pts || 0,
@@ -2717,23 +2874,23 @@ function calculateRivalMetrics(teamName, comp) {
     goalsFor,
     goalsAgainst,
     goalsDiff: goalsFor - goalsAgainst,
-    winRate: Math.round(trend.w / last5.length * 100 || 0),
+    winRate: last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0,
     topScorer,
-    historyVsOurs,
     suspended,
-    yellowCardRisk,
     goalkeepers,
     winProbability,
     reinforcements,
     avgAge,
-    improvement
+    improvement,
+    totalYellowCards,
+    avgYellowCards,
+    totalRedCards,
+    avgRedCards
   };
 }
 
-window.openRivalAnalysis = function(teamName, compId) {
-  if (currentProfile?.role !== "admin") return;
-
-  console.log("openRivalAnalysis called with:", { teamName, compId });
+window.openRivalAnalysis = async function(teamName, compId) {
+  console.log("openRivalAnalysis called with:", { teamName, compId, role: currentProfile?.role });
 
   const comp = findComp(compId);
   if (!comp) {
@@ -2748,21 +2905,41 @@ window.openRivalAnalysis = function(teamName, compId) {
     return;
   }
 
-  const teamInClassif = comp.classification.find(r => r.team === teamName);
+  const normalizedInput = normalizeTeamName(teamName);
+
+  // Crear mapa de noms normalitzats a teamId
+  const teamMap = {};
+  comp.classification.forEach(r => {
+    const normalized = normalizeTeamName(r.team);
+    teamMap[normalized] = r;
+  });
+
+  let teamInClassif = teamMap[normalizedInput];
+
   if (!teamInClassif) {
-    console.error("Equip no trobat en classificació:", teamName);
-    console.log("Equips disponibles:", comp.classification.map(r => r.team));
+    console.error("Equip no trobat:", teamName, "normalized:", normalizedInput);
+    console.log("Equips disponibles:", Object.keys(teamMap));
     alert(`Equip "${teamName}" no trobat en la classificació`);
     return;
   }
 
-  const metrics = calculateRivalMetrics(teamName, comp);
+  // Load actes for this competition
+  const catSlug = getCatSlugForComp(comp);
+  const actes = catSlug ? await loadCatActes(catSlug) : {};
+
+  // Load actes from other categories for reinforcements analysis
+  const allActes = { ...actesCache };
+
+  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes);
+  console.log("Metrics calculated for", teamName, ":", metrics ? "OK" : "FAILED");
   if (!metrics) {
     alert("No es pot calcular l'anàlisi d'aquest equip");
     return;
   }
 
+  console.log("Showing modal...");
   showRivalModal(metrics, teamName);
+  console.log("Modal shown");
 };
 
 function showRivalModal(metrics, teamName) {
@@ -2781,13 +2958,6 @@ function showRivalModal(metrics, teamName) {
     padding: 16px;
   `;
 
-  const summary = `
-    <strong style="color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">
-    ${teamName}</strong> és un equip en ${metrics.winRate >= 60 ? 'ascens ('+metrics.winRate+'% W últims 5)' : 'defensiva'}.
-    Punt fort: ${metrics.goalsFor >= 1.5 ? 'atac potent' : 'defensa sòlida'}.
-    Marca ${metrics.avgGoals} gols/partit. Porta ${metrics.shutouts} porteries a zero.
-  `;
-
   modal.innerHTML = `
     <div style="background: white; border-radius: 16px; padding: 24px; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3)">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
@@ -2795,11 +2965,7 @@ function showRivalModal(metrics, teamName) {
         <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
       </div>
 
-      <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.6">
-        ${summary}
-      </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px">
         <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Posició</div>
           <div style="font-size: 32px; font-weight: 900; color: #e5001c">${metrics.position}º</div>
@@ -2816,13 +2982,19 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de gols marcats ÷ total de partits jugats">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Promig</div>
           <div style="font-size: 32px; font-weight: 900; color: #003da5">${metrics.avgGoals}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols en contra (GC) ÷ total de partits jugats">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Rebuts</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.avgGoalsAgainst}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols a favor − Gols en contra">
           <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Diferencial</div>
           <div style="font-size: 32px; font-weight: 900; color: ${metrics.goalsDiff > 0 ? '#16a34a' : '#dc2626'}">${metrics.goalsDiff > 0 ? '+' : ''}${metrics.goalsDiff}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.goalsFor} a favor, ${metrics.goalsAgainst} contra</div>
@@ -2834,10 +3006,10 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 11px; color: #64748b; margin-top: 4px">últims ${metrics.totalMatches} partits</div>
         </div>
 
-        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Jugadors/Partit</div>
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de jugadors en cada acta ÷ total de partits">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Media jugadors convocats</div>
           <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px">rotació</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">jugadors</div>
         </div>
 
         <div style="background: #fef3c7; border-radius: 12px; padding: 16px; text-align: center">
@@ -2852,55 +3024,50 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 11px; color: #0c4a6e; margin-top: 4px">porteries</div>
         </div>
 
-        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center" title="Suma d'edats dels jugadors ÷ total de jugadors">
           <div style="font-size: 12px; color: #5b21b6; text-transform: uppercase; font-weight: 700">📊 Mitjana Edat</div>
           <div style="font-size: 32px; font-weight: 900; color: #a855f7">${metrics.avgAge}</div>
           <div style="font-size: 11px; color: #5b21b6; margin-top: 4px">anys</div>
         </div>
 
-        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="(Victòries / últims 5 partits) * 100, mostrat com a probabilitat inversa vs rival">
           <div style="font-size: 12px; color: #7f1d1d; text-transform: uppercase; font-weight: 700">📈 Probabilitat Victòria</div>
-          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.winProbability}%</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${100 - metrics.winProbability}%</div>
           <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">estimat</div>
         </div>
 
         ${metrics.suspended && metrics.suspended.length > 0 ? `
-        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1">
-          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">🚫 Sancionats</div>
+        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
+          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">⚠️ Targetes</div>
           <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
             ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
           </div>
-        </div>
-        ` : `
-        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Sancionats</div>
-          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Cap</div>
-        </div>
-        `}
-
-        ${metrics.yellowCardRisk && metrics.yellowCardRisk.length > 0 ? `
-        <div style="background: #fef08a; border-radius: 12px; padding: 16px; grid-column: span 1">
-          <div style="font-size: 12px; color: #713f12; text-transform: uppercase; font-weight: 700">⚠️ Risc Vermella</div>
-          <div style="font-size: 13px; color: #78350f; margin-top: 8px; line-height: 1.4">
-            ${metrics.yellowCardRisk.map(p => `<div>• ${p}</div>`).join('')}
+          <div style="font-size: 10px; color: #991b1b; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fca5a5">
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
           </div>
         </div>
         ` : `
-        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Blaves</div>
-          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlats</div>
+        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
+          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Targetes</div>
+          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlades</div>
+          <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
+          </div>
         </div>
         `}
 
-        ${metrics.reinforcements && metrics.reinforcements.length > 0 ? `
-        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; grid-column: span 1">
+        ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
+        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
-          <div style="font-size: 13px; color: #312e81; margin-top: 8px; line-height: 1.4">
-            ${metrics.reinforcements.map(p => `<div>• ${p}</div>`).join('')}
+          <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
+            ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
           </div>
+          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
         </div>
         ` : `
-        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #4b5563; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 13px; font-weight: 700; color: #6b7280; margin-top: 8px">Mateixa plantilla</div>
         </div>
