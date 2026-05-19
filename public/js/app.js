@@ -2671,12 +2671,13 @@ function normalizeTeamName(name) {
 }
 
 // ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
-function calculateRivalMetrics(teamName, comp, teamInClassif, actes) {
+function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   if (!comp) return null;
 
   const matches = comp.calendar || [];
   const classif = comp.classification || [];
   const acteData = actes || {};
+  const allActesData = allActes || {};
 
   // Get team row from classification
   let teamRow = teamInClassif;
@@ -2811,8 +2812,25 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes) {
   // 10. Probabilitat de victòria
   const winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
 
-  // 11. Jugadors que juguen a altres categories
-  const reinforcements = [];
+  // 11. Jugadors que juguen a altres categories (refuerzos)
+  const playerInOtherCat = new Set();
+  for (const categoryActes of Object.values(allActesData)) {
+    for (const acta of Object.values(categoryActes)) {
+      if (String(acta.compId) === String(comp.id)) continue;
+      const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+      const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+      if (!isHome && !isAway) continue;
+      const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+      for (const p of players) {
+        if (p.jugadorId && playerStats[p.jugadorId]) {
+          playerInOtherCat.add(p.jugadorId);
+        }
+      }
+    }
+  }
+  const fixedPlayers = Object.keys(playerStats).length - playerInOtherCat.size;
+  const reinforcementRatio = fixedPlayers > 0 ? (playerInOtherCat.size / Object.keys(playerStats).length).toFixed(2) : "0.00";
+  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${Object.keys(playerStats).length} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
 
   // 12. Millorament vs 1ª ronda
   const improvement = "N/A";
@@ -2882,7 +2900,10 @@ window.openRivalAnalysis = async function(teamName, compId) {
   const catSlug = getCatSlugForComp(comp);
   const actes = catSlug ? await loadCatActes(catSlug) : {};
 
-  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes);
+  // Load actes from other categories for reinforcements analysis
+  const allActes = { ...actesCache };
+
+  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes);
   console.log("Metrics calculated for", teamName, ":", metrics ? "OK" : "FAILED");
   if (!metrics) {
     alert("No es pot calcular l'anàlisi d'aquest equip");
@@ -2970,9 +2991,9 @@ function showRivalModal(metrics, teamName) {
         </div>
 
         <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
-          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Jugadors/Partit</div>
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Media jugadors convocats</div>
           <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px">rotació</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">jugadors</div>
         </div>
 
         <div style="background: #fef3c7; border-radius: 12px; padding: 16px; text-align: center">
@@ -3043,12 +3064,13 @@ function showRivalModal(metrics, teamName) {
         </div>
         `}
 
-        ${metrics.reinforcements && metrics.reinforcements.length > 0 ? `
-        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; grid-column: span 1">
+        ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
+        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
-          <div style="font-size: 13px; color: #312e81; margin-top: 8px; line-height: 1.4">
-            ${metrics.reinforcements.map(p => `<div>• ${p}</div>`).join('')}
+          <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
+            ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
           </div>
+          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
         </div>
         ` : `
         <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center">
