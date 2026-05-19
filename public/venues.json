@@ -2,7 +2,8 @@
   "venues": {
     "Sant Josep A": {
       "lat": 41.6893214,
-      "lng": 1.5338014486005938
+      "lng": 1.5338014486005938,
+      "address": "Sant Josep, C-1412a, Cal Planell Nou, els Prats de Rei, Anoia, Barcelona, Catalunya, 08289, España..."
     },
     "Ch Palafrugell": {
       "lat": 42.0196,
@@ -18,239 +19,298 @@
     },
     "Se La Salle Bonanova C": {
       "lat": 41.40767765,
-      "lng": 2.1317431942137333
+      "lng": 2.1317431942137333,
+      "address": "Poliesportiu La Salle, Carrer del Solsonès, Sant Gervasi, Sant Gervasi - la Bonanova, Sarrià - San..."
     },
     "Sant Josep De Badalona": {
       "lat": 41.4493539,
-      "lng": 2.248254
+      "lng": 2.248254,
+      "address": "Badalona, Barcelonès, Barcelona, Catalunya, España..."
     },
     "Se La Salle Bonanova D": {
       "lat": 41.40767765,
-      "lng": 2.1317431942137333
+      "lng": 2.1317431942137333,
+      "address": "Poliesportiu La Salle, Carrer del Solsonès, Sant Gervasi, Sant Gervasi - la Bonanova, Sarrià - San..."
     },
     "Ch Mataró C": {
       "lat": 41.547340399999996,
-      "lng": 2.4374598493816153
+      "lng": 2.4374598493816153,
+      "address": "Poliesportiu Municipal Jaume Parera i León, 62, Avinguda del Corregiment, Cirera, Mataró, Maresme,..."
     },
     "Ch Les Franqueses": {
       "lat": 41.6695648,
-      "lng": 2.3254347
+      "lng": 2.3254347,
+      "address": "les Franqueses, Balaguer, Noguera, Lleida, Catalunya, 25600, España..."
     },
     "Andorra Hc A": {
       "lat": 42.501098,
-      "lng": 1.512947
+      "lng": 1.512947,
+      "address": "Andorra la Vella, AD500, Andorra..."
     },
     "Ch Mataró B": {
       "lat": 41.547340399999996,
-      "lng": 2.4374598493816153
+      "lng": 2.4374598493816153,
+      "address": "Poliesportiu Municipal Jaume Parera i León, 62, Avinguda del Corregiment, Cirera, Mataró, Maresme,..."
     },
     "Ch Mataró D": {
       "lat": 41.547340399999996,
-      "lng": 2.4374598493816153
+      "lng": 2.4374598493816153,
+      "address": "Poliesportiu Municipal Jaume Parera i León, 62, Avinguda del Corregiment, Cirera, Mataró, Maresme,..."
     },
     "Andorra Hc B": {
       "lat": 42.501098,
-      "lng": 1.512947
+      "lng": 1.512947,
+      "address": "Andorra la Vella, AD500, Andorra..."
     },
     "Club Pati Tordera": {
       "lat": 41.6977173,
-      "lng": 2.7172987
+      "lng": 2.7172987,
+      "address": "Tordera, Maresme, Barcelona, Catalunya, 08490, España..."
     },
     "Ch Mataró A": {
       "lat": 41.547340399999996,
-      "lng": 2.4374598493816153
+      "lng": 2.4374598493816153,
+      "address": "Poliesportiu Municipal Jaume Parera i León, 62, Avinguda del Corregiment, Cirera, Mataró, Maresme,..."
     },
     "Se La Salle Bonanova A": {
       "lat": 41.40767765,
-      "lng": 2.1317431942137333
+      "lng": 2.1317431942137333,
+      "address": "Poliesportiu La Salle, Carrer del Solsonès, Sant Gervasi, Sant Gervasi - la Bonanova, Sarrià - San..."
     },
     "Se La Salle Bonanova B": {
       "lat": 41.40767765,
-      "lng": 2.1317431942137333
+      "lng": 2.1317431942137333,
+      "address": "Poliesportiu La Salle, Carrer del Solsonès, Sant Gervasi, Sant Gervasi - la Bonanova, Sarrià - San..."
     },
     "Club Pati Flix": {
       "lat": 41.2340447,
-      "lng": 0.5560861
+      "lng": 0.5560861,
+      "address": "Flix, Ribera d'Ebre, Tarragona, Catalunya, 43750, España..."
     },
     "Olímpic": {
       "lat": 41.140386899999996,
-      "lng": 1.1120646868122246
+      "lng": 1.1120646868122246,
+      "address": "Pavelló Olímpic Municipal, Carrer de Mallorca, Juroca, Reus, Baix Camp, Tarragona, Catalunya, 4320..."
     },
     "Ch Les Franqueses A": {
       "lat": 41.6695648,
-      "lng": 2.3254347
+      "lng": 2.3254347,
+      "address": "les Franqueses, Balaguer, Noguera, Lleida, Catalunya, 25600, España..."
     },
     "Ch Les Franqueses B": {
       "lat": 41.6695648,
-      "lng": 2.3254347
+      "lng": 2.3254347,
+      "address": "les Franqueses, Balaguer, Noguera, Lleida, Catalunya, 25600, España..."
     },
     "Montesquiu": {
       "lat": 42.107284750000005,
-      "lng": 2.206816803562077
+      "lng": 2.206816803562077,
+      "address": "Pavelló Municipal J. Soler Busquets, Carrer de Pau Casals, Montesquiu, Osona, Barcelona, Catalunya,..."
     },
     "Club Pati Tordera B": {
       "lat": 41.6977173,
-      "lng": 2.7172987
+      "lng": 2.7172987,
+      "address": "Tordera, Maresme, Barcelona, Catalunya, 08490, España..."
     },
     "Club Pati Tordera A": {
       "lat": 41.6977173,
-      "lng": 2.7172987
+      "lng": 2.7172987,
+      "address": "Tordera, Maresme, Barcelona, Catalunya, 08490, España..."
     },
     "Sant Josep": {
       "lat": 41.6893214,
-      "lng": 1.5338014486005938
+      "lng": 1.5338014486005938,
+      "address": "Sant Josep, C-1412a, Cal Planell Nou, els Prats de Rei, Anoia, Barcelona, Catalunya, 08289, España..."
     },
     "Se La Salle Bonanova": {
       "lat": 41.40767765,
-      "lng": 2.1317431942137333
+      "lng": 2.1317431942137333,
+      "address": "Poliesportiu La Salle, Carrer del Solsonès, Sant Gervasi, Sant Gervasi - la Bonanova, Sarrià - San..."
     },
     "Club Pati Tordera C": {
       "lat": 41.6977173,
-      "lng": 2.7172987
+      "lng": 2.7172987,
+      "address": "Tordera, Maresme, Barcelona, Catalunya, 08490, España..."
     },
     "Club Pati Tordera D": {
       "lat": 41.6977173,
-      "lng": 2.7172987
+      "lng": 2.7172987,
+      "address": "Tordera, Maresme, Barcelona, Catalunya, 08490, España..."
     },
     "Reus Deportiu": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Ch Mataró": {
       "lat": 41.547340399999996,
-      "lng": 2.4374598493816153
+      "lng": 2.4374598493816153,
+      "address": "Poliesportiu Municipal Jaume Parera i León, 62, Avinguda del Corregiment, Cirera, Mataró, Maresme,..."
     },
     "Cn Reus Ploms": {
       "lat": 41.15356795712746,
-      "lng": 1.1163122542419244
+      "lng": 1.1163122542419244,
+      "address": "Avinguda de Marià Fortuny, la Pastoreta, Jardins de Reus, Reus, Baix Camp, Tarragona, Catalunya, 43..."
     },
     "Catalunya": {
       "lat": 41.69783056065119,
-      "lng": 2.2780268740332597
+      "lng": 2.2780268740332597,
+      "address": "Avinguda dels Tremolencs, Can Sunyer, la Garriga, Vallès Oriental, Barcelona, Catalunya, 08530, Esp..."
     },
     "Cerdanyola Club Dhoquei": {
       "lat": 41.49377955,
-      "lng": 2.1408671757492996
+      "lng": 2.1408671757492996,
+      "address": "Can Xarau, Sant Martí, Cerdanyola del Vallès, Vallès Occidental, Barcelona, Catalunya, España..."
     },
     "Ch Santa Perpètua": {
       "lat": 41.528489281969065,
-      "lng": 2.182243663242786
+      "lng": 2.182243663242786,
+      "address": "Avinguda de Girona, Can Folguera, Santa Perpètua de Mogoda, Vallès Occidental, Barcelona, Cataluny..."
     },
     "Generali Hc Palau": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Generali Hc Palau A": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Generali Hc Palau B": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Cp Roda": {
       "lat": 41.5622626,
-      "lng": 1.9931723
+      "lng": 1.9931723,
+      "address": "Carrer de Sardenya, Terrassa, 08224, España..."
     },
     "Unió Esportiva Dhorta": {
       "lat": 41.43696085,
-      "lng": 2.142720961679914
+      "lng": 2.142720961679914,
+      "address": "Campus Mundet, Carrer d'Olympe de Gouges, Montbau, Horta-Guinardó, Barcelona, Barcelonès, Barcelon..."
     },
     "Hoquei Club Ripollet": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Ch Ripollet A": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Ch Ripollet B": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Ch Ripollet C": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Ch Ripollet D": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Hoquei Club Ripoll": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Hoquei Club Ripoll B": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Club Hoquei Ripollet": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Ce Arenys De Munt": {
       "lat": 41.4278377,
-      "lng": 2.1935474
+      "lng": 2.1935474,
+      "address": "1, Plaça d'Albert Badia i Mur, la Sagrera, Sant Andreu, Barcelona, Barcelonès, Barcelona, Cataluny..."
     },
     "Reus Deportiu A": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Reus Deportiu B": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Reus Deportiu C": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Reus Deportiu D": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Reus Deportiu Brasilia": {
       "lat": 41.16133177034519,
-      "lng": 1.1083091555314752
+      "lng": 1.1083091555314752,
+      "address": "Carrer d'Antoni Gaudí, Niloga, Reus, Baix Camp, Tarragona, Catalunya, 43203, España..."
     },
     "Ch Santa Perpètua A": {
       "lat": 41.528489281969065,
-      "lng": 2.182243663242786
+      "lng": 2.182243663242786,
+      "address": "Avinguda de Girona, Can Folguera, Santa Perpètua de Mogoda, Vallès Occidental, Barcelona, Cataluny..."
     },
     "Ch Santa Perpètua B": {
       "lat": 41.528489281969065,
-      "lng": 2.182243663242786
+      "lng": 2.182243663242786,
+      "address": "Avinguda de Girona, Can Folguera, Santa Perpètua de Mogoda, Vallès Occidental, Barcelona, Cataluny..."
     },
     "Ch Santa Perpètua C": {
       "lat": 41.528489281969065,
-      "lng": 2.182243663242786
+      "lng": 2.182243663242786,
+      "address": "Avinguda de Girona, Can Folguera, Santa Perpètua de Mogoda, Vallès Occidental, Barcelona, Cataluny..."
     },
     "Cerdanyola Club Dhoquei A": {
       "lat": 41.49377955,
-      "lng": 2.1408671757492996
+      "lng": 2.1408671757492996,
+      "address": "Can Xarau, Sant Martí, Cerdanyola del Vallès, Vallès Occidental, Barcelona, Catalunya, España..."
     },
     "Cerdanyola Club Dhoquei B": {
       "lat": 41.49377955,
-      "lng": 2.1408671757492996
+      "lng": 2.1408671757492996,
+      "address": "Can Xarau, Sant Martí, Cerdanyola del Vallès, Vallès Occidental, Barcelona, Catalunya, España..."
     },
     "Cerdanyola Club Dhoquei C": {
       "lat": 41.49377955,
-      "lng": 2.1408671757492996
+      "lng": 2.1408671757492996,
+      "address": "Can Xarau, Sant Martí, Cerdanyola del Vallès, Vallès Occidental, Barcelona, Catalunya, España..."
     },
     "Generali Hc Palau C": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Generali Hc Palau D": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Generali Hc Palau E": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Generali Hc Palau F": {
       "lat": 41.585571099999996,
-      "lng": 2.17592871740286
+      "lng": 2.17592871740286,
+      "address": "Pavelló d'esports Maria Victor, Passeig de la Carrerada, Palau-solità i Plegamans, Vallès Occiden..."
     },
     "Patí Vic A": {
       "lat": 42.2361,
@@ -270,27 +330,33 @@
     },
     "Cp Roda A": {
       "lat": 41.5622626,
-      "lng": 1.9931723
+      "lng": 1.9931723,
+      "address": "Carrer de Sardenya, Terrassa, 08224, España..."
     },
     "Cp Roda B": {
       "lat": 41.5622626,
-      "lng": 1.9931723
+      "lng": 1.9931723,
+      "address": "Carrer de Sardenya, Terrassa, 08224, España..."
     },
     "Ce Arenys De Munt A": {
       "lat": 41.4278377,
-      "lng": 2.1935474
+      "lng": 2.1935474,
+      "address": "1, Plaça d'Albert Badia i Mur, la Sagrera, Sant Andreu, Barcelona, Barcelonès, Barcelona, Cataluny..."
     },
     "Ce Arenys De Munt B": {
       "lat": 41.4278377,
-      "lng": 2.1935474
+      "lng": 2.1935474,
+      "address": "1, Plaça d'Albert Badia i Mur, la Sagrera, Sant Andreu, Barcelona, Barcelonès, Barcelona, Cataluny..."
     },
     "Ce Arenys De Munt C": {
       "lat": 41.4278377,
-      "lng": 2.1935474
+      "lng": 2.1935474,
+      "address": "1, Plaça d'Albert Badia i Mur, la Sagrera, Sant Andreu, Barcelona, Barcelonès, Barcelona, Cataluny..."
     },
     "Ce Arenys De Munt C C": {
       "lat": 41.4278377,
-      "lng": 2.1935474
+      "lng": 2.1935474,
+      "address": "1, Plaça d'Albert Badia i Mur, la Sagrera, Sant Andreu, Barcelona, Barcelonès, Barcelona, Cataluny..."
     },
     "Ch Palafrugell A": {
       "lat": 42.0196,
@@ -306,11 +372,13 @@
     },
     "Unió Esportiva Dhorta A": {
       "lat": 41.43696085,
-      "lng": 2.142720961679914
+      "lng": 2.142720961679914,
+      "address": "Campus Mundet, Carrer d'Olympe de Gouges, Montbau, Horta-Guinardó, Barcelona, Barcelonès, Barcelon..."
     },
     "Unió Esportiva Dhorta B": {
       "lat": 41.43696085,
-      "lng": 2.142720961679914
+      "lng": 2.142720961679914,
+      "address": "Campus Mundet, Carrer d'Olympe de Gouges, Montbau, Horta-Guinardó, Barcelona, Barcelonès, Barcelon..."
     },
     "Martinelia Manlleu": {
       "lat": 42.1765,
@@ -330,55 +398,68 @@
     },
     "Cp Montesquiu A": {
       "lat": 42.107284750000005,
-      "lng": 2.206816803562077
+      "lng": 2.206816803562077,
+      "address": "Pavelló Municipal J. Soler Busquets, Carrer de Pau Casals, Montesquiu, Osona, Barcelona, Catalunya,..."
     },
     "Cp Montesquiu B": {
       "lat": 42.107284750000005,
-      "lng": 2.206816803562077
+      "lng": 2.206816803562077,
+      "address": "Pavelló Municipal J. Soler Busquets, Carrer de Pau Casals, Montesquiu, Osona, Barcelona, Catalunya,..."
     },
     "Hc Montbui": {
       "lat": 42.501098,
-      "lng": 1.512947
+      "lng": 1.512947,
+      "address": "Andorra la Vella, AD500, Andorra..."
     },
     "Andorra Hoquei Club": {
       "lat": 42.501098,
-      "lng": 1.512947
+      "lng": 1.512947,
+      "address": "Andorra la Vella, AD500, Andorra..."
     },
     "Hoquei Club Ripoll A": {
       "lat": 41.50152995,
-      "lng": 2.156936313636364
+      "lng": 2.156936313636364,
+      "address": "Pavelló Joan Creus, Carrer de Pizarro, Can Clos, Ripollet, Vallès Occidental, Barcelona, Catalunya..."
     },
     "Sant Josep B": {
       "lat": 41.6893214,
-      "lng": 1.5338014486005938
+      "lng": 1.5338014486005938,
+      "address": "Sant Josep, C-1412a, Cal Planell Nou, els Prats de Rei, Anoia, Barcelona, Catalunya, 08289, España..."
     },
     "Sant Josep C": {
       "lat": 41.6893214,
-      "lng": 1.5338014486005938
+      "lng": 1.5338014486005938,
+      "address": "Sant Josep, C-1412a, Cal Planell Nou, els Prats de Rei, Anoia, Barcelona, Catalunya, 08289, España..."
     },
     "Ceh Olímpic Reus": {
       "lat": 41.140386899999996,
-      "lng": 1.1120646868122246
+      "lng": 1.1120646868122246,
+      "address": "Pavelló Olímpic Municipal, Carrer de Mallorca, Juroca, Reus, Baix Camp, Tarragona, Catalunya, 4320..."
     },
     "Cpi Sant Ignasi": {
       "lat": 41.613386,
-      "lng": 0.6145717
+      "lng": 0.6145717,
+      "address": "Carrer de Castella, Pius XII-Germanor, Lleida, Segrià, Lleida, Catalunya, 25003, España..."
     },
     "Cpi Sant Ignasi A": {
       "lat": 41.613386,
-      "lng": 0.6145717
+      "lng": 0.6145717,
+      "address": "Carrer de Castella, Pius XII-Germanor, Lleida, Segrià, Lleida, Catalunya, 25003, España..."
     },
     "Cpi Sant Ignasi B": {
       "lat": 41.613386,
-      "lng": 0.6145717
+      "lng": 0.6145717,
+      "address": "Carrer de Castella, Pius XII-Germanor, Lleida, Segrià, Lleida, Catalunya, 25003, España..."
     },
     "Cpi Sant Ignasi C": {
       "lat": 41.613386,
-      "lng": 0.6145717
+      "lng": 0.6145717,
+      "address": "Carrer de Castella, Pius XII-Germanor, Lleida, Segrià, Lleida, Catalunya, 25003, España..."
     },
     "Cpi Sant Ignasi E": {
       "lat": 41.613386,
-      "lng": 0.6145717
+      "lng": 0.6145717,
+      "address": "Carrer de Castella, Pius XII-Germanor, Lleida, Segrià, Lleida, Catalunya, 25003, España..."
     },
     "Cp Manresa": {
       "lat": 42.2078,
@@ -394,51 +475,63 @@
     },
     "Igualada Hc": {
       "lat": 41.59329414065353,
-      "lng": 1.6214640761267978
+      "lng": 1.6214640761267978,
+      "address": "Carrer de Carles Riba, Igualada, Anoia, Barcelona, Catalunya, 08700, España..."
     },
     "Igualada Hc A": {
       "lat": 41.59329414065353,
-      "lng": 1.6214640761267978
+      "lng": 1.6214640761267978,
+      "address": "Carrer de Carles Riba, Igualada, Anoia, Barcelona, Catalunya, 08700, España..."
     },
     "Igualada Hc B": {
       "lat": 41.59329414065353,
-      "lng": 1.6214640761267978
+      "lng": 1.6214640761267978,
+      "address": "Carrer de Carles Riba, Igualada, Anoia, Barcelona, Catalunya, 08700, España..."
     },
     "Igualada Hc D": {
       "lat": 41.59329414065353,
-      "lng": 1.6214640761267978
+      "lng": 1.6214640761267978,
+      "address": "Carrer de Carles Riba, Igualada, Anoia, Barcelona, Catalunya, 08700, España..."
     },
     "Igualada Hc G": {
       "lat": 41.59329414065353,
-      "lng": 1.6214640761267978
+      "lng": 1.6214640761267978,
+      "address": "Carrer de Carles Riba, Igualada, Anoia, Barcelona, Catalunya, 08700, España..."
     },
     "Club Hoquei Claret B": {
       "lat": 41.4057013,
-      "lng": 2.1668382
+      "lng": 2.1668382,
+      "address": "45,47,49, Carrer de Sant Antoni Maria Claret, Gràcia Nova, el Camp d'en Grassot i Gràcia Nova, Gr�..."
     },
     "Club Hoquei Claret A": {
       "lat": 41.4057013,
-      "lng": 2.1668382
+      "lng": 2.1668382,
+      "address": "45,47,49, Carrer de Sant Antoni Maria Claret, Gràcia Nova, el Camp d'en Grassot i Gràcia Nova, Gr�..."
     },
     "Club Hoquei Claret": {
       "lat": 41.4057013,
-      "lng": 2.1668382
+      "lng": 2.1668382,
+      "address": "45,47,49, Carrer de Sant Antoni Maria Claret, Gràcia Nova, el Camp d'en Grassot i Gràcia Nova, Gr�..."
     },
     "Club Hoquei Claret C": {
       "lat": 41.4057013,
-      "lng": 2.1668382
+      "lng": 2.1668382,
+      "address": "45,47,49, Carrer de Sant Antoni Maria Claret, Gràcia Nova, el Camp d'en Grassot i Gràcia Nova, Gr�..."
     },
     "Club Pati Breda": {
       "lat": 41.74706465,
-      "lng": 2.562914995049204
+      "lng": 2.562914995049204,
+      "address": "Poliesportiu Municipal, Carrer de Guerans, Breda, la Selva, Girona, Catalunya, 17400, España..."
     },
     "Club Pati Breda B": {
       "lat": 41.74706465,
-      "lng": 2.562914995049204
+      "lng": 2.562914995049204,
+      "address": "Poliesportiu Municipal, Carrer de Guerans, Breda, la Selva, Girona, Catalunya, 17400, España..."
     },
     "Club Pati Breda A": {
       "lat": 41.74706465,
-      "lng": 2.562914995049204
+      "lng": 2.562914995049204,
+      "address": "Poliesportiu Municipal, Carrer de Guerans, Breda, la Selva, Girona, Catalunya, 17400, España..."
     }
   }
 }
