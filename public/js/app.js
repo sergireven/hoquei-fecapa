@@ -891,9 +891,18 @@ function matchCard(m, myTeam) {
     : "";
 
   // Afegir icona de ubicació si no és jugat i hi ha coordenades
-  const venueIcon = !played && venuesDB?.venues?.[m.home]?.coordinates
-    ? `<div style="text-align:center;margin-top:6px"><span style="background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px">📍</span></div>`
-    : "";
+  let venueIcon = "";
+  if (!played && venuesDB?.venues?.[m.home]) {
+    const coords = venuesDB.venues[m.home];
+    if (coords.lat && coords.lng) {
+      const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+      const mapsUrl = isApple
+        ? `https://maps.apple.com/?q=${coords.lat},${coords.lng}`
+        : `https://www.google.com/maps?q=${coords.lat},${coords.lng}`;
+      const mapsApp = `maps://?q=${coords.lat},${coords.lng}`;
+      venueIcon = `<div style="text-align:center;margin-top:6px"><a href="${isApple?mapsApp:mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;text-decoration:none;cursor:pointer">📍</a></div>`;
+    }
+  }
 
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
