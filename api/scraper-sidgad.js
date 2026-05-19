@@ -550,18 +550,26 @@ async function main() {
                   // utilitzant el mateix "file" de la pestanya Classificació.
                   if (classTabMeta.file && uniqueIdcs.length > 0) {
                     for (const idc of uniqueIdcs) {
-                      const classHtmlByIdc = await jqLoad(
-                        page,
-                        "tab_modal_contenido_competicion",
-                        classTabMeta.file,
-                        {
-                          filter: String(idc),
-                          idc: String(idc),
-                          idm: IDM,
-                        },
-                        10000
-                      );
-                      const byIdc = parseClassificationSidgad(classHtmlByIdc);
+                      const payloads = [
+                        { filter: String(idc), idc: String(idc), idm: IDM },
+                        { filter: String(idc), idc: String(idc) },
+                        { idc: String(idc), idm: IDM },
+                        { filter: String(idc) },
+                      ];
+
+                      let byIdc = [];
+                      for (const payload of payloads) {
+                        const classHtmlByIdc = await jqLoad(
+                          page,
+                          "tab_modal_contenido_competicion",
+                          classTabMeta.file,
+                          payload,
+                          10000
+                        );
+                        byIdc = parseClassificationSidgad(classHtmlByIdc);
+                        if (byIdc.length > 0) break;
+                      }
+
                       if (byIdc.length === 0) continue;
 
                       hasGroupData = true;
@@ -577,7 +585,12 @@ async function main() {
                     }
 
                     if (hasGroupData) {
-                      console.log(`   ↪️  Fallback per idc: ${Object.keys(compData[compId].classificationByGroup).length} grup(s) detectat(s)`);
+                      const nRecovered = Object.keys(compData[compId].classificationByGroup).length;
+                      const expected = uniqueIdcs.length;
+                      console.log(`   ↪️  Fallback per idc: ${nRecovered} grup(s) detectat(s)`);
+                      if (nRecovered === expected) {
+                        console.log(`   ✓ Grups recuperats via fallback idc (${nRecovered}/${expected})`);
+                      }
                     } else {
                       console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
                     }
@@ -655,6 +668,12 @@ async function main() {
 
             if (Object.keys(compData[compId].classificationByGroup).length > recoveredIdcs.size) {
               hasGroupData = true;
+            }
+
+            const finalRecovered = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
+            const finalMissing = uniqueIdcs.map(String).filter(idc => !finalRecovered.has(idc));
+            if (finalMissing.length > 0) {
+              console.log(`   ⚠️  Grups pendents sense classificació (comp ${compId}): ${finalMissing.join(", ")}`);
             }
           }
         } else {
