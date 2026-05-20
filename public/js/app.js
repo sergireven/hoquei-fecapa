@@ -233,6 +233,7 @@ window.closeUserModal  = closeUserModal;
 const ADMIN_BENJAMI_TARGET_COMP = "BENJAMÍ COPA BARCELONA 2ª FASE";
 let adminPanelView = "users";
 let adminBenjamiModelCache = null;
+let adminFecapaCategoriesCache = null;
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -331,8 +332,69 @@ async function getAdminBenjamiModel() {
 function renderAdminTopNav(activeView) {
   return `<div style="display:flex;gap:8px;margin-bottom:12px">
     <button onclick="adminSetView('users')" style="flex:1;background:${activeView === "users" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "users" ? "#1a2035" : "#e2e6ef"};color:${activeView === "users" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Usuaris</button>
-    <button onclick="adminSetView('benjami')" style="flex:1;background:${activeView === "benjami" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "benjami" ? "#1a2035" : "#e2e6ef"};color:${activeView === "benjami" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classificació Benjamí</button>
+    <button onclick="adminSetView('benjami')" style="flex:1;background:${activeView === "benjami" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "benjami" ? "#1a2035" : "#e2e6ef"};color:${activeView === "benjami" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classif. Base</button>
+    <button onclick="adminSetView('fecapa_cats')" style="flex:1;background:${activeView === "fecapa_cats" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "fecapa_cats" ? "#1a2035" : "#e2e6ef"};color:${activeView === "fecapa_cats" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Pre/Benj/Aleví</button>
   </div>`;
+}
+
+function adminCategoryLabel(key) {
+  if (key === "prebenjami") return "Prebenjamí";
+  if (key === "benjami") return "Benjamí";
+  if (key === "alevi") return "Aleví";
+  return key;
+}
+
+async function getAdminFecapaCategoriesModel() {
+  if (adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
+  const res = await fetch(`/api/fecapa-categories?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar l'scraper de FECAPA (${res.status})`);
+  const data = await res.json();
+  if (!data?.ok) throw new Error(data?.error || "Resposta invàlida de FECAPA scraper");
+  adminFecapaCategoriesCache = data;
+  return data;
+}
+
+function renderAdminFecapaCompetition(comp) {
+  return `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 12px 4px;margin-bottom:12px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035;line-height:1.2">${esc(comp.competitionName)}</div>
+    <div style="font-size:11px;color:#64748b;margin:4px 0 10px">ID ${esc(comp.competitionId)} · ${comp.groupCount} grups · ${comp.teamCount} equips</div>
+    ${comp.groups.map(renderAdminBenjamiTable).join("")}
+  </div>`;
+}
+
+async function renderAdminFecapaCategoriesPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Scrapejant FECAPA en viu...</div>`;
+  try {
+    const model = await getAdminFecapaCategoriesModel();
+    const categoryKeys = ["prebenjami", "benjami", "alevi"];
+    const totalComps = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k]?.length || 0), 0);
+    const totalTeams = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k] || []).reduce((n, c) => n + (c.teamCount || 0), 0), 0);
+
+    body.innerHTML = `
+      ${renderAdminTopNav("fecapa_cats")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Scraper FECAPA en viu</div>
+            <div style="font-size:12px;color:#64748b">Prebenjamí, Benjamí i Aleví · ${totalComps} competicions · ${totalTeams} equips</div>
+          </div>
+          <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Re-scrapejar</button>
+        </div>
+      </div>
+      ${categoryKeys.map(key => {
+        const comps = model.categories?.[key] || [];
+        return `<div style="margin-bottom:14px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1a2035;margin:0 2px 10px">${adminCategoryLabel(key)} (${comps.length})</div>
+          ${comps.length ? comps.map(renderAdminFecapaCompetition).join("") : `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;color:#64748b;font-size:13px">Sense competicions trobades</div>`}
+        </div>`;
+      }).join("")}
+      <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON (scraper FECAPA)</summary>
+        <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
+      </details>`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant scraper FECAPA: ${esc(err?.message || "desconegut")}</div>`;
+  }
 }
 
 function renderAdminBenjamiTable(group) {
@@ -410,6 +472,10 @@ function closeAdminPanel() {
 }
 async function renderAdminPanel() {
   const body = $("admin-body");
+  if (adminPanelView === "fecapa_cats") {
+    await renderAdminFecapaCategoriesPanel(body);
+    return;
+  }
   if (adminPanelView === "benjami") {
     await renderAdminBenjamiPanel(body);
     return;
@@ -498,11 +564,15 @@ window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 window.adminSetView = view => {
-  adminPanelView = view === "benjami" ? "benjami" : "users";
+  adminPanelView = view === "benjami" || view === "fecapa_cats" ? view : "users";
   renderAdminPanel();
 };
 window.adminReloadBenjamiModel = () => {
   adminBenjamiModelCache = null;
+  renderAdminPanel();
+};
+window.adminReloadFecapaCategories = () => {
+  adminFecapaCategoriesCache = null;
   renderAdminPanel();
 };
 

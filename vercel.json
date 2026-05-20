@@ -28,6 +28,9 @@
   "functions": {
     "api/cron.js": {
       "maxDuration": 300
+    },
+    "api/fecapa-categories.js": {
+      "maxDuration": 300
     }
   }
 }
