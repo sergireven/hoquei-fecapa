@@ -480,6 +480,48 @@ function normalizePlayerTeamStatsForDisplay(player) {
   return teamStats;
 }
 
+async function buildPlayerTeamStatsFromSources(player, jid) {
+  const sources = (player?.sources || []).filter(s => s?.type === "acta" && s?.id != null);
+  if (!sources.length) return [];
+
+  const wantedId = String(jid || player?.jugadorId || player?.id || "").trim();
+  if (!wantedId) return [];
+
+  const teamCatCounts = {};
+
+  const addAppearance = (players, team, cat) => {
+    if (!Array.isArray(players) || !team || !cat) return;
+    const appeared = players.some(p => {
+      const pid = String(
+        p?.jugadorId
+        || p?.id
+        || (p?.url?.match(/\/jugador\/(\d+)\//)?.[1] || "")
+      );
+      return pid === wantedId;
+    });
+    if (!appeared) return;
+
+    const key = `${team}::${cat}`;
+    if (!teamCatCounts[key]) teamCatCounts[key] = { team, cat, count: 0 };
+    teamCatCounts[key].count += 1;
+  };
+
+  for (const src of sources) {
+    const actaId = String(src.id);
+    const cat = DB?.actesIndex?.[actaId];
+    if (!cat) continue;
+
+    const actes = await loadCatActes(cat);
+    const acta = actes?.[actaId];
+    if (!acta?.playerStats) continue;
+
+    addAppearance(acta.playerStats.homePlayers, acta.home, cat);
+    addAppearance(acta.playerStats.awayPlayers, acta.away, cat);
+  }
+
+  return Object.values(teamCatCounts).sort((a, b) => b.count - a.count);
+}
+
 async function enrichPlayerOnDemand(jid) {
   const player = DB?.jugadors?.[jid];
   if (!player) return;
@@ -2336,7 +2378,10 @@ async function openPlayerModal(jid, fallbackName) {
                || "Jugador";
 
   // Team i categoria del teamStats principal
-  const fixedTeamStats = normalizePlayerTeamStatsForDisplay(player);
+  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, jid);
+  const fixedTeamStats = sourceTeamStats.length
+    ? sourceTeamStats
+    : normalizePlayerTeamStatsForDisplay(player);
   const firstTeam  = fixedTeamStats?.[0];
   const teamSuffix = firstTeam ? `, ${firstTeam.team}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
