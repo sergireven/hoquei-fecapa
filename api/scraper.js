@@ -975,7 +975,7 @@ function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
       .map(([team, info]) => {
         const bestCat = Object.entries(info.cats || {})
           .sort((a, b) => b[1] - a[1])[0]?.[0] || "altres";
-        return { team, cat: bestCat, count: info.total };
+        return { team, cat: bestCat, count: info.cats[bestCat] || 0 };
       })
       .sort((a, b) => b.count - a.count);
   }
