@@ -1235,7 +1235,7 @@ function buildPlayerFavCard(jid) {
 }
 
 function buildClubFavCard(fav, clubMap) {
-  const club = clubMap?.get(fav.key);
+  const club = clubMap?.get(fav.key) || clubMap?.get(decodeHtml(fav.key));
   const displayName = club?.displayName || fav.displayName;
   const clubId = club?.clubId || fav.clubId;
   const teamCount = club?.teams.length ?? 0;
@@ -1397,9 +1397,10 @@ function buildClubMap() {
     for (const comp of comps) {
       for (const row of (comp.classification||[])) {
         if (!row.team) continue;
-        const clubName = row.team.toLowerCase().replace(/\s+[a-e]$/,"").trim();
+        const teamName = decodeHtml(row.team);
+        const clubName = teamName.toLowerCase().replace(/\s+[a-e]$/,"").trim();
         if (!clubMap.has(clubName)) {
-          clubMap.set(clubName, { displayName: row.team.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
+          clubMap.set(clubName, { displayName: teamName.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
         }
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row);
