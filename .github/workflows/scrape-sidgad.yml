@@ -1,0 +1,88 @@
+name: Scrape Sidgad Data
+
+on:
+  # Executa cada dia a les 5:00 UTC (9:00 CET) — antes que categories
+  schedule:
+    - cron: '0 5 * * *'
+  
+  # Executa cada diumenge a les 22:00 UTC (02:00 CET dilluns) — refresh complet
+  # schedule:
+  #   - cron: '0 22 * * 0'
+  
+  # Permet execució manual des de Actions
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Force full refresh (ignora cache)'
+        required: false
+        default: 'false'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Chromium (for Puppeteer)
+        run: |
+          npm install -g puppeteer
+          # Ensure chromium is available
+          npx puppeteer browsers install chromium
+      
+      - name: Run Sidgad scraper
+        run: |
+          node api/scraper-sidgad.js
+        env:
+          NODE_ENV: production
+          FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
+        timeout-minutes: 40
+      
+      - name: Check for changes
+        id: git_status
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "status=dirty" >> $GITHUB_OUTPUT
+            git diff --stat
+          fi
+      
+      - name: Commit and push changes
+        if: steps.git_status.outputs.status == 'dirty'
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add public/jugadors-sidgad.json public/competicions-sidgad.json public/jugadors-sidgad-index.json public/scraper-stats.json
+          git commit -m "chore: update Sidgad scraped data [automated]
+
+- Updated player profiles and match data
+- Updated competition standings and rankings"
+          git push
+      
+      - name: Notify if no changes
+        if: steps.git_status.outputs.status == 'clean'
+        run: echo "✓ No new data to commit"
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs
+          path: |
+            debug*.txt
+            public/debug-*.html
+          retention-days: 7

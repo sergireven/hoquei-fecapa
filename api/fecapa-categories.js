@@ -310,20 +310,16 @@ async function scrapeCompetitionLive(comp) {
   };
 }
 
-module.exports = async (req, res) => {
-  if (req.method !== "GET") {
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
+// ── Core function: obtenir dades de categories ───────────────
+async function getCategoriesData(options = {}) {
+  const { liveMode = false, useCache = true } = options;
+
+  const now = Date.now();
+  if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
+    return memoryCache;
   }
 
   try {
-    const query = new URL(req.url || "", "http://localhost").searchParams;
-    const liveMode = query.get("live") === "1";
-
-    const now = Date.now();
-    if (!liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
-      return res.status(200).json(memoryCache);
-    }
-
     const compIndex = await loadCompIndex();
     const selected = selectTargetCompetitions(compIndex);
 
@@ -341,7 +337,7 @@ module.exports = async (req, res) => {
       return buildCompetitionFromSnapshot(comp, rawComp);
     });
 
-    // Enriquiment live opcional (no bloquejant): només si ?live=1
+    // Enriquiment live opcional (no bloquejant): només si liveMode=true
     let finalBuilt = snapshotBuilt;
     if (liveMode) {
       const liveBuilt = await mapWithConcurrency(selected, MAX_CONCURRENCY, async (comp, idx) => {
@@ -381,10 +377,9 @@ module.exports = async (req, res) => {
     memoryCache = out;
     memoryCacheAt = Date.now();
 
-    return res.status(200).json(out);
+    return out;
   } catch (err) {
-    // Darrera xarxa de seguretat en producció: mai trenquem el panell admin.
-    return res.status(200).json({
+    return {
       ok: true,
       degraded: true,
       source: "degraded-empty",
@@ -394,7 +389,29 @@ module.exports = async (req, res) => {
       failedCompetitions: 0,
       errors: [{ error: err.message || "Unknown error" }],
       categories: { prebenjami: [], benjami: [], alevi: [] },
-      hint: "Endpoint degradat per robustesa productiva. Revisa logs de càrrega de competicions.",
+      hint: "Error carregant categories. Revisa logs.",
+    };
+  }
+}
+
+// ── Express middleware endpoint ──────────────────────────────
+module.exports = async (req, res) => {
+  if (req.method !== "GET") {
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
+  }
+
+  try {
+    const query = new URL(req.url || "", "http://localhost").searchParams;
+    const liveMode = query.get("live") === "1";
+    const data = await getCategoriesData({ liveMode });
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: err.message || "Unknown error",
     });
   }
 };
+
+// ── Named export: reutilitzable per altres scriptures ────────
+module.exports.getCategoriesData = getCategoriesData;
