@@ -57,22 +57,31 @@ async function loadFavsFromCloud() {
   if (!_sb || !currentProfile?.id) return;
   const { data, error } = await _sb.rpc("get_user_favorites", { p_user_id: currentProfile.id });
   if (error || !data) return;
-  let changed = false;
+  const cloudEmpty = data.length === 0;
+  const hasLocals = favs.length || clubFavs.length || playerFavs.length || levelFavs.length;
+  if (cloudEmpty && hasLocals) {
+    for (const f of favs)       _syncFavToCloud("team",   `${f.compId}::${f.teamName}`, f);
+    for (const f of clubFavs)   _syncFavToCloud("club",   f.key, f);
+    for (const id of playerFavs) _syncFavToCloud("player", id, null);
+    for (const f of levelFavs)  _syncFavToCloud("level",  f.nodeKey, f);
+    return;
+  }
+  favs = []; clubFavs = []; playerFavs = []; levelFavs = [];
   for (const f of data) {
     if (f.fav_type === "team" && f.fav_data) {
       const d = f.fav_data;
-      if (d.compId && d.teamName && !isFav(d.compId, d.teamName)) { favs.push(d); changed = true; }
+      if (d.compId && d.teamName) favs.push(d);
     } else if (f.fav_type === "club" && f.fav_data) {
       const d = f.fav_data;
-      if (d.key && !isClubFav(d.key)) { clubFavs.push(d); changed = true; }
+      if (d.key) clubFavs.push(d);
     } else if (f.fav_type === "player") {
-      if (!isPlayerFav(f.fav_key)) { playerFavs.push(f.fav_key); changed = true; }
+      if (f.fav_key) playerFavs.push(f.fav_key);
     } else if (f.fav_type === "level" && f.fav_data) {
       const d = f.fav_data;
-      if (d.nodeKey && !isLevelFav(d.nodeKey)) { levelFavs.push(d); changed = true; }
+      if (d.nodeKey) levelFavs.push(d);
     }
   }
-  if (changed) { saveFavs(); saveClubFavs(); savePlayerFavs(); saveLevelFavs(); }
+  saveFavs(); saveClubFavs(); savePlayerFavs(); saveLevelFavs();
 }
 async function _syncFavToCloud(type, key, data) {
   if (!_sb || !currentProfile?.id) return;
