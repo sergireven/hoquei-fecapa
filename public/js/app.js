@@ -347,7 +347,14 @@ function adminCategoryLabel(key) {
 async function getAdminFecapaCategoriesModel() {
   if (adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
   const res = await fetch(`/api/fecapa-categories?t=${Date.now()}`);
-  if (!res.ok) throw new Error(`No s'ha pogut carregar l'scraper de FECAPA (${res.status})`);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const errJson = await res.json();
+      detail = errJson?.error ? `: ${errJson.error}` : "";
+    } catch {}
+    throw new Error(`No s'ha pogut carregar l'scraper de FECAPA (${res.status})${detail}`);
+  }
   const data = await res.json();
   if (!data?.ok) throw new Error(data?.error || "Resposta invàlida de FECAPA scraper");
   adminFecapaCategoriesCache = data;

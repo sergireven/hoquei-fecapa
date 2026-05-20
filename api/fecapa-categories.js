@@ -1,7 +1,17 @@
-const puppeteer = require("puppeteer");
+const fs = require("fs").promises;
+const path = require("path");
+const https = require("https");
+const http = require("http");
 
-const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
-const TEMP_ID = "39";
+const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
+const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
+const TARGET_CATEGORIES = new Set(["PREBENJAMI", "BENJAMI", "ALEVI"]);
+const REQUEST_TIMEOUT_MS = 20000;
+const MAX_CONCURRENCY = 6;
+
+let memoryCache = null;
+let memoryCacheAt = 0;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 function decodeHtmlEntities(s) {
   return String(s || "")
@@ -58,7 +68,10 @@ function parseClassificationSidgad(html) {
     const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
     if (teamIdx < 0) continue;
 
-    const teamName = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
+    const rawTeam = cells[teamIdx].trim();
+    const shortM = rawTeam.match(/([A-Z0-9]{2,6})$/);
+    const teamShort = shortM ? shortM[1] : null;
+    const teamName = rawTeam.replace(/\s+[A-Z0-9]{2,6}$/, "").trim() || rawTeam;
     const nums = cells.slice(teamIdx + 1).map(c => parseInt(c, 10)).filter(n => !Number.isNaN(n));
     if (nums.length < 3) continue;
 
@@ -69,7 +82,7 @@ function parseClassificationSidgad(html) {
       position: pos,
       teamId: teamIdMatch ? teamIdMatch[1] : null,
       teamName,
-      teamShort: null,
+      teamShort,
       logoSrc: null,
       points,
       played,
@@ -111,64 +124,100 @@ function parseClassificationByGroupSidgad(html) {
   return groups;
 }
 
-async function jqLoad(page, containerId, url, postData, timeoutMs = 12000) {
-  return page.evaluate(
-    async (cid, u, data, tms) => {
-      return new Promise(resolve => {
-        const el = document.getElementById(cid);
-        if (!el || !window.jQuery) {
-          resolve("");
-          return;
-        }
-        window.jQuery(el).load(u, data, function() {
-          resolve(el.innerHTML || "");
-        });
-        setTimeout(() => resolve(el.innerHTML || ""), tms);
-      });
-    },
-    containerId,
-    url,
-    postData,
-    timeoutMs
-  );
+function fetchText(url, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith("https") ? https : http;
+    const req = lib.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ca,es;q=0.9,en;q=0.8",
+        "Accept-Encoding": "identity",
+      },
+    }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        if (redirectsLeft <= 0) return reject(new Error("Too many redirects"));
+        const next = res.headers.location.startsWith("http")
+          ? res.headers.location
+          : new URL(res.headers.location, url).href;
+        res.resume();
+        return resolve(fetchText(next, redirectsLeft - 1));
+      }
+
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode} -> ${url}`));
+      }
+
+      res.setEncoding("utf8");
+      let body = "";
+      res.on("data", c => { body += c; });
+      res.on("end", () => resolve(body));
+    });
+
+    req.on("error", reject);
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Timeout: ${url}`));
+    });
+  });
 }
 
-async function loadCompetitionClassificationHtml(page, compId) {
-  await page.evaluate(id => document.getElementById(id)?.click(), compId);
-  await page.waitForFunction(
-    () => {
-      const el = document.getElementById("tab_modal_contenido_competicion");
-      return el && el.innerHTML.length > 100;
-    },
-    { timeout: 12000 }
-  ).catch(() => {});
+async function loadCompIndex() {
+  const raw = await fs.readFile(COMP_FILE, "utf8");
+  return JSON.parse(raw);
+}
 
-  const tabInfo = await page.evaluate(() => {
-    const btn = document.getElementById("clasificaciones_btn");
-    if (!btn) return null;
-    btn.click();
-    return {
-      file: btn.getAttribute("file") || "",
-      filter: btn.getAttribute("filter") || "0",
-    };
+function normalizeCategory(cat) {
+  return normName(cat || "");
+}
+
+function selectTargetCompetitions(compIndex) {
+  const selected = [];
+  for (const [competitionId, comp] of Object.entries(compIndex || {})) {
+    const category = normalizeCategory(comp?.category);
+    if (!TARGET_CATEGORIES.has(category)) continue;
+    selected.push({
+      competitionId,
+      competitionName: String(comp?.name || "").trim() || `Competició ${competitionId}`,
+      category: inferBaseCategory(category),
+    });
+  }
+  return selected;
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const out = new Array(items.length);
+  let idx = 0;
+
+  const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (true) {
+      const current = idx;
+      idx += 1;
+      if (current >= items.length) break;
+      out[current] = await mapper(items[current], current);
+    }
   });
 
-  let html = await page.evaluate(() => document.getElementById("tab_modal_contenido_competicion")?.innerHTML || "");
-  const hasClassif = /div_titulo_fase_idc|tabla_standard|stats_table_special|PUNTS|PT|classificaci/i.test(String(html || ""));
-  if (hasClassif) return html;
+  await Promise.all(workers);
+  return out;
+}
 
-  if (tabInfo?.file) {
-    const forced = await jqLoad(
-      page,
-      "tab_modal_contenido_competicion",
-      tabInfo.file,
-      { filter: tabInfo.filter || "0" },
-      12000
-    );
-    if (forced && forced.length > html.length) html = forced;
-  }
+async function scrapeCompetitionLive(comp) {
+  const url = `${LEAGUE_BASE_URL}${comp.competitionId}`;
+  const html = await fetchText(url);
+  const grouped = parseClassificationByGroupSidgad(html);
+  const fallbackRows = grouped.length ? [] : parseClassificationSidgad(html);
+  const groups = grouped.length
+    ? grouped
+    : (fallbackRows.length ? [{ groupName: comp.competitionName, teamCount: fallbackRows.length, teams: fallbackRows }] : []);
 
-  return html;
+  return {
+    competitionId: comp.competitionId,
+    competitionName: comp.competitionName,
+    groupCount: groups.length,
+    teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
+    groups,
+  };
 }
 
 module.exports = async (req, res) => {
@@ -176,31 +225,14 @@ module.exports = async (req, res) => {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  let browser = null;
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
+    const now = Date.now();
+    if (memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
+      return res.status(200).json(memoryCache);
+    }
 
-    const page = await browser.newPage();
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-    await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 60000 });
-    await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
-
-    const allComps = await page.$$eval(
-      `.listado_competiciones_fila.temp_${TEMP_ID}`,
-      els => els.map(el => ({
-        id: el.id,
-        name: (el.getAttribute("name") || el.getAttribute("idc_name") || el.textContent || "").trim(),
-        hideClasif: /(?:^|;)\s*hide_clasif\s*:\s*1\s*(?:;|$)/i.test(el.getAttribute("config_params") || ""),
-      })).filter(c => c.id && c.name)
-    );
-
-    const selected = allComps.filter(c => {
-      const n = c.name.toUpperCase();
-      return !c.hideClasif && (n.includes("PREBENJAM") || n.includes("BENJAM") || n.includes("ALEV"));
-    });
+    const compIndex = await loadCompIndex();
+    const selected = selectTargetCompetitions(compIndex);
 
     const categories = {
       prebenjami: [],
@@ -208,38 +240,48 @@ module.exports = async (req, res) => {
       alevi: [],
     };
 
-    for (const comp of selected) {
-      const categoryKey = inferBaseCategory(comp.name);
+    const errors = [];
+
+    const scraped = await mapWithConcurrency(selected, MAX_CONCURRENCY, async comp => {
+      try {
+        return await scrapeCompetitionLive(comp);
+      } catch (err) {
+        errors.push({
+          competitionId: comp.competitionId,
+          competitionName: comp.competitionName,
+          error: err.message || "unknown",
+        });
+        return {
+          competitionId: comp.competitionId,
+          competitionName: comp.competitionName,
+          groupCount: 0,
+          teamCount: 0,
+          groups: [],
+        };
+      }
+    });
+
+    scraped.forEach((item, idx) => {
+      const categoryKey = selected[idx].category;
       if (!categoryKey) continue;
-
-      const classifHtml = await loadCompetitionClassificationHtml(page, comp.id);
-      const groups = parseClassificationByGroupSidgad(classifHtml);
-      const finalGroups = groups.length ? groups : [{
-        groupName: comp.name,
-        teamCount: 0,
-        teams: parseClassificationSidgad(classifHtml),
-      }].filter(g => g.teams.length > 0);
-
-      categories[categoryKey].push({
-        competitionId: comp.id,
-        competitionName: comp.name,
-        groupCount: finalGroups.length,
-        teamCount: finalGroups.reduce((acc, g) => acc + g.teamCount, 0),
-        groups: finalGroups,
-      });
-    }
+      categories[categoryKey].push(item);
+    });
 
     const out = {
       ok: true,
       source: "fecapa_live_scraper",
       fetchedAt: new Date().toISOString(),
+      fetchedCompetitions: selected.length,
+      failedCompetitions: errors.length,
+      errors,
       categories,
     };
+
+    memoryCache = out;
+    memoryCacheAt = Date.now();
 
     return res.status(200).json(out);
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message || "Unknown error" });
-  } finally {
-    if (browser) await browser.close().catch(() => {});
   }
 };
