@@ -2170,14 +2170,23 @@ function renderAllComps(cursor) {
 
 // ── PICKER ────────────────────────────────────────────────────
 function openPicker() {
+  pickerClubSearch="";
+  currentPickerClub=null;
   $("screen-home").style.display="none"; $("screen-detail").style.display="none";
   $("screen-picker").style.display="flex"; renderPicker();
 }
 window.openPicker=openPicker;
 
+let pickerClubSearch = "";
+let currentPickerClub = null;
+
 function renderPicker() {
   const clubMap = buildClubMap();
   const clubs = [...clubMap.entries()].sort((a,b)=>a[1].displayName.localeCompare(b[1].displayName));
+
+  const q = pickerClubSearch.toLowerCase();
+  const filtered = q ? clubs.filter(([k,v]) => k.includes(q) || v.displayName.toLowerCase().includes(q)) : clubs;
+
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
@@ -2188,10 +2197,16 @@ function renderPicker() {
       </label>
       <div style="margin-bottom:14px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Club</label>
-        <select id="pick-club" onchange="onPickClub()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona un club —</option>
-          ${clubs.map(([k,v])=>`<option value="${esc(k)}">${esc(v.displayName)}</option>`).join("")}
-        </select>
+        <input id="picker-club-search" placeholder="🔍 Cerca club..." value="${esc(pickerClubSearch)}"
+          style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;outline:none;margin-bottom:8px"
+          oninput="pickerClubSearch=this.value;renderPicker()"/>
+        <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;max-height:200px;overflow-y:auto">
+          ${filtered.length ? filtered.map(([k,v])=>`
+            <div onclick="selectPickerClub('${esc(k)}','${esc(v.displayName)}')" style="padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer;transition:background .15s;font-size:14px;color:#1a2035" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='none'">
+              ${esc(v.displayName)}
+            </div>
+          `).join("") : `<div style="padding:10px 14px;text-align:center;color:#94a3b8;font-size:13px">Cap club trobat</div>`}
+        </div>
       </div>
       <div id="pick-cat-wrap" style="display:none;margin-bottom:14px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Categoria</label>
@@ -2217,8 +2232,15 @@ function renderPicker() {
     </div>`;
 }
 
-window.onPickClub=function(){
-  const clubKey=$("pick-club").value;
+window.selectPickerClub=function(clubKey,clubName){
+  pickerClubSearch="";
+  currentPickerClub=clubKey;
+  const clubInput=document.getElementById("picker-club-search");
+  if (clubInput) clubInput.value="";
+  onPickClub(clubKey);
+};
+
+window.onPickClub=function(clubKey){
   $("pick-cat-wrap").style.display=clubKey?"block":"none";
   $("pick-comp-wrap").style.display="none";
   $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
@@ -2237,7 +2259,7 @@ window.onPickClub=function(){
 };
 
 window.onPickCat=function(){
-  const clubKey=$("pick-club").value;
+  const clubKey=currentPickerClub;
   const cat=$("pick-cat").value;
   $("pick-comp-wrap").style.display="none";
   $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
