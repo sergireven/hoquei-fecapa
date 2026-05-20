@@ -230,6 +230,175 @@ window.openUserModal   = openUserModal;
 window.closeUserModal  = closeUserModal;
 
 // Admin panel
+const ADMIN_BENJAMI_TARGET_COMP = "BENJAMÍ COPA BARCELONA 2ª FASE";
+let adminPanelView = "users";
+let adminBenjamiModelCache = null;
+
+const numOrNull = raw => {
+  const n = parseInt(String(raw || "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+function normalizeSpace(str) {
+  return String(str || "").replace(/\s+/g, " ").trim();
+}
+
+function textOf(el, selector) {
+  return normalizeSpace(el?.querySelector(selector)?.textContent || "");
+}
+
+function parseBenjamiGroupTable(groupName, tableEl) {
+  const teams = [...tableEl.querySelectorAll("tbody tr")].map(row => {
+    const cells = [...row.querySelectorAll("td")];
+    const teamCell = cells[2] || null;
+    const logoSrcRaw = cells[1]?.querySelector("img")?.getAttribute("src") || "";
+    const logoSrc = normalizeSpace(logoSrcRaw);
+    const teamName = normalizeSpace(textOf(teamCell, ".no_mobile") || teamCell?.textContent || "");
+    const teamShort = normalizeSpace(textOf(teamCell, ".mobile"));
+
+    return {
+      position: numOrNull(cells[0]?.textContent),
+      teamName,
+      teamShort: teamShort || null,
+      logoSrc: logoSrc || null,
+      points: numOrNull(cells[3]?.textContent),
+      played: numOrNull(cells[4]?.textContent),
+      won: numOrNull(cells[5]?.textContent),
+      drawn: numOrNull(cells[6]?.textContent),
+      lost: numOrNull(cells[7]?.textContent),
+      goalsFor: numOrNull(cells[8]?.textContent),
+      goalsAgainst: numOrNull(cells[9]?.textContent),
+      goalDiff: numOrNull(cells[10]?.textContent),
+      penalties: numOrNull(cells[11]?.textContent),
+    };
+  }).filter(t => t.teamName);
+
+  return {
+    groupName,
+    teamCount: teams.length,
+    teams,
+  };
+}
+
+function buildAdminBenjamiModelFromHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const containers = [...doc.querySelectorAll(".tab_modal_container")];
+
+  const targetContainer = containers.find(container => {
+    const header = normalizeSpace(container.querySelector("#titulo_competicion_header_text")?.textContent || "");
+    return header === ADMIN_BENJAMI_TARGET_COMP;
+  });
+
+  if (!targetContainer) {
+    throw new Error(`No s'ha trobat el bloc de la competició ${ADMIN_BENJAMI_TARGET_COMP}`);
+  }
+
+  const classifTab = targetContainer.querySelector(".tab_modal_contenido#tab_modal_contenido_competicion");
+  if (!classifTab) {
+    throw new Error("No s'ha trobat la pestanya de classificació de la competició");
+  }
+
+  const titles = [...classifTab.querySelectorAll(".div_titulo_fase_idc")].map(el => normalizeSpace(el.textContent));
+  const tables = [...classifTab.querySelectorAll("table.tabla_standard")];
+  const groups = [];
+  const count = Math.min(titles.length, tables.length);
+
+  for (let i = 0; i < count; i += 1) {
+    groups.push(parseBenjamiGroupTable(titles[i], tables[i]));
+  }
+
+  return {
+    source: "fecapa_html",
+    competition: ADMIN_BENJAMI_TARGET_COMP,
+    generatedAt: new Date().toISOString(),
+    groupCount: groups.length,
+    teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
+    groups,
+  };
+}
+
+async function getAdminBenjamiModel() {
+  if (adminBenjamiModelCache) return adminBenjamiModelCache;
+
+  const res = await fetch(`./HOQUEI%20PATINS%20_%20FCP.html?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar l'HTML (${res.status})`);
+  const html = await res.text();
+
+  adminBenjamiModelCache = buildAdminBenjamiModelFromHtml(html);
+  return adminBenjamiModelCache;
+}
+
+function renderAdminTopNav(activeView) {
+  return `<div style="display:flex;gap:8px;margin-bottom:12px">
+    <button onclick="adminSetView('users')" style="flex:1;background:${activeView === "users" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "users" ? "#1a2035" : "#e2e6ef"};color:${activeView === "users" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Usuaris</button>
+    <button onclick="adminSetView('benjami')" style="flex:1;background:${activeView === "benjami" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "benjami" ? "#1a2035" : "#e2e6ef"};color:${activeView === "benjami" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classificació Benjamí</button>
+  </div>`;
+}
+
+function renderAdminBenjamiTable(group) {
+  return `<div style="overflow-x:auto;background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;margin-bottom:14px">
+    <div style="padding:12px 12px 8px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#1a2035">${esc(group.groupName)}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-top:1px solid #e2e6ef;border-bottom:1px solid #e2e6ef;background:#f8fafc">
+          <th style="padding:8px 6px;text-align:left;font-size:11px;color:#64748b">#</th>
+          <th style="padding:8px 6px;text-align:left;font-size:11px;color:#64748b">Equip</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">Pts</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">J</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">G</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">E</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">P</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">F</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">C</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">Gav</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${group.teams.map(team => `<tr style="border-bottom:1px solid #f0f2f8">
+          <td style="padding:8px 6px;font-size:12px;font-weight:700;color:#334155">${team.position ?? "-"}</td>
+          <td style="padding:8px 6px">
+            <div style="font-size:12px;font-weight:600;color:#1a2035">${esc(team.teamName)}</div>
+            ${team.teamShort ? `<div style="font-size:10px;color:#94a3b8">${esc(team.teamShort)}</div>` : ""}
+          </td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px;font-weight:700;color:#e5001c">${team.points ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.played ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.won ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.drawn ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.lost ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalsFor ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalsAgainst ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalDiff ?? "-"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function renderAdminBenjamiPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("benjami")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant classificació...</div>`;
+  try {
+    const model = await getAdminBenjamiModel();
+    body.innerHTML = `
+      ${renderAdminTopNav("benjami")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Representació desacoblada del HTML</div>
+            <div style="font-size:12px;color:#64748b">${esc(model.competition)} · ${model.groupCount} grups · ${model.teamCount} equips</div>
+          </div>
+          <button onclick="adminReloadBenjamiModel()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar HTML</button>
+        </div>
+      </div>
+      ${model.groups.map(renderAdminBenjamiTable).join("")}
+      <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON</summary>
+        <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
+      </details>`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("benjami")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant classificació: ${esc(err?.message || "desconegut")}</div>`;
+  }
+}
+
 function openAdminPanel() {
   ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
   $("screen-admin").style.display = "flex";
@@ -241,9 +410,14 @@ function closeAdminPanel() {
 }
 async function renderAdminPanel() {
   const body = $("admin-body");
-  body.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
+  if (adminPanelView === "benjami") {
+    await renderAdminBenjamiPanel(body);
+    return;
+  }
+
+  body.innerHTML = `${renderAdminTopNav("users")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
   const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
-  if (error || !profiles) { body.innerHTML = `<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
+  if (error || !profiles) { body.innerHTML = `${renderAdminTopNav("users")}<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
   const ROLES = ["","entrenador","admin"];
   const rows = profiles.map(p => `
     <tr style="border-bottom:1px solid #f0f4f8">
@@ -260,6 +434,7 @@ async function renderAdminPanel() {
       </td>
     </tr>`).join("");
   body.innerHTML = `
+    ${renderAdminTopNav("users")}
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px;margin-bottom:16px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Afegir / editar usuari</div>
       <input id="admin-add-email" type="email" placeholder="email@exemple.com"
@@ -322,6 +497,14 @@ window.updateUserRole      = updateUserRole;
 window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
+window.adminSetView = view => {
+  adminPanelView = view === "benjami" ? "benjami" : "users";
+  renderAdminPanel();
+};
+window.adminReloadBenjamiModel = () => {
+  adminBenjamiModelCache = null;
+  renderAdminPanel();
+};
 
 let DB      = null;
 let venuesDB = null;
