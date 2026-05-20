@@ -84,12 +84,14 @@ async function loadFavsFromCloud() {
   saveFavs(); saveClubFavs(); savePlayerFavs(); saveLevelFavs();
 }
 async function _syncFavToCloud(type, key, data) {
-  if (!_sb || !currentProfile?.id) return;
-  _sb.rpc("upsert_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key, p_data: data });
+  if (!_sb || !currentProfile?.id) { console.warn("[fav] sync skip — no profile", type, key); return; }
+  const { error } = await _sb.rpc("upsert_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key, p_data: data });
+  if (error) console.error("[fav] upsert error", type, key, error);
 }
 async function _removeFavFromCloud(type, key) {
-  if (!_sb || !currentProfile?.id) return;
-  _sb.rpc("delete_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key });
+  if (!_sb || !currentProfile?.id) { console.warn("[fav] remove skip — no profile", type, key); return; }
+  const { error } = await _sb.rpc("delete_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key });
+  if (error) console.error("[fav] delete error", type, key, error);
 }
 
 function renderLoginButton() {
