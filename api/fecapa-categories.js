@@ -5,6 +5,10 @@ const http = require("http");
 
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
+const REMOTE_COMP_URLS = [
+  "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/Millores-12/public/competicions-sidgad.json",
+  "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/main/public/competicions-sidgad.json",
+];
 const TARGET_CATEGORIES = new Set(["PREBENJAMI", "BENJAMI", "ALEVI"]);
 const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
@@ -163,8 +167,42 @@ function fetchText(url, redirectsLeft = 5) {
 }
 
 async function loadCompIndex() {
-  const raw = await fs.readFile(COMP_FILE, "utf8");
-  return JSON.parse(raw);
+  const candidates = [
+    COMP_FILE,
+    path.join(process.cwd(), "public/competicions-sidgad.json"),
+    path.join(process.cwd(), "./public/competicions-sidgad.json"),
+    "/var/task/public/competicions-sidgad.json",
+  ];
+
+  const localErrors = [];
+  for (const p of candidates) {
+    try {
+      const raw = await fs.readFile(p, "utf8");
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && Object.keys(parsed).length) {
+        return parsed;
+      }
+      localErrors.push(`${p}: empty json`);
+    } catch (err) {
+      localErrors.push(`${p}: ${err.message}`);
+    }
+  }
+
+  const remoteErrors = [];
+  for (const url of REMOTE_COMP_URLS) {
+    try {
+      const raw = await fetchText(url);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && Object.keys(parsed).length) {
+        return parsed;
+      }
+      remoteErrors.push(`${url}: empty json`);
+    } catch (err) {
+      remoteErrors.push(`${url}: ${err.message}`);
+    }
+  }
+
+  throw new Error(`Cannot load competicions-sidgad.json | local=[${localErrors.join(" | ")}] | remote=[${remoteErrors.join(" | ")}]`);
 }
 
 function normalizeCategory(cat) {
@@ -183,6 +221,58 @@ function selectTargetCompetitions(compIndex) {
     });
   }
   return selected;
+}
+
+function toNumberOrNull(v) {
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+function mapRowFromSnapshot(row) {
+  return {
+    position: toNumberOrNull(row?.pos),
+    teamId: row?.teamId ? String(row.teamId) : null,
+    teamName: String(row?.team || "").trim(),
+    teamShort: null,
+    logoSrc: row?.clubId ? String(row.clubId) : null,
+    points: toNumberOrNull(row?.pts),
+    played: toNumberOrNull(row?.pj),
+    won: toNumberOrNull(row?.pg),
+    drawn: toNumberOrNull(row?.pe),
+    lost: toNumberOrNull(row?.pp),
+    goalsFor: toNumberOrNull(row?.gf),
+    goalsAgainst: toNumberOrNull(row?.gc),
+    goalDiff: toNumberOrNull(row?.gav),
+    penalties: toNumberOrNull(row?.pen),
+  };
+}
+
+function buildCompetitionFromSnapshot(compMeta, compRaw) {
+  const byGroup = compRaw?.classificationByGroup || {};
+  let groups = [];
+
+  if (Object.keys(byGroup).length) {
+    groups = Object.entries(byGroup).map(([groupKey, rows]) => ({
+      groupName: String(groupKey || "Grup"),
+      teamCount: Array.isArray(rows) ? rows.length : 0,
+      teams: (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName),
+    })).filter(g => g.teamCount > 0);
+  }
+
+  if (!groups.length) {
+    const flat = (compRaw?.classification || []).map(mapRowFromSnapshot).filter(r => r.teamName);
+    groups = flat.length
+      ? [{ groupName: compMeta.competitionName, teamCount: flat.length, teams: flat }]
+      : [];
+  }
+
+  return {
+    competitionId: compMeta.competitionId,
+    competitionName: compMeta.competitionName,
+    groupCount: groups.length,
+    teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
+    groups,
+  };
 }
 
 async function mapWithConcurrency(items, limit, mapper) {
@@ -226,8 +316,11 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const query = new URL(req.url || "", "http://localhost").searchParams;
+    const liveMode = query.get("live") === "1";
+
     const now = Date.now();
-    if (memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
+    if (!liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
       return res.status(200).json(memoryCache);
     }
 
@@ -242,35 +335,43 @@ module.exports = async (req, res) => {
 
     const errors = [];
 
-    const scraped = await mapWithConcurrency(selected, MAX_CONCURRENCY, async comp => {
-      try {
-        return await scrapeCompetitionLive(comp);
-      } catch (err) {
-        errors.push({
-          competitionId: comp.competitionId,
-          competitionName: comp.competitionName,
-          error: err.message || "unknown",
-        });
-        return {
-          competitionId: comp.competitionId,
-          competitionName: comp.competitionName,
-          groupCount: 0,
-          teamCount: 0,
-          groups: [],
-        };
-      }
+    // Base robusta: snapshot pre-scrapejat (sense dependència de xarxa en runtime)
+    const snapshotBuilt = selected.map(comp => {
+      const rawComp = compIndex?.[comp.competitionId] || {};
+      return buildCompetitionFromSnapshot(comp, rawComp);
     });
 
-    scraped.forEach((item, idx) => {
-      const categoryKey = selected[idx].category;
+    // Enriquiment live opcional (no bloquejant): només si ?live=1
+    let finalBuilt = snapshotBuilt;
+    if (liveMode) {
+      const liveBuilt = await mapWithConcurrency(selected, MAX_CONCURRENCY, async (comp, idx) => {
+        try {
+          const live = await scrapeCompetitionLive(comp);
+          if (live.groupCount > 0 && live.teamCount > 0) return live;
+          return snapshotBuilt[idx];
+        } catch (err) {
+          errors.push({
+            competitionId: comp.competitionId,
+            competitionName: comp.competitionName,
+            error: err.message || "unknown",
+          });
+          return snapshotBuilt[idx];
+        }
+      });
+      finalBuilt = liveBuilt;
+    }
+
+    finalBuilt.forEach((item, idx) => {
+      const categoryKey = selected[idx]?.category;
       if (!categoryKey) continue;
       categories[categoryKey].push(item);
     });
 
     const out = {
       ok: true,
-      source: "fecapa_live_scraper",
+      source: liveMode ? "sidgad_snapshot+fecapa_live" : "sidgad_snapshot",
       fetchedAt: new Date().toISOString(),
+      liveMode,
       fetchedCompetitions: selected.length,
       failedCompetitions: errors.length,
       errors,
@@ -282,6 +383,18 @@ module.exports = async (req, res) => {
 
     return res.status(200).json(out);
   } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message || "Unknown error" });
+    // Darrera xarxa de seguretat en producció: mai trenquem el panell admin.
+    return res.status(200).json({
+      ok: true,
+      degraded: true,
+      source: "degraded-empty",
+      fetchedAt: new Date().toISOString(),
+      liveMode: false,
+      fetchedCompetitions: 0,
+      failedCompetitions: 0,
+      errors: [{ error: err.message || "Unknown error" }],
+      categories: { prebenjami: [], benjami: [], alevi: [] },
+      hint: "Endpoint degradat per robustesa productiva. Revisa logs de càrrega de competicions.",
+    });
   }
 };
