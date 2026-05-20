@@ -661,7 +661,7 @@ function applyClassificationSourceMerge() {
 function classifSourceBadgeHtml(comp) {
   const src = comp?.classificationSource;
   if (src === "fecapa") {
-    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>FECAPA</span></span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>okCat360</span></span>`;
   }
   if (src === "jok") {
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
@@ -1046,7 +1046,7 @@ function renderHome() {
   $("screen-home").style.display   = "flex";
   $("home-header").innerHTML = `
     <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900"><img src="Designer.png" style="height:28px;vertical-align:middle;margin-right:6px;object-fit:contain"/><span style="color:#e5001c">okCat360</span></div>
       ${renderLoginButton()}
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
