@@ -2176,30 +2176,37 @@ function openPicker() {
 window.openPicker=openPicker;
 
 function renderPicker() {
-  const catNames=Object.entries(DB.categories).filter(([,v])=>v.length>0).map(([k])=>k);
+  const clubMap = buildClubMap();
+  const clubs = [...clubMap.entries()].sort((a,b)=>a[1].displayName.localeCompare(b[1].displayName));
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
-      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Selecciona categoria, competició i equip</p>
+      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Selecciona club, categoria i equip</p>
       <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;margin-bottom:16px">
         <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPicker()" style="width:16px;height:16px;accent-color:#003da5"/>
         Mostrar només competicions en curs
       </label>
       <div style="margin-bottom:14px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Categoria</label>
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Club</label>
+        <select id="pick-club" onchange="onPickClub()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
+          <option value="">— Selecciona un club —</option>
+          ${clubs.map(([k,v])=>`<option value="${esc(k)}">${esc(v.displayName)}</option>`).join("")}
+        </select>
+      </div>
+      <div id="pick-cat-wrap" style="display:none;margin-bottom:14px">
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Categoria</label>
         <select id="pick-cat" onchange="onPickCat()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
           <option value="">— Selecciona una categoria —</option>
-          ${catNames.map(c=>`<option value="${esc(c)}">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</option>`).join("")}
         </select>
       </div>
       <div id="pick-comp-wrap" style="display:none;margin-bottom:14px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Competició</label>
-        <select id="pick-comp" onchange="onPickComp()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">3. Competició</label>
+        <select id="pick-comp" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
           <option value="">— Selecciona la competició —</option>
         </select>
       </div>
       <div id="pick-team-wrap" style="display:none;margin-bottom:20px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">3. Equip</label>
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">4. Equip</label>
         <select id="pick-team" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
           <option value="">— Selecciona l'equip —</option>
         </select>
@@ -2210,14 +2217,46 @@ function renderPicker() {
     </div>`;
 }
 
-window.onPickCat=function(){
-  const cat=$("pick-cat").value;
-  $("pick-comp-wrap").style.display=cat?"block":"none";
+window.onPickClub=function(){
+  const clubKey=$("pick-club").value;
+  $("pick-cat-wrap").style.display=clubKey?"block":"none";
+  $("pick-comp-wrap").style.display="none";
   $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
-  if (!cat) return;
-  const comps=(DB.categories[cat]||[]).filter(c=>!allOnlyActive||isActive(c));
+  if (!clubKey) return;
+  const clubMap=buildClubMap();
+  const club=clubMap.get(clubKey);
+  if (!club) return;
+  const cats=[...new Set(club.teams.map(t=>t.category))];
+  const activeCats=allOnlyActive?cats.filter(cat=>{
+    const comp=findComp(club.teams.find(t=>t.category===cat)?.compId);
+    return comp&&isActive(comp);
+  }):cats;
+  activeCats.sort();
+  $("pick-cat").innerHTML=`<option value="">— Selecciona una categoria —</option>`+
+    activeCats.map(c=>`<option value="${esc(c)}">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</option>`).join("");
+};
+
+window.onPickCat=function(){
+  const clubKey=$("pick-club").value;
+  const cat=$("pick-cat").value;
+  $("pick-comp-wrap").style.display="none";
+  $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
+  if (!clubKey||!cat) return;
+  const clubMap=buildClubMap();
+  const club=clubMap.get(clubKey);
+  if (!club) return;
+  const teamsInCat=club.teams.filter(t=>t.category===cat);
+  const comps=[...new Set(teamsInCat.map(t=>t.compId))];
+  if (comps.length===0) return;
+  const compsData=comps.map(cid=>findComp(cid)).filter(Boolean);
   $("pick-comp").innerHTML=`<option value="">— Selecciona la competició —</option>`+
-    comps.map(c=>`<option value="${esc(c.id)}">${esc(c.name.replace(/\s*\(2025-26\)/,""))}</option>`).join("");
+    compsData.map(c=>`<option value="${esc(c.id)}">${esc(c.name.replace(/\s*\(2025-26\)/,""))}</option>`).join("");
+  $("pick-comp-wrap").style.display="block";
+  const compSel=$("pick-comp");
+  compSel.onchange=()=>{
+    $("pick-team-wrap").style.display=$("pick-comp").value?"block":"none"; $("pick-add-wrap").style.display="none";
+    onPickComp();
+  };
 };
 
 window.onPickComp=function(){
@@ -2230,6 +2269,8 @@ window.onPickComp=function(){
   $("pick-team").innerHTML=`<option value="">— Selecciona l'equip —</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
   $("pick-team").onchange=()=>{ $("pick-add-wrap").style.display=$("pick-team").value?"block":"none"; };
 };
+
+
 
 window.addFavFromPicker=function(){
   const cat=$("pick-cat").value, compId=$("pick-comp").value, team=$("pick-team").value;
