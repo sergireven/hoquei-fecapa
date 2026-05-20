@@ -1395,7 +1395,6 @@ function buildClubMap() {
   const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
-      if (allOnlyActive && !isActive(comp)) continue;
       for (const row of (comp.classification||[])) {
         if (!row.team) continue;
         const clubName = row.team.toLowerCase().replace(/\s+[a-e]$/,"").trim();
@@ -1523,6 +1522,7 @@ function renderClubDashboard() {
 
   const teamCards = sorted.map(t=>{
     const comp=findComp(t.compId); if (!comp) return "";
+    if (allOnlyActive && !isActive(comp)) return "";
     const cl=comp.classification||[], cal=comp.calendar||[];
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
     const myCal=cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
@@ -1675,10 +1675,10 @@ function getCompHierarchy(comp) {
     };
   }
 
-  if (/\bFEM\b|FEMENI|FEMENINA/.test(n)) {
-    // Extract age/category from FEM11, FEM 11, FEM13, FEM 13, FEM17, FEM 17, MINIFEM, etc
+  if (/\bFEM|MINIFEM/.test(n)) {
+    // Extract age/category from FEM11, FEM 11, FEM13, FEM 13, FEM15, FEM 15, FEM17, FEM 17, FEM19, FEM 19, MINIFEM, etc
     let femCategory = "Fem";
-    let categoryOrder = 0;
+    let categoryOrder = 9;
 
     if (/MINIFEM/.test(n)) {
       femCategory = "MiniFem";
@@ -1689,9 +1689,15 @@ function getCompHierarchy(comp) {
     } else if (/FEM\s*13/.test(n)) {
       femCategory = "FEM 13";
       categoryOrder = 2;
+    } else if (/FEM\s*15/.test(n)) {
+      femCategory = "FEM 15";
+      categoryOrder = 3;
     } else if (/FEM\s*17/.test(n)) {
       femCategory = "FEM 17";
-      categoryOrder = 3;
+      categoryOrder = 4;
+    } else if (/FEM\s*19/.test(n)) {
+      femCategory = "FEM 19";
+      categoryOrder = 5;
     }
 
     const tier = detectTier(n);
@@ -2173,7 +2179,8 @@ function renderAllComps(cursor) {
     const isAgeCatL1 = ["Júnior","Juvenil","Infantil","Aleví"].includes(meta.key);
     const isMiniCatL1 = ["Benjamí", "Prebenjamí"].includes(meta.key);
     const isCatalonaCatL1 = ["1ª Catalana","2ª Catalana"].includes(meta.key);
-    const showL1Stats = !isAgeCatL1 && !isMiniCatL1 && !isCatalonaCatL1;
+    const isFemL1 = meta.key === "Fem";
+    const showL1Stats = !isAgeCatL1 && !isMiniCatL1 && !isCatalonaCatL1 && !isFemL1;
     const statsKey1 = `stats:${meta.key}`;
     const fav1 = isLevelFav(key1);
     const statsOpen1 = isNodeOpen(statsKey1, false);
@@ -2214,6 +2221,9 @@ function renderAllComps(cursor) {
 function openPicker() {
   pickerClubSearch="";
   currentPickerClub=null;
+  currentPickerCat=null;
+  currentPickerTeamKey=null;
+  currentPickerTeamData=null;
   $("screen-home").style.display="none"; $("screen-detail").style.display="none";
   $("screen-picker").style.display="flex"; renderPicker();
 }
@@ -2221,126 +2231,194 @@ window.openPicker=openPicker;
 
 let pickerClubSearch = "";
 let currentPickerClub = null;
+let currentPickerCat = null;
+let currentPickerTeamKey = null;
+let currentPickerTeamData = null;
 
 function renderPicker() {
-  const clubMap = buildClubMap();
-  const clubs = [...clubMap.entries()].sort((a,b)=>a[1].displayName.localeCompare(b[1].displayName));
-
-  const q = pickerClubSearch.toLowerCase();
-  const filtered = q ? clubs.filter(([k,v]) => k.includes(q) || v.displayName.toLowerCase().includes(q)) : clubs;
-
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
-      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Selecciona club, categoria i equip</p>
+      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Cerca el club i selecciona l'equip</p>
       <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;margin-bottom:16px">
-        <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPicker()" style="width:16px;height:16px;accent-color:#003da5"/>
+        <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPickerCatSection()" style="width:16px;height:16px;accent-color:#003da5"/>
         Mostrar només competicions en curs
       </label>
       <div style="margin-bottom:14px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Club</label>
-        <input id="picker-club-search" placeholder="🔍 Cerca club..." value="${esc(pickerClubSearch)}"
-          style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;outline:none;margin-bottom:8px"
-          oninput="pickerClubSearch=this.value;renderPicker()"/>
-        <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;max-height:200px;overflow-y:auto">
-          ${filtered.length ? filtered.map(([k,v])=>`
-            <div onclick="selectPickerClub('${esc(k)}','${esc(v.displayName)}')" style="padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer;transition:background .15s;font-size:14px;color:#1a2035" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='none'">
-              ${esc(v.displayName)}
-            </div>
-          `).join("") : `<div style="padding:10px 14px;text-align:center;color:#94a3b8;font-size:13px">Cap club trobat</div>`}
-        </div>
+        <div id="picker-club-section"></div>
       </div>
       <div id="pick-cat-wrap" style="display:none;margin-bottom:14px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Categoria</label>
-        <select id="pick-cat" onchange="onPickCat()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona una categoria —</option>
-        </select>
-      </div>
-      <div id="pick-comp-wrap" style="display:none;margin-bottom:14px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">3. Competició</label>
-        <select id="pick-comp" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona la competició —</option>
-        </select>
+        <div id="picker-cat-section"></div>
       </div>
       <div id="pick-team-wrap" style="display:none;margin-bottom:20px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">4. Equip</label>
-        <select id="pick-team" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona l'equip —</option>
-        </select>
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">3. Equip</label>
+        <div id="picker-team-section"></div>
       </div>
       <div id="pick-add-wrap" style="display:none">
         <button onclick="addFavFromPicker()" style="width:100%;background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">⭐ Afegir als favorits</button>
       </div>
     </div>`;
+  renderPickerClubSection();
 }
 
-window.selectPickerClub=function(clubKey,clubName){
-  pickerClubSearch="";
-  currentPickerClub=clubKey;
-  const clubInput=document.getElementById("picker-club-search");
-  if (clubInput) clubInput.value="";
-  onPickClub(clubKey);
+function renderPickerClubSection() {
+  const section = $("picker-club-section");
+  if (!section) return;
+  if (currentPickerClub) {
+    const clubMap = buildClubMap();
+    const club = clubMap.get(currentPickerClub);
+    section.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;background:#f0f4f8;border-radius:10px;padding:10px 14px">
+        ${shieldImg(club?.clubId, 22)}
+        <span style="font-size:14px;font-weight:600;color:#1a2035;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(club?.displayName||"")}</span>
+        <button onclick="clearPickerClub()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:17px;padding:2px 4px;flex-shrink:0;line-height:1">✕</button>
+      </div>`;
+    renderPickerCatSection();
+  } else {
+    section.innerHTML = `
+      <input id="picker-club-search" placeholder="🔍 Cerca club per nom..." value="${esc(pickerClubSearch)}"
+        style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;outline:none"
+        oninput="pickerClubInput(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div id="picker-suggestions"></div>`;
+    renderPickerSuggestions();
+    setTimeout(() => { const el = document.getElementById("picker-club-search"); if (el) el.focus(); }, 30);
+  }
+}
+
+window.pickerClubInput = function(val) {
+  pickerClubSearch = val;
+  renderPickerSuggestions();
 };
 
-window.onPickClub=function(clubKey){
-  $("pick-cat-wrap").style.display=clubKey?"block":"none";
-  $("pick-comp-wrap").style.display="none";
-  $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
-  if (!clubKey) return;
-  const clubMap=buildClubMap();
-  const club=clubMap.get(clubKey);
+function renderPickerSuggestions() {
+  const sugg = $("picker-suggestions");
+  if (!sugg) return;
+  const q = (pickerClubSearch || "").toLowerCase().trim();
+  if (!q) { sugg.innerHTML = ""; return; }
+  const clubMap = buildClubMap();
+  const filtered = [...clubMap.entries()]
+    .filter(([,v]) => v.displayName.toLowerCase().includes(q))
+    .sort((a,b) => a[1].displayName.localeCompare(b[1].displayName))
+    .slice(0, 25);
+  if (!filtered.length) {
+    sugg.innerHTML = `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:10px 14px;margin-top:4px;text-align:center;color:#94a3b8;font-size:13px">Cap club trobat</div>`;
+    return;
+  }
+  sugg.innerHTML = `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;max-height:200px;overflow-y:auto;margin-top:4px">
+    ${filtered.map(([k,v]) => `<div onmousedown="selectPickerClub('${esc(k)}','${esc(v.displayName)}')" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer;font-size:14px;color:#1a2035" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      ${shieldImg(v.clubId, 18)} ${esc(v.displayName)}
+    </div>`).join("")}
+  </div>`;
+}
+
+window.selectPickerClub = function(clubKey) {
+  pickerClubSearch = "";
+  currentPickerClub = clubKey;
+  currentPickerCat = null;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  renderPickerClubSection();
+};
+
+window.clearPickerClub = function() {
+  currentPickerClub = null;
+  currentPickerCat = null;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  pickerClubSearch = "";
+  $("pick-cat-wrap").style.display = "none";
+  $("pick-team-wrap").style.display = "none";
+  $("pick-add-wrap").style.display = "none";
+  renderPickerClubSection();
+};
+
+function renderPickerCatSection() {
+  const catWrap = $("pick-cat-wrap");
+  const catSection = $("picker-cat-section");
+  if (!catWrap || !catSection || !currentPickerClub) return;
+  const clubMap = buildClubMap();
+  const club = clubMap.get(currentPickerClub);
   if (!club) return;
-  const cats=[...new Set(club.teams.map(t=>t.category))];
-  const activeCats=allOnlyActive?cats.filter(cat=>{
-    const comp=findComp(club.teams.find(t=>t.category===cat)?.compId);
-    return comp&&isActive(comp);
-  }):cats;
-  activeCats.sort();
-  $("pick-cat").innerHTML=`<option value="">— Selecciona una categoria —</option>`+
-    activeCats.map(c=>`<option value="${esc(c)}">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</option>`).join("");
+  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Veterans","Altres","Fem"];
+  let cats = [...new Set(club.teams.map(t => t.category))];
+  if (allOnlyActive) {
+    cats = cats.filter(cat => {
+      const t = club.teams.find(t2 => t2.category === cat);
+      const comp = t ? findComp(t.compId) : null;
+      return comp && isActive(comp);
+    });
+  }
+  cats.sort((a,b) => { const ai=catOrder.indexOf(a),bi=catOrder.indexOf(b); return (ai<0?99:ai)-(bi<0?99:bi); });
+  if (!cats.length) { catWrap.style.display = "none"; return; }
+  catWrap.style.display = "block";
+  catSection.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
+    ${cats.map(c => { const sel=currentPickerCat===c; const col=CAT_COLOR[c]||"#1a2035"; return `<button onmousedown="selectPickerCat('${esc(c)}')" style="background:${sel?col:'#f0f4f8'};color:${sel?'#fff':'#334155'};border:1.5px solid ${sel?col:'#e2e6ef'};border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</button>`; }).join("")}
+  </div>`;
+  if (currentPickerCat && cats.includes(currentPickerCat)) renderPickerTeamSection();
+  else { $("pick-team-wrap").style.display = "none"; $("pick-add-wrap").style.display = "none"; }
+}
+window.renderPickerCatSection = renderPickerCatSection;
+
+window.selectPickerCat = function(cat) {
+  currentPickerCat = cat;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  $("pick-add-wrap").style.display = "none";
+  renderPickerCatSection();
+  renderPickerTeamSection();
 };
 
-window.onPickCat=function(){
-  const clubKey=currentPickerClub;
-  const cat=$("pick-cat").value;
-  $("pick-comp-wrap").style.display="none";
-  $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
-  if (!clubKey||!cat) return;
-  const clubMap=buildClubMap();
-  const club=clubMap.get(clubKey);
+function renderPickerTeamSection() {
+  const teamWrap = $("pick-team-wrap");
+  const teamSection = $("picker-team-section");
+  if (!teamWrap || !teamSection || !currentPickerClub || !currentPickerCat) return;
+  const clubMap = buildClubMap();
+  const club = clubMap.get(currentPickerClub);
   if (!club) return;
-  const teamsInCat=club.teams.filter(t=>t.category===cat);
-  const comps=[...new Set(teamsInCat.map(t=>t.compId))];
-  if (comps.length===0) return;
-  const compsData=comps.map(cid=>findComp(cid)).filter(Boolean);
-  $("pick-comp").innerHTML=`<option value="">— Selecciona la competició —</option>`+
-    compsData.map(c=>`<option value="${esc(c.id)}">${esc(c.name.replace(/\s*\(2025-26\)/,""))}</option>`).join("");
-  $("pick-comp-wrap").style.display="block";
-  const compSel=$("pick-comp");
-  compSel.onchange=()=>{
-    $("pick-team-wrap").style.display=$("pick-comp").value?"block":"none"; $("pick-add-wrap").style.display="none";
-    onPickComp();
-  };
+  let teamsInCat = club.teams.filter(t => t.category === currentPickerCat);
+  if (allOnlyActive) teamsInCat = teamsInCat.filter(t => { const comp = findComp(t.compId); return comp && isActive(comp); });
+  // Deduplicate by teamName; prefer the comp with more calendar entries or active status
+  const seen = new Map();
+  for (const t of teamsInCat) {
+    if (!seen.has(t.teamName)) { seen.set(t.teamName, t); continue; }
+    const existing = seen.get(t.teamName);
+    const existComp = findComp(existing.compId);
+    const newComp = findComp(t.compId);
+    const score = c => (c?.calendar?.length||0) + (isActive(c)?100:0);
+    if (score(newComp) > score(existComp)) seen.set(t.teamName, t);
+  }
+  const teams = [...seen.values()].sort((a,b) => a.teamName.localeCompare(b.teamName));
+  if (!teams.length) { teamWrap.style.display = "none"; return; }
+  teamWrap.style.display = "block";
+  const catColor = CAT_COLOR[currentPickerCat] || "#003da5";
+  teamSection.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
+    ${teams.map(t => {
+      const key = `${t.compId}::${t.teamName}`;
+      const sel = currentPickerTeamKey === key;
+      const cid = getClubIdByTeamId(t.teamId) || getClubId(t.teamName);
+      const shortName = t.teamName.replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi,"").trim();
+      return `<button onmousedown="selectPickerTeam('${esc(t.compId)}','${esc(t.teamName)}','${esc(t.compName||"")}','${esc(currentPickerCat)}')" style="display:inline-flex;align-items:center;gap:6px;background:${sel?catColor:'#f0f4f8'};color:${sel?'#fff':'#334155'};border:1.5px solid ${sel?catColor:'#e2e6ef'};border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer">${shieldImg(cid,16)} ${esc(shortName)}</button>`;
+    }).join("")}
+  </div>`;
+  $("pick-add-wrap").style.display = currentPickerTeamKey ? "block" : "none";
+}
+
+window.selectPickerTeam = function(compId, team, compName, cat) {
+  currentPickerTeamKey = `${compId}::${team}`;
+  currentPickerTeamData = { compId, team, compName, cat };
+  renderPickerTeamSection();
 };
 
-window.onPickComp=function(){
-  const compId=$("pick-comp").value;
-  $("pick-team-wrap").style.display=compId?"block":"none"; $("pick-add-wrap").style.display="none";
-  if (!compId) return;
-  const comp=findComp(compId); if (!comp) return;
-  const cl=comp.classification||[], cal=comp.calendar||[];
-  const names=cl.length?cl.map(r=>r.team).filter(Boolean):[...new Set([...cal.map(m=>m.home),...cal.map(m=>m.away)].filter(Boolean))].sort();
-  $("pick-team").innerHTML=`<option value="">— Selecciona l'equip —</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
-  $("pick-team").onchange=()=>{ $("pick-add-wrap").style.display=$("pick-team").value?"block":"none"; };
-};
-
-
-
-window.addFavFromPicker=function(){
-  const cat=$("pick-cat").value, compId=$("pick-comp").value, team=$("pick-team").value;
-  const comp=findComp(compId);
-  if (!cat||!compId||!team||!comp) return;
-  if (!isFav(compId,team)) { favs.push({compId,teamName:team,category:cat,compName:comp.name}); saveFavs(); }
+window.addFavFromPicker = function() {
+  const d = currentPickerTeamData;
+  if (!d) return;
+  const comp = findComp(d.compId);
+  if (!isFav(d.compId, d.team)) {
+    favs.push({ compId: d.compId, teamName: d.team, category: d.cat, compName: d.compName || comp?.name || "" });
+    saveFavs();
+  }
   $("screen-picker").style.display="none"; homeTab="favs"; renderHome();
 };
 
