@@ -945,7 +945,7 @@ function categorise(name) {
 // Recorre totes les actes carregades i computa per a cada jugador
 // quants partits ha jugat amb cada equip i en quina categoria.
 function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
-  const counts = {}; // jugadorId → { teamName → { total, cats:{catSlug:count} } }
+  const counts = {}; // jugadorId → { teamName::catSlug → { team, cat, count } }
 
   for (const [, acta] of Object.entries(actes || {})) {
     if (!acta.playerStats) continue;
@@ -957,10 +957,10 @@ function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
         if (!m) continue;
         const jid = m[1];
         if (!counts[jid]) counts[jid] = {};
-        const key = team || "?";
-        if (!counts[jid][key]) counts[jid][key] = { total: 0, cats: {} };
-        counts[jid][key].total++;
-        counts[jid][key].cats[cat] = (counts[jid][key].cats[cat] || 0) + 1;
+        const teamName = team || "?";
+        const key = `${teamName}::${cat}`;
+        if (!counts[jid][key]) counts[jid][key] = { team: teamName, cat, count: 0 };
+        counts[jid][key].count += 1;
       }
     };
 
@@ -971,12 +971,7 @@ function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
   for (const [jid, teams] of Object.entries(counts)) {
     const player = jugadors[jid];
     if (!player) continue;
-    player.teamStats = Object.entries(teams)
-      .map(([team, info]) => {
-        const bestCat = Object.entries(info.cats || {})
-          .sort((a, b) => b[1] - a[1])[0]?.[0] || "altres";
-        return { team, cat: bestCat, count: info.cats[bestCat] || 0 };
-      })
+    player.teamStats = Object.values(teams)
       .sort((a, b) => b.count - a.count);
   }
 
