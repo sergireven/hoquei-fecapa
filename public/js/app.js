@@ -1427,10 +1427,10 @@ function buildClubMap() {
   }
   for (const keys of byId.values()) {
     if (keys.length <= 1) continue;
-    // Canonical = prefer name starting with "club", then longest
+    // Canonical = prefer name starting with "club", then shortest (main club names tend to be shorter than section names like "veterans")
     const canonical = [...keys].sort((a,b) => {
       const ac = a.startsWith("club") ? 1 : 0, bc = b.startsWith("club") ? 1 : 0;
-      return ac !== bc ? bc - ac : b.length - a.length;
+      return ac !== bc ? bc - ac : a.length - b.length;
     })[0];
     const main = clubMap.get(canonical);
     for (const key of keys) {
