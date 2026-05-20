@@ -781,7 +781,49 @@ function getVenueLinks(teamName) {
   </div>`;
 }
 
+async function enrichActaPlayerNumbers(acta) {
+  const allPlayers = [
+    ...(acta.playerStats?.homePlayers || []),
+    ...(acta.playerStats?.awayPlayers || [])
+  ];
+  const playerIds = new Set();
+  for (const p of allPlayers) {
+    const m = p.url?.match(/\/jugador\/(\d+)\//);
+    if (m?.[1]) playerIds.add(m[1]);
+  }
+
+  for (const jid of playerIds) {
+    await enrichPlayerOnDemand(jid);
+  }
+
+  rerenderActaPlayers();
+}
+
+function rerenderActaPlayers() {
+  const acta = currentActa;
+  if (!acta) return;
+  let homePlayers, awayPlayers;
+  if (acta.playerStats) {
+    homePlayers = acta.playerStats.homePlayers || [];
+    awayPlayers = acta.playerStats.awayPlayers || [];
+  } else {
+    const psr = acta.playerStatsRaw || {};
+    const links = acta.playerLinks || [];
+    homePlayers = parsePlayerBlock(psr.homeBlock || "", links);
+    awayPlayers = parsePlayerBlock(psr.awayBlock || "", links.slice(homePlayers.length));
+  }
+  const grid = $("acta-body").querySelector(".acta-teams-grid");
+  if (grid) {
+    grid.innerHTML = `
+      ${playerTableHtml(homePlayers, acta.home, "#003da5")}
+      ${playerTableHtml(awayPlayers, acta.away, "#e5001c")}`;
+  }
+}
+
+let currentActa = null;
+
 function openActaDetail(acta) {
+  currentActa = acta;
   let homePlayers, awayPlayers;
   if (acta.playerStats) {
     homePlayers = acta.playerStats.homePlayers || [];
@@ -841,8 +883,7 @@ function openActaDetail(acta) {
   ["screen-home","screen-detail","screen-picker"].forEach(id => $(id).style.display="none");
   $("screen-acta").style.display = "flex";
   window.scrollTo(0, 0);
-  // Enrich player numbers async (disabled - jok.cat API not accessible)
-  // enrichActaPlayerNumbers(acta);
+  enrichActaPlayerNumbers(acta);
 }
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";

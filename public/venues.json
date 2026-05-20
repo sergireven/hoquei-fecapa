@@ -1599,9 +1599,9 @@
       "address": ""
     },
     "Ch Lloret Cafès Cornellà A": {
-      "lat": 41.7032646,
-      "lng": 2.8428764,
-      "address": ""
+      "lat": 41.36633745,
+      "lng": 2.0811319768685044,
+      "address": "Espai Esportiu Sant Ildefons, Cornellà de Llobregat"
     },
     "Club Pati Blanes Atlètic": {
       "lat": 41.90997625,
@@ -1624,9 +1624,9 @@
       "address": ""
     },
     "Ch Lloret Cafès Cornellà B": {
-      "lat": 41.7032646,
-      "lng": 2.8428764,
-      "address": ""
+      "lat": 41.36633745,
+      "lng": 2.0811319768685044,
+      "address": "Espai Esportiu Sant Ildefons, Cornellà de Llobregat"
     },
     "Ch Vila-Seca C": {
       "lat": 41.080805999999995,
@@ -1902,6 +1902,41 @@
       "lat": 41.3222678,
       "lng": 1.6652454,
       "address": ""
+    },
+    "Ch Castellet": {
+      "lat": 41.661698883195974,
+      "lng": 1.8635596531075682,
+      "address": "Carrer d'Alfons XIII, Can Xaparro, Sant Vicenç de Castellet"
+    },
+    "Hc Castellar": {
+      "lat": 41.616037,
+      "lng": 2.0843513251010437,
+      "address": "Pavelló Dani Pedrosa, Carrer de Sant Feliu, Castellar del Vallès"
+    },
+    "Cp Montblanc": {
+      "lat": 41.37595386115509,
+      "lng": 1.1651508448047359,
+      "address": "Pavelló del Casal Montblanqui, Carrer del Casal, Montblanc"
+    },
+    "Cp Banyoles": {
+      "lat": 42.10929885,
+      "lng": 2.7725037356449738,
+      "address": "Pavelló del Pla de l'Ametller, Carrer Pintor Solives, Banyoles"
+    },
+    "Ch Figueres": {
+      "lat": 42.2685064,
+      "lng": 2.9520242385343085,
+      "address": "Pavelló esportiu Rafel Mora, Carrer de Marià Pujolar, Figueres"
+    },
+    "Cp Vilanova": {
+      "lat": 41.2288645,
+      "lng": 1.726190987076221,
+      "address": "Pavelló de les Casernes, Carrer de les Casernes, Vilanova i la Geltrú"
+    },
+    "Ch Alcañiz": {
+      "lat": 41.0506674,
+      "lng": -0.1299694,
+      "address": "Alcañiz, Bajo Aragón, Teruel"
     }
   }
 }
