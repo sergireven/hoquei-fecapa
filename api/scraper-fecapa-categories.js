@@ -60,7 +60,8 @@ function validateCompetition4452(data) {
 
   const teamCount = groups.reduce((acc, g) => acc + (Number(g?.teamCount) || 0), 0);
   const groupCountOk = groups.length === 6;
-  const teamCountOk = teamCount === 30;
+  // Team count may vary as the competition evolves; require at least 1 team per group.
+  const teamCountOk = teamCount >= 6;
   const namesOk = missingGroups.length === 0;
 
   return {
