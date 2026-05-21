@@ -108,8 +108,7 @@ function parseClassificationByGroupSidgad(html) {
 
   const groups = [];
   const titles = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)]
-    .map(m => normalizeText(m[1]))
-    .filter(Boolean);
+    .map(m => normalizeText(m[1]));
 
   const tables = html.match(/<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>[\s\S]*?<\/table>/gi)
     || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
@@ -228,6 +227,25 @@ function toNumberOrNull(v) {
   return Number.isNaN(n) ? null : n;
 }
 
+function normalizeToken(s) {
+  return String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildGroupId(competitionId, groupName, fallbackOrder) {
+  const n = normalizeToken(groupName);
+  const tierMatch = n.match(/\b(OR|PLATA|BRONZE|INICIACIO|PREFERENT|GOLD|SILVER)\b/);
+  const numberMatches = [...n.matchAll(/\b(\d{1,2})\b/g)];
+  const lastNumber = numberMatches.length ? numberMatches[numberMatches.length - 1][1] : String(fallbackOrder || 1);
+  const tier = tierMatch ? tierMatch[1] : "GRUP";
+  return `${competitionId}-${tier}-${lastNumber}`;
+}
+
 function mapRowFromSnapshot(row) {
   return {
     position: toNumberOrNull(row?.pos),
@@ -249,20 +267,41 @@ function mapRowFromSnapshot(row) {
 
 function buildCompetitionFromSnapshot(compMeta, compRaw) {
   const byGroup = compRaw?.classificationByGroup || {};
+  const byGroupName = compRaw?.classificationByGroupName || {};
   let groups = [];
 
-  if (Object.keys(byGroup).length) {
-    groups = Object.entries(byGroup).map(([groupKey, rows]) => ({
-      groupName: String(groupKey || "Grup"),
-      teamCount: Array.isArray(rows) ? rows.length : 0,
-      teams: (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName),
-    })).filter(g => g.teamCount > 0);
+  if (Object.keys(byGroupName).length) {
+    groups = Object.entries(byGroupName).map(([groupName, rows], idx) => {
+      const teams = (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName);
+      return {
+        groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
+        groupName: String(groupName || `Grup ${idx + 1}`),
+        teamCount: teams.length,
+        teams,
+      };
+    }).filter(g => g.teamCount > 0);
+  } else if (Object.keys(byGroup).length) {
+    groups = Object.entries(byGroup).map(([groupKey, rows], idx) => {
+      const groupName = String(groupKey || `Grup ${idx + 1}`);
+      const teams = (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName);
+      return {
+        groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
+        groupName,
+        teamCount: teams.length,
+        teams,
+      };
+    }).filter(g => g.teamCount > 0);
   }
 
   if (!groups.length) {
     const flat = (compRaw?.classification || []).map(mapRowFromSnapshot).filter(r => r.teamName);
     groups = flat.length
-      ? [{ groupName: compMeta.competitionName, teamCount: flat.length, teams: flat }]
+      ? [{
+        groupId: buildGroupId(compMeta.competitionId, compMeta.competitionName, 1),
+        groupName: compMeta.competitionName,
+        teamCount: flat.length,
+        teams: flat,
+      }]
       : [];
   }
 
@@ -298,8 +337,18 @@ async function scrapeCompetitionLive(comp) {
   const grouped = parseClassificationByGroupSidgad(html);
   const fallbackRows = grouped.length ? [] : parseClassificationSidgad(html);
   const groups = grouped.length
-    ? grouped
-    : (fallbackRows.length ? [{ groupName: comp.competitionName, teamCount: fallbackRows.length, teams: fallbackRows }] : []);
+    ? grouped.map((g, idx) => ({
+      groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
+      groupName: g.groupName,
+      teamCount: g.teamCount,
+      teams: g.teams,
+    }))
+    : (fallbackRows.length ? [{
+      groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
+      groupName: comp.competitionName,
+      teamCount: fallbackRows.length,
+      teams: fallbackRows,
+    }] : []);
 
   return {
     competitionId: comp.competitionId,
@@ -312,7 +361,7 @@ async function scrapeCompetitionLive(comp) {
 
 // ── Core function: obtenir dades de categories ───────────────
 async function getCategoriesData(options = {}) {
-  const { liveMode = false, useCache = true } = options;
+  const { liveMode = true, useCache = true } = options;
 
   const now = Date.now();
   if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
@@ -402,7 +451,8 @@ module.exports = async (req, res) => {
 
   try {
     const query = new URL(req.url || "", "http://localhost").searchParams;
-    const liveMode = query.get("live") === "1";
+    const liveParam = query.get("live");
+    const liveMode = liveParam === null ? true : liveParam === "1";
     const data = await getCategoriesData({ liveMode });
     return res.status(200).json(data);
   } catch (err) {
