@@ -483,31 +483,220 @@ async function scrapeCompetitionLive(page, comp) {
     if (el) el.innerHTML = "";
   });
 
-  const clicked = await page.evaluate(({ id, tempId, competitionName }) => {
-    const rows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
-    let el = rows.find(row => {
-      const href = row.getAttribute("href") || "";
-      return href.includes(`/league/${String(id)}`);
-    });
+  // Mimic real user flow: first select the category filter (BENJAMI/PREBENJAMI/ALEVI),
+  // then open the target competition row.
+  const filterMeta = await page.evaluate(({ category, tempId }) => {
+    const normalize = (s) => String(s || "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Z0-9 ]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    if (!el) {
-      const wanted = String(competitionName || "").trim().toUpperCase();
-      el = rows.find(row => {
-        const rowName = String(
-          row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || ""
-        ).replace(/\s+/g, " ").trim().toUpperCase();
-        return wanted && rowName === wanted;
-      }) || null;
+    const mapCategory = (c) => {
+      const n = normalize(c);
+      if (n === "BENJAMI") return "BENJAMI";
+      if (n === "PREBENJAMI") return "PREBENJAMI";
+      if (n === "ALEVI") return "ALEVI";
+      return "";
+    };
+
+    const target = mapCategory(category);
+    const rows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
+    const visibleBefore = rows.filter(r => {
+      const style = window.getComputedStyle(r);
+      return style.display !== "none";
+    }).length;
+
+    const buttons = [...document.querySelectorAll(".filtro_fecapa")];
+    const btn = buttons.find(b => {
+      const nome = normalize(b.getAttribute("nome") || "");
+      const txt = normalize(b.textContent || "");
+      return target && (nome === target || txt.includes(target));
+    }) || null;
+
+    if (!target) {
+      return {
+        clicked: false,
+        reason: "unknown-category",
+        target,
+        visibleBefore,
+        visibleAfter: visibleBefore,
+        availableFilters: buttons.map(b => normalize(b.getAttribute("nome") || b.textContent || "")).slice(0, 20),
+      };
     }
 
-    if (!el) return false;
-    el.click();
-    return true;
+    if (!btn) {
+      return {
+        clicked: false,
+        reason: "filter-not-found",
+        target,
+        visibleBefore,
+        visibleAfter: visibleBefore,
+        availableFilters: buttons.map(b => normalize(b.getAttribute("nome") || b.textContent || "")).slice(0, 20),
+      };
+    }
+
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    const visibleAfter = rows.filter(r => {
+      const style = window.getComputedStyle(r);
+      return style.display !== "none";
+    }).length;
+
+    return {
+      clicked: true,
+      reason: "ok",
+      target,
+      selectedNome: normalize(btn.getAttribute("nome") || ""),
+      visibleBefore,
+      visibleAfter,
+      availableFilters: [],
+    };
+  }, { category: comp.category, tempId: TEMP_ID });
+
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} category-filter clicked=${filterMeta.clicked} target=${filterMeta.target || "none"} selected=${filterMeta.selectedNome || "none"} reason=${filterMeta.reason} visibleBefore=${filterMeta.visibleBefore} visibleAfter=${filterMeta.visibleAfter}`
+  );
+
+  if (!filterMeta.clicked) {
+    const available = (filterMeta.availableFilters || []).join(",") || "none";
+    console.log(`[fecapa-categories] ${comp.competitionId} category-filter unavailable filters=${available}`);
+  }
+
+  await page.waitForFunction(
+    ({ tempId }) => {
+      const rows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
+      const visible = rows.filter(r => window.getComputedStyle(r).display !== "none");
+      return visible.length > 0;
+    },
+    { timeout: 8000 },
+    { tempId: TEMP_ID }
+  ).catch(() => {});
+
+  const clickedMeta = await page.evaluate(({ id, tempId, competitionName }) => {
+    const normalize = (s) => String(s || "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Z0-9 ]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const allRows = [...document.querySelectorAll(".listado_competiciones_fila")];
+    const seasonRows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
+    const targetId = String(id);
+
+    // 1) Most reliable: visible row id equals competition id.
+    let el = document.getElementById(targetId);
+    if (el && !el.classList.contains("listado_competiciones_fila")) {
+      el = null;
+    }
+    if (el && window.getComputedStyle(el).display === "none") {
+      el = null;
+    }
+    let strategy = el ? "dom-id" : "";
+
+    // 2) Season-scoped id match.
+    if (!el) {
+      el = seasonRows.find(row => String(row.id || "") === targetId && window.getComputedStyle(row).display !== "none") || null;
+      if (el) strategy = "season-id";
+    }
+
+    // 3) href fallback.
+    if (!el) {
+      el = seasonRows.find(row => {
+        if (window.getComputedStyle(row).display === "none") return false;
+        const href = row.getAttribute("href") || "";
+        return href.includes(`/league/${targetId}`);
+      }) || null;
+      if (el) strategy = "href";
+    }
+
+    // 4) normalized name exact match.
+    if (!el) {
+      const wanted = normalize(competitionName);
+      el = seasonRows.find(row => {
+        if (window.getComputedStyle(row).display === "none") return false;
+        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
+        return wanted && rowName === wanted;
+      }) || null;
+      if (el) strategy = "name-exact";
+    }
+
+    // 5) normalized name inclusion fallback.
+    if (!el) {
+      const wanted = normalize(competitionName);
+      el = seasonRows.find(row => {
+        if (window.getComputedStyle(row).display === "none") return false;
+        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
+        return wanted && (rowName.includes(wanted) || wanted.includes(rowName));
+      }) || null;
+      if (el) strategy = "name-includes";
+    }
+
+    if (!el) {
+      const sample = seasonRows.slice(0, 8).map(row => ({
+        id: row.id || "",
+        name: (row.getAttribute("idc_name") || row.getAttribute("name") || "").trim(),
+        display: window.getComputedStyle(row).display || "",
+      }));
+      return {
+        clicked: false,
+        strategy: "none",
+        totalRows: allRows.length,
+        seasonRows: seasonRows.length,
+        sample,
+      };
+    }
+
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    return {
+      clicked: true,
+      strategy,
+      selectedId: el.id || "",
+      selectedName: (el.getAttribute("idc_name") || el.getAttribute("name") || "").trim(),
+      selectedDisplay: el.style?.display || "",
+      totalRows: allRows.length,
+      seasonRows: seasonRows.length,
+    };
   }, { id: comp.competitionId, tempId: TEMP_ID, competitionName: comp.competitionName });
 
-  if (!clicked) {
-    throw new Error(`Competition ${comp.competitionId} not found on portal`);
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} open-competition clicked=${clickedMeta.clicked} strategy=${clickedMeta.strategy} selectedId=${clickedMeta.selectedId || "none"} selectedName=${clickedMeta.selectedName || "none"} display=${clickedMeta.selectedDisplay || "n/a"} rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows}`
+  );
+
+  if (!clickedMeta.clicked) {
+    const sampleStr = Array.isArray(clickedMeta.sample) && clickedMeta.sample.length
+      ? clickedMeta.sample.map(s => `${s.id}:${s.name || "(empty)"}:${s.display || "n/a"}`).join(" | ")
+      : "no-sample";
+    throw new Error(`Competition ${comp.competitionId} not found on portal | rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows} | sample=${sampleStr}`);
   }
+
+  await page.waitForFunction(
+    () => {
+      const header = document.getElementById("titulo_competicion_header_text");
+      const menu = document.getElementById("menu_idc_options_general");
+      return !!(header && (header.textContent || "").trim().length > 0 && menu && menu.querySelector("a"));
+    },
+    { timeout: 12000 }
+  ).catch(() => {});
+
+  const openMeta = await page.evaluate(() => {
+    const header = document.getElementById("titulo_competicion_header_text");
+    const menu = document.getElementById("menu_idc_options_general");
+    return {
+      headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
+      menuButtons: menu ? menu.querySelectorAll("a").length : 0,
+      hasClassBtn: !!document.getElementById("clasificaciones_btn"),
+      hasCalendarBtn: !!document.getElementById("calendario_btn"),
+    };
+  });
+
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} open-competition header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
+  );
 
   // Ensure classification content is loaded (Classif.Base equivalent).
   // The portal loads tab content via AJAX, so we need to wait for actual content mutation.
