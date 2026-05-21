@@ -40,6 +40,13 @@ async function main() {
     console.log(`✓ Carregades ${fetchedCompetitions} competicions`);
     if (failedCompetitions > 0) {
       console.log(`⚠️  ${failedCompetitions} errors durant el fetch`);
+      const samples = (data.errors || []).slice(0, 8);
+      if (samples.length) {
+        console.log("   Mostra d'errors:");
+        samples.forEach((e, i) => {
+          console.log(`   ${i + 1}. [${e.competitionId || "n/a"}] ${e.competitionName || "?"} -> ${e.error || "unknown"}`);
+        });
+      }
     }
 
     console.log("\n📊 Categories:");
