@@ -35,17 +35,10 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
-      
-      - name: Install Chromium (for Puppeteer)
-        run: |
-          npm install -g puppeteer
-          # Ensure chromium is available
-          npx puppeteer browsers install chromium
-      
+        run: npm install
+
       - name: Run Sidgad scraper
-        run: |
-          node api/scraper-sidgad.js
+        run: node api/scraper-sidgad.js
         env:
           NODE_ENV: production
           FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
@@ -67,10 +60,7 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add public/jugadors-sidgad.json public/competicions-sidgad.json public/jugadors-sidgad-index.json public/scraper-stats.json
-          git commit -m "chore: update Sidgad scraped data [automated]
-
-- Updated player profiles and match data
-- Updated competition standings and rankings"
+          git commit -m $'chore: update Sidgad scraped data [automated]\n\n- Updated player profiles and match data\n- Updated competition standings and rankings'
           git push
       
       - name: Notify if no changes
