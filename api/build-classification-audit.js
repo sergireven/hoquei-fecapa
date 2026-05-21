@@ -46,8 +46,15 @@ const JOKCAT_CATEGORY_MAP = {
   "VETERANS": "veterans",
 };
 
+function normalizeApostrophes(s) {
+  return String(s || "")
+    .replace(/&#0*39;|&apos;|&rsquo;/gi, "'")
+    .replace(/[’`´]/g, "'")
+    .replace(/\s*'\s*/g, "'");
+}
+
 function normalizeText(s) {
-  return (s || "")
+  return normalizeApostrophes(s)
     .toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9 ]/g, " ")
@@ -254,7 +261,7 @@ function isCompatibleCompetition(fecapaCatKey, fecapaName, jokComp) {
 
 // ── Normalitza nom d'equip per comparació fuzzy ──────────────
 function normTeam(name) {
-  return (name || "")
+  return normalizeApostrophes(name)
     .toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9 ]/g, " ")

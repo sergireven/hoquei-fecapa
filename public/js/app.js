@@ -607,7 +607,7 @@ function renderAuditTable(rows, source) {
     </tr></thead>
     <tbody>${normalizedRows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
       <td style="padding:4px 4px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
-      <td style="padding:4px 4px;color:#1a2035;font-weight:500">${esc(t.team)}</td>
+      <td style="padding:4px 4px;color:#1a2035;font-weight:500">${esc(normalizeJokClubDisplayName(t.team))}</td>
       <td style="padding:4px 4px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? "-"}</td>
       <td style="padding:4px 4px;text-align:center">${t.pj ?? "-"}</td>
       <td style="padding:4px 4px;text-align:center">${t.pg ?? "-"}</td>
@@ -649,7 +649,7 @@ function renderAuditGroupRow(entry, grp, idx) {
   const fecapaRows = grp.fecapaClassification || [];
   const jokRows = grp.jokcatClassification || grp.suggestedJokcatClassification || [];
   const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
-  const effectiveJokName = grp.jokcatCompName || grp.suggestedJokcatCompName || "—";
+  const effectiveJokName = normalizeJokClubDisplayName(grp.jokcatCompName || grp.suggestedJokcatCompName || "—");
   const effectiveCalc = grp.coincidenceCalc || grp.suggestedCoincidenceCalc || "matched/max(FECAPA,JOK)";
   const rightSourceTag = grp.jokcatCompId
     ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok match</span>`
@@ -1024,6 +1024,21 @@ let jugadorComposing = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;");
 const decodeHtml = s => String(s||"").replace(/&#039;/g,"'").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"');
+
+function normalizeJokClubDisplayName(name) {
+  return String(name || "")
+    .replace(/&#0*39;|&apos;|&rsquo;/gi, "'")
+    .replace(/[’`´]/g, "'")
+    .replace(/\s*'\s*/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shortTeamDisplayName(name) {
+  return normalizeJokClubDisplayName(name)
+    .replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi, "")
+    .trim();
+}
 
 const CAT_EMOJI = {
   "Nacional Catalana":"👑","1ª Catalana":"⭐","2ª Catalana":"🔵","3ª Catalana":"🟣",
@@ -1613,7 +1628,7 @@ function matchCard(m, myTeam, compId) {
     <div ${clickAttrs}>
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
-          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.home))}</span>
           ${homeAnalysisIcon}
           ${shieldImg(cidH,22)}
         </div>
@@ -1626,7 +1641,7 @@ function matchCard(m, myTeam, compId) {
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
           ${awayAnalysisIcon}
-          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
+          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
         </div>
       </div>
       ${badge}
@@ -1830,7 +1845,7 @@ function buildPlayerFavCard(jid) {
 
 function buildClubFavCard(fav, clubMap) {
   const club = clubMap?.get(fav.key) || clubMap?.get(decodeHtml(fav.key));
-  const displayName = club?.displayName || fav.displayName;
+  const displayName = normalizeJokClubDisplayName(club?.displayName || fav.displayName);
   const clubId = club?.clubId || fav.clubId;
   const teamCount = club?.teams.length ?? 0;
   return `
@@ -1872,7 +1887,7 @@ function buildFavCard(fav) {
           const mine=teamIn(r.team,fav.teamName), rcid=rowClubId(r);
           return `<div style="display:flex;align-items:center;background:${mine?"#eff6ff":"#fff"};border-top:1px solid #f0f2f8;padding:5px 12px">
             <div style="width:26px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${posColor(r.pos)}">${r.pos}</div>
-            <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0">${shieldImg(rcid,18)}<span style="font-size:12px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.team)}</span></div>
+            <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0">${shieldImg(rcid,18)}<span style="font-size:12px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(r.team))}</span></div>
             <div style="width:22px;text-align:center;font-size:12px;color:#94a3b8">${r.pj??"-"}</div>
             <div style="width:22px;text-align:center;font-size:12px;color:#16a34a;font-weight:600">${r.pg??"-"}</div>
             <div style="width:22px;text-align:center;font-size:12px;color:#d97706">${r.pe??"-"}</div>
@@ -1889,7 +1904,7 @@ function buildFavCard(fav) {
         <div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none">⋮⋮</div>
         ${shieldImg(cid,40)}
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(fav.teamName))}</div>
           <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
         </div>
         ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
@@ -2469,7 +2484,7 @@ function renderConsolidatedClassif(subMeta, color) {
             <tr style="border-bottom:1px solid #f0f2f8">
               <td style="padding:6px 3px;text-align:center;font-size:12px">${posIcon(i)}</td>
               <td style="padding:6px 5px">
-                <div style="font-size:12px;font-weight:700;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(t.team)}</div>
+                <div style="font-size:12px;font-weight:700;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(normalizeJokClubDisplayName(t.team))}</div>
                 <div style="font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(t.compName)}</div>
               </td>
               <td style="padding:6px 3px;text-align:center;font-size:11px;color:#94a3b8">${t.pj}</td>
@@ -2993,7 +3008,7 @@ function renderPickerTeamSection() {
       const key = `${t.compId}::${t.teamName}`;
       const sel = currentPickerTeamKey === key;
       const cid = getClubIdByTeamId(t.teamId) || getClubId(t.teamName);
-      const shortName = t.teamName.replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi,"").trim();
+      const shortName = shortTeamDisplayName(t.teamName);
       return `<button onmousedown="selectPickerTeam('${esc(t.compId)}','${esc(t.teamName)}','${esc(t.compName||"")}','${esc(currentPickerCat)}')" style="display:inline-flex;align-items:center;gap:6px;background:${sel?catColor:'#f0f4f8'};color:${sel?'#fff':'#334155'};border:1.5px solid ${sel?catColor:'#e2e6ef'};border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer">${shieldImg(cid,16)} ${esc(shortName)}</button>`;
     }).join("")}
   </div>`;
@@ -3056,7 +3071,7 @@ async function openPlayerModal(jid, fallbackName) {
     ? sourceTeamStats
     : normalizePlayerTeamStatsForDisplay(player);
   const firstTeam  = fixedTeamStats?.[0];
-  const teamSuffix = firstTeam ? `, ${firstTeam.team}` : "";
+  const teamSuffix = firstTeam ? `, ${normalizeJokClubDisplayName(firstTeam.team)}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
   const url    = player?.url || `https://jok.cat/jugador/${jid}`;
 
@@ -3119,7 +3134,7 @@ async function openPlayerModal(jid, fallbackName) {
 
   // Secció principal: equips amb barra visual
   const displayRows = teamStats.length
-    ? teamStats.map(t => ({ label: esc(t.team), sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""), count: t.count }))
+    ? teamStats.map(t => ({ label: esc(normalizeJokClubDisplayName(t.team)), sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""), count: t.count }))
     : catEntries.map(([cat, cnt]) => ({ label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: cnt }));
   const maxCount = displayRows[0]?.count || 1;
 
@@ -3281,7 +3296,7 @@ async function renderDetailClassif(){
       <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:6px">${label}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px">
         ${shieldImg(rowClubId(cl.find(r=>r.team===team)),20)}
-        <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.3">${esc(team)}</div>
+        <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.3">${esc(normalizeJokClubDisplayName(team))}</div>
       </div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#e5001c">${value}</div>
     </div>`;
@@ -3307,7 +3322,7 @@ async function renderDetailClassif(){
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(r.team)}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(normalizeJokClubDisplayName(r.team))}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
@@ -3330,7 +3345,7 @@ function renderDetailCalendar(){
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
       <button onclick="setCalTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tots</button>
-      ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setCalTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}</button>`;}).join("")}
+      ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setCalTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
     </div>
   </div>`;
   const matches=detailTeam?all.filter(m=>teamIn(m.home,detailTeam)||teamIn(m.away,detailTeam)):all;
@@ -3369,7 +3384,7 @@ async function renderDetailJugadors(){
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
       <button onclick="setJugadorsTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tots</button>
-      ${calNames.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setJugadorsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(t.replace(/Club Hoquei |CH |Cp |Club Patí /gi,"").trim())}</button>`;}).join("")}
+      ${calNames.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setJugadorsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
     </div>
   </div>` : "";
 
