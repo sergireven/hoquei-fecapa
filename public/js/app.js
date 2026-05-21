@@ -330,9 +330,11 @@ async function getAdminBenjamiModel() {
 }
 
 function renderAdminTopNav(activeView) {
+  const btn = (view, label) => `<button onclick="adminSetView('${view}')" style="flex:1;background:${activeView === view ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === view ? "#1a2035" : "#e2e6ef"};color:${activeView === view ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">${label}</button>`;
   return `<div style="display:flex;gap:8px;margin-bottom:12px">
-    <button onclick="adminSetView('users')" style="flex:1;background:${activeView === "users" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "users" ? "#1a2035" : "#e2e6ef"};color:${activeView === "users" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Usuaris</button>
-    <button onclick="adminSetView('fecapa_cats')" style="flex:1;background:${activeView === "fecapa_cats" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "fecapa_cats" ? "#1a2035" : "#e2e6ef"};color:${activeView === "fecapa_cats" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classificacions de FECAPA</button>
+    ${btn("users", "Usuaris")}
+    ${btn("fecapa_cats", "Classificacions FECAPA")}
+    ${btn("audit", "Auditoria FECAPA↔jok")}
   </div>`;
 }
 
@@ -486,10 +488,133 @@ function closeAdminPanel() {
   $("screen-admin").style.display = "none";
   renderHome();
 }
+
+// ── Auditoria FECAPA ↔ jok.cat ────────────────────────────────
+let adminAuditCache = null;
+async function getAdminAuditData({ force = false } = {}) {
+  if (!force && adminAuditCache) return adminAuditCache;
+  const res = await fetch(`./classification-audit.json?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar classification-audit.json (${res.status})`);
+  const data = await res.json();
+  adminAuditCache = data;
+  return data;
+}
+
+function renderAuditFreshnessTag(isFresh) {
+  if (isFresh === true)  return `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Fresc</span>`;
+  if (isFresh === false) return `<span style="background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Desfasat</span>`;
+  return `<span style="background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">?</span>`;
+}
+
+function renderAuditGroupTable(grp) {
+  const rows = grp.jokcatClassification || grp.fecapaTeams?.map((t, i) => ({ team: t, pos: i + 1 })) || [];
+  const isMissing = grp.status === "fecapa_missing";
+  const sourceTag = isMissing
+    ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok.cat fallback</span>`
+    : `<span style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">FECAPA</span>`;
+
+  const freshnessTag = isMissing ? renderAuditFreshnessTag(grp.isFresh) : "";
+  const pjInfo = grp.jornadesActuals > 0
+    ? `<span style="font-size:10px;color:#64748b;margin-left:6px">J jugades: ${grp.jornadesActuals} | jok pj màx: ${grp.jokcatMaxPj ?? "—"}</span>`
+    : "";
+
+  const teamsHtml = rows.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e6ef">
+        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">#</th>
+        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">Equip</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">Pts</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">J</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">G</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">E</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">P</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GF</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GC</th>
+      </tr></thead>
+      <tbody>${rows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
+        <td style="padding:5px 6px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
+        <td style="padding:5px 6px;color:#1a2035;font-weight:500">${esc(t.team ?? t.teamName ?? "")}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? t.points ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pj ?? t.played ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pg ?? t.won ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pe ?? t.drawn ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pp ?? t.lost ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.gf ?? t.goalsFor ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.gc ?? t.goalsAgainst ?? "-"}</td>
+      </tr>`).join("")}</tbody>
+    </table>` : `<div style="padding:8px;color:#94a3b8;font-size:12px">Sense dades de classificació</div>`;
+
+  return `<div style="border:1.5px solid ${isMissing ? "#fde68a" : "#e2e6ef"};border-radius:10px;margin-bottom:10px;overflow:hidden">
+    <div style="padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:${isMissing ? "#fffbeb" : "#f8fafc"}">
+      ${sourceTag}${freshnessTag}
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
+      ${pjInfo}
+      ${grp.jokcatMatchRatio > 0 ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio}%</span>` : ""}
+    </div>
+    ${teamsHtml}
+  </div>`;
+}
+
+function renderAuditCompetition(entry) {
+  const statusIcon = entry.hasIncomplete ? "⚠️" : "✅";
+  const groupsHtml = entry.groups.map(renderAuditGroupTable).join("");
+  return `<details style="background:#fff;border-radius:12px;border:1.5px solid ${entry.hasIncomplete ? "#fde68a" : "#e2e6ef"};margin-bottom:10px">
+    <summary style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none">
+      <span style="font-size:15px">${statusIcon}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;flex:1">${esc(entry.competitionName)}</span>
+      <span style="font-size:11px;color:#64748b">${entry.groupsOk} FECAPA${entry.groupsMissing > 0 ? ` + ${entry.groupsMissing} jok fallback` : ""} · ${entry.fecapaTeamCount} equips</span>
+    </summary>
+    <div style="padding:0 10px 10px">${groupsHtml}</div>
+  </details>`;
+}
+
+async function renderAdminAuditPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("audit")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant auditoria...</div>`;
+  try {
+    const audit = await getAdminAuditData({ force: true });
+    const incompleteComps = audit.competitions.filter(c => c.hasIncomplete);
+    const okComps = audit.competitions.filter(c => !c.hasIncomplete);
+    const builtAt = audit.builtAt ? new Date(audit.builtAt).toLocaleString("ca-ES") : "—";
+
+    body.innerHTML = `
+      ${renderAdminTopNav("audit")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Auditoria FECAPA ↔ jok.cat</div>
+            <div style="font-size:12px;color:#64748b">
+              Generat: ${builtAt} ·
+              ${audit.totalGroupsOk} grups FECAPA ·
+              ${audit.totalGroupsMissing} grups jok fallback ·
+              <span style="color:#166534">${audit.totalFresh} frescos</span> ·
+              <span style="color:#854d0e">${audit.totalStale} desfasats</span>
+            </div>
+          </div>
+          <button onclick="adminReloadAudit()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+        </div>
+      </div>
+      ${incompleteComps.length ? `
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups faltants (${incompleteComps.length})</div>
+        ${incompleteComps.map(renderAuditCompetition).join("")}
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Competicions completes (${okComps.length})</div>
+      ` : `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:0 2px 10px;text-transform:uppercase;letter-spacing:.05em">✅ Totes les competicions completes (${okComps.length})</div>`}
+      ${okComps.map(renderAuditCompetition).join("")}`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("audit")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">
+      Error carregant auditoria: ${esc(err?.message || "desconegut")}<br>
+      <small style="color:#94a3b8">Executa: node api/build-classification-audit.js</small>
+    </div>`;
+  }
+}
+
 async function renderAdminPanel() {
   const body = $("admin-body");
   if (adminPanelView === "fecapa_cats") {
     await renderAdminFecapaCategoriesPanel(body);
+    return;
+  }
+  if (adminPanelView === "audit") {
+    await renderAdminAuditPanel(body);
     return;
   }
 
@@ -576,7 +701,7 @@ window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 window.adminSetView = view => {
-  adminPanelView = view === "fecapa_cats" ? view : "users";
+  adminPanelView = ["fecapa_cats", "audit"].includes(view) ? view : "users";
   renderAdminPanel();
 };
 window.adminReloadBenjamiModel = () => {
@@ -585,6 +710,10 @@ window.adminReloadBenjamiModel = () => {
 };
 window.adminReloadFecapaCategories = () => {
   adminFecapaCategoriesCache = null;
+  renderAdminPanel();
+};
+window.adminReloadAudit = () => {
+  adminAuditCache = null;
   renderAdminPanel();
 };
 

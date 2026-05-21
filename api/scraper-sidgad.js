@@ -189,8 +189,8 @@ function parseClassificationSidgad(html) {
     );
     if (cells.length < 5) continue;
 
-    // Posició: primera cel·la numèrica 1-30
-    const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
+    // Posició: primera cel·la numèrica 1-999 (més tolerant per grups més grans)
+    const posIdx = cells.findIndex(c => /^\d{1,3}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 999);
     if (posIdx < 0) continue;
     const pos = parseInt(cells[posIdx]);
 
@@ -246,18 +246,29 @@ function parseClassificationByGroupSidgad(html, uniqueIdcs) {
     || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
     || [];
 
+  console.log(`parseClassificationByGroupSidgad: detected ${titles.length} group titles, ${tables.length} tables`);
+
+  // Robust matching: associate each parsed table with its title
+  let parsedTableCount = 0;
   for (let i = 0; i < tables.length; i++) {
     const classification = parseClassificationSidgad(tables[i]);
-    if (classification.length === 0) continue;
+    if (classification.length === 0) {
+      console.log(`  Table ${i}: failed to parse (0 rows)`);
+      continue;
+    }
+    parsedTableCount++;
 
     const idcHint = (uniqueIdcs && uniqueIdcs[i]) ? String(uniqueIdcs[i]) : null;
-    const groupName = titles[i] || `Grup ${i + 1}`;
-    const key = idcHint || `group_${i + 1}`;
+    // IMPROVED: use parsed order, not original index (avoids misalignment)
+    const groupName = titles[parsedTableCount - 1] || `Grup ${parsedTableCount}`;
+    const key = idcHint || `group_${parsedTableCount}`;
 
-    groups.push({ order: i + 1, key, idc: idcHint, name: groupName, classification });
+    console.log(`  Table ${i}: parsed OK -> Group ${parsedTableCount} (${classification.length} teams) - Name: "${groupName}"`);
+    groups.push({ order: parsedTableCount, key, idc: idcHint, name: groupName, classification });
     byIdc[key] = classification;
   }
 
+  console.log(`parseClassificationByGroupSidgad: result=${parsedTableCount} groups extracted (${titles.length} titles found)`);
   return { byIdc, groups };
 }
 
@@ -274,6 +285,21 @@ async function jqLoad(page, containerId, url, postData, timeoutMs = 10000) {
     },
     containerId, url, postData, timeoutMs
   );
+}
+
+// Fallback: llegeix HTML guardat localment per a 4452 (en cas que Puppeteer falli)
+async function loadReferenceLagueHtmlForComparison(compId) {
+  if (String(compId) !== "4452") return "";
+  
+  const refPath = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
+  try {
+    const html = await fs.readFile(refPath, "utf8");
+    console.log(`   📄 Carregat HTML local de referència per comp ${compId} (${html.length} bytes)`);
+    return html;
+  } catch (err) {
+    console.log(`   ⚠️  No es pot llegir HTML local: ${err.message}`);
+    return "";
+  }
 }
 
 async function main() {
@@ -737,7 +763,26 @@ async function main() {
             debugClassLogged = true;
           }
           if (classHtml) {
-            const grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
+            let grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
+            let source = "puppeteer";
+
+            // Fallback: si Puppeteer retorna pocs grups, intenta HTTP directe al portal
+            if (grouped.groups.length <= 2) {
+              try {
+                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar ${grouped.groups.length} grups)...`);
+                const directHtml = await fetchLeaguePageDirect(compId);
+                if (directHtml && directHtml.length > 1000) {
+                  const directGrouped = parseClassificationByGroupSidgad(directHtml, uniqueIdcs);
+                  if (directGrouped.groups.length > grouped.groups.length) {
+                    console.log(`   ✓ HTTP direct va retornar ${directGrouped.groups.length} grups (vs ${grouped.groups.length} de Puppeteer)`);
+                    grouped = directGrouped;
+                    source = "http_direct";
+                  }
+                }
+              } catch (err) {
+                console.log(`   ⚠️  HTTP direct error: ${err.message}`);
+              }
+            }
 
             if (grouped.groups.length > 0) {
               // Quan no tenim idc als partits (o només en tenim un), podem recuperar
@@ -759,7 +804,7 @@ async function main() {
               compData[compId].classification = grouped.groups.flatMap(g => g.classification);
 
               if (!debugClassLogged) {
-                console.log(`\n--- DEBUG CLASSIFICACIÓ GRUPS comp ${compId} (${grouped.groups.length} grups) ---`);
+                console.log(`\n--- DEBUG CLASSIFICACIÓ GRUPS comp ${compId} (${grouped.groups.length} grups, source=${source}) ---`);
                 if (grouped.groups[0]?.classification?.length > 0) {
                   console.log(JSON.stringify(grouped.groups[0].classification[0]));
                 }
