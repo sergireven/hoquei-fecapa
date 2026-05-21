@@ -141,15 +141,37 @@ function parseClassificationByGroupSidgad(html) {
   if (!html || html.length < 50) return [];
 
   const groups = [];
+  let idx = 0;
+
   const blockRe = /<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>[\s\S]*?<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>([\s\S]*?)<\/table>/gi;
   let match;
-  let idx = 0;
 
   while ((match = blockRe.exec(html)) !== null) {
     const groupName = normalizeText(match[1]);
     const tableHtml = match[0].includes("<table") ? `<table>${match[2]}</table>` : match[2];
     const parsedRows = parseClassificationSidgad(`<table>${match[2]}</table>`);
     if (!parsedRows.length) continue;
+    groups.push({
+      groupName: groupName || `Grup ${idx + 1}`,
+      teamCount: parsedRows.length,
+      teams: parsedRows,
+    });
+    idx += 1;
+  }
+
+  if (groups.length > 0) return groups;
+
+  const leagueContainerRe = /<div[^>]*id=['"]?league_([^'"]+)['"]?[^>]*class=['"]?[^'"]*leagueContainer[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi;
+  idx = 0;
+
+  while ((match = leagueContainerRe.exec(html)) !== null) {
+    const containerId = match[1];
+    const containerContent = match[2];
+    const groupName = normalizeText(containerContent.match(/<[^>]*(?:h1|h2|h3|h4|title|font-bold)[^>]*>([^<]*)<\/[^>]*>/i)?.[1] || `Grup ${idx + 1}`);
+
+    const parsedRows = parseClassificationSidgad(containerContent);
+    if (!parsedRows.length) continue;
+
     groups.push({
       groupName: groupName || `Grup ${idx + 1}`,
       teamCount: parsedRows.length,
@@ -676,7 +698,13 @@ async function scrapeCompetitionLive(page, comp) {
       };
     }
 
+    if (typeof btn.click === "function") {
+      btn.click();
+    }
     btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (typeof window.$j === "function") {
+      window.$j(btn).trigger("click");
+    }
 
     const visibleAfter = rows.filter(r => {
       const style = window.getComputedStyle(r);
@@ -1204,6 +1232,56 @@ async function scrapeCompetitionLive(page, comp) {
     }
     if (clickedClassifications.forcedFile) {
       throw new Error(`Strict portal flow failed for ${comp.competitionId}: classification required forced file wiring`);
+    }
+
+    const tabActivation = await page.evaluate(async ({ expectedFile }) => {
+      const getSelectedTabId = () => {
+        const selected = document.querySelector(".menu_competicion_btn_selected");
+        return selected ? (selected.id || "") : "";
+      };
+
+      const findBtn = () => {
+        const strict = document.getElementById("clasificaciones_btn");
+        if (strict) return strict;
+        const menu = document.getElementById("menu_idc_options_general");
+        if (!menu) return null;
+        return menu.querySelector(`a[file='${expectedFile}'], button[file='${expectedFile}']`);
+      };
+
+      if (getSelectedTabId() === "clasificaciones_btn") {
+        return { ok: true, selectedTab: "clasificaciones_btn", retried: 0 };
+      }
+
+      const btn = findBtn();
+      if (!btn) {
+        return { ok: false, selectedTab: getSelectedTabId(), retried: 0, reason: "missing-classification-button" };
+      }
+
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        if (typeof btn.click === "function") {
+          btn.click();
+        }
+        btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        if (typeof window.$j === "function") {
+          window.$j(btn).trigger("click");
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 250));
+
+        if (getSelectedTabId() === "clasificaciones_btn") {
+          return { ok: true, selectedTab: "clasificaciones_btn", retried: attempt };
+        }
+      }
+
+      return { ok: false, selectedTab: getSelectedTabId(), retried: 3, reason: "selected-tab-not-activated" };
+    }, { expectedFile: expectedClassFile });
+
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} strict-flow step4-tab-activation ok=${tabActivation?.ok ? 1 : 0} selectedTab=${tabActivation?.selectedTab || "none"} retried=${tabActivation?.retried || 0} reason=${tabActivation?.reason || "none"}`
+    );
+
+    if (!tabActivation?.ok) {
+      throw new Error(`Strict portal flow failed for ${comp.competitionId}: classification tab not activated (${tabActivation?.reason || "unknown"})`);
     }
   }
 
