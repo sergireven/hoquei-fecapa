@@ -737,24 +737,55 @@ async function main() {
             debugClassLogged = true;
           }
           if (classHtml) {
-            const classification = parseClassificationSidgad(classHtml);
-            compData[compId].classification = classification;
-            if (uniqueIdcs.length === 1) {
-              const idc = uniqueIdcs[0];
-              compData[compId].classificationByGroup[idc] = classification;
-              compData[compId].classificationByGroupName[compName] = classification;
-              compData[compId].hierarchy.groups = [{
-                key: String(idc),
-                idc: String(idc),
-                name: compName,
-                teams: classification.length,
-              }];
-            }
-            if (!debugClassLogged && classification.length > 0) {
-              console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
-              console.log(JSON.stringify(classification[0]));
-              console.log("---\n");
-              debugClassLogged = true;
+            const grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
+
+            if (grouped.groups.length > 0) {
+              // Quan no tenim idc als partits (o només en tenim un), podem recuperar
+              // igualment la classificació per grup directament del HTML de classificacions.
+              compData[compId].classificationByGroup = {};
+              compData[compId].classificationByGroupName = {};
+              compData[compId].hierarchy.groups = grouped.groups.map(g => ({
+                key: String(g.key),
+                idc: g.idc ? String(g.idc) : null,
+                name: g.name,
+                teams: g.classification.length,
+              }));
+
+              for (const g of grouped.groups) {
+                compData[compId].classificationByGroup[String(g.key)] = g.classification;
+                compData[compId].classificationByGroupName[g.name] = g.classification;
+              }
+
+              compData[compId].classification = grouped.groups.flatMap(g => g.classification);
+
+              if (!debugClassLogged) {
+                console.log(`\n--- DEBUG CLASSIFICACIÓ GRUPS comp ${compId} (${grouped.groups.length} grups) ---`);
+                if (grouped.groups[0]?.classification?.length > 0) {
+                  console.log(JSON.stringify(grouped.groups[0].classification[0]));
+                }
+                console.log("---\n");
+                debugClassLogged = true;
+              }
+            } else {
+              const classification = parseClassificationSidgad(classHtml);
+              compData[compId].classification = classification;
+              if (uniqueIdcs.length === 1) {
+                const idc = uniqueIdcs[0];
+                compData[compId].classificationByGroup[idc] = classification;
+                compData[compId].classificationByGroupName[compName] = classification;
+                compData[compId].hierarchy.groups = [{
+                  key: String(idc),
+                  idc: String(idc),
+                  name: compName,
+                  teams: classification.length,
+                }];
+              }
+              if (!debugClassLogged && classification.length > 0) {
+                console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
+                console.log(JSON.stringify(classification[0]));
+                console.log("---\n");
+                debugClassLogged = true;
+              }
             }
           }
         }
