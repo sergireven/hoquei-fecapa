@@ -31,12 +31,30 @@ jobs:
       - name: Install Chrome (for Puppeteer)
         run: |
           npx puppeteer browsers install chrome
+
+      - name: Runtime diagnostics
+        run: |
+          set -euxo pipefail
+          echo "Date (UTC): $(date -u)"
+          echo "Working dir: $(pwd)"
+          node -v
+          npm -v
+          npm ls puppeteer || true
+          npx puppeteer --help >/dev/null 2>&1 || true
       
       - name: Run FECAPA categories scraper
         run: |
-          node api/scraper-fecapa-categories.js --live --output public/fecapa-categories.json
+          set -euxo pipefail
+          echo "Starting scraper at $(date -u)"
+          node api/scraper-fecapa-categories.js \
+            --live \
+            --category BENJAMI \
+            --competition-timeout-ms 45000 \
+            --output public/fecapa-categories.json
+          echo "Scraper finished at $(date -u)"
         env:
           NODE_ENV: production
+          FECAPA_COMP_TIMEOUT_MS: "45000"
       
       - name: Check for changes
         id: git_status

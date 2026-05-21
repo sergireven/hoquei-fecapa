@@ -244,11 +244,11 @@ function normalizeCategory(cat) {
   return normName(cat || "");
 }
 
-function selectTargetCompetitions(compIndex) {
+function selectTargetCompetitions(compIndex, targetCategories = TARGET_CATEGORIES) {
   const selected = [];
   for (const [competitionId, comp] of Object.entries(compIndex || {})) {
     const category = normalizeCategory(comp?.category);
-    if (!TARGET_CATEGORIES.has(category)) continue;
+    if (!targetCategories.has(category)) continue;
     selected.push({
       competitionId,
       competitionName: String(comp?.name || "").trim() || `Competició ${competitionId}`,
@@ -411,6 +411,24 @@ async function mapWithConcurrency(items, limit, mapper) {
 
   await Promise.all(workers);
   return out;
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout after ${timeoutMs}ms (${label})`));
+    }, timeoutMs);
+
+    promise
+      .then(value => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(err => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
 }
 
 function buildCompetitionFromParsedGroups(comp, parsedGroups) {
@@ -576,7 +594,7 @@ async function scrapeCompetitionLive(page, comp) {
 
 // ── Core function: obtenir dades de categories ───────────────
 async function getCategoriesData(options = {}) {
-  const { liveMode = false, useCache = true } = options;
+  const { liveMode = false, useCache = true, categoriesFilter = null, competitionTimeoutMs = 45000 } = options;
 
   const now = Date.now();
   if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
@@ -594,7 +612,10 @@ async function getCategoriesData(options = {}) {
 
   try {
     const compIndex = await loadCompIndex();
-    const selected = selectTargetCompetitions(compIndex);
+    const effectiveCategories = Array.isArray(categoriesFilter) && categoriesFilter.length > 0
+      ? new Set(categoriesFilter.map(c => normalizeCategory(c)))
+      : TARGET_CATEGORIES;
+    const selected = selectTargetCompetitions(compIndex, effectiveCategories);
 
     const categories = {
       prebenjami: [],
@@ -613,6 +634,8 @@ async function getCategoriesData(options = {}) {
     // Enriquiment live opcional (no bloquejant): només si liveMode=true
     let finalBuilt = snapshotBuilt;
     if (liveMode) {
+      console.log(`[fecapa-categories] Live mode ON | categories=${Array.from(effectiveCategories).join(",")} | competitions=${selected.length}`);
+
       const browser = await puppeteer.launch({
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -625,24 +648,42 @@ async function getCategoriesData(options = {}) {
         await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
 
         const liveBuilt = [];
-        for (const comp of selected) {
+        for (let i = 0; i < selected.length; i += 1) {
+          const comp = selected[i];
+          const progress = `[${i + 1}/${selected.length}]`;
           try {
             // 1) Prefer direct league page parsing (same structure as Classif.Base render)
             // 2) Fallback to portal click-flow if needed
             let live = null;
+            let source = "league";
+
+            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} | ${comp.competitionName} | try=league`);
 
             try {
-              live = await scrapeCompetitionFromLeaguePage(comp);
+              live = await withTimeout(
+                scrapeCompetitionFromLeaguePage(comp),
+                competitionTimeoutMs,
+                `league/${comp.competitionId}`
+              );
             } catch (leagueErr) {
-              live = await scrapeCompetitionLive(page, comp);
+              source = "portal";
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} league failed -> ${leagueErr.message || "unknown"} | try=portal`);
+              live = await withTimeout(
+                scrapeCompetitionLive(page, comp),
+                competitionTimeoutMs,
+                `portal/${comp.competitionId}`
+              );
             }
 
             if (live.groupCount > 0 && live.teamCount > 0) {
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=${source} groups=${live.groupCount} teams=${live.teamCount}`);
               liveBuilt.push(live);
             } else {
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} empty live -> fallback=snapshot`);
               liveBuilt.push(snapshotBuilt[liveBuilt.length]);
             }
           } catch (err) {
+            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} failed -> fallback=snapshot | ${err.message || "unknown"}`);
             errors.push({
               competitionId: comp.competitionId,
               competitionName: comp.competitionName,
@@ -668,6 +709,7 @@ async function getCategoriesData(options = {}) {
       source: liveMode ? "sidgad_snapshot+fecapa_live" : "sidgad_snapshot",
       fetchedAt: new Date().toISOString(),
       liveMode,
+      categoriesFilter: Array.from(effectiveCategories.values()),
       fetchedCompetitions: selected.length,
       failedCompetitions: errors.length,
       errors,
@@ -703,7 +745,8 @@ module.exports = async (req, res) => {
   try {
     const query = new URL(req.url || "", "http://localhost").searchParams;
     const liveMode = query.get("live") === "1";
-    const data = await getCategoriesData({ liveMode });
+    const categoriesFilter = query.getAll("category").map(v => String(v || "").trim()).filter(Boolean);
+    const data = await getCategoriesData({ liveMode, categoriesFilter });
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({
