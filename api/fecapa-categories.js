@@ -509,10 +509,19 @@ async function scrapeCompetitionLive(page, comp) {
     throw new Error(`Competition ${comp.competitionId} not found on portal`);
   }
 
+  // Ensure classification content is loaded (Classif.Base equivalent)
+  await page.evaluate(() => {
+    const btn = document.getElementById("clasificaciones_btn");
+    if (btn) btn.click();
+  });
+
   await page.waitForFunction(
     () => {
       const el = document.getElementById("tab_modal_contenido_competicion");
-      return el && el.innerHTML.length > 200;
+      if (!el) return false;
+      if (el.querySelector(".div_titulo_fase_idc")) return true;
+      if (el.querySelector("table.tabla_standard tr")) return true;
+      return el.innerHTML.length > 400;
     },
     { timeout: 15000 }
   ).catch(() => {});
@@ -571,6 +580,10 @@ async function scrapeCompetitionLive(page, comp) {
   const parsedGroups = parsedGroupsFromHtml.length >= parsedGroupsFromDom.length
     ? parsedGroupsFromHtml
     : parsedGroupsFromDom;
+
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length}`
+  );
 
   const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
 
@@ -652,31 +665,16 @@ async function getCategoriesData(options = {}) {
           const comp = selected[i];
           const progress = `[${i + 1}/${selected.length}]`;
           try {
-            // 1) Prefer direct league page parsing (same structure as Classif.Base render)
-            // 2) Fallback to portal click-flow if needed
-            let live = null;
-            let source = "league";
+            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} | ${comp.competitionName} | try=portal`);
 
-            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} | ${comp.competitionName} | try=league`);
-
-            try {
-              live = await withTimeout(
-                scrapeCompetitionFromLeaguePage(comp),
-                competitionTimeoutMs,
-                `league/${comp.competitionId}`
-              );
-            } catch (leagueErr) {
-              source = "portal";
-              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} league failed -> ${leagueErr.message || "unknown"} | try=portal`);
-              live = await withTimeout(
-                scrapeCompetitionLive(page, comp),
-                competitionTimeoutMs,
-                `portal/${comp.competitionId}`
-              );
-            }
+            const live = await withTimeout(
+              scrapeCompetitionLive(page, comp),
+              competitionTimeoutMs,
+              `portal/${comp.competitionId}`
+            );
 
             if (live.groupCount > 0 && live.teamCount > 0) {
-              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=${source} groups=${live.groupCount} teams=${live.teamCount}`);
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=portal groups=${live.groupCount} teams=${live.teamCount}`);
               liveBuilt.push(live);
             } else {
               console.log(`[fecapa-categories] ${progress} ${comp.competitionId} empty live -> fallback=snapshot`);
