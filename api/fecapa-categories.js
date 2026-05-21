@@ -413,6 +413,12 @@ async function mapWithConcurrency(items, limit, mapper) {
 }
 
 async function scrapeCompetitionLive(page, comp) {
+  // Clear container so we can detect when new content is actually loaded
+  await page.evaluate(() => {
+    const el = document.getElementById("tab_modal_contenido_competicion");
+    if (el) el.innerHTML = "";
+  });
+
   const clicked = await page.evaluate(id => {
     const el = document.getElementById(String(id));
     if (!el) return false;
@@ -427,10 +433,13 @@ async function scrapeCompetitionLive(page, comp) {
   await page.waitForFunction(
     () => {
       const el = document.getElementById("tab_modal_contenido_competicion");
-      return el && el.innerHTML.length > 50;
+      return el && el.innerHTML.length > 200;
     },
-    { timeout: 8000 }
+    { timeout: 15000 }
   ).catch(() => {});
+
+  // Extra wait for AJAX tables to fully render
+  await new Promise(r => setTimeout(r, 1500));
 
   const groups = await page.evaluate(() => {
     const container = document.getElementById("tab_modal_contenido_competicion");
@@ -439,9 +448,16 @@ async function scrapeCompetitionLive(page, comp) {
     const titleEls = [...container.querySelectorAll(".div_titulo_fase_idc")];
     return titleEls.map((titleEl, idx) => {
       const title = (titleEl.textContent || "").replace(/\s+/g, " ").trim();
-      const tableEl = titleEl.nextElementSibling && titleEl.nextElementSibling.tagName === "TABLE"
-        ? titleEl.nextElementSibling
-        : null;
+
+      // Walk next siblings until we find a TABLE or hit the next group title
+      let next = titleEl.nextElementSibling;
+      let tableEl = null;
+      while (next) {
+        if (next.tagName === "TABLE") { tableEl = next; break; }
+        if (next.classList && next.classList.contains("div_titulo_fase_idc")) break;
+        next = next.nextElementSibling;
+      }
+
       return {
         groupName: title,
         tableHtml: tableEl ? tableEl.outerHTML : "",
