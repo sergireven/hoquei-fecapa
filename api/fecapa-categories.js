@@ -6,6 +6,7 @@ const puppeteer = require("puppeteer");
 
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
+const TEMP_ID = "39"; // temporada 2025-26
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
 const CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
 const REMOTE_COMP_URLS = [
@@ -419,12 +420,13 @@ async function scrapeCompetitionLive(page, comp) {
     if (el) el.innerHTML = "";
   });
 
-  const clicked = await page.evaluate(id => {
-    const el = document.getElementById(String(id));
+  const clicked = await page.evaluate(({ id, tempId }) => {
+    const seasonEl = document.querySelector(`.listado_competiciones_fila.temp_${tempId}#${CSS.escape(String(id))}`);
+    const el = seasonEl || document.getElementById(String(id));
     if (!el) return false;
     el.click();
     return true;
-  }, comp.competitionId);
+  }, { id: comp.competitionId, tempId: TEMP_ID });
 
   if (!clicked) {
     throw new Error(`Competition ${comp.competitionId} not found on portal`);
@@ -466,7 +468,7 @@ async function scrapeCompetitionLive(page, comp) {
     }).filter(item => item.groupName && item.tableHtml);
   });
 
-  const parsedGroups = groups.map((g, idx) => {
+  const parsedGroupsFromDom = groups.map((g, idx) => {
     const rows = parseClassificationSidgad(g.tableHtml);
     return {
       groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
@@ -476,10 +478,24 @@ async function scrapeCompetitionLive(page, comp) {
     };
   }).filter(g => g.teamCount > 0);
 
-  const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(await page.evaluate(() => {
+  const containerHtml = await page.evaluate(() => {
     const container = document.getElementById("tab_modal_contenido_competicion");
     return container ? container.innerHTML : "";
-  }));
+  });
+
+  // Regex parser is more resilient when tables are not direct siblings in the live DOM.
+  const parsedGroupsFromHtml = parseClassificationByGroupSidgad(containerHtml).map((g, idx) => ({
+    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
+    groupName: g.groupName,
+    teamCount: g.teamCount,
+    teams: g.teams,
+  })).filter(g => g.teamCount > 0);
+
+  const parsedGroups = parsedGroupsFromHtml.length >= parsedGroupsFromDom.length
+    ? parsedGroupsFromHtml
+    : parsedGroupsFromDom;
+
+  const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
 
   const groupsOut = parsedGroups.length
     ? parsedGroups
