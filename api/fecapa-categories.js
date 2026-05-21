@@ -867,13 +867,31 @@ async function scrapeCompetitionLive(page, comp) {
       if (!tableEl) return null;
 
       const rows = [...(tableEl.rows || [])].map(row => {
-        const cells = [...(row.cells || [])];
+        let cells = [...(row.cells || [])];
+        if (cells.length < 4) {
+          // Some live tables are rendered with nested wrappers; include descendant cells as fallback.
+          cells = [...row.querySelectorAll("td")];
+        }
         if (cells.length < 4) return null;
 
-        const position = toInt(cells[0]?.textContent || "");
+        const cellTexts = cells.map(c => String(c?.textContent || "").replace(/\s+/g, " ").trim());
+        const posIdx = cellTexts.findIndex((txt) => /^\d{1,2}$/.test(txt));
+        if (posIdx < 0) return null;
+
+        const position = toInt(cellTexts[posIdx] || "");
         if (!position || position < 1 || position > 40) return null;
 
-        const teamCell = cells[2] || null;
+        const teamIdx = cells.findIndex((cell, i) => {
+          if (i <= posIdx) return false;
+          const txt = cellTexts[i] || "";
+          if (!txt || txt.length < 3) return false;
+          const hasNoMobile = !!cell.querySelector(".no_mobile");
+          const looksTeam = /[A-Za-zÀ-ÿ]/.test(txt) && !/^[-+]?\d+$/.test(txt);
+          return hasNoMobile || looksTeam;
+        });
+        if (teamIdx < 0) return null;
+
+        const teamCell = cells[teamIdx] || null;
         const teamName = String(
           teamCell?.querySelector(".no_mobile")?.textContent
           || teamCell?.textContent
@@ -882,9 +900,15 @@ async function scrapeCompetitionLive(page, comp) {
         if (!teamName) return null;
 
         const teamShortRaw = String(teamCell?.querySelector(".mobile")?.textContent || "").replace(/\s+/g, " ").trim();
-        const logoSrc = cells[1]?.querySelector("img")?.getAttribute("src") || null;
+        const logoCell = cells.find((cell, i) => i > posIdx && i < teamIdx && !!cell.querySelector("img")) || null;
+        const logoSrc = logoCell?.querySelector("img")?.getAttribute("src") || null;
 
-        const nums = cells.slice(3).map(td => toInt(td.textContent || ""));
+        const nums = cells
+          .slice(teamIdx + 1)
+          .map(td => toInt(td.textContent || ""))
+          .filter(n => n !== null);
+        if (nums.length < 3) return null;
+
         const [points = null, played = null, won = null, drawn = null, lost = null, goalsFor = null, goalsAgainst = null, goalDiff = null, penalties = null] = nums;
 
         return {
