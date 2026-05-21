@@ -392,6 +392,7 @@ async function main() {
         // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
         let classTabMeta = { file: "", filter: "0" };
         const clickClassTab = async () => {
+          const expectedClassFile = `clasif_idc_${compId}_1.php`;
           const tabInfo = await page.evaluate(() => {
             // 1) Camí preferit: botó oficial de classificacions.
             const strictBtn = document.getElementById("clasificaciones_btn");
@@ -412,7 +413,9 @@ async function main() {
               const onclick = el.getAttribute("onclick") || "";
               const href = el.getAttribute("href") || "";
               const id = el.id || "";
+              const file = el.getAttribute("file") || "";
               return id === "clasificaciones_btn"
+                || file.includes("clasif_idc_")
                 || txt.includes("CLASSIFICACI")
                 || /class?ificaci/i.test(onclick)
                 || /class?ificaci/i.test(href);
@@ -427,7 +430,50 @@ async function main() {
             }
             return { found: false, file: "", filter: "0" };
           });
-          if (!tabInfo?.found) return null;
+          if (!tabInfo?.found) {
+            // Fallback robust: força càrrega de classificació encara que no existeixi el botó.
+            const directHtml = await page.evaluate(async ({ expectedFile }) => {
+              const container = document.getElementById("tab_modal_contenido_competicion");
+              if (!container) return "";
+
+              const route = (typeof window.ruta_files === "string" && window.ruta_files)
+                ? window.ruta_files
+                : "https://www.server2.sidgad.es/fecapa";
+
+              if (typeof window.$j !== "function") return "";
+
+              const loadByFile = (file, payload) => new Promise((resolve) => {
+                let done = false;
+                const finish = () => {
+                  if (done) return;
+                  done = true;
+                  resolve(container.innerHTML || "");
+                };
+                window.$j("#tab_modal_contenido_competicion").load(
+                  `${route}/cerilh/${file}`,
+                  payload,
+                  () => finish()
+                );
+                setTimeout(finish, 9000);
+              });
+
+              const candidates = [
+                expectedFile,
+                expectedFile.replace(/_1\.php$/, ".php"),
+              ];
+
+              for (const file of candidates) {
+                if (!file) continue;
+                const html = await loadByFile(file, { filter: "0" });
+                if ((html || "").length > 200) return html;
+              }
+
+              return "";
+            }, { expectedFile: expectedClassFile });
+
+            if (!directHtml) return null;
+            return directHtml;
+          }
 
           classTabMeta = {
             file: tabInfo.file || "",
