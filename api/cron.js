@@ -17,16 +17,24 @@ module.exports = async (req, res) => {
   const start = Date.now();
   try {
     console.log("🏒 Iniciant scraper...");
-    
-    // Executa el scraper
+
+    // Executa el scraper principal
     execSync("node " + path.join(__dirname, "scraper.js"), {
       timeout: 290000, // 290 segons (Vercel té límit de 300s en pla Pro)
       stdio: "pipe",
       env: { ...process.env, NODE_ENV: "production" }
     });
 
+    // Genera el fitxer compacte per al Club Hoquei Ripollet
+    console.log("🔵 Generant ripollet.json...");
+    execSync("node " + path.join(__dirname, "generate-ripollet.js"), {
+      timeout: 10000,
+      stdio: "pipe",
+      env: { ...process.env, NODE_ENV: "production" }
+    });
+
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    console.log(`✅ Scraper completat en ${elapsed}s`);
+    console.log(`✅ Scraper + ripollet.json completats en ${elapsed}s`);
     
     return res.status(200).json({
       ok: true,

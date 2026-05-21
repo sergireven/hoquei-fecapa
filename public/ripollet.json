@@ -1,0 +1,206 @@
+{
+  "updatedAt": "2026-05-18T14:46:06.777Z",
+  "season": "2025-26",
+  "teams": [
+    {
+      "category": "Femení",
+      "comp": "FEM 11 OR (2025-26)",
+      "compId": "4139",
+      "team": "Club Hoquei Ripollet",
+      "teamId": "10537",
+      "pos": 9,
+      "pts": 16,
+      "pj": 14,
+      "pg": 5,
+      "pe": 1,
+      "pp": 8,
+      "recent": [],
+      "upcoming": []
+    },
+    {
+      "category": "Veterans",
+      "comp": "LCV GRUP C (2025-26)",
+      "compId": "4270",
+      "team": "Club Hoquei Ripollet",
+      "teamId": "10762",
+      "pos": 6,
+      "pts": 7,
+      "pj": 16,
+      "pg": 2,
+      "pe": 2,
+      "pp": 12,
+      "recent": [
+        {
+          "jornada": 19,
+          "home": "Espanyol Cerdanyola +35",
+          "away": "Club Hoquei Ripollet",
+          "date": "07-04",
+          "time": "21:40",
+          "homeScore": 2,
+          "awayScore": 1,
+          "played": true,
+          "actaId": "130357",
+          "actaSlug": "ESPANYOL+CERDANYOLA++35-CLUB+HOQUEI+RIPOLLET",
+          "actaUrl": "https://jok.cat/acta/130357/ESPANYOL+CERDANYOLA+%2B35-CLUB+HOQUEI+RIPOLLET"
+        },
+        {
+          "jornada": 20,
+          "home": "Club Hoquei Ripollet",
+          "away": "Cp Sant Celoni",
+          "date": "13-05",
+          "time": "22:15",
+          "homeScore": 7,
+          "awayScore": 4,
+          "played": true,
+          "actaId": "130360",
+          "actaSlug": "CLUB+HOQUEI+RIPOLLET-CP+SANT+CELONI",
+          "actaUrl": "https://jok.cat/acta/130360/CLUB+HOQUEI+RIPOLLET-CP+SANT+CELONI"
+        },
+        {
+          "jornada": 21,
+          "home": "Generali Hc Palau",
+          "away": "Club Hoquei Ripollet",
+          "date": "05-05",
+          "time": "21:40",
+          "homeScore": 1,
+          "awayScore": 2,
+          "played": true,
+          "actaId": "130362",
+          "actaSlug": "GENERALI+HC+PALAU-CLUB+HOQUEI+RIPOLLET",
+          "actaUrl": "https://jok.cat/acta/130362/GENERALI+HC+PALAU-CLUB+HOQUEI+RIPOLLET"
+        }
+      ],
+      "upcoming": []
+    },
+    {
+      "category": "Prebenjamí",
+      "comp": "BCN PREBENJAMI OR 1 (2025-26)",
+      "compId": "4301",
+      "team": "Ch Ripollet A",
+      "teamId": "10349",
+      "pos": 1,
+      "pts": 42,
+      "pj": 14,
+      "pg": 14,
+      "pe": 0,
+      "pp": 0,
+      "recent": [],
+      "upcoming": []
+    },
+    {
+      "category": "Prebenjamí",
+      "comp": "BCN PB-INICIACIÓ 1 (2025-26)",
+      "compId": "4317",
+      "team": "Ch Ripollet D",
+      "teamId": "10353",
+      "pos": 1,
+      "pts": 37,
+      "pj": 13,
+      "pg": 12,
+      "pe": 1,
+      "pp": 0,
+      "recent": [
+        {
+          "jornada": 13,
+          "home": "Ch Ripollet D",
+          "away": "Generali Hc Palau",
+          "date": "19-04",
+          "time": "10:00",
+          "homeScore": 3,
+          "awayScore": 1,
+          "played": true,
+          "actaId": "134497",
+          "actaSlug": "CLUB+HOQUEI+RIPOLLET+D-GENERALI+HC+PALAU",
+          "actaUrl": "https://jok.cat/acta/134497/CLUB+HOQUEI+RIPOLLET+D-GENERALI+HC+PALAU"
+        },
+        {
+          "jornada": 14,
+          "home": "Ce Noia Freixenet",
+          "away": "Ch Ripollet D",
+          "date": "26-04",
+          "time": "11:15",
+          "homeScore": 2,
+          "awayScore": 4,
+          "played": true,
+          "actaId": "134502",
+          "actaSlug": "CE+NOIA+FREIXENET-CLUB+HOQUEI+RIPOLLET+D",
+          "actaUrl": "https://jok.cat/acta/134502/CE+NOIA+FREIXENET-CLUB+HOQUEI+RIPOLLET+D"
+        },
+        {
+          "jornada": 15,
+          "home": "Ch Ripollet D",
+          "away": "Cp Vilafranca Byaccuor",
+          "date": "03-05",
+          "time": "10:00",
+          "homeScore": 4,
+          "awayScore": 1,
+          "played": true,
+          "actaId": "134507",
+          "actaSlug": "CLUB+HOQUEI+RIPOLLET+D-CP+VILAFRANCA+BYACCUOR",
+          "actaUrl": "https://jok.cat/acta/134507/CLUB+HOQUEI+RIPOLLET+D-CP+VILAFRANCA+BYACCUOR"
+        }
+      ],
+      "upcoming": [
+        {
+          "jornada": 7,
+          "home": "Ch Ripollet D",
+          "away": "Cpi Sant Ignasi B",
+          "date": "01-03",
+          "time": "10:00",
+          "played": false
+        },
+        {
+          "jornada": 16,
+          "home": "Cpi Sant Ignasi B",
+          "away": "Ch Ripollet D",
+          "date": "09-05",
+          "time": "10:00",
+          "played": false
+        },
+        {
+          "jornada": 16,
+          "home": "Cpi Sant Ignasi",
+          "away": "Ch Ripollet D",
+          "date": "09-05",
+          "time": "18:00",
+          "played": false
+        }
+      ]
+    }
+  ],
+  "nextMatches": [
+    {
+      "jornada": 7,
+      "home": "Ch Ripollet D",
+      "away": "Cpi Sant Ignasi B",
+      "date": "01-03",
+      "time": "10:00",
+      "played": false,
+      "teamName": "Ch Ripollet D",
+      "category": "Prebenjamí",
+      "comp": "BCN PB-INICIACIÓ 1 (2025-26)"
+    },
+    {
+      "jornada": 16,
+      "home": "Cpi Sant Ignasi B",
+      "away": "Ch Ripollet D",
+      "date": "09-05",
+      "time": "10:00",
+      "played": false,
+      "teamName": "Ch Ripollet D",
+      "category": "Prebenjamí",
+      "comp": "BCN PB-INICIACIÓ 1 (2025-26)"
+    },
+    {
+      "jornada": 16,
+      "home": "Cpi Sant Ignasi",
+      "away": "Ch Ripollet D",
+      "date": "09-05",
+      "time": "18:00",
+      "played": false,
+      "teamName": "Ch Ripollet D",
+      "category": "Prebenjamí",
+      "comp": "BCN PB-INICIACIÓ 1 (2025-26)"
+    }
+  ]
+}
