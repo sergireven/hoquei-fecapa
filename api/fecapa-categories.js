@@ -509,22 +509,79 @@ async function scrapeCompetitionLive(page, comp) {
     throw new Error(`Competition ${comp.competitionId} not found on portal`);
   }
 
-  // Ensure classification content is loaded (Classif.Base equivalent)
-  await page.evaluate(() => {
-    const btn = document.getElementById("clasificaciones_btn");
-    if (btn) btn.click();
+  // Ensure classification content is loaded (Classif.Base equivalent).
+  // The portal loads tab content via AJAX, so we need to wait for actual content mutation.
+  const beforeClickSnapshot = await page.evaluate(() => {
+    const el = document.getElementById("tab_modal_contenido_competicion");
+    return el ? el.innerHTML : "";
   });
 
+  const preClickMeta = await page.evaluate(() => {
+    const container = document.getElementById("tab_modal_contenido_competicion");
+    const btn = document.getElementById("clasificaciones_btn");
+    return {
+      hasContainer: !!container,
+      beforeLen: container ? container.innerHTML.length : 0,
+      hasButton: !!btn,
+      buttonClass: btn ? (btn.className || "") : "",
+      buttonFile: btn ? (btn.getAttribute("file") || "") : "",
+      selectedTabId: (() => {
+        const selected = document.querySelector(".menu_competicion_btn_selected");
+        return selected ? (selected.id || "") : "";
+      })(),
+    };
+  });
+
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} pre-click hasContainer=${preClickMeta.hasContainer} len=${preClickMeta.beforeLen} hasBtn=${preClickMeta.hasButton} selectedTab=${preClickMeta.selectedTabId || "none"} btnClass=${preClickMeta.buttonClass || "none"} btnFile=${preClickMeta.buttonFile || "none"}`
+  );
+
+  const clickedClassifications = await page.evaluate(() => {
+    const btn = document.getElementById("clasificaciones_btn");
+    if (!btn) return false;
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    return true;
+  });
+
+  if (!clickedClassifications) {
+    throw new Error(`Competition ${comp.competitionId}: missing clasificaciones_btn`);
+  }
+
+  console.log(`[fecapa-categories] ${comp.competitionId} clicked clasificaciones_btn`);
+
   await page.waitForFunction(
-    () => {
+    ({ previousHtml }) => {
       const el = document.getElementById("tab_modal_contenido_competicion");
       if (!el) return false;
-      if (el.querySelector(".div_titulo_fase_idc")) return true;
-      if (el.querySelector("table.tabla_standard tr")) return true;
-      return el.innerHTML.length > 400;
+      const html = el.innerHTML || "";
+      const changed = html.length > 0 && html !== previousHtml;
+      const hasGroups = !!el.querySelector(".div_titulo_fase_idc");
+      const hasTableRows = !!el.querySelector("table.tabla_standard tr");
+      return (changed && (hasGroups || hasTableRows)) || hasGroups || hasTableRows;
     },
-    { timeout: 15000 }
+    { timeout: 20000 },
+    { previousHtml: beforeClickSnapshot }
   ).catch(() => {});
+
+  const postClickMeta = await page.evaluate(({ previousHtml }) => {
+    const container = document.getElementById("tab_modal_contenido_competicion");
+    const html = container ? (container.innerHTML || "") : "";
+    return {
+      afterLen: html.length,
+      changed: html.length > 0 && html !== previousHtml,
+      groupsCount: container ? container.querySelectorAll(".div_titulo_fase_idc").length : 0,
+      tablesCount: container ? container.querySelectorAll("table.tabla_standard").length : 0,
+      rowsCount: container ? container.querySelectorAll("table.tabla_standard tr").length : 0,
+      selectedTabId: (() => {
+        const selected = document.querySelector(".menu_competicion_btn_selected");
+        return selected ? (selected.id || "") : "";
+      })(),
+    };
+  }, { previousHtml: beforeClickSnapshot });
+
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} post-click changed=${postClickMeta.changed} len=${postClickMeta.afterLen} groups=${postClickMeta.groupsCount} tables=${postClickMeta.tablesCount} rows=${postClickMeta.rowsCount} selectedTab=${postClickMeta.selectedTabId || "none"}`
+  );
 
   // Extra wait for AJAX tables to fully render
   await new Promise(r => setTimeout(r, 1500));
