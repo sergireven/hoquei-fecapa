@@ -48,7 +48,9 @@ jobs:
           echo "Starting scraper at $(date -u)"
           node api/scraper-fecapa-categories.js \
             --live \
+            --category PREBENJAMI \
             --category BENJAMI \
+            --category ALEVI \
             --competition-timeout-ms 45000 \
             --output public/fecapa-categories.json
           echo "Scraper finished at $(date -u)"
