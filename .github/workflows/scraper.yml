@@ -35,8 +35,26 @@ jobs:
       - name: Executar scraper principal
         run: node api/scraper.js
 
+      - name: Executar scraper categories FECAPA
+        run: |
+          node api/scraper-fecapa-categories.js \
+            --category "NACIONAL CATALANA" \
+            --category "PRIMERA CATALANA" \
+            --category "SEGONA CATALANA" \
+            --category "TERCERA CATALANA" \
+            --category FEM \
+            --category JUNIOR \
+            --category JUVENIL \
+            --category INFANTIL \
+            --category PREBENJAMI \
+            --category BENJAMI \
+            --category ALEVI \
+            --category VETERANS \
+            --competition-timeout-ms 45000 \
+            --output public/fecapa-categories.json
+
       - name: Commit i push
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🏒 Actualitza dades FECAPA"
-          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json
+          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json public/fecapa-categories.json

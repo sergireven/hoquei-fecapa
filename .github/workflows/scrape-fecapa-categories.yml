@@ -1,11 +1,7 @@
 name: Scrape FECAPA Categories
 
 on:
-  # Executa cada dia a les 6:00 UTC (10:00 CET)
-  schedule:
-    - cron: '0 6 * * *'
-  
-  # Permet execució manual des de Actions
+  # Execució manual des de Actions
   workflow_dispatch:
 
 jobs:
@@ -47,7 +43,6 @@ jobs:
           set -euxo pipefail
           echo "Starting scraper at $(date -u)"
           node api/scraper-fecapa-categories.js \
-            --live \
             --category "NACIONAL CATALANA" \
             --category "PRIMERA CATALANA" \
             --category "SEGONA CATALANA" \
