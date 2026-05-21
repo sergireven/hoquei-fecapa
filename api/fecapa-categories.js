@@ -725,18 +725,64 @@ async function scrapeCompetitionLive(page, comp) {
     `[fecapa-categories] ${comp.competitionId} pre-click hasContainer=${preClickMeta.hasContainer} len=${preClickMeta.beforeLen} hasBtn=${preClickMeta.hasButton} selectedTab=${preClickMeta.selectedTabId || "none"} btnClass=${preClickMeta.buttonClass || "none"} btnFile=${preClickMeta.buttonFile || "none"}`
   );
 
-  const clickedClassifications = await page.evaluate(() => {
+  const expectedClassFile = `clasif_idc_${comp.competitionId}_1.php`;
+  const clickedClassifications = await page.evaluate(async ({ expectedFile }) => {
     const btn = document.getElementById("clasificaciones_btn");
-    if (!btn) return false;
-    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    return true;
-  });
+    if (!btn) return { ok: false, reason: "missing-button" };
 
-  if (!clickedClassifications) {
+    const beforeFile = btn.getAttribute("file") || "";
+    const filter = btn.getAttribute("filter") || "0";
+    let forcedFile = false;
+
+    if (!beforeFile || !beforeFile.includes("clasif_idc_") || beforeFile !== expectedFile) {
+      btn.setAttribute("file", expectedFile);
+      forcedFile = true;
+    }
+
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    const afterFile = btn.getAttribute("file") || expectedFile;
+
+    // Force-load expected classification file when stale wiring is detected.
+    if (forcedFile && typeof window.$j === "function") {
+      const route = (typeof window.ruta_files === "string" && window.ruta_files)
+        ? window.ruta_files
+        : "https://www.server2.sidgad.es/fecapa";
+
+      await new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          resolve();
+        };
+
+        window.$j("#tab_modal_contenido_competicion").load(
+          `${route}/cerilh/${afterFile}`,
+          { filter },
+          () => finish()
+        );
+
+        setTimeout(finish, 8000);
+      });
+    }
+
+    return {
+      ok: true,
+      beforeFile,
+      afterFile,
+      forcedFile,
+      filter,
+    };
+  }, { expectedFile: expectedClassFile });
+
+  if (!clickedClassifications?.ok) {
     throw new Error(`Competition ${comp.competitionId}: missing clasificaciones_btn`);
   }
 
-  console.log(`[fecapa-categories] ${comp.competitionId} clicked clasificaciones_btn`);
+  console.log(
+    `[fecapa-categories] ${comp.competitionId} clicked clasificaciones_btn forcedFile=${clickedClassifications.forcedFile} fileBefore=${clickedClassifications.beforeFile || "none"} fileAfter=${clickedClassifications.afterFile || "none"} filter=${clickedClassifications.filter || "0"}`
+  );
 
   await page.waitForFunction(
     ({ previousHtml }) => {
@@ -755,12 +801,19 @@ async function scrapeCompetitionLive(page, comp) {
   const postClickMeta = await page.evaluate(({ previousHtml }) => {
     const container = document.getElementById("tab_modal_contenido_competicion");
     const html = container ? (container.innerHTML || "") : "";
+    const groupTitles = container
+      ? [...container.querySelectorAll(".div_titulo_fase_idc")]
+        .map(el => String(el.textContent || "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+      : [];
     return {
       afterLen: html.length,
       changed: html.length > 0 && html !== previousHtml,
       groupsCount: container ? container.querySelectorAll(".div_titulo_fase_idc").length : 0,
       tablesCount: container ? container.querySelectorAll("table.tabla_standard").length : 0,
       rowsCount: container ? container.querySelectorAll("table.tabla_standard tr").length : 0,
+      firstGroupTitle: groupTitles[0] || "",
+      groupTitlesSample: groupTitles.slice(0, 6),
       selectedTabId: (() => {
         const selected = document.querySelector(".menu_competicion_btn_selected");
         return selected ? (selected.id || "") : "";
@@ -769,7 +822,7 @@ async function scrapeCompetitionLive(page, comp) {
   }, { previousHtml: beforeClickSnapshot });
 
   console.log(
-    `[fecapa-categories] ${comp.competitionId} post-click changed=${postClickMeta.changed} len=${postClickMeta.afterLen} groups=${postClickMeta.groupsCount} tables=${postClickMeta.tablesCount} rows=${postClickMeta.rowsCount} selectedTab=${postClickMeta.selectedTabId || "none"}`
+    `[fecapa-categories] ${comp.competitionId} post-click changed=${postClickMeta.changed} len=${postClickMeta.afterLen} groups=${postClickMeta.groupsCount} tables=${postClickMeta.tablesCount} rows=${postClickMeta.rowsCount} selectedTab=${postClickMeta.selectedTabId || "none"} firstGroup=${postClickMeta.firstGroupTitle || "none"} sampleGroups=${(postClickMeta.groupTitlesSample || []).join(" | ") || "none"}`
   );
 
   // Extra wait for AJAX tables to fully render
