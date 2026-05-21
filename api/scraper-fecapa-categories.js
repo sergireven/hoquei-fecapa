@@ -61,6 +61,7 @@ async function main() {
     // Guardar en archivo si se especifica
     if (outputFile) {
       const outPath = path.resolve(process.cwd(), outputFile);
+      await fs.mkdir(path.dirname(outPath), { recursive: true });
       await fs.writeFile(outPath, JSON.stringify(data, null, 2));
       console.log(`\n✅ Dades guardades a: ${outPath}`);
     }

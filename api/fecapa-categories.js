@@ -2,9 +2,12 @@ const fs = require("fs").promises;
 const path = require("path");
 const https = require("https");
 const http = require("http");
+const puppeteer = require("puppeteer");
 
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
+const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
+const CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
 const REMOTE_COMP_URLS = [
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/Millores-12/public/competicions-sidgad.json",
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/main/public/competicions-sidgad.json",
@@ -107,21 +110,21 @@ function parseClassificationByGroupSidgad(html) {
   if (!html || html.length < 50) return [];
 
   const groups = [];
-  const titles = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)]
-    .map(m => normalizeText(m[1]));
+  const blockRe = /<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>[\s\S]*?<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>([\s\S]*?)<\/table>/gi;
+  let match;
+  let idx = 0;
 
-  const tables = html.match(/<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>[\s\S]*?<\/table>/gi)
-    || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
-    || [];
-
-  for (let i = 0; i < tables.length; i += 1) {
-    const parsedRows = parseClassificationSidgad(tables[i]);
+  while ((match = blockRe.exec(html)) !== null) {
+    const groupName = normalizeText(match[1]);
+    const tableHtml = match[0].includes("<table") ? `<table>${match[2]}</table>` : match[2];
+    const parsedRows = parseClassificationSidgad(`<table>${match[2]}</table>`);
     if (!parsedRows.length) continue;
     groups.push({
-      groupName: titles[i] || `Grup ${i + 1}`,
+      groupName: groupName || `Grup ${idx + 1}`,
       teamCount: parsedRows.length,
       teams: parsedRows,
     });
+    idx += 1;
   }
 
   return groups;
@@ -223,6 +226,17 @@ async function loadCompIndex() {
   }
 
   throw new Error(`Cannot load competicions-sidgad.json | local=[${localErrors.join(" | ")}] | remote=[${remoteErrors.join(" | ")}]`);
+}
+
+async function loadCategoriesFile() {
+  try {
+    const raw = await fs.readFile(CATEGORIES_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.categories) return parsed;
+  } catch {
+    // Cache file absent or invalid; fall through to live/snapshot generation.
+  }
+  return null;
 }
 
 function normalizeCategory(cat) {
@@ -398,18 +412,61 @@ async function mapWithConcurrency(items, limit, mapper) {
   return out;
 }
 
-async function scrapeCompetitionLive(comp) {
-  const url = `${LEAGUE_BASE_URL}${comp.competitionId}`;
-  const html = await fetchText(url);
-  const grouped = parseClassificationByGroupSidgad(html);
-  const fallbackRows = grouped.length ? [] : parseClassificationSidgad(html);
-  const groups = grouped.length
-    ? grouped.map((g, idx) => ({
+async function scrapeCompetitionLive(page, comp) {
+  const clicked = await page.evaluate(id => {
+    const el = document.getElementById(String(id));
+    if (!el) return false;
+    el.click();
+    return true;
+  }, comp.competitionId);
+
+  if (!clicked) {
+    throw new Error(`Competition ${comp.competitionId} not found on portal`);
+  }
+
+  await page.waitForFunction(
+    () => {
+      const el = document.getElementById("tab_modal_contenido_competicion");
+      return el && el.innerHTML.length > 50;
+    },
+    { timeout: 8000 }
+  ).catch(() => {});
+
+  const groups = await page.evaluate(() => {
+    const container = document.getElementById("tab_modal_contenido_competicion");
+    if (!container) return [];
+
+    const titleEls = [...container.querySelectorAll(".div_titulo_fase_idc")];
+    return titleEls.map((titleEl, idx) => {
+      const title = (titleEl.textContent || "").replace(/\s+/g, " ").trim();
+      const tableEl = titleEl.nextElementSibling && titleEl.nextElementSibling.tagName === "TABLE"
+        ? titleEl.nextElementSibling
+        : null;
+      return {
+        groupName: title,
+        tableHtml: tableEl ? tableEl.outerHTML : "",
+        order: idx + 1,
+      };
+    }).filter(item => item.groupName && item.tableHtml);
+  });
+
+  const parsedGroups = groups.map((g, idx) => {
+    const rows = parseClassificationSidgad(g.tableHtml);
+    return {
       groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
       groupName: g.groupName,
-      teamCount: g.teamCount,
-      teams: g.teams,
-    }))
+      teamCount: rows.length,
+      teams: rows,
+    };
+  }).filter(g => g.teamCount > 0);
+
+  const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(await page.evaluate(() => {
+    const container = document.getElementById("tab_modal_contenido_competicion");
+    return container ? container.innerHTML : "";
+  }));
+
+  const groupsOut = parsedGroups.length
+    ? parsedGroups
     : (fallbackRows.length ? [{
       groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
       groupName: comp.competitionName,
@@ -420,9 +477,9 @@ async function scrapeCompetitionLive(comp) {
   return {
     competitionId: comp.competitionId,
     competitionName: comp.competitionName,
-    groupCount: groups.length,
-    teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
-    groups,
+    groupCount: groupsOut.length,
+    teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
+    groups: groupsOut,
   };
 }
 
@@ -433,6 +490,15 @@ async function getCategoriesData(options = {}) {
   const now = Date.now();
   if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
     return memoryCache;
+  }
+
+  if (useCache && !liveMode) {
+    const fileCache = await loadCategoriesFile();
+    if (fileCache) {
+      memoryCache = fileCache;
+      memoryCacheAt = now;
+      return fileCache;
+    }
   }
 
   try {
@@ -456,21 +522,39 @@ async function getCategoriesData(options = {}) {
     // Enriquiment live opcional (no bloquejant): només si liveMode=true
     let finalBuilt = snapshotBuilt;
     if (liveMode) {
-      const liveBuilt = await mapWithConcurrency(selected, MAX_CONCURRENCY, async (comp, idx) => {
-        try {
-          const live = await scrapeCompetitionLive(comp);
-          if (live.groupCount > 0 && live.teamCount > 0) return live;
-          return snapshotBuilt[idx];
-        } catch (err) {
-          errors.push({
-            competitionId: comp.competitionId,
-            competitionName: comp.competitionName,
-            error: err.message || "unknown",
-          });
-          return snapshotBuilt[idx];
-        }
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
       });
-      finalBuilt = liveBuilt;
+
+      try {
+        const page = await browser.newPage();
+        await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+        await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 60000 });
+        await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
+
+        const liveBuilt = [];
+        for (const comp of selected) {
+          try {
+            const live = await scrapeCompetitionLive(page, comp);
+            if (live.groupCount > 0 && live.teamCount > 0) {
+              liveBuilt.push(live);
+            } else {
+              liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+            }
+          } catch (err) {
+            errors.push({
+              competitionId: comp.competitionId,
+              competitionName: comp.competitionName,
+              error: err.message || "unknown",
+            });
+            liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+          }
+        }
+        finalBuilt = liveBuilt;
+      } finally {
+        await browser.close();
+      }
     }
 
     finalBuilt.forEach((item, idx) => {
