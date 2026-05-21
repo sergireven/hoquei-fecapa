@@ -16,6 +16,7 @@ const REMOTE_COMP_URLS = [
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/Millores-12/public/competicions-sidgad.json",
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/main/public/competicions-sidgad.json",
 ];
+const SIDGAD_CERILH_BASE_URL = "https://www.server2.sidgad.es/fecapa/cerilh/";
 const TARGET_CATEGORIES = new Set([
   "NACIONAL CATALANA",
   "PRIMERA CATALANA",
@@ -240,6 +241,115 @@ function fetchText(url, redirectsLeft = 5) {
       req.destroy(new Error(`Timeout: ${url}`));
     });
   });
+}
+
+function fetchFormText(url, formData) {
+  return new Promise((resolve, reject) => {
+    const payload = new URLSearchParams(formData || {}).toString();
+    const u = new URL(url);
+    const lib = u.protocol === "https:" ? https : http;
+
+    const req = lib.request({
+      protocol: u.protocol,
+      hostname: u.hostname,
+      port: u.port || (u.protocol === "https:" ? 443 : 80),
+      path: `${u.pathname}${u.search}`,
+      method: "POST",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ca,es;q=0.9,en;q=0.8",
+        "Accept-Encoding": "identity",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode} -> ${url}`));
+      }
+
+      res.setEncoding("utf8");
+      let body = "";
+      res.on("data", c => { body += c; });
+      res.on("end", () => resolve(body));
+    });
+
+    req.on("error", reject);
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Timeout: ${url}`));
+    });
+
+    req.write(payload);
+    req.end();
+  });
+}
+
+function mergeGroupsByName(baseGroups, extraGroups) {
+  const out = [];
+  const seen = new Set();
+
+  const pushUnique = (g) => {
+    const key = normalizeToken(g?.groupName || "");
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(g);
+  };
+
+  (baseGroups || []).forEach(pushUnique);
+  (extraGroups || []).forEach(pushUnique);
+  return out;
+}
+
+function extractClassificationFileFromLeagueHtml(html, competitionId) {
+  const strictRe = new RegExp(`id=['"]clasificaciones_btn['"][^>]*file=['"]([^'"]*clasif_idc_${String(competitionId)}_[^'"]+)['"]`, "i");
+  const strict = html.match(strictRe);
+  if (strict?.[1]) return strict[1];
+
+  const generic = html.match(/file=['"]([^'"]*clasif_idc_[^'"]+\.php)['"]/i);
+  return generic?.[1] || "";
+}
+
+function extractFilterValuesFromLeagueHtml(html) {
+  const values = new Set(["0"]);
+  const optionMatches = [...String(html || "").matchAll(/<option[^>]*value=['"]?(\d+)['"]?[^>]*>/gi)];
+  optionMatches.forEach(m => values.add(String(m[1])));
+  return [...values];
+}
+
+async function loadGroupedClassificationByFilters(comp, leagueHtml) {
+  const classFile = extractClassificationFileFromLeagueHtml(leagueHtml, comp.competitionId);
+  if (!classFile) return [];
+
+  const cleanFile = classFile.replace(/^\/+/, "");
+  const classUrl = new URL(cleanFile, SIDGAD_CERILH_BASE_URL).href;
+  const filterValues = extractFilterValuesFromLeagueHtml(leagueHtml).slice(0, 30);
+  let mergedGroups = [];
+
+  for (const filter of filterValues) {
+    try {
+      const html = await fetchFormText(classUrl, { filter });
+      const parsed = parseClassificationByGroupSidgad(html);
+
+      if (parsed.length > 0) {
+        mergedGroups = mergeGroupsByName(mergedGroups, parsed);
+        continue;
+      }
+
+      const flat = parseClassificationSidgad(html);
+      if (flat.length > 0) {
+        mergedGroups = mergeGroupsByName(mergedGroups, [{
+          groupName: `${comp.competitionName} - filter ${filter}`,
+          teamCount: flat.length,
+          teams: flat,
+        }]);
+      }
+    } catch {
+      // ignore individual filter failures; we'll use whatever groups were recovered
+    }
+  }
+
+  return mergedGroups;
 }
 
 async function loadCompIndex() {
@@ -626,7 +736,18 @@ async function scrapeCompetitionFromLeaguePage(comp) {
   const leagueUrl = `${LEAGUE_BASE_URL}${encodeURIComponent(String(comp.competitionId))}`;
   const html = await fetchText(leagueUrl);
 
-  const parsedGroups = parseClassificationByGroupSidgad(html);
+  let parsedGroups = parseClassificationByGroupSidgad(html);
+
+  // Some competitions (notably 4452) expose partial classification in /league HTML.
+  // Recover full hierarchy by loading the classification endpoint with all filters.
+  const recoveredByFilters = await loadGroupedClassificationByFilters(comp, html);
+  if (recoveredByFilters.length > parsedGroups.length) {
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} league filters recovered groups ${parsedGroups.length} -> ${recoveredByFilters.length}`
+    );
+    parsedGroups = mergeGroupsByName(parsedGroups, recoveredByFilters);
+  }
+
   if (parsedGroups.length > 0) {
     return buildCompetitionFromParsedGroups(comp, parsedGroups);
   }
