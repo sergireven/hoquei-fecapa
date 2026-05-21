@@ -828,31 +828,52 @@ async function scrapeCompetitionLive(page, comp) {
   // Extra wait for AJAX tables to fully render
   await new Promise(r => setTimeout(r, 1500));
 
-  const groups = await page.evaluate(() => {
+  const domExtract = await page.evaluate(() => {
     const toInt = (v) => {
       const n = parseInt(String(v || "").replace(/[^0-9-]/g, ""), 10);
       return Number.isNaN(n) ? null : n;
     };
 
     const container = document.getElementById("tab_modal_contenido_competicion");
-    if (!container) return [];
+    if (!container) {
+      return {
+        groups: [],
+        debug: {
+          hasContainer: false,
+          titlesCount: 0,
+          tablesCount: 0,
+          tableRowCounts: [],
+          sampleCellCounts: [],
+        },
+      };
+    }
 
     const titleEls = [...container.querySelectorAll(".div_titulo_fase_idc")];
     const tableEls = [...container.querySelectorAll("table.tabla_standard")];
+    const debug = {
+      hasContainer: true,
+      titlesCount: titleEls.length,
+      tablesCount: tableEls.length,
+      tableRowCounts: tableEls.slice(0, 10).map(t => (t.rows ? t.rows.length : 0)),
+      sampleCellCounts: tableEls.slice(0, 3).map(t => {
+        const firstRows = [...(t.rows || [])].slice(0, 4);
+        return firstRows.map(r => (r.cells ? r.cells.length : 0));
+      }),
+    };
 
-    return titleEls.map((titleEl, idx) => {
+    const groups = titleEls.map((titleEl, idx) => {
       const title = (titleEl.textContent || "").replace(/\s+/g, " ").trim();
       const tableEl = tableEls[idx] || null;
       if (!tableEl) return null;
 
-      const rows = [...tableEl.querySelectorAll("tbody tr, tr")].map(tr => {
-        const tds = [...tr.querySelectorAll("td")];
-        if (tds.length < 4) return null;
+      const rows = [...(tableEl.rows || [])].map(row => {
+        const cells = [...(row.cells || [])];
+        if (cells.length < 4) return null;
 
-        const position = toInt(tds[0]?.textContent || "");
+        const position = toInt(cells[0]?.textContent || "");
         if (!position || position < 1 || position > 40) return null;
 
-        const teamCell = tds[2] || null;
+        const teamCell = cells[2] || null;
         const teamName = String(
           teamCell?.querySelector(".no_mobile")?.textContent
           || teamCell?.textContent
@@ -861,9 +882,9 @@ async function scrapeCompetitionLive(page, comp) {
         if (!teamName) return null;
 
         const teamShortRaw = String(teamCell?.querySelector(".mobile")?.textContent || "").replace(/\s+/g, " ").trim();
-        const logoSrc = tds[1]?.querySelector("img")?.getAttribute("src") || null;
+        const logoSrc = cells[1]?.querySelector("img")?.getAttribute("src") || null;
 
-        const nums = tds.slice(3).map(td => toInt(td.textContent || ""));
+        const nums = cells.slice(3).map(td => toInt(td.textContent || ""));
         const [points = null, played = null, won = null, drawn = null, lost = null, goalsFor = null, goalsAgainst = null, goalDiff = null, penalties = null] = nums;
 
         return {
@@ -892,7 +913,11 @@ async function scrapeCompetitionLive(page, comp) {
         order: idx + 1,
       };
     }).filter(item => item && item.groupName && item.teamCount > 0);
+
+    return { groups, debug };
   });
+
+  const groups = domExtract.groups || [];
 
   const parsedGroupsFromDom = groups.map((g, idx) => ({
     groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
@@ -921,7 +946,7 @@ async function scrapeCompetitionLive(page, comp) {
   const selectedGroupNames = parsedGroups.map(g => g.groupName).slice(0, 8).join(" | ");
 
   console.log(
-    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"}`
+    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"} domTitles=${domExtract?.debug?.titlesCount ?? 0} domTables=${domExtract?.debug?.tablesCount ?? 0} domTableRows=${(domExtract?.debug?.tableRowCounts || []).join(",") || "none"} domCellCounts=${JSON.stringify(domExtract?.debug?.sampleCellCounts || [])}`
   );
 
   const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
