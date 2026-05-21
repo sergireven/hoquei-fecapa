@@ -73,10 +73,9 @@ async function main() {
     console.log("\n📊 Categories:");
     for (const [cat, comps] of Object.entries(categories)) {
       console.log(`   ${cat.toUpperCase()}: ${comps.length} competitions`);
-      comps.slice(0, 3).forEach(c => {
-        console.log(`      - ${c.competitionName} (${c.groupCount} groups, ${c.teamCount} teams)`);
+      comps.forEach(c => {
+        console.log(`      - [${c.competitionId || "n/a"}] ${c.competitionName} (${c.groupCount} groups, ${c.teamCount} teams)`);
       });
-      if (comps.length > 3) console.log(`      ... and ${comps.length - 3} more`);
     }
 
     // Guardar en archivo si se especifica

@@ -1580,13 +1580,14 @@ async function getCategoriesData(options = {}) {
     const persistedCategories = await loadCategoriesFile();
     const persistedById = buildPersistedCompetitionIndex(persistedCategories);
 
-    // Base robusta: snapshot pre-scrapejat (sense dependència de xarxa en runtime)
+    // ── Pas 1: Snapshot com a base síncrona (sense xarxa) ────────────────────
+    // Construeix les dades de cada competició a partir del JSON local.
+    // Serveix de fallback quan qualsevol fetch HTTP falla.
     const snapshotBuilt = selected.map(comp => {
       const rawComp = compIndex?.[comp.competitionId] || {};
       const built = buildCompetitionFromSnapshot(comp, rawComp);
 
-      // If sidgad snapshot is empty for this competition, reuse last good persisted
-      // FECAPA categories data to avoid blank admin cards (e.g. 3923 cases).
+      // Si el snapshot és buit, reutilitza l'última dada persistida vàlida.
       if ((built?.teamCount || 0) === 0) {
         const persistedComp = persistedById[String(comp.competitionId)] || null;
         if (persistedComp && (persistedComp.teamCount || 0) > 0) {
@@ -1601,8 +1602,45 @@ async function getCategoriesData(options = {}) {
       return built;
     });
 
-    // Enriquiment live opcional (no bloquejant): només si liveMode=true
-    let finalBuilt = snapshotBuilt;
+    // ── Pas 2: Enriquiment via league-page (HTTP, sense Puppeteer) ────────────
+    // Font primària per als grups: la pàgina /league/{id} de FECAPA retorna
+    // la classificació separada per grups amb títols (div_titulo_fase_idc).
+    // El snapshot actua de fallback quan el fetch falla o no retorna dades.
+    // S'executa sempre (mode snapshot i live) amb concurrència limitada.
+    const LEAGUE_ENRICH_TIMEOUT_MS = 25000;
+    console.log(`[fecapa-categories] league-enrich start | competitions=${selected.length} concurrency=${MAX_CONCURRENCY}`);
+    const leagueEnriched = await mapWithConcurrency(selected, MAX_CONCURRENCY, async (comp, idx) => {
+      const snapshot = snapshotBuilt[idx];
+      const progress = `[${idx + 1}/${selected.length}]`;
+      try {
+        const league = await withTimeout(
+          scrapeCompetitionFromLeaguePage(comp),
+          LEAGUE_ENRICH_TIMEOUT_MS,
+          `league-enrich/${comp.competitionId}`
+        );
+        const leagueGroups = league?.groupCount || 0;
+        const snapGroups = snapshot?.groupCount || 0;
+        if (leagueGroups > 0) {
+          const improved = leagueGroups > snapGroups ? ` (snapshot had ${snapGroups} grup${snapGroups !== 1 ? "s" : ""})` : "";
+          console.log(
+            `[fecapa-categories] ${progress} ${comp.competitionId} source=league groups=${leagueGroups} teams=${league.teamCount}${improved}`
+          );
+          return league;
+        }
+        // Pàgina de lliga sense dades útils → mantenim snapshot
+        return snapshot;
+      } catch (err) {
+        console.log(
+          `[fecapa-categories] ${progress} ${comp.competitionId} league-enrich failed -> source=snapshot | ${err.message || "unknown"}`
+        );
+        return snapshot;
+      }
+    });
+    console.log(`[fecapa-categories] league-enrich done`);
+
+    // ── Pas 3: Enriquiment live Puppeteer (opcional) ──────────────────────────
+    // Només s'activa amb liveMode=true. Usa leagueEnriched com a base de fallback.
+    let finalBuilt = leagueEnriched;
     let liveUsed = false;
     let liveUnavailableReason = "";
     if (liveMode) {
@@ -1625,6 +1663,8 @@ async function getCategoriesData(options = {}) {
         for (let i = 0; i < selected.length; i += 1) {
           const comp = selected[i];
           const progress = `[${i + 1}/${selected.length}]`;
+          // El fallback per a live és leagueEnriched (ja te grups correctes des del pas 2).
+          const enrichedBase = leagueEnriched[i];
           try {
             console.log(`[fecapa-categories] ${progress} ${comp.competitionId} | ${comp.competitionName} | try=portal`);
 
@@ -1635,31 +1675,35 @@ async function getCategoriesData(options = {}) {
             );
 
             if (live.groupCount > 0 && live.teamCount > 0) {
-              const fp = fingerprintCompetition(live);
+              // Si el portal retorna menys grups que leagueEnriched, preferim els del pas 2.
+              const bestLive = (enrichedBase?.groupCount || 0) > live.groupCount ? enrichedBase : live;
+
+              const fp = fingerprintCompetition(bestLive);
               const alreadySeenBy = liveFingerprints.get(fp);
               if (alreadySeenBy && alreadySeenBy !== comp.competitionId) {
                 console.log(
-                  `[fecapa-categories] ${progress} ${comp.competitionId} suspicious duplicate-live fingerprint with ${alreadySeenBy} -> fallback=snapshot`
+                  `[fecapa-categories] ${progress} ${comp.competitionId} suspicious duplicate-live fingerprint with ${alreadySeenBy} -> fallback=league-enrich`
                 );
-                liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+                liveBuilt.push(enrichedBase);
                 continue;
               }
 
               liveFingerprints.set(fp, comp.competitionId);
-              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=portal groups=${live.groupCount} teams=${live.teamCount}`);
-              liveBuilt.push(live);
+              const src = bestLive === enrichedBase ? "league-enrich(preferred)" : "portal";
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=${src} groups=${bestLive.groupCount} teams=${bestLive.teamCount}`);
+              liveBuilt.push(bestLive);
             } else {
-              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} empty live -> fallback=snapshot`);
-              liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+              console.log(`[fecapa-categories] ${progress} ${comp.competitionId} empty portal -> fallback=league-enrich groups=${enrichedBase?.groupCount || 0}`);
+              liveBuilt.push(enrichedBase);
             }
           } catch (err) {
-            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} failed -> fallback=snapshot | ${err.message || "unknown"}`);
+            console.log(`[fecapa-categories] ${progress} ${comp.competitionId} portal failed -> fallback=league-enrich | ${err.message || "unknown"}`);
             errors.push({
               competitionId: comp.competitionId,
               competitionName: comp.competitionName,
               error: err.message || "unknown",
             });
-            liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+            liveBuilt.push(enrichedBase);
           }
         }
         finalBuilt = liveBuilt;
@@ -1667,11 +1711,11 @@ async function getCategoriesData(options = {}) {
       } catch (err) {
         const msg = err?.message || "unknown";
         liveUnavailableReason = msg;
-        console.log(`[fecapa-categories] Live mode unavailable -> fallback=snapshot | ${msg}`);
+        console.log(`[fecapa-categories] Live mode unavailable -> fallback=league-enrich | ${msg}`);
         errors.push({
           competitionId: "live-mode",
           competitionName: "FECAPA live scraping",
-          error: `Live mode unavailable, fallback to snapshot: ${msg}`,
+          error: `Live mode unavailable, fallback to league-enrich: ${msg}`,
         });
       } finally {
         if (browser) {
@@ -1719,8 +1763,8 @@ async function getCategoriesData(options = {}) {
     const out = {
       ok: true,
       source: liveMode
-        ? (liveUsed ? "sidgad_snapshot+fecapa_live" : "sidgad_snapshot+fecapa_live_unavailable")
-        : "sidgad_snapshot",
+        ? (liveUsed ? "league_page+fecapa_live" : "league_page")
+        : "league_page",
       fetchedAt: new Date().toISOString(),
       liveMode,
       validate4452,
