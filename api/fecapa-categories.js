@@ -828,6 +828,9 @@ async function scrapeCompetitionLive(page, comp) {
     } else {
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     }
+    if (typeof window.$j === "function") {
+      window.$j(el).trigger("click");
+    }
     return {
       clicked: true,
       strategy,
@@ -860,16 +863,26 @@ async function scrapeCompetitionLive(page, comp) {
     { timeout: 12000 }
   ).catch(() => {});
 
-  let openMeta = await page.evaluate(() => {
+  let openMeta = await page.evaluate((expectedCompetitionId) => {
     const header = document.getElementById("titulo_competicion_header_text");
     const menu = document.getElementById("menu_idc_options_general");
+    const anchors = menu ? [...menu.querySelectorAll("a")].map(a => a.getAttribute("file") || "") : [];
+    const menuCompIds = [...new Set(anchors
+      .map((file) => {
+        const match = String(file || "").match(/(?:clasif_idc_|cal_idc_|des_idc_|portadas_1_)(\d+)/i);
+        return match ? String(match[1]) : "";
+      })
+      .filter(Boolean))];
+
     return {
       headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
       menuButtons: menu ? menu.querySelectorAll("a").length : 0,
       hasClassBtn: !!document.getElementById("clasificaciones_btn"),
       hasCalendarBtn: !!document.getElementById("calendario_btn"),
+      menuCompIds,
+      hasExpectedMenuBinding: menuCompIds.includes(String(expectedCompetitionId || "")),
     };
-  });
+  }, comp.competitionId);
 
   console.log(
     `[fecapa-categories] ${comp.competitionId} open-competition header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
@@ -877,11 +890,12 @@ async function scrapeCompetitionLive(page, comp) {
 
   if (requiresStrictPortalClassificationClick(comp.competitionId)) {
     console.log(
-      `[fecapa-categories] ${comp.competitionId} strict-flow step3-open-league header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0}`
+      `[fecapa-categories] ${comp.competitionId} strict-flow step3-open-league header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0} menuBinding=${openMeta.hasExpectedMenuBinding ? "ok" : "stale"} menuCompIds=${(openMeta.menuCompIds || []).join(",") || "none"}`
     );
   }
 
-  if (!openMeta.hasClassBtn) {
+  const strictNeedsRebind = requiresStrictPortalClassificationClick(comp.competitionId) && !openMeta.hasExpectedMenuBinding;
+  if (!openMeta.hasClassBtn || strictNeedsRebind) {
     // Race-condition guard: some competitions render menu tabs asynchronously.
     // Retry opening the same competition and re-check tabs before failing.
     await page.evaluate((id) => {
@@ -892,39 +906,128 @@ async function scrapeCompetitionLive(page, comp) {
       } else {
         row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       }
+      if (typeof window.$j === "function") {
+        window.$j(row).trigger("click");
+      }
     }, comp.competitionId);
 
     await page.waitForFunction(
-      () => {
+      ({ expectedCompetitionId, strictFlow }) => {
         const menu = document.getElementById("menu_idc_options_general");
         const hasClass = !!document.getElementById("clasificaciones_btn");
         const tabs = menu ? menu.querySelectorAll("a").length : 0;
-        return hasClass || tabs >= 2;
+        if (!strictFlow) return hasClass || tabs >= 2;
+
+        const anchors = menu ? [...menu.querySelectorAll("a")].map(a => a.getAttribute("file") || "") : [];
+        const menuCompIds = [...new Set(anchors
+          .map((file) => {
+            const match = String(file || "").match(/(?:clasif_idc_|cal_idc_|des_idc_|portadas_1_)(\d+)/i);
+            return match ? String(match[1]) : "";
+          })
+          .filter(Boolean))];
+        const hasExpectedBinding = menuCompIds.includes(String(expectedCompetitionId || ""));
+
+        return (hasClass || tabs >= 2) && hasExpectedBinding;
       },
       { timeout: 6000 }
+      ,
+      {
+        expectedCompetitionId: comp.competitionId,
+        strictFlow: requiresStrictPortalClassificationClick(comp.competitionId),
+      }
     ).catch(() => {});
 
-    openMeta = await page.evaluate(() => {
+    openMeta = await page.evaluate((expectedCompetitionId) => {
       const header = document.getElementById("titulo_competicion_header_text");
       const menu = document.getElementById("menu_idc_options_general");
+      const anchors = menu ? [...menu.querySelectorAll("a")].map(a => a.getAttribute("file") || "") : [];
+      const menuCompIds = [...new Set(anchors
+        .map((file) => {
+          const match = String(file || "").match(/(?:clasif_idc_|cal_idc_|des_idc_|portadas_1_)(\d+)/i);
+          return match ? String(match[1]) : "";
+        })
+        .filter(Boolean))];
+
       return {
         headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
         menuButtons: menu ? menu.querySelectorAll("a").length : 0,
         hasClassBtn: !!document.getElementById("clasificaciones_btn"),
         hasCalendarBtn: !!document.getElementById("calendario_btn"),
+        menuCompIds,
+        hasExpectedMenuBinding: menuCompIds.includes(String(expectedCompetitionId || "")),
       };
-    });
+    }, comp.competitionId);
 
     console.log(
-      `[fecapa-categories] ${comp.competitionId} open-competition retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
+      `[fecapa-categories] ${comp.competitionId} open-competition retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn} menuBinding=${openMeta.hasExpectedMenuBinding ? "ok" : "stale"} menuCompIds=${(openMeta.menuCompIds || []).join(",") || "none"}`
     );
 
     if (requiresStrictPortalClassificationClick(comp.competitionId)) {
       console.log(
-        `[fecapa-categories] ${comp.competitionId} strict-flow step3-retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0}`
+        `[fecapa-categories] ${comp.competitionId} strict-flow step3-retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0} menuBinding=${openMeta.hasExpectedMenuBinding ? "ok" : "stale"} menuCompIds=${(openMeta.menuCompIds || []).join(",") || "none"}`
       );
 
-      if (!openMeta.hasClassBtn) {
+      if (!openMeta.hasExpectedMenuBinding) {
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          await page.evaluate((id) => {
+            const row = document.getElementById(String(id));
+            if (!row) return;
+            if (typeof row.click === "function") {
+              row.click();
+            } else {
+              row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+            }
+            if (typeof window.$j === "function") {
+              window.$j(row).trigger("click");
+            }
+          }, comp.competitionId);
+
+          await page.waitForFunction(
+            ({ expectedCompetitionId }) => {
+              const menu = document.getElementById("menu_idc_options_general");
+              const anchors = menu ? [...menu.querySelectorAll("a")].map(a => a.getAttribute("file") || "") : [];
+              const menuCompIds = [...new Set(anchors
+                .map((file) => {
+                  const match = String(file || "").match(/(?:clasif_idc_|cal_idc_|des_idc_|portadas_1_)(\d+)/i);
+                  return match ? String(match[1]) : "";
+                })
+                .filter(Boolean))];
+              return menuCompIds.includes(String(expectedCompetitionId || ""));
+            },
+            { timeout: 2500 },
+            { expectedCompetitionId: comp.competitionId }
+          ).catch(() => {});
+
+          openMeta = await page.evaluate((expectedCompetitionId) => {
+            const header = document.getElementById("titulo_competicion_header_text");
+            const menu = document.getElementById("menu_idc_options_general");
+            const anchors = menu ? [...menu.querySelectorAll("a")].map(a => a.getAttribute("file") || "") : [];
+            const menuCompIds = [...new Set(anchors
+              .map((file) => {
+                const match = String(file || "").match(/(?:clasif_idc_|cal_idc_|des_idc_|portadas_1_)(\d+)/i);
+                return match ? String(match[1]) : "";
+              })
+              .filter(Boolean))];
+
+            return {
+              headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
+              menuButtons: menu ? menu.querySelectorAll("a").length : 0,
+              hasClassBtn: !!document.getElementById("clasificaciones_btn"),
+              hasCalendarBtn: !!document.getElementById("calendario_btn"),
+              menuCompIds,
+              hasExpectedMenuBinding: menuCompIds.includes(String(expectedCompetitionId || "")),
+            };
+          }, comp.competitionId);
+
+          console.log(
+            `[fecapa-categories] ${comp.competitionId} strict-flow rebind-attempt=${attempt} header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0} menuBinding=${openMeta.hasExpectedMenuBinding ? "ok" : "stale"} menuCompIds=${(openMeta.menuCompIds || []).join(",") || "none"}`
+          );
+
+          if (openMeta.hasExpectedMenuBinding) break;
+        }
+      }
+
+      if (!openMeta.hasClassBtn || !openMeta.hasExpectedMenuBinding) {
         const menuDebug = await page.evaluate(() => {
           const menu = document.getElementById("menu_idc_options_general");
           const anchors = menu ? [...menu.querySelectorAll("a")] : [];
@@ -941,6 +1044,10 @@ async function scrapeCompetitionLive(page, comp) {
         console.log(
           `[fecapa-categories] ${comp.competitionId} strict-flow step3-menu-debug ${JSON.stringify(menuDebug)}`
         );
+
+        if (!openMeta.hasExpectedMenuBinding) {
+          throw new Error(`Strict portal flow failed for ${comp.competitionId}: menu bound to different competition ids=${(openMeta.menuCompIds || []).join(",") || "none"}`);
+        }
       }
     }
   }
