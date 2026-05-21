@@ -575,7 +575,7 @@ function renderAuditFeedbackPanel(entry, grp, idx) {
       <input id="audit-incorrect-${domKey}" type="checkbox" ${saved.verdict === "incorrect" ? "checked" : ""} onchange="auditToggleIncorrect('${domKey}')" />
       Incorrecte
     </label>
-    <input id="audit-jokid-${domKey}" type="text" value="${esc(saved.manualJokcatGroupId || "")}" placeholder="ID grup/lliga jok.cat" style="width:100%;padding:6px 8px;border:1.5px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px" />
+    <input id="audit-jokid-${domKey}" type="text" value="${esc(saved.manualJokcatGroupId || grp.suggestedJokcatCompId || "")}" placeholder="ID grup/lliga jok.cat" style="width:100%;padding:6px 8px;border:1.5px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px" />
     <button onclick="auditSaveFeedback('${entry.competitionId}','${encodedGroupKey}','${domKey}')" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:7px 10px;border-radius:8px;cursor:pointer">Guardar</button>
     <div id="audit-msg-${domKey}" style="margin-top:6px;font-size:11px;color:#16a34a">${saved.updatedAt ? `Desat local: ${new Date(saved.updatedAt).toLocaleString("ca-ES")}` : ""}</div>
   </div>`;
@@ -588,8 +588,13 @@ function renderAuditGroupRow(entry, grp, idx) {
   const feedbackKey = `${entry.competitionId}::${groupKey}`;
   const feedback = loadAuditFeedback()[feedbackKey] || null;
   const fecapaRows = grp.fecapaClassification || [];
-  const jokRows = grp.jokcatClassification || [];
-  const effectiveJokId = grp.jokcatCompId || "—";
+  const jokRows = grp.jokcatClassification || grp.suggestedJokcatClassification || [];
+  const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
+  const rightSourceTag = grp.jokcatCompId
+    ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok match</span>`
+    : grp.suggestedJokcatCompId
+      ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok suggerit</span>`
+      : `<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">sense jok</span>`;
   const feedbackBadge = feedback?.verdict === "correct"
     ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Manual: Correcte</span>`
     : feedback?.verdict === "incorrect"
@@ -602,11 +607,12 @@ function renderAuditGroupRow(entry, grp, idx) {
   return `<div style="border:1.5px solid ${isMissing ? "#fde68a" : "#e2e6ef"};border-radius:10px;margin-bottom:10px;overflow:hidden">
     <div style="padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:${isMissing ? "#fffbeb" : "#f8fafc"}">
       ${isMissing ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok fallback</span>` : `<span style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">FECAPA↔jok</span>`}
+      ${rightSourceTag}
       ${freshnessTag}
       ${feedbackBadge}
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
       ${idsInfo}
-      ${grp.jokcatMatchRatio > 0 ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio}%</span>` : ""}
+      ${(grp.jokcatMatchRatio > 0 || grp.suggestedJokcatMatchRatio > 0) ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio}%</span>` : ""}
     </div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:8px;padding:8px">
       <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
@@ -615,7 +621,7 @@ function renderAuditGroupRow(entry, grp, idx) {
       </div>
       ${renderAuditFeedbackPanel(entry, grp, idx)}
       <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
-        <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">jok.cat</div>
+        <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">jok.cat ${grp.jokcatCompId ? "(matching)" : (grp.suggestedJokcatCompId ? "(suggerit)" : "")}</div>
         ${renderAuditTable(jokRows, "jok")}
       </div>
     </div>
@@ -624,14 +630,20 @@ function renderAuditGroupRow(entry, grp, idx) {
 
 function renderAuditCompetition(entry) {
   const statusIcon = entry.hasIncomplete ? "⚠️" : "✅";
-  const groupsHtml = entry.groups.map((g, idx) => renderAuditGroupRow(entry, g, idx)).join("");
+  const fecapaSide = entry.groups.filter(g => g.fecapaGroupId || g.groupId);
+  const jokOnly = entry.groups.filter(g => !g.fecapaGroupId && !g.groupId);
+  const groupsHtml = fecapaSide.map((g, idx) => renderAuditGroupRow(entry, g, idx)).join("");
+  const jokOnlyHtml = jokOnly.length ? `<details style="margin:8px 0 0;border:1.5px dashed #cbd5e1;border-radius:10px;padding:8px">
+    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#475569">Grups jok.cat sense parella FECAPA (${jokOnly.length})</summary>
+    <div style="margin-top:8px">${jokOnly.map((g, idx) => renderAuditGroupRow(entry, g, idx + fecapaSide.length)).join("")}</div>
+  </details>` : "";
   return `<details style="background:#fff;border-radius:12px;border:1.5px solid ${entry.hasIncomplete ? "#fde68a" : "#e2e6ef"};margin-bottom:10px">
     <summary style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none">
       <span style="font-size:15px">${statusIcon}</span>
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;flex:1">${esc(entry.competitionName)}</span>
       <span style="font-size:11px;color:#64748b">${entry.groupsOk} FECAPA${entry.groupsMissing > 0 ? ` + ${entry.groupsMissing} jok fallback` : ""} · ${entry.fecapaTeamCount} equips</span>
     </summary>
-    <div style="padding:0 10px 10px">${groupsHtml}</div>
+    <div style="padding:0 10px 10px">${groupsHtml}${jokOnlyHtml}</div>
   </details>`;
 }
 
