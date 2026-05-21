@@ -624,47 +624,73 @@ async function scrapeCompetitionLive(page, comp) {
     if (el && !el.classList.contains("listado_competiciones_fila")) {
       el = null;
     }
-    if (el && window.getComputedStyle(el).display === "none") {
-      el = null;
-    }
     let strategy = el ? "dom-id" : "";
 
     // 2) Season-scoped id match.
     if (!el) {
-      el = seasonRows.find(row => String(row.id || "") === targetId && window.getComputedStyle(row).display !== "none") || null;
+      el = seasonRows.find(row => String(row.id || "") === targetId) || null;
       if (el) strategy = "season-id";
+    }
+
+    // 2b) Search across all rows in case temp/category filters hide the target row.
+    if (!el) {
+      el = allRows.find(row => String(row.id || "") === targetId) || null;
+      if (el) strategy = "allrows-id";
     }
 
     // 3) href fallback.
     if (!el) {
       el = seasonRows.find(row => {
-        if (window.getComputedStyle(row).display === "none") return false;
         const href = row.getAttribute("href") || "";
         return href.includes(`/league/${targetId}`);
       }) || null;
       if (el) strategy = "href";
     }
 
+    if (!el) {
+      el = allRows.find(row => {
+        const href = row.getAttribute("href") || "";
+        return href.includes(`/league/${targetId}`);
+      }) || null;
+      if (el) strategy = "allrows-href";
+    }
+
     // 4) normalized name exact match.
     if (!el) {
       const wanted = normalize(competitionName);
       el = seasonRows.find(row => {
-        if (window.getComputedStyle(row).display === "none") return false;
         const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
         return wanted && rowName === wanted;
       }) || null;
       if (el) strategy = "name-exact";
     }
 
+    if (!el) {
+      const wanted = normalize(competitionName);
+      el = allRows.find(row => {
+        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
+        return wanted && rowName === wanted;
+      }) || null;
+      if (el) strategy = "allrows-name-exact";
+    }
+
     // 5) normalized name inclusion fallback.
     if (!el) {
       const wanted = normalize(competitionName);
       el = seasonRows.find(row => {
-        if (window.getComputedStyle(row).display === "none") return false;
         const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
         return wanted && (rowName.includes(wanted) || wanted.includes(rowName));
       }) || null;
       if (el) strategy = "name-includes";
+    }
+
+    if (!el) {
+      const wanted = normalize(competitionName);
+      el = allRows.find(row => {
+        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
+        return wanted && (rowName.includes(wanted) || wanted.includes(rowName));
+      }) || null;
+      if (el) strategy = "allrows-name-includes";
     }
 
     if (!el) {
@@ -682,6 +708,14 @@ async function scrapeCompetitionLive(page, comp) {
       };
     }
 
+    const computedDisplay = window.getComputedStyle(el).display || "";
+    const wasHidden = computedDisplay === "none";
+    if (wasHidden) {
+      // Some rows remain hidden after category filter despite being valid targets.
+      // Force visibility so portal click handlers can open the competition.
+      el.style.display = "inline-block";
+    }
+
     el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     return {
       clicked: true,
@@ -689,13 +723,14 @@ async function scrapeCompetitionLive(page, comp) {
       selectedId: el.id || "",
       selectedName: (el.getAttribute("idc_name") || el.getAttribute("name") || "").trim(),
       selectedDisplay: el.style?.display || "",
+      selectedWasHidden: wasHidden,
       totalRows: allRows.length,
       seasonRows: seasonRows.length,
     };
   }, { id: comp.competitionId, tempId: TEMP_ID, competitionName: comp.competitionName });
 
   console.log(
-    `[fecapa-categories] ${comp.competitionId} open-competition clicked=${clickedMeta.clicked} strategy=${clickedMeta.strategy} selectedId=${clickedMeta.selectedId || "none"} selectedName=${clickedMeta.selectedName || "none"} display=${clickedMeta.selectedDisplay || "n/a"} rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows}`
+    `[fecapa-categories] ${comp.competitionId} open-competition clicked=${clickedMeta.clicked} strategy=${clickedMeta.strategy} selectedId=${clickedMeta.selectedId || "none"} selectedName=${clickedMeta.selectedName || "none"} display=${clickedMeta.selectedDisplay || "n/a"} wasHidden=${clickedMeta.selectedWasHidden ? 1 : 0} rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows}`
   );
 
   if (!clickedMeta.clicked) {
