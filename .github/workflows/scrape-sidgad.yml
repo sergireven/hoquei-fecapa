@@ -37,11 +37,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Install Chromium (for Puppeteer)
-        run: |
-          npm install -g puppeteer
-          # Ensure chromium is available
-          npx puppeteer browsers install chromium
+      - name: Install Chrome (for Puppeteer)
+        run: npx puppeteer browsers install chrome
       
       - name: Run Sidgad scraper
         run: |
