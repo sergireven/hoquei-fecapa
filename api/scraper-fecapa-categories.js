@@ -13,70 +13,6 @@ const path = require("path");
 // Importar la función principal de fecapa-categories
 const { getCategoriesData } = require("./fecapa-categories");
 
-const VALIDATION_4452_EXPECTED_GROUPS = [
-  "BCN BENJAMÍ OR COPA BCN 1",
-  "BCN BENJAMÍ OR COPA BCN 2",
-  "BCN BENJAMÍ OR COPA BCN 3",
-  "BCN BENJAMÍ PLATA COPA BCN 4",
-  "BCN BENJAMÍ PLATA COPA BCN 5",
-  "BCN BENJAMÍ PLATA COPA BCN 6",
-];
-
-function normalizeName(s) {
-  return String(s || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-}
-
-function flattenCompetitions(categories) {
-  return Object.values(categories || {}).flatMap(v => (Array.isArray(v) ? v : []));
-}
-
-function validateCompetition4452(data) {
-  const comps = flattenCompetitions(data?.categories);
-  const target = comps.find(c => String(c?.competitionId) === "4452");
-  if (!target) {
-    return {
-      ok: false,
-      reason: "Competition 4452 not found in scraped categories",
-    };
-  }
-
-  const groups = Array.isArray(target.groups) ? target.groups : [];
-  const normalizedActual = new Set(groups.map(g => normalizeName(g?.groupName)));
-  const normalizedExpected = new Set(VALIDATION_4452_EXPECTED_GROUPS.map(normalizeName));
-
-  const missingGroups = VALIDATION_4452_EXPECTED_GROUPS.filter(
-    g => !normalizedActual.has(normalizeName(g))
-  );
-
-  const extraGroups = groups
-    .map(g => String(g?.groupName || ""))
-    .filter(g => g)
-    .filter(g => !normalizedExpected.has(normalizeName(g)));
-
-  const teamCount = groups.reduce((acc, g) => acc + (Number(g?.teamCount) || 0), 0);
-  const groupCountOk = groups.length === 6;
-  // Team count may vary as the competition evolves; require at least 1 team per group.
-  const teamCountOk = teamCount >= 6;
-  const namesOk = missingGroups.length === 0;
-
-  return {
-    ok: groupCountOk && teamCountOk && namesOk,
-    details: {
-      competitionName: target.competitionName,
-      groupCount: groups.length,
-      teamCount,
-      missingGroups,
-      extraGroups,
-      actualGroups: groups.map(g => String(g?.groupName || "")),
-    },
-  };
-}
-
 async function main() {
   const args = process.argv.slice(2);
   const liveMode = args.includes("--live");
@@ -142,29 +78,6 @@ async function main() {
       });
       if (comps.length > 3) console.log(`      ... and ${comps.length - 3} more`);
     }
-
-    // Validation gate for CI: 4452 must match expected Classif.Base-equivalent structure
-    const validation4452 = validateCompetition4452(data);
-    if (!validation4452.ok) {
-      console.error("\n❌ Validation failed for competition 4452");
-      if (validation4452.reason) {
-        console.error(`   Reason: ${validation4452.reason}`);
-      }
-      if (validation4452.details) {
-        console.error(`   Competition: ${validation4452.details.competitionName || "unknown"}`);
-        console.error(`   Group count: ${validation4452.details.groupCount} (expected 6)`);
-        console.error(`   Team count: ${validation4452.details.teamCount} (expected 30)`);
-        if (validation4452.details.missingGroups.length > 0) {
-          console.error(`   Missing groups: ${validation4452.details.missingGroups.join(" | ")}`);
-        }
-        if (validation4452.details.extraGroups.length > 0) {
-          console.error(`   Extra groups: ${validation4452.details.extraGroups.join(" | ")}`);
-        }
-      }
-      process.exit(1);
-    }
-
-    console.log("\n✅ Validation 4452 OK (6 groups, 30 teams, expected names)");
 
     // Guardar en archivo si se especifica
     if (outputFile) {

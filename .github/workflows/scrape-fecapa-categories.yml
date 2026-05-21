@@ -48,9 +48,18 @@ jobs:
           echo "Starting scraper at $(date -u)"
           node api/scraper-fecapa-categories.js \
             --live \
+            --category "NACIONAL CATALANA" \
+            --category "PRIMERA CATALANA" \
+            --category "SEGONA CATALANA" \
+            --category "TERCERA CATALANA" \
+            --category FEM \
+            --category JUNIOR \
+            --category JUVENIL \
+            --category INFANTIL \
             --category PREBENJAMI \
             --category BENJAMI \
             --category ALEVI \
+            --category VETERANS \
             --competition-timeout-ms 45000 \
             --output public/fecapa-categories.json
           echo "Scraper finished at $(date -u)"
