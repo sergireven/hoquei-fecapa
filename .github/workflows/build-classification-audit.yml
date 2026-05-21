@@ -1,0 +1,54 @@
+name: Build Classification Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 10 * * 1-5'
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build classification audit snapshot
+        run: node api/build-classification-audit.js
+
+      - name: Check for changes
+        id: git_status
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "status=dirty" >> $GITHUB_OUTPUT
+            git diff --name-only
+          fi
+
+      - name: Commit and push audit snapshot
+        if: steps.git_status.outputs.status == 'dirty'
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add public/classification-audit.json
+          git commit -m "chore: update classification audit snapshot [automated]"
+          git push
+
+      - name: Notify if no changes
+        if: steps.git_status.outputs.status == 'clean'
+        run: echo "✓ No changes to commit"
