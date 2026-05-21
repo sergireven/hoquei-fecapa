@@ -798,6 +798,8 @@ async function scrapeCompetitionLive(page, comp) {
     { previousHtml: beforeClickSnapshot }
   ).catch(() => {});
 
+  // Capture the container HTML atomically in the same evaluate as the post-click diagnostics,
+  // BEFORE the page's own JS can mutate the tables (which we observed causes cell count = 1).
   const postClickMeta = await page.evaluate(({ previousHtml }) => {
     const container = document.getElementById("tab_modal_contenido_competicion");
     const html = container ? (container.innerHTML || "") : "";
@@ -814,6 +816,8 @@ async function scrapeCompetitionLive(page, comp) {
       rowsCount: container ? container.querySelectorAll("table.tabla_standard tr").length : 0,
       firstGroupTitle: groupTitles[0] || "",
       groupTitlesSample: groupTitles.slice(0, 6),
+      // Snapshot the full HTML right now, before any further DOM mutation.
+      containerHtml: html,
       selectedTabId: (() => {
         const selected = document.querySelector(".menu_competicion_btn_selected");
         return selected ? (selected.id || "") : "";
@@ -825,137 +829,10 @@ async function scrapeCompetitionLive(page, comp) {
     `[fecapa-categories] ${comp.competitionId} post-click changed=${postClickMeta.changed} len=${postClickMeta.afterLen} groups=${postClickMeta.groupsCount} tables=${postClickMeta.tablesCount} rows=${postClickMeta.rowsCount} selectedTab=${postClickMeta.selectedTabId || "none"} firstGroup=${postClickMeta.firstGroupTitle || "none"} sampleGroups=${(postClickMeta.groupTitlesSample || []).join(" | ") || "none"}`
   );
 
-  // Extra wait for AJAX tables to fully render
-  await new Promise(r => setTimeout(r, 1500));
+  // Use the HTML snapshot captured right at post-click time (DOM-stable).
+  const containerHtml = postClickMeta.containerHtml || "";
 
-  const domExtract = await page.evaluate(() => {
-    const toInt = (v) => {
-      const n = parseInt(String(v || "").replace(/[^0-9-]/g, ""), 10);
-      return Number.isNaN(n) ? null : n;
-    };
-
-    const container = document.getElementById("tab_modal_contenido_competicion");
-    if (!container) {
-      return {
-        groups: [],
-        debug: {
-          hasContainer: false,
-          titlesCount: 0,
-          tablesCount: 0,
-          tableRowCounts: [],
-          sampleCellCounts: [],
-        },
-      };
-    }
-
-    const titleEls = [...container.querySelectorAll(".div_titulo_fase_idc")];
-    const tableEls = [...container.querySelectorAll("table.tabla_standard")];
-    const debug = {
-      hasContainer: true,
-      titlesCount: titleEls.length,
-      tablesCount: tableEls.length,
-      tableRowCounts: tableEls.slice(0, 10).map(t => (t.rows ? t.rows.length : 0)),
-      sampleCellCounts: tableEls.slice(0, 3).map(t => {
-        const firstRows = [...(t.rows || [])].slice(0, 4);
-        return firstRows.map(r => (r.cells ? r.cells.length : 0));
-      }),
-    };
-
-    const groups = titleEls.map((titleEl, idx) => {
-      const title = (titleEl.textContent || "").replace(/\s+/g, " ").trim();
-      const tableEl = tableEls[idx] || null;
-      if (!tableEl) return null;
-
-      const rows = [...(tableEl.rows || [])].map(row => {
-        let cells = [...(row.cells || [])];
-        if (cells.length < 4) {
-          // Some live tables are rendered with nested wrappers; include descendant cells as fallback.
-          cells = [...row.querySelectorAll("td")];
-        }
-        if (cells.length < 4) return null;
-
-        const cellTexts = cells.map(c => String(c?.textContent || "").replace(/\s+/g, " ").trim());
-        const posIdx = cellTexts.findIndex((txt) => /^\d{1,2}$/.test(txt));
-        if (posIdx < 0) return null;
-
-        const position = toInt(cellTexts[posIdx] || "");
-        if (!position || position < 1 || position > 40) return null;
-
-        const teamIdx = cells.findIndex((cell, i) => {
-          if (i <= posIdx) return false;
-          const txt = cellTexts[i] || "";
-          if (!txt || txt.length < 3) return false;
-          const hasNoMobile = !!cell.querySelector(".no_mobile");
-          const looksTeam = /[A-Za-zÀ-ÿ]/.test(txt) && !/^[-+]?\d+$/.test(txt);
-          return hasNoMobile || looksTeam;
-        });
-        if (teamIdx < 0) return null;
-
-        const teamCell = cells[teamIdx] || null;
-        const teamName = String(
-          teamCell?.querySelector(".no_mobile")?.textContent
-          || teamCell?.textContent
-          || ""
-        ).replace(/\s+/g, " ").trim();
-        if (!teamName) return null;
-
-        const teamShortRaw = String(teamCell?.querySelector(".mobile")?.textContent || "").replace(/\s+/g, " ").trim();
-        const logoCell = cells.find((cell, i) => i > posIdx && i < teamIdx && !!cell.querySelector("img")) || null;
-        const logoSrc = logoCell?.querySelector("img")?.getAttribute("src") || null;
-
-        const nums = cells
-          .slice(teamIdx + 1)
-          .map(td => toInt(td.textContent || ""))
-          .filter(n => n !== null);
-        if (nums.length < 3) return null;
-
-        const [points = null, played = null, won = null, drawn = null, lost = null, goalsFor = null, goalsAgainst = null, goalDiff = null, penalties = null] = nums;
-
-        return {
-          position,
-          teamId: null,
-          teamName,
-          teamShort: teamShortRaw || null,
-          logoSrc,
-          points,
-          played,
-          won,
-          drawn,
-          lost,
-          goalsFor,
-          goalsAgainst,
-          goalDiff,
-          penalties,
-        };
-      }).filter(Boolean);
-
-      return {
-        groupName: title,
-        tableHtml: tableEl.outerHTML,
-        teamCount: rows.length,
-        teams: rows,
-        order: idx + 1,
-      };
-    }).filter(item => item && item.groupName && item.teamCount > 0);
-
-    return { groups, debug };
-  });
-
-  const groups = domExtract.groups || [];
-
-  const parsedGroupsFromDom = groups.map((g, idx) => ({
-    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
-    groupName: g.groupName,
-    teamCount: g.teamCount || (g.teams || []).length,
-    teams: g.teams || [],
-  })).filter(g => g.teamCount > 0);
-
-  const containerHtml = await page.evaluate(() => {
-    const container = document.getElementById("tab_modal_contenido_competicion");
-    return container ? container.innerHTML : "";
-  });
-
-  // Regex parser is more resilient when tables are not direct siblings in the live DOM.
+  // Regex parser on the stable HTML snapshot.
   const parsedGroupsFromHtml = parseClassificationByGroupSidgad(containerHtml).map((g, idx) => ({
     groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
     groupName: g.groupName,
@@ -963,14 +840,12 @@ async function scrapeCompetitionLive(page, comp) {
     teams: g.teams,
   })).filter(g => g.teamCount > 0);
 
-  const parsedGroups = parsedGroupsFromHtml.length >= parsedGroupsFromDom.length
-    ? parsedGroupsFromHtml
-    : parsedGroupsFromDom;
+  const parsedGroups = parsedGroupsFromHtml;
 
   const selectedGroupNames = parsedGroups.map(g => g.groupName).slice(0, 8).join(" | ");
 
   console.log(
-    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"} domTitles=${domExtract?.debug?.titlesCount ?? 0} domTables=${domExtract?.debug?.tablesCount ?? 0} domTableRows=${(domExtract?.debug?.tableRowCounts || []).join(",") || "none"} domCellCounts=${JSON.stringify(domExtract?.debug?.sampleCellCounts || [])}`
+    `[fecapa-categories] ${comp.competitionId} parsed groups html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"}`
   );
 
   const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
