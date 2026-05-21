@@ -823,7 +823,11 @@ async function scrapeCompetitionLive(page, comp) {
       el.style.display = "inline-block";
     }
 
-    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (typeof el.click === "function") {
+      el.click();
+    } else {
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
     return {
       clicked: true,
       strategy,
@@ -882,7 +886,12 @@ async function scrapeCompetitionLive(page, comp) {
     // Retry opening the same competition and re-check tabs before failing.
     await page.evaluate((id) => {
       const row = document.getElementById(String(id));
-      if (row) row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      if (!row) return;
+      if (typeof row.click === "function") {
+        row.click();
+      } else {
+        row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      }
     }, comp.competitionId);
 
     await page.waitForFunction(
@@ -914,6 +923,25 @@ async function scrapeCompetitionLive(page, comp) {
       console.log(
         `[fecapa-categories] ${comp.competitionId} strict-flow step3-retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0}`
       );
+
+      if (!openMeta.hasClassBtn) {
+        const menuDebug = await page.evaluate(() => {
+          const menu = document.getElementById("menu_idc_options_general");
+          const anchors = menu ? [...menu.querySelectorAll("a")] : [];
+          return anchors.map((anchor, index) => ({
+            index,
+            id: anchor.id || "",
+            cls: anchor.className || "",
+            file: anchor.getAttribute("file") || "",
+            href: anchor.getAttribute("href") || "",
+            text: String(anchor.textContent || "").replace(/\s+/g, " ").trim(),
+          }));
+        });
+
+        console.log(
+          `[fecapa-categories] ${comp.competitionId} strict-flow step3-menu-debug ${JSON.stringify(menuDebug)}`
+        );
+      }
     }
   }
 
@@ -951,13 +979,24 @@ async function scrapeCompetitionLive(page, comp) {
   }
 
   const expectedClassFile = `clasif_idc_${comp.competitionId}_1.php`;
-  const clickedClassifications = await page.evaluate(async ({ expectedFile }) => {
+  const clickedClassifications = await page.evaluate(async ({ expectedFile, strictFlow }) => {
     const findClassificationsBtn = () => {
-      const strict = document.getElementById("clasificaciones_btn");
+      const menu = document.getElementById("menu_idc_options_general");
+      const menuButtons = menu
+        ? [...menu.querySelectorAll("a, button, [onclick]")]
+        : [];
+
+      const strict = menuButtons.find(el => el.id === "clasificaciones_btn")
+        || document.getElementById("clasificaciones_btn");
       if (strict) return strict;
 
-      const byExpectedFile = document.querySelector(`a[file='${expectedFile}'], button[file='${expectedFile}']`);
+      const byExpectedFile = menuButtons.find(el => (el.getAttribute("file") || "") === expectedFile)
+        || document.querySelector(`a[file='${expectedFile}'], button[file='${expectedFile}']`);
       if (byExpectedFile) return byExpectedFile;
+
+      if (strictFlow) {
+        return null;
+      }
 
       const byClasifFile = [...document.querySelectorAll("a[file*='clasif_idc_'], button[file*='clasif_idc_']")]
         .find(el => (el.getAttribute("file") || "").includes("clasif_idc_"));
@@ -981,11 +1020,27 @@ async function scrapeCompetitionLive(page, comp) {
     };
 
     const btn = findClassificationsBtn();
-    if (!btn) return { ok: false, reason: "missing-button" };
+    if (!btn) {
+      return {
+        ok: false,
+        reason: strictFlow ? "missing-button-in-active-menu" : "missing-button",
+      };
+    }
 
     const beforeFile = btn.getAttribute("file") || "";
     const filter = btn.getAttribute("filter") || "0";
     let forcedFile = false;
+
+    if (strictFlow && beforeFile && beforeFile !== expectedFile) {
+      return {
+        ok: false,
+        reason: "stale-button-file",
+        beforeFile,
+        afterFile: beforeFile,
+        forcedFile: false,
+        filter,
+      };
+    }
 
     if (!beforeFile || !beforeFile.includes("clasif_idc_") || beforeFile !== expectedFile) {
       btn.setAttribute("file", expectedFile);
@@ -1027,7 +1082,10 @@ async function scrapeCompetitionLive(page, comp) {
       forcedFile,
       filter,
     };
-  }, { expectedFile: expectedClassFile });
+  }, {
+    expectedFile: expectedClassFile,
+    strictFlow: requiresStrictPortalClassificationClick(comp.competitionId),
+  });
 
   if (requiresStrictPortalClassificationClick(comp.competitionId)) {
     console.log(
