@@ -21,7 +21,7 @@ const SIDGAD_COMP_FILE  = path.join(__dirname, "../public/competicions-sidgad.js
 const FEEDBACK_FILE     = path.join(__dirname, "../public/classification-audit-feedback.json");
 const OUT_FILE          = path.join(__dirname, "../public/classification-audit.json");
 
-const MIN_MATCH_RATIO   = 0.5;  // >= 50% d'equips coincidents per mapear
+const MIN_MATCH_RATIO   = 0.7;  // >= 70% d'equips coincidents per mapear
 const SCORE_WEIGHTS = { name: 0.20, teams: 0.55, size: 0.10, phase: 0.15 };
 const FECAPA_PLACEHOLDER_GROUP_NAME = "CLASIFICACION CLASSIFICATION CLASSIFICACIO CLASSIFICA";
 
@@ -294,6 +294,67 @@ function maxPjInJokcatComp(comp) {
   return Math.max(0, ...comp.classification.map(t => t.pj || 0));
 }
 
+function toFiniteOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function teamPlayedMap(rows, teamField) {
+  const map = {};
+  for (const row of rows || []) {
+    const teamNorm = normTeam(row?.[teamField]);
+    const played = toFiniteOrNull(row?.pj ?? row?.played ?? row?.J);
+    if (!teamNorm || played === null) continue;
+    if (!Number.isFinite(map[teamNorm]) || played > map[teamNorm]) map[teamNorm] = played;
+  }
+  return map;
+}
+
+function computeJokcatFreshness({ jornadesActuals, jokcatMaxPj, fecapaRows, jokcatRows, matchedPairs }) {
+  const hasGlobalReference = jornadesActuals > 0 && jokcatMaxPj !== null;
+  const staleByGlobal = hasGlobalReference ? jokcatMaxPj < jornadesActuals : false;
+
+  const fecapaPlayed = teamPlayedMap(fecapaRows || [], "teamName");
+  const jokPlayed = teamPlayedMap(jokcatRows || [], "team");
+
+  let comparedTeams = 0;
+  let jokBehindTeams = 0;
+  let maxBehindDelta = 0;
+
+  for (const pair of matchedPairs || []) {
+    const fPlayed = fecapaPlayed[pair.a];
+    const jPlayed = jokPlayed[pair.b];
+    if (!Number.isFinite(fPlayed) || !Number.isFinite(jPlayed)) continue;
+    comparedTeams++;
+    if (jPlayed < fPlayed) {
+      jokBehindTeams++;
+      maxBehindDelta = Math.max(maxBehindDelta, fPlayed - jPlayed);
+    }
+  }
+
+  const staleByTeamLag = jokBehindTeams > 0;
+  let reason = "no_reference";
+  if (staleByGlobal && staleByTeamLag) reason = "global_and_team_pj_lag";
+  else if (staleByGlobal) reason = "global_jornada_lag";
+  else if (staleByTeamLag) reason = "team_pj_lag";
+  else if (hasGlobalReference || comparedTeams > 0) reason = "in_sync";
+
+  const canDetermine = hasGlobalReference || comparedTeams > 0;
+  const isOutdated = canDetermine ? (staleByGlobal || staleByTeamLag) : null;
+  const isFresh = isOutdated === null ? null : !isOutdated;
+
+  return {
+    isFresh,
+    isOutdated,
+    reason,
+    staleByGlobal,
+    staleByTeamLag,
+    comparedTeams,
+    jokBehindTeams,
+    maxBehindDelta,
+  };
+}
+
 // ── Construeix índex de totes les competicions jok.cat ────────
 function buildJokcatIndex(dataJson) {
   const index = {}; // id → comp
@@ -454,9 +515,14 @@ async function main() {
         const jokcatComp   = hasMappedJokcat ? jokcatIndex[bestId] : null;
         const suggestedComp = !hasMappedJokcat ? bestComp : null;
         const jokcatMaxPj  = jokcatComp ? maxPjInJokcatComp(jokcatComp) : null;
-        const isFresh      = jokcatMaxPj !== null && jornadesActuals > 0
-          ? jokcatMaxPj >= jornadesActuals
-          : null; // null = no podem determinar
+        const freshness = computeJokcatFreshness({
+          jornadesActuals,
+          jokcatMaxPj,
+          fecapaRows: group.teams || [],
+          jokcatRows: jokcatComp?.classification || [],
+          matchedPairs: bestMatchesInfo.pairs,
+        });
+        const isFresh = freshness.isFresh;
 
         if (isFresh === true)  totalFresh++;
         if (isFresh === false) totalStale++;
@@ -494,6 +560,20 @@ async function main() {
           suggestedJokcatTeamCount: suggestedComp?.classification?.length || 0,
           jornadesActuals,
           isFresh,
+          jokcatOutdated: freshness.isOutdated,
+          freshnessReason: freshness.reason,
+          jokcatFreshness: {
+            isFresh: freshness.isFresh,
+            isOutdated: freshness.isOutdated,
+            reason: freshness.reason,
+            staleByGlobal: freshness.staleByGlobal,
+            staleByTeamLag: freshness.staleByTeamLag,
+            jornadesActuals,
+            jokcatMaxPj,
+            comparedTeams: freshness.comparedTeams,
+            jokBehindTeams: freshness.jokBehindTeams,
+            maxBehindDelta: freshness.maxBehindDelta,
+          },
           matchSource,
           manualFeedback: manualFeedback || null,
           status: "fecapa_ok",
@@ -531,7 +611,14 @@ async function main() {
         if (candidate.compositeScore < 0.45) continue;
 
         const jokcatMaxPj = maxPjInJokcatComp(jokComp);
-        const isFresh = jornadesActuals > 0 ? jokcatMaxPj >= jornadesActuals : null;
+        const freshness = computeJokcatFreshness({
+          jornadesActuals,
+          jokcatMaxPj,
+          fecapaRows: [],
+          jokcatRows: jokComp.classification || [],
+          matchedPairs: [],
+        });
+        const isFresh = freshness.isFresh;
 
         if (isFresh === true)  totalFresh++;
         if (isFresh === false) totalStale++;
@@ -561,6 +648,20 @@ async function main() {
           jokcatMaxPj,
           jornadesActuals,
           isFresh,
+          jokcatOutdated: freshness.isOutdated,
+          freshnessReason: freshness.reason,
+          jokcatFreshness: {
+            isFresh: freshness.isFresh,
+            isOutdated: freshness.isOutdated,
+            reason: freshness.reason,
+            staleByGlobal: freshness.staleByGlobal,
+            staleByTeamLag: freshness.staleByTeamLag,
+            jornadesActuals,
+            jokcatMaxPj,
+            comparedTeams: freshness.comparedTeams,
+            jokBehindTeams: freshness.jokBehindTeams,
+            maxBehindDelta: freshness.maxBehindDelta,
+          },
           status: "fecapa_missing",
         });
       }

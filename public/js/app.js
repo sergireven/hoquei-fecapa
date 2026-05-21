@@ -516,9 +516,16 @@ async function getAdminAuditData({ force = false } = {}) {
   return data;
 }
 
-function renderAuditFreshnessTag(isFresh) {
-  if (isFresh === true)  return `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Fresc</span>`;
-  if (isFresh === false) return `<span style="background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Desfasat</span>`;
+function renderAuditFreshnessTag(isFresh, isOutdated, reason) {
+  if (isOutdated === true || isFresh === false) {
+    const reasonText = reason === "team_pj_lag" || reason === "global_and_team_pj_lag"
+      ? " · PJ equips"
+      : reason === "global_jornada_lag"
+        ? " · Jornades"
+        : "";
+    return `<span style="background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">jok desactualitzat${reasonText}</span>`;
+  }
+  if (isFresh === true)  return `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">jok al dia</span>`;
   return `<span style="background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">?</span>`;
 }
 
@@ -557,14 +564,19 @@ function prepareAuditCompetitionForView(entry, queryNorm) {
 
   if (!filteredGroups.length) return null;
 
-  const groupsOk = filteredGroups.filter(g => g.fecapaGroupId || g.groupId).length;
+  const fecapaGroups = filteredGroups.filter(g => g.fecapaGroupId || g.groupId);
+  const groupsOk = fecapaGroups.length;
   const groupsMissing = filteredGroups.length - groupsOk;
+  const groupsWithMatching = fecapaGroups.filter(g => !!g.jokcatCompId).length;
+  const groupsWithoutMatching = groupsOk - groupsWithMatching;
   return {
     ...entry,
     groups: filteredGroups,
     groupsOk,
     groupsMissing,
-    hasIncomplete: groupsMissing > 0,
+    groupsWithMatching,
+    groupsWithoutMatching,
+    hasIncomplete: groupsWithoutMatching > 0,
   };
 }
 
@@ -630,7 +642,7 @@ function renderAuditFeedbackPanel(entry, grp, idx) {
 
 function renderAuditGroupRow(entry, grp, idx) {
   const isMissing = grp.status === "fecapa_missing";
-  const freshnessTag = isMissing ? renderAuditFreshnessTag(grp.isFresh) : "";
+  const freshnessTag = renderAuditFreshnessTag(grp.isFresh, grp.jokcatOutdated, grp.freshnessReason);
   const groupKey = grp.fecapaGroupId || grp.groupId || `${grp.groupName || "group"}_${idx}`;
   const feedbackKey = `${entry.competitionId}::${groupKey}`;
   const feedback = loadAuditFeedback()[feedbackKey] || null;
@@ -691,7 +703,7 @@ function renderAuditCompetition(entry) {
     <summary style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none">
       <span style="font-size:15px">${statusIcon}</span>
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;flex:1">${esc(entry.competitionName)}</span>
-      <span style="font-size:11px;color:#64748b">${entry.groupsOk} FECAPA${entry.groupsMissing > 0 ? ` + ${entry.groupsMissing} jok fallback` : ""} · ${entry.fecapaTeamCount} equips</span>
+      <span style="font-size:11px;color:#64748b">${entry.groupsWithMatching ?? 0}/${entry.groupsOk} grups amb matching${entry.groupsWithoutMatching > 0 ? ` · ${entry.groupsWithoutMatching} sense matching` : ""}${entry.groupsMissing > 0 ? ` · +${entry.groupsMissing} jok fallback` : ""} · ${entry.fecapaTeamCount} equips</span>
     </summary>
     <div style="padding:0 10px 10px">${groupsHtml}${jokOnlyHtml}</div>
   </details>`;
@@ -732,10 +744,10 @@ async function renderAdminAuditPanel(body) {
       </div>
       ${filteredCompetitions.length === 0 ? `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:14px;color:#64748b;font-size:12px">Sense resultats per a la cerca actual.</div>` : ""}
       ${incompleteComps.length ? `
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups faltants (${incompleteComps.length})</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups sense matching (${incompleteComps.length})</div>
         ${incompleteComps.map(renderAuditCompetition).join("")}
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Competicions completes (${okComps.length})</div>
-      ` : `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:0 2px 10px;text-transform:uppercase;letter-spacing:.05em">✅ Totes les competicions completes (${okComps.length})</div>`}
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Competicions amb matching complet (${okComps.length})</div>
+      ` : `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:0 2px 10px;text-transform:uppercase;letter-spacing:.05em">✅ Totes les competicions amb matching complet (${okComps.length})</div>`}
       ${okComps.map(renderAuditCompetition).join("")}`;
   } catch (err) {
     body.innerHTML = `${renderAdminTopNav("audit")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">
