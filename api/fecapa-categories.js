@@ -286,6 +286,42 @@ function mapRowFromSnapshot(row) {
   };
 }
 
+function splitFlatClassificationIntoGroups(rows) {
+  const groups = [];
+  let current = [];
+
+  for (const row of rows || []) {
+    const pos = toNumberOrNull(row?.pos);
+    if (pos === 1 && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(row);
+  }
+
+  if (current.length > 0) groups.push(current);
+  if (groups.length <= 1) return groups;
+
+  // If the last table is an overall aggregate of previous groups, drop it.
+  const last = groups[groups.length - 1] || [];
+  const prev = groups.slice(0, -1);
+  const lastTeams = new Set(last.map(r => normalizeToken(r?.team)));
+  const prevTeams = new Set(prev.flat().map(r => normalizeToken(r?.team)));
+
+  if (prevTeams.size > 0 && lastTeams.size >= prevTeams.size) {
+    let allContained = true;
+    for (const team of prevTeams) {
+      if (!lastTeams.has(team)) {
+        allContained = false;
+        break;
+      }
+    }
+    if (allContained) return prev;
+  }
+
+  return groups;
+}
+
 function buildCompetitionFromSnapshot(compMeta, compRaw) {
   const byGroup = compRaw?.classificationByGroup || {};
   const byGroupName = compRaw?.classificationByGroupName || {};
@@ -315,15 +351,25 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
   }
 
   if (!groups.length) {
-    const flat = (compRaw?.classification || []).map(mapRowFromSnapshot).filter(r => r.teamName);
-    groups = flat.length
-      ? [{
-        groupId: buildGroupId(compMeta.competitionId, compMeta.competitionName, 1),
-        groupName: compMeta.competitionName,
-        teamCount: flat.length,
-        teams: flat,
-      }]
+    const rawFlat = compRaw?.classification || [];
+    const split = splitFlatClassificationIntoGroups(rawFlat);
+    const hierarchyNames = Array.isArray(compRaw?.hierarchy?.groups)
+      ? compRaw.hierarchy.groups.map(g => String(g?.name || "").trim()).filter(Boolean)
       : [];
+
+    groups = split.map((chunk, idx) => {
+      const teams = chunk.map(mapRowFromSnapshot).filter(r => r.teamName);
+      const fallbackName = split.length > 1
+        ? `${compMeta.competitionName} - Grup ${idx + 1}`
+        : compMeta.competitionName;
+      const groupName = hierarchyNames[idx] || fallbackName;
+      return {
+        groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
+        groupName,
+        teamCount: teams.length,
+        teams,
+      };
+    }).filter(g => g.teamCount > 0);
   }
 
   return {
@@ -382,7 +428,7 @@ async function scrapeCompetitionLive(comp) {
 
 // ── Core function: obtenir dades de categories ───────────────
 async function getCategoriesData(options = {}) {
-  const { liveMode = true, useCache = true } = options;
+  const { liveMode = false, useCache = true } = options;
 
   const now = Date.now();
   if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
@@ -472,8 +518,7 @@ module.exports = async (req, res) => {
 
   try {
     const query = new URL(req.url || "", "http://localhost").searchParams;
-    const liveParam = query.get("live");
-    const liveMode = liveParam === null ? true : liveParam === "1";
+    const liveMode = query.get("live") === "1";
     const data = await getCategoriesData({ liveMode });
     return res.status(200).json(data);
   } catch (err) {
