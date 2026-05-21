@@ -18,6 +18,7 @@ const path = require("path");
 const FECAPA_CATS_FILE  = path.join(__dirname, "../public/fecapa-categories.json");
 const DATA_FILE         = path.join(__dirname, "../public/data.json");
 const SIDGAD_COMP_FILE  = path.join(__dirname, "../public/competicions-sidgad.json");
+const FEEDBACK_FILE     = path.join(__dirname, "../public/classification-audit-feedback.json");
 const OUT_FILE          = path.join(__dirname, "../public/classification-audit.json");
 
 const MIN_MATCH_RATIO   = 0.5;  // >= 50% d'equips coincidents per mapear
@@ -276,14 +277,34 @@ function buildUsedJokcatIds(mapping) {
   return used;
 }
 
+function loadFeedbackMap(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const direct = raw.matches && typeof raw.matches === "object" ? raw.matches : raw;
+  return direct && typeof direct === "object" ? direct : {};
+}
+
+function feedbackKeyForGroup(compId, group) {
+  const gKey = group?.groupId || group?.fecapaGroupId || group?.groupName || "";
+  return `${compId}::${gKey}`;
+}
+
+function getManualFeedbackForGroup(feedbackMap, compId, group) {
+  const keyById = feedbackKeyForGroup(compId, group);
+  if (feedbackMap[keyById]) return feedbackMap[keyById];
+  const keyByName = `${compId}::${group?.groupName || ""}`;
+  return feedbackMap[keyByName] || null;
+}
+
 async function main() {
   console.log("🔍 build-classification-audit — iniciant...\n");
 
-  const [fecapaCats, dataJson, sidgadComps] = await Promise.all([
+  const [fecapaCats, dataJson, sidgadComps, feedbackRaw] = await Promise.all([
     fs.readFile(FECAPA_CATS_FILE, "utf8").then(JSON.parse),
     fs.readFile(DATA_FILE, "utf8").then(JSON.parse),
     fs.readFile(SIDGAD_COMP_FILE, "utf8").then(JSON.parse).catch(() => ({})),
+    fs.readFile(FEEDBACK_FILE, "utf8").then(JSON.parse).catch(() => ({})),
   ]);
+  const feedbackMap = loadFeedbackMap(feedbackRaw);
 
   const jokcatIndex   = buildJokcatIndex(dataJson);
   const allJokcatIds  = Object.keys(jokcatIndex);
@@ -298,6 +319,7 @@ async function main() {
   let totalGroupsMissing = 0;
   let totalFresh = 0;
   let totalStale = 0;
+  let totalManualApplied = 0;
 
   for (const catKey of categoryKeys) {
     const comps = fecapaCats.categories?.[catKey] || [];
@@ -316,6 +338,7 @@ async function main() {
 
       for (const group of validFecapaGroups) {
         const fecapaTeams = fecapaGroupTeams(group);
+        const manualFeedback = getManualFeedbackForGroup(feedbackMap, fecapaId, group);
         let bestId    = null;
         let bestRatio = 0;
         let bestScore = -1;
@@ -342,12 +365,38 @@ async function main() {
           }
         }
 
-        const hasMappedJokcat = Boolean(
+        let hasMappedJokcat = Boolean(
           bestId
           && bestRatio >= MIN_MATCH_RATIO
           && bestScoreBreakdown.teamsScore >= minTeamScore
           && bestScoreBreakdown.compositeScore >= minCompositeScore
         );
+        let matchSource = hasMappedJokcat ? "auto" : "none";
+
+        if (manualFeedback?.manualJokcatGroupId) {
+          const forcedId = String(manualFeedback.manualJokcatGroupId).trim();
+          if (forcedId && jokcatIndex[forcedId]) {
+            bestId = forcedId;
+            const forcedComp = jokcatIndex[forcedId];
+            const forcedTeams = jokcatCompTeams(forcedComp);
+            bestRatio = matchRatio(fecapaTeams, forcedTeams);
+            bestScoreBreakdown = computeCandidateScore({
+              fecapaName,
+              jokName: forcedComp.name || "",
+              fecapaTeams,
+              jokTeams: forcedTeams,
+            });
+            hasMappedJokcat = true;
+            matchSource = "manual";
+            totalManualApplied++;
+          }
+        } else if (manualFeedback?.verdict === "incorrect") {
+          hasMappedJokcat = false;
+          bestId = null;
+          matchSource = "manual_reject";
+          totalManualApplied++;
+        }
+
         if (hasMappedJokcat) usedJokcatInThisComp.add(bestId);
 
         const jokcatComp   = hasMappedJokcat ? jokcatIndex[bestId] : null;
@@ -362,9 +411,11 @@ async function main() {
 
         groupEntries.push({
           groupId:         group.groupId,
+          fecapaGroupId:   group.groupId,
           groupName:       group.groupName,
           fecapaTeamCount: group.teamCount,
           fecapaTeams,
+          fecapaClassification: group.teams || [],
           jokcatCompId:    hasMappedJokcat ? bestId : null,
           jokcatCompName:  jokcatComp?.name || null,
           jokcatMatchRatio: hasMappedJokcat ? Math.round(bestRatio * 100) : 0,
@@ -377,6 +428,8 @@ async function main() {
           jokcatMaxPj,
           jornadesActuals,
           isFresh,
+          matchSource,
+          manualFeedback: manualFeedback || null,
           status: "fecapa_ok",
         });
       }
@@ -419,9 +472,11 @@ async function main() {
 
         missingGroups.push({
           groupId:         null,
+          fecapaGroupId:   null,
           groupName:       jokComp.name || jokId,
           fecapaTeamCount: null,
           fecapaTeams:     [],
+          fecapaClassification: [],
           jokcatCompId:    jokId,
           jokcatCompName:  jokComp.name || null,
           jokcatCategory:  jokComp._rawCategory || null,
@@ -461,10 +516,12 @@ async function main() {
     builtAt:          new Date().toISOString(),
     fecapaSource:     fecapaCats.source || "snapshot",
     jokcatUpdatedAt:  dataJson.updatedAt || null,
+    feedbackUpdatedAt: feedbackRaw?.updatedAt || null,
     totalGroupsOk,
     totalGroupsMissing,
     totalFresh,
     totalStale,
+    totalManualApplied,
     competitions:     auditEntries,
   };
 

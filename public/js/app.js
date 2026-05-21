@@ -491,6 +491,21 @@ function closeAdminPanel() {
 
 // ── Auditoria FECAPA ↔ jok.cat ────────────────────────────────
 let adminAuditCache = null;
+const AUDIT_FEEDBACK_KEY = "hoquei_audit_feedback_v1";
+
+function loadAuditFeedback() {
+  try { return JSON.parse(localStorage.getItem(AUDIT_FEEDBACK_KEY) || "{}"); }
+  catch { return {}; }
+}
+
+function saveAuditFeedback(feedback) {
+  localStorage.setItem(AUDIT_FEEDBACK_KEY, JSON.stringify(feedback));
+}
+
+function auditDomKey(compId, groupKey) {
+  return String(`${compId}__${groupKey}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
 async function getAdminAuditData({ force = false } = {}) {
   if (!force && adminAuditCache) return adminAuditCache;
   const res = await fetch(`./classification-audit.json?t=${Date.now()}`);
@@ -506,58 +521,110 @@ function renderAuditFreshnessTag(isFresh) {
   return `<span style="background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">?</span>`;
 }
 
-function renderAuditGroupTable(grp) {
-  const rows = grp.jokcatClassification || grp.fecapaTeams?.map((t, i) => ({ team: t, pos: i + 1 })) || [];
+function renderAuditTable(rows, source) {
+  const normalizedRows = (rows || []).map((t, i) => ({
+    pos: t.pos ?? t.position ?? i + 1,
+    team: t.team ?? t.teamName ?? "",
+    pts: t.pts ?? t.points ?? null,
+    pj: t.pj ?? t.played ?? null,
+    pg: t.pg ?? t.won ?? null,
+    pe: t.pe ?? t.drawn ?? null,
+    pp: t.pp ?? t.lost ?? null,
+    gf: t.gf ?? t.goalsFor ?? null,
+    gc: t.gc ?? t.goalsAgainst ?? null,
+  }));
+
+  if (!normalizedRows.length) return `<div style="padding:10px;color:#94a3b8;font-size:12px">Sense classificació (${source})</div>`;
+
+  return `<table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e6ef">
+      <th style="padding:5px 4px;text-align:left;color:#64748b;font-weight:600">#</th>
+      <th style="padding:5px 4px;text-align:left;color:#64748b;font-weight:600">Equip</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">Pts</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">J</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">G</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">E</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">P</th>
+    </tr></thead>
+    <tbody>${normalizedRows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
+      <td style="padding:4px 4px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
+      <td style="padding:4px 4px;color:#1a2035;font-weight:500">${esc(t.team)}</td>
+      <td style="padding:4px 4px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? "-"}</td>
+      <td style="padding:4px 4px;text-align:center">${t.pj ?? "-"}</td>
+      <td style="padding:4px 4px;text-align:center">${t.pg ?? "-"}</td>
+      <td style="padding:4px 4px;text-align:center">${t.pe ?? "-"}</td>
+      <td style="padding:4px 4px;text-align:center">${t.pp ?? "-"}</td>
+    </tr>`).join("")}</tbody>
+  </table>`;
+}
+
+function renderAuditFeedbackPanel(entry, grp, idx) {
+  const groupKey = grp.fecapaGroupId || grp.groupId || `${grp.groupName || "group"}_${idx}`;
+  const encodedGroupKey = encodeURIComponent(groupKey);
+  const domKey = auditDomKey(entry.competitionId, encodedGroupKey);
+  const feedbackKey = `${entry.competitionId}::${groupKey}`;
+  const saved = loadAuditFeedback()[feedbackKey] || {};
+
+  return `<div style="background:#fff;border:1.5px dashed #cbd5e1;border-radius:10px;padding:8px;min-width:220px">
+    <div style="font-size:11px;color:#334155;font-weight:700;margin-bottom:6px">Match manual</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px">
+      <input id="audit-correct-${domKey}" type="checkbox" ${saved.verdict === "correct" ? "checked" : ""} onchange="auditToggleCorrect('${domKey}')" />
+      Correcte
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px">
+      <input id="audit-incorrect-${domKey}" type="checkbox" ${saved.verdict === "incorrect" ? "checked" : ""} onchange="auditToggleIncorrect('${domKey}')" />
+      Incorrecte
+    </label>
+    <input id="audit-jokid-${domKey}" type="text" value="${esc(saved.manualJokcatGroupId || "")}" placeholder="ID grup/lliga jok.cat" style="width:100%;padding:6px 8px;border:1.5px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px" />
+    <button onclick="auditSaveFeedback('${entry.competitionId}','${encodedGroupKey}','${domKey}')" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:7px 10px;border-radius:8px;cursor:pointer">Guardar</button>
+    <div id="audit-msg-${domKey}" style="margin-top:6px;font-size:11px;color:#16a34a">${saved.updatedAt ? `Desat local: ${new Date(saved.updatedAt).toLocaleString("ca-ES")}` : ""}</div>
+  </div>`;
+}
+
+function renderAuditGroupRow(entry, grp, idx) {
   const isMissing = grp.status === "fecapa_missing";
-  const sourceTag = isMissing
-    ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok.cat fallback</span>`
-    : `<span style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">FECAPA</span>`;
-
   const freshnessTag = isMissing ? renderAuditFreshnessTag(grp.isFresh) : "";
-  const pjInfo = grp.jornadesActuals > 0
-    ? `<span style="font-size:10px;color:#64748b;margin-left:6px">J jugades: ${grp.jornadesActuals} | jok pj màx: ${grp.jokcatMaxPj ?? "—"}</span>`
-    : "";
+  const groupKey = grp.fecapaGroupId || grp.groupId || `${grp.groupName || "group"}_${idx}`;
+  const feedbackKey = `${entry.competitionId}::${groupKey}`;
+  const feedback = loadAuditFeedback()[feedbackKey] || null;
+  const fecapaRows = grp.fecapaClassification || [];
+  const jokRows = grp.jokcatClassification || [];
+  const effectiveJokId = grp.jokcatCompId || "—";
+  const feedbackBadge = feedback?.verdict === "correct"
+    ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Manual: Correcte</span>`
+    : feedback?.verdict === "incorrect"
+      ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Manual: Incorrecte</span>`
+      : "";
 
-  const teamsHtml = rows.length ? `
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e6ef">
-        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">#</th>
-        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">Equip</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">Pts</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">J</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">G</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">E</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">P</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GF</th>
-        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GC</th>
-      </tr></thead>
-      <tbody>${rows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
-        <td style="padding:5px 6px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
-        <td style="padding:5px 6px;color:#1a2035;font-weight:500">${esc(t.team ?? t.teamName ?? "")}</td>
-        <td style="padding:5px 6px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? t.points ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.pj ?? t.played ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.pg ?? t.won ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.pe ?? t.drawn ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.pp ?? t.lost ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.gf ?? t.goalsFor ?? "-"}</td>
-        <td style="padding:5px 6px;text-align:center">${t.gc ?? t.goalsAgainst ?? "-"}</td>
-      </tr>`).join("")}</tbody>
-    </table>` : `<div style="padding:8px;color:#94a3b8;font-size:12px">Sense dades de classificació</div>`;
+  const idsInfo = `<span style="font-size:10px;color:#64748b">FECAPA ID: ${esc(grp.fecapaGroupId || grp.groupId || "—")}</span>
+    <span style="font-size:10px;color:#64748b">jok ID: ${esc(effectiveJokId)}</span>`;
 
   return `<div style="border:1.5px solid ${isMissing ? "#fde68a" : "#e2e6ef"};border-radius:10px;margin-bottom:10px;overflow:hidden">
     <div style="padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:${isMissing ? "#fffbeb" : "#f8fafc"}">
-      ${sourceTag}${freshnessTag}
+      ${isMissing ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok fallback</span>` : `<span style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">FECAPA↔jok</span>`}
+      ${freshnessTag}
+      ${feedbackBadge}
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
-      ${pjInfo}
+      ${idsInfo}
       ${grp.jokcatMatchRatio > 0 ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio}%</span>` : ""}
     </div>
-    ${teamsHtml}
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:8px;padding:8px">
+      <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
+        <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">FECAPA</div>
+        ${renderAuditTable(fecapaRows, "fecapa")}
+      </div>
+      ${renderAuditFeedbackPanel(entry, grp, idx)}
+      <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
+        <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">jok.cat</div>
+        ${renderAuditTable(jokRows, "jok")}
+      </div>
+    </div>
   </div>`;
 }
 
 function renderAuditCompetition(entry) {
   const statusIcon = entry.hasIncomplete ? "⚠️" : "✅";
-  const groupsHtml = entry.groups.map(renderAuditGroupTable).join("");
+  const groupsHtml = entry.groups.map((g, idx) => renderAuditGroupRow(entry, g, idx)).join("");
   return `<details style="background:#fff;border-radius:12px;border:1.5px solid ${entry.hasIncomplete ? "#fde68a" : "#e2e6ef"};margin-bottom:10px">
     <summary style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none">
       <span style="font-size:15px">${statusIcon}</span>
@@ -606,6 +673,41 @@ async function renderAdminAuditPanel(body) {
     </div>`;
   }
 }
+
+window.auditToggleCorrect = domKey => {
+  const a = $(`audit-correct-${domKey}`);
+  const b = $(`audit-incorrect-${domKey}`);
+  if (a?.checked && b) b.checked = false;
+};
+window.auditToggleIncorrect = domKey => {
+  const a = $(`audit-correct-${domKey}`);
+  const b = $(`audit-incorrect-${domKey}`);
+  if (b?.checked && a) a.checked = false;
+};
+window.auditSaveFeedback = (compId, encodedGroupKey, domKey) => {
+  const groupKey = decodeURIComponent(encodedGroupKey);
+  const feedbackKey = `${compId}::${groupKey}`;
+  const correct = $(`audit-correct-${domKey}`)?.checked;
+  const incorrect = $(`audit-incorrect-${domKey}`)?.checked;
+  const manualJokcatGroupId = ($(`audit-jokid-${domKey}`)?.value || "").trim();
+
+  const verdict = correct ? "correct" : incorrect ? "incorrect" : null;
+  const all = loadAuditFeedback();
+  all[feedbackKey] = {
+    competitionId: compId,
+    groupKey,
+    verdict,
+    manualJokcatGroupId,
+    updatedAt: new Date().toISOString(),
+  };
+  saveAuditFeedback(all);
+
+  const msg = $(`audit-msg-${domKey}`);
+  if (msg) {
+    msg.style.color = "#92400e";
+    msg.textContent = `Desat local. Per aplicar al JSON d'auditoria, copia-ho a classification-audit-feedback.json i reexecuta el build.`;
+  }
+};
 
 async function renderAdminPanel() {
   const body = $("admin-body");
