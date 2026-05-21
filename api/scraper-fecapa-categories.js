@@ -4,7 +4,7 @@
  * Ejecutable para GitHub Actions y CLI
  * 
  * Uso:
- *   node api/scraper-fecapa-categories.js [--live] [--output file.json]
+ *   node api/scraper-fecapa-categories.js [--snapshot] [--output file.json]
  */
 
 const fs = require("fs").promises;
@@ -15,7 +15,7 @@ const { getCategoriesData } = require("./fecapa-categories");
 
 async function main() {
   const args = process.argv.slice(2);
-  const liveMode = args.includes("--live");
+  const liveMode = !args.includes("--snapshot");
   const outputIdx = args.indexOf("--output");
   const outputFile = outputIdx !== -1 ? args[outputIdx + 1] : null;
 

@@ -30,7 +30,7 @@ jobs:
       
       - name: Run FECAPA categories scraper
         run: |
-          node api/scraper-fecapa-categories.js
+          node api/scraper-fecapa-categories.js --live
         env:
           NODE_ENV: production
       
