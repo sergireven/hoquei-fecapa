@@ -140,9 +140,30 @@ function fetchText(url, redirectsLeft = 5) {
     }, (res) => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
         if (redirectsLeft <= 0) return reject(new Error("Too many redirects"));
-        const next = res.headers.location.startsWith("http")
+        const nextRaw = res.headers.location;
+        const next = nextRaw.startsWith("http")
           ? res.headers.location
           : new URL(res.headers.location, url).href;
+
+        // Some FECAPA redirects include only hash changes (or same URL),
+        // which can create redirect loops in Node requests.
+        const currentUrl = new URL(url);
+        const nextUrl = new URL(next);
+        currentUrl.hash = "";
+        nextUrl.hash = "";
+
+        if (nextUrl.href === currentUrl.href) {
+          // Retry once with trailing slash to break server canonicalization loops.
+          if (!currentUrl.pathname.endsWith("/")) {
+            const alt = new URL(currentUrl.href);
+            alt.pathname = `${alt.pathname}/`;
+            res.resume();
+            return resolve(fetchText(alt.href, redirectsLeft - 1));
+          }
+          res.resume();
+          return reject(new Error(`Redirect loop detected -> ${url}`));
+        }
+
         res.resume();
         return resolve(fetchText(next, redirectsLeft - 1));
       }
