@@ -81,15 +81,36 @@ async function main() {
   const liveMode = args.includes("--live");
   const outputIdx = args.indexOf("--output");
   const outputFile = outputIdx !== -1 ? args[outputIdx + 1] : null;
+  const timeoutIdx = args.indexOf("--competition-timeout-ms");
+  const timeoutArg = timeoutIdx !== -1 ? parseInt(args[timeoutIdx + 1], 10) : null;
+  const timeoutEnv = process.env.FECAPA_COMP_TIMEOUT_MS ? parseInt(process.env.FECAPA_COMP_TIMEOUT_MS, 10) : null;
+  const competitionTimeoutMs = Number.isFinite(timeoutArg) && timeoutArg > 0
+    ? timeoutArg
+    : (Number.isFinite(timeoutEnv) && timeoutEnv > 0 ? timeoutEnv : 45000);
+  const categoryArgs = [];
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "--category" && args[i + 1]) {
+      categoryArgs.push(String(args[i + 1]).trim());
+      i += 1;
+    }
+  }
 
   const timestamp = new Date().toISOString();
   console.log(`🏒 FECAPA Categories Scraper — ${timestamp}`);
   console.log(`   Mode: ${liveMode ? "LIVE SCRAPING" : "SNAPSHOT"}`);
+  console.log(`   Competition timeout: ${competitionTimeoutMs}ms`);
+  if (categoryArgs.length) {
+    console.log(`   Category filter: ${categoryArgs.join(", ")}`);
+  }
   console.log("");
 
   try {
     console.log("📚 Carregant dades de categories...");
-    const data = await getCategoriesData({ liveMode });
+    const data = await getCategoriesData({
+      liveMode,
+      categoriesFilter: categoryArgs.length ? categoryArgs : null,
+      competitionTimeoutMs,
+    });
 
     if (!data.ok) {
       console.error("❌ Error:", data.degraded ? "Degraded mode" : "Failed");
