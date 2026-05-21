@@ -141,15 +141,61 @@ function jaccardScore(aWords, bWords) {
   return union > 0 ? intersection / union : 0;
 }
 
+function teamTokens(name) {
+  return normalizeText(name)
+    .replace(/\b(CLUB|HOQUEI|PATI|PATI|PATIN|PATINS|ES|MOU|DEL|DE|LA|EL|ELS|LES)\b/g, " ")
+    .replace(/\b(CH|CP|CHP|UE|CE|UC|SK|HC|AE|CF|FS|SD|AD|CD|FC|CPI)\b/g, " ")
+    .replace(/\b(D|L)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(t => t.length > 1);
+}
+
+function teamNameSimilarity(a, b) {
+  const ta = new Set(teamTokens(a));
+  const tb = new Set(teamTokens(b));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = new Set([...ta, ...tb]).size;
+  return union > 0 ? inter / union : 0;
+}
+
+function bestTeamMatches(teamListA, teamListB, minSim = 0.72) {
+  const usedB = new Set();
+  let matched = 0;
+  const pairs = [];
+
+  for (const a of teamListA) {
+    let bestIdx = -1;
+    let bestSim = 0;
+    for (let i = 0; i < teamListB.length; i++) {
+      if (usedB.has(i)) continue;
+      const sim = teamNameSimilarity(a, teamListB[i]);
+      if (sim > bestSim) {
+        bestSim = sim;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0 && bestSim >= minSim) {
+      usedB.add(bestIdx);
+      matched++;
+      pairs.push({ a, b: teamListB[bestIdx], sim: Number(bestSim.toFixed(3)) });
+    }
+  }
+
+  return { matched, pairs };
+}
+
 function teamFingerprintScore(fecapaTeams, jokTeams) {
   if (!fecapaTeams.length || !jokTeams.length) return 0;
-  const f = new Set(fecapaTeams);
-  const j = new Set(jokTeams);
-  let matches = 0;
-  for (const t of f) if (j.has(t)) matches++;
+  const { matched: matches } = bestTeamMatches(fecapaTeams, jokTeams);
+  const fSize = new Set(fecapaTeams).size;
+  const jSize = new Set(jokTeams).size;
   if (matches === 0) return 0;
-  const precision = matches / j.size;
-  const recall = matches / f.size;
+  const precision = matches / jSize;
+  const recall = matches / fSize;
   return (2 * precision * recall) / (precision + recall);
 }
 
@@ -230,9 +276,8 @@ function jokcatCompTeams(comp) {
 // ── Calcula ratio de coincidència entre dos arrays de noms ───
 function matchRatio(setA, setB) {
   if (!setA.length || !setB.length) return 0;
-  const bSet = new Set(setB);
-  const matches = setA.filter(n => bSet.has(n)).length;
-  return matches / Math.max(setA.length, setB.length);
+  const { matched } = bestTeamMatches(setA, setB);
+  return matched / Math.max(setA.length, setB.length);
 }
 
 // ── Jornades jugades per una competició a competicions-sidgad.json ──
@@ -343,6 +388,7 @@ async function main() {
         let bestRatio = 0;
         let bestScore = -1;
         let bestScoreBreakdown = { nameScore: 0, teamsScore: 0, sizeScore: 0, compositeScore: 0 };
+        let bestMatchesInfo = { matched: 0, pairs: [] };
         let bestComp = null;
         const { minCompositeScore, minTeamScore } = matchingThresholds(catKey);
 
@@ -357,10 +403,12 @@ async function main() {
             fecapaTeams,
             jokTeams,
           });
-          const ratio = matchRatio(fecapaTeams, jokTeams);
+          const teamMatches = bestTeamMatches(fecapaTeams, jokTeams);
+          const ratio = teamMatches.matched / Math.max(fecapaTeams.length, jokTeams.length);
           if (candidate.compositeScore > bestScore) {
             bestScore = candidate.compositeScore;
             bestScoreBreakdown = candidate;
+            bestMatchesInfo = teamMatches;
             bestRatio = ratio;
             bestId = jokId;
             bestComp = jokComp;
@@ -388,6 +436,7 @@ async function main() {
               fecapaTeams,
               jokTeams: forcedTeams,
             });
+            bestMatchesInfo = bestTeamMatches(fecapaTeams, forcedTeams);
             bestComp = forcedComp;
             hasMappedJokcat = true;
             matchSource = "manual";
@@ -423,6 +472,10 @@ async function main() {
           jokcatCompId:    hasMappedJokcat ? bestId : null,
           jokcatCompName:  jokcatComp?.name || null,
           jokcatMatchRatio: hasMappedJokcat ? Math.round(bestRatio * 100) : 0,
+          coincidenceCalc: hasMappedJokcat ? `matched/max(FECAPA,JOK) = ${bestMatchesInfo.matched}/${Math.max(fecapaTeams.length, (jokcatComp?.classification?.length || 0))}` : null,
+          matchedTeamsCount: hasMappedJokcat ? bestMatchesInfo.matched : 0,
+          fecapaTeamsCountForCalc: fecapaTeams.length,
+          jokcatTeamsCountForCalc: jokcatComp?.classification?.length || 0,
           jokcatScore: hasMappedJokcat ? Number(bestScoreBreakdown.compositeScore.toFixed(3)) : 0,
           jokcatTeamScore: hasMappedJokcat ? Number(bestScoreBreakdown.teamsScore.toFixed(3)) : 0,
           jokcatNameScore: hasMappedJokcat ? Number(bestScoreBreakdown.nameScore.toFixed(3)) : 0,
@@ -434,6 +487,8 @@ async function main() {
           suggestedJokcatCompName: suggestedComp?.name || null,
           suggestedJokcatCategory: suggestedComp?._rawCategory || null,
           suggestedJokcatMatchRatio: !hasMappedJokcat && bestId ? Math.round(bestRatio * 100) : 0,
+          suggestedCoincidenceCalc: !hasMappedJokcat && bestId ? `matched/max(FECAPA,JOK) = ${bestMatchesInfo.matched}/${Math.max(fecapaTeams.length, (suggestedComp?.classification?.length || 0))}` : null,
+          suggestedMatchedTeamsCount: !hasMappedJokcat ? bestMatchesInfo.matched : 0,
           suggestedJokcatScore: !hasMappedJokcat ? Number((bestScoreBreakdown.compositeScore || 0).toFixed(3)) : 0,
           suggestedJokcatClassification: suggestedComp?.classification || null,
           suggestedJokcatTeamCount: suggestedComp?.classification?.length || 0,
@@ -461,6 +516,7 @@ async function main() {
           validFecapaGroups.flatMap(g => fecapaGroupTeams(g))
         );
         const overlap = jokTeams.filter(t => allFecapaTeamsInComp.has(t));
+        const teamMatchesMissing = bestTeamMatches([...allFecapaTeamsInComp], jokTeams, 0.72);
         const candidate = computeCandidateScore({
           fecapaName,
           jokName: jokComp.name || "",
@@ -491,7 +547,11 @@ async function main() {
           jokcatCompId:    jokId,
           jokcatCompName:  jokComp.name || null,
           jokcatCategory:  jokComp._rawCategory || null,
-          jokcatMatchRatio: Math.round((overlap.length / jokTeams.length) * 100),
+          jokcatMatchRatio: Math.round((teamMatchesMissing.matched / Math.max(allFecapaTeamsInComp.size, jokTeams.length)) * 100),
+          coincidenceCalc: `matched/max(FECAPA,JOK) = ${teamMatchesMissing.matched}/${Math.max(allFecapaTeamsInComp.size, jokTeams.length)}`,
+          matchedTeamsCount: teamMatchesMissing.matched,
+          fecapaTeamsCountForCalc: allFecapaTeamsInComp.size,
+          jokcatTeamsCountForCalc: jokTeams.length,
           jokcatScore: Number(candidate.compositeScore.toFixed(3)),
           jokcatTeamScore: Number(candidate.teamsScore.toFixed(3)),
           jokcatNameScore: Number(candidate.nameScore.toFixed(3)),
