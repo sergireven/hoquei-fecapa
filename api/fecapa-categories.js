@@ -758,7 +758,25 @@ async function scrapeCompetitionLive(page, comp) {
 
   const expectedClassFile = `clasif_idc_${comp.competitionId}_1.php`;
   const clickedClassifications = await page.evaluate(async ({ expectedFile }) => {
-    const btn = document.getElementById("clasificaciones_btn");
+    const findClassificationsBtn = () => {
+      const strict = document.getElementById("clasificaciones_btn");
+      if (strict) return strict;
+
+      const byExpectedFile = document.querySelector(`a[file='${expectedFile}'], button[file='${expectedFile}']`);
+      if (byExpectedFile) return byExpectedFile;
+
+      const byClasifFile = [...document.querySelectorAll("a[file*='clasif_idc_'], button[file*='clasif_idc_']")]
+        .find(el => (el.getAttribute("file") || "").includes("clasif_idc_"));
+      if (byClasifFile) return byClasifFile;
+
+      const byText = [...document.querySelectorAll("a, button")].find(el => {
+        const text = String(el.textContent || "").toUpperCase();
+        return text.includes("CLASSIFICACI");
+      });
+      return byText || null;
+    };
+
+    const btn = findClassificationsBtn();
     if (!btn) return { ok: false, reason: "missing-button" };
 
     const beforeFile = btn.getAttribute("file") || "";
@@ -808,12 +826,69 @@ async function scrapeCompetitionLive(page, comp) {
   }, { expectedFile: expectedClassFile });
 
   if (!clickedClassifications?.ok) {
-    throw new Error(`Competition ${comp.competitionId}: missing clasificaciones_btn`);
-  }
+    // Robust fallback for cases where the classification tab exists but is not bound
+    // to #clasificaciones_btn in the current DOM state.
+    const fallbackClassifications = await page.evaluate(async ({ expectedFile }) => {
+      const container = document.getElementById("tab_modal_contenido_competicion");
+      if (!container) return { ok: false, reason: "missing-container" };
 
-  console.log(
-    `[fecapa-categories] ${comp.competitionId} clicked clasificaciones_btn forcedFile=${clickedClassifications.forcedFile} fileBefore=${clickedClassifications.beforeFile || "none"} fileAfter=${clickedClassifications.afterFile || "none"} filter=${clickedClassifications.filter || "0"}`
-  );
+      const route = (typeof window.ruta_files === "string" && window.ruta_files)
+        ? window.ruta_files
+        : "https://www.server2.sidgad.es/fecapa";
+
+      const looksLikeClassification = (html) => {
+        const h = String(html || "");
+        return /div_titulo_fase_idc|tabla_standard|stats_table_special|\bPUNTS\b|\bPT\b|classificaci/i.test(h);
+      };
+
+      const tryLoadWithJq = async (file, filter = "0") => {
+        if (typeof window.$j !== "function") return "";
+        return new Promise((resolve) => {
+          let done = false;
+          const finish = (html) => {
+            if (done) return;
+            done = true;
+            resolve(String(html || ""));
+          };
+
+          window.$j("#tab_modal_contenido_competicion").load(
+            `${route}/cerilh/${file}`,
+            { filter },
+            () => finish(container.innerHTML || "")
+          );
+
+          setTimeout(() => finish(container.innerHTML || ""), 9000);
+        });
+      };
+
+      const candidates = [
+        expectedFile,
+        expectedFile.replace(/_1\.php$/, ".php"),
+      ];
+
+      for (const file of candidates) {
+        if (!file) continue;
+        const html = await tryLoadWithJq(file, "0");
+        if (looksLikeClassification(html)) {
+          return { ok: true, reason: "forced-load", file };
+        }
+      }
+
+      return { ok: false, reason: "forced-load-failed" };
+    }, { expectedFile: expectedClassFile });
+
+    if (!fallbackClassifications?.ok) {
+      throw new Error(`Competition ${comp.competitionId}: missing clasificaciones_btn`);
+    }
+
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} fallback classification-load ok reason=${fallbackClassifications.reason} file=${fallbackClassifications.file || "none"}`
+    );
+  } else {
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} clicked clasificaciones_btn forcedFile=${clickedClassifications.forcedFile} fileBefore=${clickedClassifications.beforeFile || "none"} fileAfter=${clickedClassifications.afterFile || "none"} filter=${clickedClassifications.filter || "0"}`
+    );
+  }
 
   await page.waitForFunction(
     ({ previousHtml }) => {
