@@ -583,7 +583,7 @@ async function get4452ReferenceCompetition() {
 
 async function validateAndNormalize4452Competition(compData) {
   if (String(compData?.competitionId || "") !== VALIDATION_COMP_4452_ID) {
-    return compData;
+    return { data: compData, validationIssue: null };
   }
 
   try {
@@ -592,7 +592,7 @@ async function validateAndNormalize4452Competition(compData) {
     const referenceFp = fingerprintCompetition(reference);
 
     if (currentFp === referenceFp) {
-      return compData;
+      return { data: compData, validationIssue: null };
     }
 
     const refGroupCount = reference?.groups?.length || 0;
@@ -609,18 +609,16 @@ async function validateAndNormalize4452Competition(compData) {
       console.log(
         `[fecapa-categories] 4452 validation soft-pass | ref=(${refGroupCount} grups, ${refTeamCount} equips) vs current=(${currentGroupCount} grups, ${currentTeamCount} equips)`
       );
-      return compData;
+      return { data: compData, validationIssue: null };
     }
 
-    const err = new Error("4452 validation failed against reference HTML");
-    err.code = "VALIDATION_4452_MISMATCH";
-    throw err;
+    const issue = `fingerprint mismatch: ref=(${refGroupCount}G,${refTeamCount}T) vs current=(${currentGroupCount}G,${currentTeamCount}T)`;
+    console.log(`[fecapa-categories] 4452 validation issue (non-fatal): ${issue}`);
+    return { data: compData, validationIssue: issue };
   } catch (err) {
-    if (err?.code === "VALIDATION_4452_MISMATCH") {
-      throw err;
-    }
-    console.log(`[fecapa-categories] 4452 validation skipped due to error: ${err.message}`);
-    return compData;
+    const issue = `validation error: ${err.message}`;
+    console.log(`[fecapa-categories] 4452 ${issue}`);
+    return { data: compData, validationIssue: issue };
   }
 }
 
@@ -1677,8 +1675,17 @@ async function getCategoriesData(options = {}) {
     }
 
     const validatedBuilt = [];
+    const validationIssues = [];
     for (let i = 0; i < finalBuilt.length; i += 1) {
-      validatedBuilt.push(await validateAndNormalize4452Competition(finalBuilt[i]));
+      const result = await validateAndNormalize4452Competition(finalBuilt[i]);
+      validatedBuilt.push(result.data);
+      if (result.validationIssue) {
+        validationIssues.push({
+          competitionId: finalBuilt[i]?.competitionId,
+          competitionName: finalBuilt[i]?.competitionName,
+          issue: result.validationIssue,
+        });
+      }
     }
 
     validatedBuilt.forEach((item, idx) => {
@@ -1686,6 +1693,16 @@ async function getCategoriesData(options = {}) {
       if (!categoryKey) return;
       categories[categoryKey].push(item);
     });
+
+    if (validationIssues.length > 0) {
+      validationIssues.forEach(issue => {
+        errors.push({
+          competitionId: issue.competitionId,
+          competitionName: issue.competitionName,
+          error: `Validation warning: ${issue.issue}`,
+        });
+      });
+    }
 
     const out = {
       ok: true,
@@ -1708,9 +1725,6 @@ async function getCategoriesData(options = {}) {
 
     return out;
   } catch (err) {
-    if (err?.code === "VALIDATION_4452_MISMATCH") {
-      throw err;
-    }
     return {
       ok: true,
       degraded: true,
