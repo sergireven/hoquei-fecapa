@@ -1532,7 +1532,13 @@ async function scrapeCompetitionLive(page, comp) {
 
 // ── Core function: obtenir dades de categories ───────────────
 async function getCategoriesData(options = {}) {
-  const { liveMode = false, useCache = true, categoriesFilter = null, competitionTimeoutMs = 45000 } = options;
+  const {
+    liveMode = false,
+    useCache = true,
+    categoriesFilter = null,
+    competitionTimeoutMs = 45000,
+    validate4452 = false,
+  } = options;
 
   const now = Date.now();
   if (useCache && !liveMode && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
@@ -1676,16 +1682,22 @@ async function getCategoriesData(options = {}) {
 
     const validatedBuilt = [];
     const validationIssues = [];
-    for (let i = 0; i < finalBuilt.length; i += 1) {
-      const result = await validateAndNormalize4452Competition(finalBuilt[i]);
-      validatedBuilt.push(result.data);
-      if (result.validationIssue) {
-        validationIssues.push({
-          competitionId: finalBuilt[i]?.competitionId,
-          competitionName: finalBuilt[i]?.competitionName,
-          issue: result.validationIssue,
-        });
+    if (validate4452) {
+      for (let i = 0; i < finalBuilt.length; i += 1) {
+        const result = await validateAndNormalize4452Competition(finalBuilt[i]);
+        validatedBuilt.push(result.data);
+        if (result.validationIssue) {
+          validationIssues.push({
+            competitionId: finalBuilt[i]?.competitionId,
+            competitionName: finalBuilt[i]?.competitionName,
+            issue: result.validationIssue,
+          });
+        }
       }
+    } else {
+      // Validation against static 4452 reference is intentionally opt-in.
+      // Keep scraping resilient when portal markup drifts.
+      validatedBuilt.push(...finalBuilt);
     }
 
     validatedBuilt.forEach((item, idx) => {
@@ -1711,6 +1723,7 @@ async function getCategoriesData(options = {}) {
         : "sidgad_snapshot",
       fetchedAt: new Date().toISOString(),
       liveMode,
+      validate4452,
       liveUsed,
       liveUnavailableReason,
       categoriesFilter: Array.from(effectiveCategories.values()),
