@@ -38,7 +38,7 @@ jobs:
         run: npm ci
       
       - name: Install Chrome (for Puppeteer)
-        run: npx puppeteer browsers install chrome
+        run: node node_modules/puppeteer/install.mjs
       
       - name: Run Sidgad scraper
         run: |
