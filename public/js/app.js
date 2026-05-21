@@ -352,9 +352,10 @@ function adminCategoryLabel(key) {
   return key;
 }
 
-async function getAdminFecapaCategoriesModel() {
-  if (adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
-  const res = await fetch(`/api/fecapa-categories?t=${Date.now()}`);
+async function getAdminFecapaCategoriesModel({ force = false } = {}) {
+  if (!force && adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
+  // Admin should inspect current scraper output, not snapshot cache.
+  const res = await fetch(`/api/fecapa-categories?live=1&t=${Date.now()}`);
   if (!res.ok) {
     let detail = "";
     try {
@@ -380,7 +381,7 @@ function renderAdminFecapaCompetition(comp) {
 async function renderAdminFecapaCategoriesPanel(body) {
   body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Scrapejant FECAPA en viu...</div>`;
   try {
-    const model = await getAdminFecapaCategoriesModel();
+    const model = await getAdminFecapaCategoriesModel({ force: true });
     const categoryKeys = ["nacional_catalana", "primera_catalana", "segona_catalana", "tercera_catalana", "fem", "junior", "juvenil", "infantil", "prebenjami", "benjami", "alevi", "veterans"];
     const totalComps = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k]?.length || 0), 0);
     const totalTeams = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k] || []).reduce((n, c) => n + (c.teamCount || 0), 0), 0);
@@ -391,7 +392,7 @@ async function renderAdminFecapaCategoriesPanel(body) {
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <div>
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Classificacions de FECAPA</div>
-            <div style="font-size:12px;color:#64748b">${totalComps} competicions · ${totalTeams} equips</div>
+            <div style="font-size:12px;color:#64748b">${totalComps} competicions · ${totalTeams} equips · source: ${esc(model.source || "unknown")}${Number(model.failedCompetitions || 0) ? ` · errors: ${model.failedCompetitions}` : ""}</div>
           </div>
           <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Re-scrapejar</button>
         </div>
