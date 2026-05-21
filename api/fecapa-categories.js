@@ -262,6 +262,20 @@ async function loadCategoriesFile() {
   return null;
 }
 
+function buildPersistedCompetitionIndex(persisted) {
+  const byId = {};
+  const cats = persisted?.categories || {};
+  for (const comps of Object.values(cats)) {
+    if (!Array.isArray(comps)) continue;
+    for (const comp of comps) {
+      const id = String(comp?.competitionId || "").trim();
+      if (!id) continue;
+      byId[id] = comp;
+    }
+  }
+  return byId;
+}
+
 function normalizeCategory(cat) {
   return normName(cat || "");
 }
@@ -468,6 +482,29 @@ function buildCompetitionFromParsedGroups(comp, parsedGroups) {
     teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
     groups: groupsOut,
   };
+}
+
+function normalizeFingerprintToken(s) {
+  return String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fingerprintCompetition(compData) {
+  const groups = Array.isArray(compData?.groups) ? compData.groups : [];
+  const groupPart = groups
+    .map(g => normalizeFingerprintToken(g?.groupName || ""))
+    .join("||");
+  const teamPart = groups
+    .flatMap(g => Array.isArray(g?.teams) ? g.teams : [])
+    .map(t => normalizeFingerprintToken(t?.teamName || ""))
+    .filter(Boolean)
+    .join("||");
+  return `${groupPart}###${teamPart}`;
 }
 
 async function scrapeCompetitionFromLeaguePage(comp) {
@@ -749,7 +786,7 @@ async function scrapeCompetitionLive(page, comp) {
     { timeout: 12000 }
   ).catch(() => {});
 
-  const openMeta = await page.evaluate(() => {
+  let openMeta = await page.evaluate(() => {
     const header = document.getElementById("titulo_competicion_header_text");
     const menu = document.getElementById("menu_idc_options_general");
     return {
@@ -763,6 +800,40 @@ async function scrapeCompetitionLive(page, comp) {
   console.log(
     `[fecapa-categories] ${comp.competitionId} open-competition header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
   );
+
+  if (!openMeta.hasClassBtn) {
+    // Race-condition guard: some competitions render menu tabs asynchronously.
+    // Retry opening the same competition and re-check tabs before failing.
+    await page.evaluate((id) => {
+      const row = document.getElementById(String(id));
+      if (row) row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }, comp.competitionId);
+
+    await page.waitForFunction(
+      () => {
+        const menu = document.getElementById("menu_idc_options_general");
+        const hasClass = !!document.getElementById("clasificaciones_btn");
+        const tabs = menu ? menu.querySelectorAll("a").length : 0;
+        return hasClass || tabs >= 2;
+      },
+      { timeout: 6000 }
+    ).catch(() => {});
+
+    openMeta = await page.evaluate(() => {
+      const header = document.getElementById("titulo_competicion_header_text");
+      const menu = document.getElementById("menu_idc_options_general");
+      return {
+        headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
+        menuButtons: menu ? menu.querySelectorAll("a").length : 0,
+        hasClassBtn: !!document.getElementById("clasificaciones_btn"),
+        hasCalendarBtn: !!document.getElementById("calendario_btn"),
+      };
+    });
+
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} open-competition retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
+    );
+  }
 
   // Ensure classification content is loaded (Classif.Base equivalent).
   // The portal loads tab content via AJAX, so we need to wait for actual content mutation.
@@ -1071,11 +1142,28 @@ async function getCategoriesData(options = {}) {
     };
 
     const errors = [];
+    const persistedCategories = await loadCategoriesFile();
+    const persistedById = buildPersistedCompetitionIndex(persistedCategories);
 
     // Base robusta: snapshot pre-scrapejat (sense dependència de xarxa en runtime)
     const snapshotBuilt = selected.map(comp => {
       const rawComp = compIndex?.[comp.competitionId] || {};
-      return buildCompetitionFromSnapshot(comp, rawComp);
+      const built = buildCompetitionFromSnapshot(comp, rawComp);
+
+      // If sidgad snapshot is empty for this competition, reuse last good persisted
+      // FECAPA categories data to avoid blank admin cards (e.g. 3923 cases).
+      if ((built?.teamCount || 0) === 0) {
+        const persistedComp = persistedById[String(comp.competitionId)] || null;
+        if (persistedComp && (persistedComp.teamCount || 0) > 0) {
+          return {
+            ...persistedComp,
+            competitionId: String(comp.competitionId),
+            competitionName: String(comp.competitionName || persistedComp.competitionName || ""),
+          };
+        }
+      }
+
+      return built;
     });
 
     // Enriquiment live opcional (no bloquejant): només si liveMode=true
@@ -1098,6 +1186,7 @@ async function getCategoriesData(options = {}) {
         await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
 
         const liveBuilt = [];
+        const liveFingerprints = new Map();
         for (let i = 0; i < selected.length; i += 1) {
           const comp = selected[i];
           const progress = `[${i + 1}/${selected.length}]`;
@@ -1111,6 +1200,17 @@ async function getCategoriesData(options = {}) {
             );
 
             if (live.groupCount > 0 && live.teamCount > 0) {
+              const fp = fingerprintCompetition(live);
+              const alreadySeenBy = liveFingerprints.get(fp);
+              if (alreadySeenBy && alreadySeenBy !== comp.competitionId) {
+                console.log(
+                  `[fecapa-categories] ${progress} ${comp.competitionId} suspicious duplicate-live fingerprint with ${alreadySeenBy} -> fallback=snapshot`
+                );
+                liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+                continue;
+              }
+
+              liveFingerprints.set(fp, comp.competitionId);
               console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=portal groups=${live.groupCount} teams=${live.teamCount}`);
               liveBuilt.push(live);
             } else {
