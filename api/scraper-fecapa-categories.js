@@ -15,7 +15,8 @@ const { getCategoriesData } = require("./fecapa-categories");
 
 async function main() {
   const args = process.argv.slice(2);
-  const liveMode = args.includes("--live");
+  const liveModeRequested = args.includes("--live");
+  const liveMode = false;
   const outputIdx = args.indexOf("--output");
   const outputFile = outputIdx !== -1 ? args[outputIdx + 1] : null;
   const timeoutIdx = args.indexOf("--competition-timeout-ms");
@@ -34,7 +35,10 @@ async function main() {
 
   const timestamp = new Date().toISOString();
   console.log(`🏒 FECAPA Categories Scraper — ${timestamp}`);
-  console.log(`   Mode: ${liveMode ? "LIVE SCRAPING" : "SNAPSHOT"}`);
+  console.log(`   Mode: SNAPSHOT`);
+  if (liveModeRequested) {
+    console.log("   ⚠️  --live ignorat (mode desactivat; pipeline estable de snapshot)");
+  }
   console.log(`   Competition timeout: ${competitionTimeoutMs}ms`);
   if (categoryArgs.length) {
     console.log(`   Category filter: ${categoryArgs.join(", ")}`);
@@ -58,6 +62,12 @@ async function main() {
     }
 
     const { fetchedCompetitions, failedCompetitions, categories } = data;
+    const totalGroups = Number.isFinite(data?.totalGroups)
+      ? data.totalGroups
+      : Object.values(categories || {}).reduce((acc, comps) => {
+        const arr = Array.isArray(comps) ? comps : [];
+        return acc + arr.reduce((sum, comp) => sum + (comp?.groupCount || 0), 0);
+      }, 0);
     console.log(`✓ Carregades ${fetchedCompetitions} competicions`);
     if (failedCompetitions > 0) {
       console.log(`⚠️  ${failedCompetitions} errors durant el fetch`);
@@ -77,6 +87,8 @@ async function main() {
         console.log(`      - [${c.competitionId || "n/a"}] ${c.competitionName} (${c.groupCount} groups, ${c.teamCount} teams)`);
       });
     }
+
+    console.log(`\n🔢 Total grups obtinguts: ${totalGroups}`);
 
     // Guardar en archivo si se especifica
     if (outputFile) {
