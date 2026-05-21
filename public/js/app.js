@@ -234,6 +234,7 @@ const ADMIN_BENJAMI_TARGET_COMP = "BENJAMÍ COPA BARCELONA 2ª FASE";
 let adminPanelView = "users";
 let adminBenjamiModelCache = null;
 let adminFecapaCategoriesCache = null;
+let adminAuditSearchQuery = "";
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -521,6 +522,52 @@ function renderAuditFreshnessTag(isFresh) {
   return `<span style="background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">?</span>`;
 }
 
+function normalizeAuditSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’'`´]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function auditGroupMatchesQuery(entry, grp, queryNorm) {
+  if (!queryNorm) return true;
+  const haystack = normalizeAuditSearchText([
+    entry.competitionName,
+    entry.competitionId,
+    grp.groupName,
+    grp.fecapaGroupId,
+    grp.groupId,
+    grp.jokcatCompId,
+    grp.suggestedJokcatCompId,
+    grp.jokcatCompName,
+    grp.suggestedJokcatCompName,
+  ].filter(Boolean).join(" "));
+  return haystack.includes(queryNorm);
+}
+
+function prepareAuditCompetitionForView(entry, queryNorm) {
+  const compHaystack = normalizeAuditSearchText(`${entry.competitionName || ""} ${entry.competitionId || ""}`);
+  const showAllGroups = queryNorm && compHaystack.includes(queryNorm);
+  const filteredGroups = showAllGroups || !queryNorm
+    ? (entry.groups || [])
+    : (entry.groups || []).filter(grp => auditGroupMatchesQuery(entry, grp, queryNorm));
+
+  if (!filteredGroups.length) return null;
+
+  const groupsOk = filteredGroups.filter(g => g.fecapaGroupId || g.groupId).length;
+  const groupsMissing = filteredGroups.length - groupsOk;
+  return {
+    ...entry,
+    groups: filteredGroups,
+    groupsOk,
+    groupsMissing,
+    hasIncomplete: groupsMissing > 0,
+  };
+}
+
 function renderAuditTable(rows, source) {
   const normalizedRows = (rows || []).map((t, i) => ({
     pos: t.pos ?? t.position ?? i + 1,
@@ -590,6 +637,8 @@ function renderAuditGroupRow(entry, grp, idx) {
   const fecapaRows = grp.fecapaClassification || [];
   const jokRows = grp.jokcatClassification || grp.suggestedJokcatClassification || [];
   const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
+  const effectiveJokName = grp.jokcatCompName || grp.suggestedJokcatCompName || "—";
+  const effectiveCalc = grp.coincidenceCalc || grp.suggestedCoincidenceCalc || "matched/max(FECAPA,JOK)";
   const rightSourceTag = grp.jokcatCompId
     ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok match</span>`
     : grp.suggestedJokcatCompId
@@ -602,7 +651,8 @@ function renderAuditGroupRow(entry, grp, idx) {
       : "";
 
   const idsInfo = `<span style="font-size:10px;color:#64748b">FECAPA ID: ${esc(grp.fecapaGroupId || grp.groupId || "—")}</span>
-    <span style="font-size:10px;color:#64748b">jok ID: ${esc(effectiveJokId)}</span>`;
+    <span style="font-size:10px;color:#64748b">jok ID: ${esc(effectiveJokId)}</span>
+    <span style="font-size:10px;color:#64748b">jok nom: ${esc(effectiveJokName)}</span>`;
 
   return `<div style="border:1.5px solid ${isMissing ? "#fde68a" : "#e2e6ef"};border-radius:10px;margin-bottom:10px;overflow:hidden">
     <div style="padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:${isMissing ? "#fffbeb" : "#f8fafc"}">
@@ -612,7 +662,7 @@ function renderAuditGroupRow(entry, grp, idx) {
       ${feedbackBadge}
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
       ${idsInfo}
-      ${(grp.jokcatMatchRatio > 0 || grp.suggestedJokcatMatchRatio > 0) ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio}%</span>` : ""}
+      ${(grp.jokcatMatchRatio > 0 || grp.suggestedJokcatMatchRatio > 0) ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio}% · ${esc(effectiveCalc)}</span>` : ""}
     </div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:8px;padding:8px">
       <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
@@ -651,8 +701,12 @@ async function renderAdminAuditPanel(body) {
   body.innerHTML = `${renderAdminTopNav("audit")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant auditoria...</div>`;
   try {
     const audit = await getAdminAuditData({ force: true });
-    const incompleteComps = audit.competitions.filter(c => c.hasIncomplete);
-    const okComps = audit.competitions.filter(c => !c.hasIncomplete);
+    const queryNorm = normalizeAuditSearchText(adminAuditSearchQuery);
+    const filteredCompetitions = (audit.competitions || [])
+      .map(entry => prepareAuditCompetitionForView(entry, queryNorm))
+      .filter(Boolean);
+    const incompleteComps = filteredCompetitions.filter(c => c.hasIncomplete);
+    const okComps = filteredCompetitions.filter(c => !c.hasIncomplete);
     const builtAt = audit.builtAt ? new Date(audit.builtAt).toLocaleString("ca-ES") : "—";
 
     body.innerHTML = `
@@ -668,10 +722,15 @@ async function renderAdminAuditPanel(body) {
               <span style="color:#166534">${audit.totalFresh} frescos</span> ·
               <span style="color:#854d0e">${audit.totalStale} desfasats</span>
             </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px">Mostrant ${filteredCompetitions.length} de ${(audit.competitions || []).length} competicions</div>
           </div>
-          <button onclick="adminReloadAudit()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" value="${esc(adminAuditSearchQuery)}" oninput="adminAuditSetSearch(this.value)" placeholder="Cercar grup, FECAPA ID, jok ID, nom..." style="width:min(320px,68vw);padding:8px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:12px;font-family:inherit;outline:none" />
+            <button onclick="adminReloadAudit()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+          </div>
         </div>
       </div>
+      ${filteredCompetitions.length === 0 ? `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:14px;color:#64748b;font-size:12px">Sense resultats per a la cerca actual.</div>` : ""}
       ${incompleteComps.length ? `
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups faltants (${incompleteComps.length})</div>
         ${incompleteComps.map(renderAuditCompetition).join("")}
@@ -828,6 +887,10 @@ window.adminReloadFecapaCategories = () => {
 };
 window.adminReloadAudit = () => {
   adminAuditCache = null;
+  renderAdminPanel();
+};
+window.adminAuditSetSearch = value => {
+  adminAuditSearchQuery = String(value || "");
   renderAdminPanel();
 };
 
