@@ -413,6 +413,51 @@ async function mapWithConcurrency(items, limit, mapper) {
   return out;
 }
 
+function buildCompetitionFromParsedGroups(comp, parsedGroups) {
+  const groupsOut = (parsedGroups || []).map((g, idx) => ({
+    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
+    groupName: g.groupName,
+    teamCount: g.teamCount || (g.teams || []).length,
+    teams: g.teams || [],
+  })).filter(g => g.teamCount > 0);
+
+  return {
+    competitionId: comp.competitionId,
+    competitionName: comp.competitionName,
+    groupCount: groupsOut.length,
+    teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
+    groups: groupsOut,
+  };
+}
+
+async function scrapeCompetitionFromLeaguePage(comp) {
+  const leagueUrl = `${LEAGUE_BASE_URL}${encodeURIComponent(String(comp.competitionId))}`;
+  const html = await fetchText(leagueUrl);
+
+  const parsedGroups = parseClassificationByGroupSidgad(html);
+  if (parsedGroups.length > 0) {
+    return buildCompetitionFromParsedGroups(comp, parsedGroups);
+  }
+
+  const flatRows = parseClassificationSidgad(html);
+  if (flatRows.length > 0) {
+    return {
+      competitionId: comp.competitionId,
+      competitionName: comp.competitionName,
+      groupCount: 1,
+      teamCount: flatRows.length,
+      groups: [{
+        groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
+        groupName: comp.competitionName,
+        teamCount: flatRows.length,
+        teams: flatRows,
+      }],
+    };
+  }
+
+  throw new Error(`No classification found at ${leagueUrl}`);
+}
+
 async function scrapeCompetitionLive(page, comp) {
   // Clear container so we can detect when new content is actually loaded
   await page.evaluate(() => {
@@ -420,13 +465,27 @@ async function scrapeCompetitionLive(page, comp) {
     if (el) el.innerHTML = "";
   });
 
-  const clicked = await page.evaluate(({ id, tempId }) => {
-    const seasonEl = document.querySelector(`.listado_competiciones_fila.temp_${tempId}#${CSS.escape(String(id))}`);
-    const el = seasonEl || document.getElementById(String(id));
+  const clicked = await page.evaluate(({ id, tempId, competitionName }) => {
+    const rows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
+    let el = rows.find(row => {
+      const href = row.getAttribute("href") || "";
+      return href.includes(`/league/${String(id)}`);
+    });
+
+    if (!el) {
+      const wanted = String(competitionName || "").trim().toUpperCase();
+      el = rows.find(row => {
+        const rowName = String(
+          row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || ""
+        ).replace(/\s+/g, " ").trim().toUpperCase();
+        return wanted && rowName === wanted;
+      }) || null;
+    }
+
     if (!el) return false;
     el.click();
     return true;
-  }, { id: comp.competitionId, tempId: TEMP_ID });
+  }, { id: comp.competitionId, tempId: TEMP_ID, competitionName: comp.competitionName });
 
   if (!clicked) {
     throw new Error(`Competition ${comp.competitionId} not found on portal`);
@@ -568,7 +627,16 @@ async function getCategoriesData(options = {}) {
         const liveBuilt = [];
         for (const comp of selected) {
           try {
-            const live = await scrapeCompetitionLive(page, comp);
+            // 1) Prefer direct league page parsing (same structure as Classif.Base render)
+            // 2) Fallback to portal click-flow if needed
+            let live = null;
+
+            try {
+              live = await scrapeCompetitionFromLeaguePage(comp);
+            } catch (leagueErr) {
+              live = await scrapeCompetitionLive(page, comp);
+            }
+
             if (live.groupCount > 0 && live.teamCount > 0) {
               liveBuilt.push(live);
             } else {
