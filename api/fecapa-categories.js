@@ -9,6 +9,9 @@ const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
 const TEMP_ID = "39"; // temporada 2025-26
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
 const CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
+const FECAPA_4452_REFERENCE_HTML = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
+const VALIDATION_COMP_4452_ID = "4452";
+const VALIDATION_COMP_4452_NAME = "BENJAMÍ COPA BARCELONA 2ª FASE";
 const REMOTE_COMP_URLS = [
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/Millores-12/public/competicions-sidgad.json",
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/main/public/competicions-sidgad.json",
@@ -33,6 +36,7 @@ const MAX_CONCURRENCY = 6;
 let memoryCache = null;
 let memoryCacheAt = 0;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+let validation4452Cache = null;
 
 function decodeHtmlEntities(s) {
   return String(s || "")
@@ -262,6 +266,20 @@ async function loadCategoriesFile() {
   return null;
 }
 
+function buildPersistedCompetitionIndex(persisted) {
+  const byId = {};
+  const cats = persisted?.categories || {};
+  for (const comps of Object.values(cats)) {
+    if (!Array.isArray(comps)) continue;
+    for (const comp of comps) {
+      const id = String(comp?.competitionId || "").trim();
+      if (!id) continue;
+      byId[id] = comp;
+    }
+  }
+  return byId;
+}
+
 function normalizeCategory(cat) {
   return normName(cat || "");
 }
@@ -468,6 +486,91 @@ function buildCompetitionFromParsedGroups(comp, parsedGroups) {
     teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
     groups: groupsOut,
   };
+}
+
+function normalizeFingerprintToken(s) {
+  return String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fingerprintCompetition(compData) {
+  const groups = Array.isArray(compData?.groups) ? compData.groups : [];
+  const groupPart = groups
+    .map(g => normalizeFingerprintToken(g?.groupName || ""))
+    .join("||");
+  const teamPart = groups
+    .flatMap(g => Array.isArray(g?.teams) ? g.teams : [])
+    .map(t => normalizeFingerprintToken(t?.teamName || ""))
+    .filter(Boolean)
+    .join("||");
+  return `${groupPart}###${teamPart}`;
+}
+
+function parse4452ReferenceFromHtml(html) {
+  const titleNeedle = `<span id="titulo_competicion_header_text">${VALIDATION_COMP_4452_NAME}</span>`;
+  const titleIdx = html.indexOf(titleNeedle);
+  if (titleIdx < 0) {
+    throw new Error("4452 reference title not found in HTML");
+  }
+
+  const containerStart = html.lastIndexOf("<div class=\"tab_modal_container\"", titleIdx);
+  if (containerStart < 0) {
+    throw new Error("4452 reference container start not found");
+  }
+
+  const containerEndMarker = html.indexOf("<!--tab_modal_container-->", titleIdx);
+  if (containerEndMarker < 0) {
+    throw new Error("4452 reference container end marker not found");
+  }
+  const containerEnd = html.indexOf("</div>", containerEndMarker);
+  if (containerEnd < 0) {
+    throw new Error("4452 reference container end tag not found");
+  }
+
+  const containerHtml = html.slice(containerStart, containerEnd + 6);
+  const parsedGroups = parseClassificationByGroupSidgad(containerHtml);
+  if (!parsedGroups.length) {
+    throw new Error("4452 reference groups could not be parsed");
+  }
+
+  return buildCompetitionFromParsedGroups(
+    {
+      competitionId: VALIDATION_COMP_4452_ID,
+      competitionName: VALIDATION_COMP_4452_NAME,
+    },
+    parsedGroups
+  );
+}
+
+async function get4452ReferenceCompetition() {
+  if (validation4452Cache) return validation4452Cache;
+
+  const raw = await fs.readFile(FECAPA_4452_REFERENCE_HTML, "utf8");
+  validation4452Cache = parse4452ReferenceFromHtml(raw);
+  return validation4452Cache;
+}
+
+async function validateAndNormalize4452Competition(compData) {
+  if (String(compData?.competitionId || "") !== VALIDATION_COMP_4452_ID) {
+    return compData;
+  }
+
+  const reference = await get4452ReferenceCompetition();
+  const currentFp = fingerprintCompetition(compData);
+  const referenceFp = fingerprintCompetition(reference);
+
+  if (currentFp !== referenceFp) {
+    const err = new Error("4452 validation failed against reference HTML");
+    err.code = "VALIDATION_4452_MISMATCH";
+    throw err;
+  }
+
+  return compData;
 }
 
 async function scrapeCompetitionFromLeaguePage(comp) {
@@ -749,7 +852,7 @@ async function scrapeCompetitionLive(page, comp) {
     { timeout: 12000 }
   ).catch(() => {});
 
-  const openMeta = await page.evaluate(() => {
+  let openMeta = await page.evaluate(() => {
     const header = document.getElementById("titulo_competicion_header_text");
     const menu = document.getElementById("menu_idc_options_general");
     return {
@@ -763,6 +866,40 @@ async function scrapeCompetitionLive(page, comp) {
   console.log(
     `[fecapa-categories] ${comp.competitionId} open-competition header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
   );
+
+  if (!openMeta.hasClassBtn) {
+    // Race-condition guard: some competitions render menu tabs asynchronously.
+    // Retry opening the same competition and re-check tabs before failing.
+    await page.evaluate((id) => {
+      const row = document.getElementById(String(id));
+      if (row) row.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }, comp.competitionId);
+
+    await page.waitForFunction(
+      () => {
+        const menu = document.getElementById("menu_idc_options_general");
+        const hasClass = !!document.getElementById("clasificaciones_btn");
+        const tabs = menu ? menu.querySelectorAll("a").length : 0;
+        return hasClass || tabs >= 2;
+      },
+      { timeout: 6000 }
+    ).catch(() => {});
+
+    openMeta = await page.evaluate(() => {
+      const header = document.getElementById("titulo_competicion_header_text");
+      const menu = document.getElementById("menu_idc_options_general");
+      return {
+        headerText: header ? (header.textContent || "").replace(/\s+/g, " ").trim() : "",
+        menuButtons: menu ? menu.querySelectorAll("a").length : 0,
+        hasClassBtn: !!document.getElementById("clasificaciones_btn"),
+        hasCalendarBtn: !!document.getElementById("calendario_btn"),
+      };
+    });
+
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} open-competition retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
+    );
+  }
 
   // Ensure classification content is loaded (Classif.Base equivalent).
   // The portal loads tab content via AJAX, so we need to wait for actual content mutation.
@@ -987,6 +1124,41 @@ async function scrapeCompetitionLive(page, comp) {
     };
   }, { previousHtml: beforeClickSnapshot });
 
+  const domLeagueBlocks = await page.evaluate(() => {
+    const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+    const root = document.getElementById("tab_modal_contenido_competicion");
+    if (!root) return [];
+
+    const containers = [...root.querySelectorAll(".leagueContainer")];
+    if (!containers.length) return [];
+
+    return containers.map((container, idx) => {
+      const id = String(container.id || "");
+      let groupName = "";
+
+      const idMatch = id.match(/^league_(.+)$/);
+      if (idMatch) {
+        const btn = document.getElementById(`${idMatch[1]}_button`);
+        if (btn) groupName = clean(btn.textContent || "");
+      }
+
+      if (!groupName) {
+        const byOrder = root.querySelectorAll(".leagueButton")[idx];
+        if (byOrder) groupName = clean(byOrder.textContent || "");
+      }
+
+      if (!groupName) {
+        const title = container.querySelector("h1,h2,h3,h4,.font-bold,.title");
+        if (title) groupName = clean(title.textContent || "");
+      }
+
+      return {
+        groupName: groupName || `Grup ${idx + 1}`,
+        html: container.innerHTML || "",
+      };
+    });
+  });
+
   console.log(
     `[fecapa-categories] ${comp.competitionId} post-click changed=${postClickMeta.changed} len=${postClickMeta.afterLen} groups=${postClickMeta.groupsCount} tables=${postClickMeta.tablesCount} rows=${postClickMeta.rowsCount} selectedTab=${postClickMeta.selectedTabId || "none"} firstGroup=${postClickMeta.firstGroupTitle || "none"} sampleGroups=${(postClickMeta.groupTitlesSample || []).join(" | ") || "none"}`
   );
@@ -1002,12 +1174,25 @@ async function scrapeCompetitionLive(page, comp) {
     teams: g.teams,
   })).filter(g => g.teamCount > 0);
 
-  const parsedGroups = parsedGroupsFromHtml;
+  const parsedGroupsFromLeagueContainers = (domLeagueBlocks || []).map((block, idx) => {
+    const rows = parseClassificationSidgad(block.html || "");
+    if (!rows.length) return null;
+    return {
+      groupId: buildGroupId(comp.competitionId, block.groupName, idx + 1),
+      groupName: block.groupName,
+      teamCount: rows.length,
+      teams: rows,
+    };
+  }).filter(Boolean);
+
+  const parsedGroups = parsedGroupsFromLeagueContainers.length > parsedGroupsFromHtml.length
+    ? parsedGroupsFromLeagueContainers
+    : parsedGroupsFromHtml;
 
   const selectedGroupNames = parsedGroups.map(g => g.groupName).slice(0, 8).join(" | ");
 
   console.log(
-    `[fecapa-categories] ${comp.competitionId} parsed groups html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"}`
+    `[fecapa-categories] ${comp.competitionId} parsed groups html=${parsedGroupsFromHtml.length} leagueContainers=${parsedGroupsFromLeagueContainers.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"}`
   );
 
   const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
@@ -1071,11 +1256,28 @@ async function getCategoriesData(options = {}) {
     };
 
     const errors = [];
+    const persistedCategories = await loadCategoriesFile();
+    const persistedById = buildPersistedCompetitionIndex(persistedCategories);
 
     // Base robusta: snapshot pre-scrapejat (sense dependència de xarxa en runtime)
     const snapshotBuilt = selected.map(comp => {
       const rawComp = compIndex?.[comp.competitionId] || {};
-      return buildCompetitionFromSnapshot(comp, rawComp);
+      const built = buildCompetitionFromSnapshot(comp, rawComp);
+
+      // If sidgad snapshot is empty for this competition, reuse last good persisted
+      // FECAPA categories data to avoid blank admin cards (e.g. 3923 cases).
+      if ((built?.teamCount || 0) === 0) {
+        const persistedComp = persistedById[String(comp.competitionId)] || null;
+        if (persistedComp && (persistedComp.teamCount || 0) > 0) {
+          return {
+            ...persistedComp,
+            competitionId: String(comp.competitionId),
+            competitionName: String(comp.competitionName || persistedComp.competitionName || ""),
+          };
+        }
+      }
+
+      return built;
     });
 
     // Enriquiment live opcional (no bloquejant): només si liveMode=true
@@ -1098,6 +1300,7 @@ async function getCategoriesData(options = {}) {
         await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
 
         const liveBuilt = [];
+        const liveFingerprints = new Map();
         for (let i = 0; i < selected.length; i += 1) {
           const comp = selected[i];
           const progress = `[${i + 1}/${selected.length}]`;
@@ -1111,6 +1314,17 @@ async function getCategoriesData(options = {}) {
             );
 
             if (live.groupCount > 0 && live.teamCount > 0) {
+              const fp = fingerprintCompetition(live);
+              const alreadySeenBy = liveFingerprints.get(fp);
+              if (alreadySeenBy && alreadySeenBy !== comp.competitionId) {
+                console.log(
+                  `[fecapa-categories] ${progress} ${comp.competitionId} suspicious duplicate-live fingerprint with ${alreadySeenBy} -> fallback=snapshot`
+                );
+                liveBuilt.push(snapshotBuilt[liveBuilt.length]);
+                continue;
+              }
+
+              liveFingerprints.set(fp, comp.competitionId);
               console.log(`[fecapa-categories] ${progress} ${comp.competitionId} ok source=portal groups=${live.groupCount} teams=${live.teamCount}`);
               liveBuilt.push(live);
             } else {
@@ -1145,7 +1359,12 @@ async function getCategoriesData(options = {}) {
       }
     }
 
-    finalBuilt.forEach((item, idx) => {
+    const validatedBuilt = [];
+    for (let i = 0; i < finalBuilt.length; i += 1) {
+      validatedBuilt.push(await validateAndNormalize4452Competition(finalBuilt[i]));
+    }
+
+    validatedBuilt.forEach((item, idx) => {
       const categoryKey = selected[idx]?.category;
       if (!categoryKey) return;
       categories[categoryKey].push(item);
@@ -1172,6 +1391,9 @@ async function getCategoriesData(options = {}) {
 
     return out;
   } catch (err) {
+    if (err?.code === "VALIDATION_4452_MISMATCH") {
+      throw err;
+    }
     return {
       ok: true,
       degraded: true,
