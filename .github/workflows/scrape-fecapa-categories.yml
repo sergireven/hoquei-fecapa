@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Chromium (for Puppeteer)
+      - name: Install Chrome (for Puppeteer)
         run: |
-          npx puppeteer browsers install chromium
+          npx puppeteer browsers install chrome
       
       - name: Run FECAPA categories scraper
         run: |
