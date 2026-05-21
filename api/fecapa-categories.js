@@ -808,7 +808,17 @@ async function scrapeCompetitionLive(page, comp) {
         const text = String(el.textContent || "").toUpperCase();
         return text.includes("CLASSIFICACI");
       });
-      return byText || null;
+      if (byText) return byText;
+
+      // Some competitions expose classification only via onclick/href handlers,
+      // without id/file/text markers.
+      const byHandler = [...document.querySelectorAll("a, button, [onclick]")].find(el => {
+        const onclick = String(el.getAttribute("onclick") || "").toLowerCase();
+        const href = String(el.getAttribute("href") || "").toLowerCase();
+        return onclick.includes("clasif") || href.includes("clasif");
+      });
+
+      return byHandler || null;
     };
 
     const btn = findClassificationsBtn();
@@ -913,7 +923,18 @@ async function scrapeCompetitionLive(page, comp) {
     }, { expectedFile: expectedClassFile });
 
     if (!fallbackClassifications?.ok) {
-      throw new Error(`Competition ${comp.competitionId}: missing clasificaciones_btn`);
+      // Soft-fail: keep pipeline alive and allow caller-level snapshot fallback
+      // without counting this as a hard scrape error for unstable portal tabs.
+      console.log(
+        `[fecapa-categories] ${comp.competitionId} classification unavailable in live DOM -> soft-fallback=snapshot`
+      );
+      return {
+        competitionId: comp.competitionId,
+        competitionName: comp.competitionName,
+        groupCount: 0,
+        teamCount: 0,
+        groups: [],
+      };
     }
 
     console.log(
@@ -1059,15 +1080,18 @@ async function getCategoriesData(options = {}) {
 
     // Enriquiment live opcional (no bloquejant): només si liveMode=true
     let finalBuilt = snapshotBuilt;
+    let liveUsed = false;
+    let liveUnavailableReason = "";
     if (liveMode) {
       console.log(`[fecapa-categories] Live mode ON | categories=${Array.from(effectiveCategories).join(",")} | competitions=${selected.length}`);
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-      });
-
+      let browser = null;
       try {
+        browser = await puppeteer.launch({
+          headless: true,
+          args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+        });
+
         const page = await browser.newPage();
         await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
         await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 60000 });
@@ -1104,8 +1128,20 @@ async function getCategoriesData(options = {}) {
           }
         }
         finalBuilt = liveBuilt;
+        liveUsed = true;
+      } catch (err) {
+        const msg = err?.message || "unknown";
+        liveUnavailableReason = msg;
+        console.log(`[fecapa-categories] Live mode unavailable -> fallback=snapshot | ${msg}`);
+        errors.push({
+          competitionId: "live-mode",
+          competitionName: "FECAPA live scraping",
+          error: `Live mode unavailable, fallback to snapshot: ${msg}`,
+        });
       } finally {
-        await browser.close();
+        if (browser) {
+          try { await browser.close(); } catch {}
+        }
       }
     }
 
@@ -1117,9 +1153,13 @@ async function getCategoriesData(options = {}) {
 
     const out = {
       ok: true,
-      source: liveMode ? "sidgad_snapshot+fecapa_live" : "sidgad_snapshot",
+      source: liveMode
+        ? (liveUsed ? "sidgad_snapshot+fecapa_live" : "sidgad_snapshot+fecapa_live_unavailable")
+        : "sidgad_snapshot",
       fetchedAt: new Date().toISOString(),
       liveMode,
+      liveUsed,
+      liveUnavailableReason,
       categoriesFilter: Array.from(effectiveCategories.values()),
       fetchedCompetitions: selected.length,
       failedCompetitions: errors.length,
