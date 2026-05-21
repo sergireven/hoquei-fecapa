@@ -38,6 +38,10 @@ let memoryCacheAt = 0;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 let validation4452Cache = null;
 
+function requiresStrictPortalClassificationClick(compId) {
+  return String(compId || "") === VALIDATION_COMP_4452_ID;
+}
+
 function decodeHtmlEntities(s) {
   return String(s || "")
     .replace(/&amp;/g, "&")
@@ -867,6 +871,12 @@ async function scrapeCompetitionLive(page, comp) {
     `[fecapa-categories] ${comp.competitionId} open-competition header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
   );
 
+  if (requiresStrictPortalClassificationClick(comp.competitionId)) {
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} strict-flow step3-open-league header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0}`
+    );
+  }
+
   if (!openMeta.hasClassBtn) {
     // Race-condition guard: some competitions render menu tabs asynchronously.
     // Retry opening the same competition and re-check tabs before failing.
@@ -899,6 +909,12 @@ async function scrapeCompetitionLive(page, comp) {
     console.log(
       `[fecapa-categories] ${comp.competitionId} open-competition retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn} hasCalendarBtn=${openMeta.hasCalendarBtn}`
     );
+
+    if (requiresStrictPortalClassificationClick(comp.competitionId)) {
+      console.log(
+        `[fecapa-categories] ${comp.competitionId} strict-flow step3-retry header=${openMeta.headerText || "none"} menuButtons=${openMeta.menuButtons} hasClassBtn=${openMeta.hasClassBtn ? 1 : 0}`
+      );
+    }
   }
 
   // Ensure classification content is loaded (Classif.Base equivalent).
@@ -927,6 +943,12 @@ async function scrapeCompetitionLive(page, comp) {
   console.log(
     `[fecapa-categories] ${comp.competitionId} pre-click hasContainer=${preClickMeta.hasContainer} len=${preClickMeta.beforeLen} hasBtn=${preClickMeta.hasButton} selectedTab=${preClickMeta.selectedTabId || "none"} btnClass=${preClickMeta.buttonClass || "none"} btnFile=${preClickMeta.buttonFile || "none"}`
   );
+
+  if (requiresStrictPortalClassificationClick(comp.competitionId)) {
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} strict-flow step4-before-click hasContainer=${preClickMeta.hasContainer ? 1 : 0} hasBtn=${preClickMeta.hasButton ? 1 : 0} selectedTab=${preClickMeta.selectedTabId || "none"} btnFile=${preClickMeta.buttonFile || "none"}`
+    );
+  }
 
   const expectedClassFile = `clasif_idc_${comp.competitionId}_1.php`;
   const clickedClassifications = await page.evaluate(async ({ expectedFile }) => {
@@ -1006,6 +1028,19 @@ async function scrapeCompetitionLive(page, comp) {
       filter,
     };
   }, { expectedFile: expectedClassFile });
+
+  if (requiresStrictPortalClassificationClick(comp.competitionId)) {
+    console.log(
+      `[fecapa-categories] ${comp.competitionId} strict-flow step4-click-result ok=${clickedClassifications?.ok ? 1 : 0} forcedFile=${clickedClassifications?.forcedFile ? 1 : 0} beforeFile=${clickedClassifications?.beforeFile || "none"} afterFile=${clickedClassifications?.afterFile || "none"}`
+    );
+
+    if (!clickedClassifications?.ok) {
+      throw new Error(`Strict portal flow failed for ${comp.competitionId}: classification button not found`);
+    }
+    if (clickedClassifications.forcedFile) {
+      throw new Error(`Strict portal flow failed for ${comp.competitionId}: classification required forced file wiring`);
+    }
+  }
 
   if (!clickedClassifications?.ok) {
     // Robust fallback for cases where the classification tab exists but is not bound
