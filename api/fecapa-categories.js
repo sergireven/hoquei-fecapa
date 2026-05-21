@@ -776,6 +776,11 @@ async function scrapeCompetitionLive(page, comp) {
   await new Promise(r => setTimeout(r, 1500));
 
   const groups = await page.evaluate(() => {
+    const toInt = (v) => {
+      const n = parseInt(String(v || "").replace(/[^0-9-]/g, ""), 10);
+      return Number.isNaN(n) ? null : n;
+    };
+
     const container = document.getElementById("tab_modal_contenido_competicion");
     if (!container) return [];
 
@@ -792,23 +797,63 @@ async function scrapeCompetitionLive(page, comp) {
         next = next.nextElementSibling;
       }
 
+      if (!tableEl) return null;
+
+      const rows = [...tableEl.querySelectorAll("tbody tr, tr")].map(tr => {
+        const tds = [...tr.querySelectorAll("td")];
+        if (tds.length < 4) return null;
+
+        const position = toInt(tds[0]?.textContent || "");
+        if (!position || position < 1 || position > 40) return null;
+
+        const teamCell = tds[2] || null;
+        const teamName = String(
+          teamCell?.querySelector(".no_mobile")?.textContent
+          || teamCell?.textContent
+          || ""
+        ).replace(/\s+/g, " ").trim();
+        if (!teamName) return null;
+
+        const teamShortRaw = String(teamCell?.querySelector(".mobile")?.textContent || "").replace(/\s+/g, " ").trim();
+        const logoSrc = tds[1]?.querySelector("img")?.getAttribute("src") || null;
+
+        const nums = tds.slice(3).map(td => toInt(td.textContent || ""));
+        const [points = null, played = null, won = null, drawn = null, lost = null, goalsFor = null, goalsAgainst = null, goalDiff = null, penalties = null] = nums;
+
+        return {
+          position,
+          teamId: null,
+          teamName,
+          teamShort: teamShortRaw || null,
+          logoSrc,
+          points,
+          played,
+          won,
+          drawn,
+          lost,
+          goalsFor,
+          goalsAgainst,
+          goalDiff,
+          penalties,
+        };
+      }).filter(Boolean);
+
       return {
         groupName: title,
-        tableHtml: tableEl ? tableEl.outerHTML : "",
+        tableHtml: tableEl.outerHTML,
+        teamCount: rows.length,
+        teams: rows,
         order: idx + 1,
       };
-    }).filter(item => item.groupName && item.tableHtml);
+    }).filter(item => item && item.groupName && item.teamCount > 0);
   });
 
-  const parsedGroupsFromDom = groups.map((g, idx) => {
-    const rows = parseClassificationSidgad(g.tableHtml);
-    return {
-      groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
-      groupName: g.groupName,
-      teamCount: rows.length,
-      teams: rows,
-    };
-  }).filter(g => g.teamCount > 0);
+  const parsedGroupsFromDom = groups.map((g, idx) => ({
+    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
+    groupName: g.groupName,
+    teamCount: g.teamCount || (g.teams || []).length,
+    teams: g.teams || [],
+  })).filter(g => g.teamCount > 0);
 
   const containerHtml = await page.evaluate(() => {
     const container = document.getElementById("tab_modal_contenido_competicion");
@@ -827,8 +872,10 @@ async function scrapeCompetitionLive(page, comp) {
     ? parsedGroupsFromHtml
     : parsedGroupsFromDom;
 
+  const selectedGroupNames = parsedGroups.map(g => g.groupName).slice(0, 8).join(" | ");
+
   console.log(
-    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length}`
+    `[fecapa-categories] ${comp.competitionId} parsed groups dom=${parsedGroupsFromDom.length} html=${parsedGroupsFromHtml.length} selected=${parsedGroups.length} names=${selectedGroupNames || "none"}`
   );
 
   const fallbackRows = parsedGroups.length ? [] : parseClassificationSidgad(containerHtml);
