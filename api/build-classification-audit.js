@@ -21,6 +21,189 @@ const SIDGAD_COMP_FILE  = path.join(__dirname, "../public/competicions-sidgad.js
 const OUT_FILE          = path.join(__dirname, "../public/classification-audit.json");
 
 const MIN_MATCH_RATIO   = 0.5;  // >= 50% d'equips coincidents per mapear
+const SCORE_WEIGHTS = { name: 0.20, teams: 0.55, size: 0.10, phase: 0.15 };
+const FECAPA_PLACEHOLDER_GROUP_NAME = "CLASIFICACION CLASSIFICATION CLASSIFICACIO CLASSIFICA";
+
+const JOKCAT_CATEGORY_MAP = {
+  "NACIONAL CATALANA": "nacional_catalana",
+  "1 CATALANA": "primera_catalana",
+  "1A CATALANA": "primera_catalana",
+  "PRIMERA CATALANA": "primera_catalana",
+  "2 CATALANA": "segona_catalana",
+  "2A CATALANA": "segona_catalana",
+  "SEGONA CATALANA": "segona_catalana",
+  "3 CATALANA": "tercera_catalana",
+  "3A CATALANA": "tercera_catalana",
+  "TERCERA CATALANA": "tercera_catalana",
+  "FEM": "fem",
+  "JUNIOR": "junior",
+  "JUVENIL": "juvenil",
+  "INFANTIL": "infantil",
+  "ALEVI": "alevi",
+  "BENJAMI": "benjami",
+  "PREBENJAMI": "prebenjami",
+  "VETERANS": "veterans",
+};
+
+function normalizeText(s) {
+  return (s || "")
+    .toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function jokCategoryToKey(name) {
+  const n = normalizeText(name);
+  return JOKCAT_CATEGORY_MAP[n] || null;
+}
+
+function competitionProfile(name) {
+  const n = normalizeText(name);
+  const isFeminine = /\bFEM\b|\bFEMENI|\bFEMENINA\b/.test(n);
+  const isMasculine = /\bMASCULI|\bMASCULINA\b/.test(n);
+
+  let tier = null;
+  if (/\bNACIONAL\b/.test(n)) tier = "nacional";
+  else if (/\b1\b\s*\bCATALANA\b|\b1A\b\s*\bCATALANA\b|\bPRIMERA\b\s*\bCATALANA\b/.test(n)) tier = "primera";
+  else if (/\b2\b\s*\bCATALANA\b|\b2A\b\s*\bCATALANA\b|\bSEGONA\b\s*\bCATALANA\b/.test(n)) tier = "segona";
+  else if (/\b3\b\s*\bCATALANA\b|\b3A\b\s*\bCATALANA\b|\bTERCERA\b\s*\bCATALANA\b/.test(n)) tier = "tercera";
+
+  return { isFeminine, isMasculine, tier };
+}
+
+function extractPhaseTags(name) {
+  const n = normalizeText(name);
+  const tags = new Set();
+  if (/\bOR\b/.test(n)) tags.add("OR");
+  if (/\bPLATA\b/.test(n)) tags.add("PLATA");
+  if (/\bPREFERENT\b/.test(n)) tags.add("PREFERENT");
+  if (/\bCOPA\b/.test(n)) tags.add("COPA");
+  if (/\bFEDERACIO\b/.test(n)) tags.add("FEDERACIO");
+  if (/\bELIMINATORIES\b/.test(n)) tags.add("ELIMINATORIES");
+  return tags;
+}
+
+function extractSpecialBucket(name) {
+  const n = normalizeText(name);
+  if (/\bLLIGA\s+CATALANA\b/.test(n)) return "LLIGA_CATALANA";
+  if (/\bINTERTERRITORIAL\b/.test(n)) return "INTERTERRITORIAL";
+  if (/\bCOPA\s+CATALUNYA\b/.test(n) && /\b3X3\b/.test(n)) return "COPA_CATALUNYA_3X3";
+  if (/\b3X3\b/.test(n)) return "3X3";
+  return null;
+}
+
+function extractPhaseNumber(name) {
+  const n = normalizeText(name);
+  const m = n.match(/\b(\d{1,2})\s*(?:A|ª|\.)?\s*FASE\b/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function phaseScore(fecapaName, jokName) {
+  const f = extractPhaseNumber(fecapaName);
+  const j = extractPhaseNumber(jokName);
+  if (f === null && j === null) return 0.5;
+  if (f !== null && j !== null) return f === j ? 1 : 0;
+  return 0.2;
+}
+
+function isOmittedFecapaGroupName(name) {
+  return normalizeText(name) === FECAPA_PLACEHOLDER_GROUP_NAME;
+}
+
+function haveConflictingPhaseTags(fecapaName, jokName) {
+  const fTags = extractPhaseTags(fecapaName);
+  const jTags = extractPhaseTags(jokName);
+
+  const ladder = ["OR", "PLATA", "PREFERENT"];
+  const fMain = ladder.find(t => fTags.has(t)) || null;
+  const jMain = ladder.find(t => jTags.has(t)) || null;
+
+  return Boolean(fMain && jMain && fMain !== jMain);
+}
+
+function wordsForNameScore(name) {
+  return normalizeText(name)
+    .replace(/\b20\d{2}\b/g, " ")
+    .split(" ")
+    .filter(w => w.length > 3);
+}
+
+function jaccardScore(aWords, bWords) {
+  const a = new Set(aWords);
+  const b = new Set(bWords);
+  if (!a.size || !b.size) return 0;
+  let intersection = 0;
+  for (const w of a) if (b.has(w)) intersection++;
+  const union = new Set([...a, ...b]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function teamFingerprintScore(fecapaTeams, jokTeams) {
+  if (!fecapaTeams.length || !jokTeams.length) return 0;
+  const f = new Set(fecapaTeams);
+  const j = new Set(jokTeams);
+  let matches = 0;
+  for (const t of f) if (j.has(t)) matches++;
+  if (matches === 0) return 0;
+  const precision = matches / j.size;
+  const recall = matches / f.size;
+  return (2 * precision * recall) / (precision + recall);
+}
+
+function sizeSimilarityScore(aLen, bLen) {
+  if (!aLen || !bLen) return 0;
+  const diff = Math.abs(aLen - bLen);
+  const maxLen = Math.max(aLen, bLen);
+  return Math.max(0, 1 - diff / maxLen);
+}
+
+function matchingThresholds(catKey) {
+  // En categories amb molts subgrups similars (PREBENJAMI/BENJAMI/ALEVI),
+  // fem el llindar més estricte.
+  if (["prebenjami", "benjami", "alevi"].includes(catKey)) {
+    return { minCompositeScore: 0.82, minTeamScore: 0.65 };
+  }
+  return { minCompositeScore: 0.75, minTeamScore: 0.60 };
+}
+
+function computeCandidateScore({ fecapaName, jokName, fecapaTeams, jokTeams }) {
+  const nameScore = jaccardScore(wordsForNameScore(fecapaName), wordsForNameScore(jokName));
+  const teamsScore = teamFingerprintScore(fecapaTeams, jokTeams);
+  const sizeScore = sizeSimilarityScore(fecapaTeams.length, jokTeams.length);
+  const phScore = phaseScore(fecapaName, jokName);
+  const compositeScore =
+    SCORE_WEIGHTS.name * nameScore +
+    SCORE_WEIGHTS.teams * teamsScore +
+    SCORE_WEIGHTS.size * sizeScore +
+    SCORE_WEIGHTS.phase * phScore;
+  return { nameScore, teamsScore, sizeScore, phaseScore: phScore, compositeScore };
+}
+
+function isCompatibleCompetition(fecapaCatKey, fecapaName, jokComp) {
+  if (!jokComp || jokComp._catKey !== fecapaCatKey) return false;
+
+  const f = competitionProfile(fecapaName);
+  const j = competitionProfile(jokComp.name || "");
+
+  if (f.isFeminine && !j.isFeminine && jokComp._catKey !== "fem") return false;
+  if (f.isMasculine && j.isFeminine) return false;
+  if (f.tier && j.tier && f.tier !== j.tier) return false;
+  if (haveConflictingPhaseTags(fecapaName, jokComp.name || "")) return false;
+
+  // Lligues especials: no barrejar amb grups veterans "normals".
+  const fBucket = extractSpecialBucket(fecapaName);
+  const jBucket = extractSpecialBucket(jokComp.name || "");
+  if ((fBucket || jBucket) && fBucket !== jBucket) return false;
+
+  // Si ambdós noms indiquen fase, ha de coincidir (prioritat alta al nom de fase).
+  const fPhase = extractPhaseNumber(fecapaName);
+  const jPhase = extractPhaseNumber(jokComp.name || "");
+  if (fPhase !== null && jPhase !== null && fPhase !== jPhase) return false;
+
+  return true;
+}
 
 // ── Normalitza nom d'equip per comparació fuzzy ──────────────
 function normTeam(name) {
@@ -68,9 +251,15 @@ function maxPjInJokcatComp(comp) {
 // ── Construeix índex de totes les competicions jok.cat ────────
 function buildJokcatIndex(dataJson) {
   const index = {}; // id → comp
-  for (const [, comps] of Object.entries(dataJson.categories || {})) {
+  for (const [rawCategory, comps] of Object.entries(dataJson.categories || {})) {
+    const catKey = jokCategoryToKey(rawCategory);
     for (const comp of comps) {
-      if (comp.id) index[comp.id] = comp;
+      if (!comp.id) continue;
+      index[comp.id] = {
+        ...comp,
+        _catKey: catKey,
+        _rawCategory: rawCategory,
+      };
     }
   }
   return index;
@@ -123,21 +312,42 @@ async function main() {
       // Per cada grup FECAPA: buscar la millor coincidència a jok.cat
       const groupEntries = [];
       const usedJokcatInThisComp = new Set();
+      const validFecapaGroups = (fecapaComp.groups || []).filter(g => !isOmittedFecapaGroupName(g.groupName));
 
-      for (const group of fecapaComp.groups || []) {
+      for (const group of validFecapaGroups) {
         const fecapaTeams = fecapaGroupTeams(group);
         let bestId    = null;
         let bestRatio = 0;
+        let bestScore = -1;
+        let bestScoreBreakdown = { nameScore: 0, teamsScore: 0, sizeScore: 0, compositeScore: 0 };
+        const { minCompositeScore, minTeamScore } = matchingThresholds(catKey);
 
         for (const jokId of allJokcatIds) {
           if (usedJokcatInThisComp.has(jokId)) continue;
           const jokComp = jokcatIndex[jokId];
+          if (!isCompatibleCompetition(catKey, fecapaName, jokComp)) continue;
           const jokTeams = jokcatCompTeams(jokComp);
+          const candidate = computeCandidateScore({
+            fecapaName,
+            jokName: jokComp.name || "",
+            fecapaTeams,
+            jokTeams,
+          });
           const ratio = matchRatio(fecapaTeams, jokTeams);
-          if (ratio > bestRatio) { bestRatio = ratio; bestId = jokId; }
+          if (candidate.compositeScore > bestScore) {
+            bestScore = candidate.compositeScore;
+            bestScoreBreakdown = candidate;
+            bestRatio = ratio;
+            bestId = jokId;
+          }
         }
 
-        const hasMappedJokcat = bestId && bestRatio >= MIN_MATCH_RATIO;
+        const hasMappedJokcat = Boolean(
+          bestId
+          && bestRatio >= MIN_MATCH_RATIO
+          && bestScoreBreakdown.teamsScore >= minTeamScore
+          && bestScoreBreakdown.compositeScore >= minCompositeScore
+        );
         if (hasMappedJokcat) usedJokcatInThisComp.add(bestId);
 
         const jokcatComp   = hasMappedJokcat ? jokcatIndex[bestId] : null;
@@ -158,6 +368,10 @@ async function main() {
           jokcatCompId:    hasMappedJokcat ? bestId : null,
           jokcatCompName:  jokcatComp?.name || null,
           jokcatMatchRatio: hasMappedJokcat ? Math.round(bestRatio * 100) : 0,
+          jokcatScore: hasMappedJokcat ? Number(bestScoreBreakdown.compositeScore.toFixed(3)) : 0,
+          jokcatTeamScore: hasMappedJokcat ? Number(bestScoreBreakdown.teamsScore.toFixed(3)) : 0,
+          jokcatNameScore: hasMappedJokcat ? Number(bestScoreBreakdown.nameScore.toFixed(3)) : 0,
+          jokcatPhaseScore: hasMappedJokcat ? Number((bestScoreBreakdown.phaseScore ?? 0).toFixed(3)) : 0,
           jokcatTeamCount: jokcatComp ? (jokcatComp.classification?.length || 0) : null,
           jokcatClassification: jokcatComp?.classification || null,
           jokcatMaxPj,
@@ -173,24 +387,28 @@ async function main() {
       for (const jokId of allJokcatIds) {
         if (usedJokcatInThisComp.has(jokId)) continue;
         const jokComp  = jokcatIndex[jokId];
+        if (!isCompatibleCompetition(catKey, fecapaName, jokComp)) continue;
         const jokTeams = jokcatCompTeams(jokComp);
         if (jokTeams.length === 0) continue;
+        if ((jokComp.classification?.length || 0) === 0) continue;
 
         // Comprova si algun equip d'aquest jokcat apareix en algun grup FECAPA ja mapejat
         const allFecapaTeamsInComp = new Set(
-          (fecapaComp.groups || []).flatMap(g => fecapaGroupTeams(g))
+          validFecapaGroups.flatMap(g => fecapaGroupTeams(g))
         );
         const overlap = jokTeams.filter(t => allFecapaTeamsInComp.has(t));
-        if (overlap.length === 0) continue;
+        const candidate = computeCandidateScore({
+          fecapaName,
+          jokName: jokComp.name || "",
+          fecapaTeams: [...allFecapaTeamsInComp],
+          jokTeams,
+        });
 
-        // Comprova si el nom de la competició jok.cat és similar al nom FECAPA
-        const normFecapa = normTeam(fecapaName);
-        const normJok    = normTeam(jokComp.name || "");
-        // Requereix almenys 2 paraules en comú al nom
-        const fWords = normFecapa.split(" ").filter(w => w.length > 3);
-        const jWords = normJok.split(" ").filter(w => w.length > 3);
-        const commonWords = fWords.filter(w => jWords.includes(w));
-        if (commonWords.length < 2) continue;
+        // Per detectar fallback de grups faltants, deixem llindar una mica més baix,
+        // però exigim mínim evidència de nom o equips.
+        const hasSignal = candidate.nameScore >= 0.35 || candidate.teamsScore >= 0.20 || overlap.length > 0;
+        if (!hasSignal) continue;
+        if (candidate.compositeScore < 0.45) continue;
 
         const jokcatMaxPj = maxPjInJokcatComp(jokComp);
         const isFresh = jornadesActuals > 0 ? jokcatMaxPj >= jornadesActuals : null;
@@ -206,7 +424,12 @@ async function main() {
           fecapaTeams:     [],
           jokcatCompId:    jokId,
           jokcatCompName:  jokComp.name || null,
+          jokcatCategory:  jokComp._rawCategory || null,
           jokcatMatchRatio: Math.round((overlap.length / jokTeams.length) * 100),
+          jokcatScore: Number(candidate.compositeScore.toFixed(3)),
+          jokcatTeamScore: Number(candidate.teamsScore.toFixed(3)),
+          jokcatNameScore: Number(candidate.nameScore.toFixed(3)),
+          jokcatPhaseScore: Number((candidate.phaseScore ?? 0).toFixed(3)),
           jokcatTeamCount: jokComp.classification?.length || 0,
           jokcatClassification: jokComp.classification || null,
           jokcatMaxPj,
