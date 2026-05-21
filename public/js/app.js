@@ -1317,7 +1317,7 @@ function renderHome() {
   $("screen-home").style.display   = "flex";
   $("home-header").innerHTML = `
     <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900"><img src="Designer.png" style="height:28px;vertical-align:middle;margin-right:6px;object-fit:contain"/><span style="color:#e5001c">okCat360</span></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900"><img src="Designer_2.png" style="height:28px;vertical-align:middle;margin-right:6px;object-fit:contain"/><span style="color:#e5001c">okCat360</span></div>
       ${renderLoginButton()}
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
