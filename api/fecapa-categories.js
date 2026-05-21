@@ -838,18 +838,11 @@ async function scrapeCompetitionLive(page, comp) {
     if (!container) return [];
 
     const titleEls = [...container.querySelectorAll(".div_titulo_fase_idc")];
+    const tableEls = [...container.querySelectorAll("table.tabla_standard")];
+
     return titleEls.map((titleEl, idx) => {
       const title = (titleEl.textContent || "").replace(/\s+/g, " ").trim();
-
-      // Walk next siblings until we find a TABLE or hit the next group title
-      let next = titleEl.nextElementSibling;
-      let tableEl = null;
-      while (next) {
-        if (next.tagName === "TABLE") { tableEl = next; break; }
-        if (next.classList && next.classList.contains("div_titulo_fase_idc")) break;
-        next = next.nextElementSibling;
-      }
-
+      const tableEl = tableEls[idx] || null;
       if (!tableEl) return null;
 
       const rows = [...tableEl.querySelectorAll("tbody tr, tr")].map(tr => {
