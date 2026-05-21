@@ -332,15 +332,23 @@ async function getAdminBenjamiModel() {
 function renderAdminTopNav(activeView) {
   return `<div style="display:flex;gap:8px;margin-bottom:12px">
     <button onclick="adminSetView('users')" style="flex:1;background:${activeView === "users" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "users" ? "#1a2035" : "#e2e6ef"};color:${activeView === "users" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Usuaris</button>
-    <button onclick="adminSetView('benjami')" style="flex:1;background:${activeView === "benjami" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "benjami" ? "#1a2035" : "#e2e6ef"};color:${activeView === "benjami" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classif. Base</button>
-    <button onclick="adminSetView('fecapa_cats')" style="flex:1;background:${activeView === "fecapa_cats" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "fecapa_cats" ? "#1a2035" : "#e2e6ef"};color:${activeView === "fecapa_cats" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Pre/Benj/Aleví</button>
+    <button onclick="adminSetView('fecapa_cats')" style="flex:1;background:${activeView === "fecapa_cats" ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === "fecapa_cats" ? "#1a2035" : "#e2e6ef"};color:${activeView === "fecapa_cats" ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Classificacions de FECAPA</button>
   </div>`;
 }
 
 function adminCategoryLabel(key) {
+  if (key === "nacional_catalana") return "Nacional Catalana";
+  if (key === "primera_catalana") return "Primera Catalana";
+  if (key === "segona_catalana") return "Segona Catalana";
+  if (key === "tercera_catalana") return "Tercera Catalana";
+  if (key === "fem") return "Femení";
+  if (key === "junior") return "Júnior";
+  if (key === "juvenil") return "Juvenil";
+  if (key === "infantil") return "Infantil";
   if (key === "prebenjami") return "Prebenjamí";
   if (key === "benjami") return "Benjamí";
   if (key === "alevi") return "Aleví";
+  if (key === "veterans") return "Veterans";
   return key;
 }
 
@@ -373,7 +381,7 @@ async function renderAdminFecapaCategoriesPanel(body) {
   body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Scrapejant FECAPA en viu...</div>`;
   try {
     const model = await getAdminFecapaCategoriesModel();
-    const categoryKeys = ["prebenjami", "benjami", "alevi"];
+    const categoryKeys = ["nacional_catalana", "primera_catalana", "segona_catalana", "tercera_catalana", "fem", "junior", "juvenil", "infantil", "prebenjami", "benjami", "alevi", "veterans"];
     const totalComps = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k]?.length || 0), 0);
     const totalTeams = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k] || []).reduce((n, c) => n + (c.teamCount || 0), 0), 0);
 
@@ -382,8 +390,8 @@ async function renderAdminFecapaCategoriesPanel(body) {
       <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Scraper FECAPA en viu</div>
-            <div style="font-size:12px;color:#64748b">Prebenjamí, Benjamí i Aleví · ${totalComps} competicions · ${totalTeams} equips</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Classificacions de FECAPA</div>
+            <div style="font-size:12px;color:#64748b">${totalComps} competicions · ${totalTeams} equips</div>
           </div>
           <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Re-scrapejar</button>
         </div>
@@ -483,10 +491,6 @@ async function renderAdminPanel() {
     await renderAdminFecapaCategoriesPanel(body);
     return;
   }
-  if (adminPanelView === "benjami") {
-    await renderAdminBenjamiPanel(body);
-    return;
-  }
 
   body.innerHTML = `${renderAdminTopNav("users")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
   const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
@@ -571,7 +575,7 @@ window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 window.adminSetView = view => {
-  adminPanelView = view === "benjami" || view === "fecapa_cats" ? view : "users";
+  adminPanelView = view === "fecapa_cats" ? view : "users";
   renderAdminPanel();
 };
 window.adminReloadBenjamiModel = () => {
