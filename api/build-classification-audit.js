@@ -343,6 +343,7 @@ async function main() {
         let bestRatio = 0;
         let bestScore = -1;
         let bestScoreBreakdown = { nameScore: 0, teamsScore: 0, sizeScore: 0, compositeScore: 0 };
+        let bestComp = null;
         const { minCompositeScore, minTeamScore } = matchingThresholds(catKey);
 
         for (const jokId of allJokcatIds) {
@@ -362,6 +363,7 @@ async function main() {
             bestScoreBreakdown = candidate;
             bestRatio = ratio;
             bestId = jokId;
+            bestComp = jokComp;
           }
         }
 
@@ -386,6 +388,7 @@ async function main() {
               fecapaTeams,
               jokTeams: forcedTeams,
             });
+            bestComp = forcedComp;
             hasMappedJokcat = true;
             matchSource = "manual";
             totalManualApplied++;
@@ -400,6 +403,7 @@ async function main() {
         if (hasMappedJokcat) usedJokcatInThisComp.add(bestId);
 
         const jokcatComp   = hasMappedJokcat ? jokcatIndex[bestId] : null;
+        const suggestedComp = !hasMappedJokcat ? bestComp : null;
         const jokcatMaxPj  = jokcatComp ? maxPjInJokcatComp(jokcatComp) : null;
         const isFresh      = jokcatMaxPj !== null && jornadesActuals > 0
           ? jokcatMaxPj >= jornadesActuals
@@ -426,6 +430,13 @@ async function main() {
           jokcatTeamCount: jokcatComp ? (jokcatComp.classification?.length || 0) : null,
           jokcatClassification: jokcatComp?.classification || null,
           jokcatMaxPj,
+          suggestedJokcatCompId: suggestedComp?.id || null,
+          suggestedJokcatCompName: suggestedComp?.name || null,
+          suggestedJokcatCategory: suggestedComp?._rawCategory || null,
+          suggestedJokcatMatchRatio: !hasMappedJokcat && bestId ? Math.round(bestRatio * 100) : 0,
+          suggestedJokcatScore: !hasMappedJokcat ? Number((bestScoreBreakdown.compositeScore || 0).toFixed(3)) : 0,
+          suggestedJokcatClassification: suggestedComp?.classification || null,
+          suggestedJokcatTeamCount: suggestedComp?.classification?.length || 0,
           jornadesActuals,
           isFresh,
           matchSource,
