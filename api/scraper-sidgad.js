@@ -153,6 +153,30 @@ function decodeHtmlEntities(s) {
     .replace(/&[a-z]+;/gi, " ");
 }
 
+function normalizeText(s) {
+  return decodeHtmlEntities(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferCategoryFromCompetitionName(name) {
+  const n = normName(name || "");
+  if (n.includes("PREBENJAMI")) return "PREBENJAMI";
+  if (n.includes("BENJAMI")) return "BENJAMI";
+  if (n.includes("ALEVI")) return "ALEVI";
+  if (n.includes("INFANTIL")) return "INFANTIL";
+  if (n.includes("JUVENIL")) return "JUVENIL";
+  if (n.includes("JUNIOR")) return "JUNIOR";
+  if (n.includes("FEM")) return "FEM";
+  if (n.includes("VETERANS")) return "VETERANS";
+  if (n.includes("NACIONAL CATALANA")) return "NACIONAL CATALANA";
+  if (n.includes("PRIMERA CATALANA")) return "PRIMERA CATALANA";
+  if (n.includes("SEGONA CATALANA")) return "SEGONA CATALANA";
+  if (n.includes("TERCERA CATALANA")) return "TERCERA CATALANA";
+  return null;
+}
+
 function parseClassificationSidgad(html) {
   if (!html || html.length < 50) return [];
   const rows = [];
@@ -165,8 +189,8 @@ function parseClassificationSidgad(html) {
     );
     if (cells.length < 5) continue;
 
-    // Posició: primera cel·la numèrica 1-30
-    const posIdx = cells.findIndex(c => /^\d{1,2}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 30);
+    // Posició: primera cel·la numèrica 1-999 (més tolerant per grups més grans)
+    const posIdx = cells.findIndex(c => /^\d{1,3}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 999);
     if (posIdx < 0) continue;
     const pos = parseInt(cells[posIdx]);
 
@@ -179,12 +203,12 @@ function parseClassificationSidgad(html) {
     const teamIdM = tr.match(/\/equip\/(\d+)\//);
     const teamId  = teamIdM ? teamIdM[1] : null;
 
-    // Números restants
+    // Números restants: Pts, J, G, E, P, F, C, (GAV), (PEN)
     const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
     if (nums.length < 3) continue;
-    const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null] = nums;
+    const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
 
-    rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc });
+    rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
   }
 
   // Strategy 2: divs flex (similar a jok.cat)
@@ -196,13 +220,56 @@ function parseClassificationSidgad(html) {
       const nums  = texts.map(t => parseInt(t)).filter(n => !isNaN(n));
       const team  = texts.find(t => /[a-zA-Z]{3}/.test(t) && !/^\d/.test(t));
       if (!team || nums.length < 3) continue;
-      const [pos, pts, pj, pg, pe, pp, gf, gc] = nums;
+      const [pos, pts, pj, pg, pe, pp, gf, gc, gav, pen] = nums;
       const teamIdM = inner.match(/\/equip\/(\d+)\//);
-      rows.push({ pos, team, teamId: teamIdM?.[1] || null, pts, pj, pg, pe, pp, gf, gc });
+      rows.push({ pos, team, teamId: teamIdM?.[1] || null, pts, pj, pg, pe, pp, gf, gc, gav, pen });
     }
   }
 
   return rows;
+}
+
+// Parser classificacions separades per grups.
+// Llegeix títols de grup (div_titulo_fase_idc) + taules i retorna
+// un format jeràrquic i, alhora, un mapa idc -> classificació per compatibilitat.
+function parseClassificationByGroupSidgad(html, uniqueIdcs) {
+  if (!html || html.length < 50) return { byIdc: {}, groups: [] };
+
+  const byIdc = {};
+  const groups = [];
+
+  const titles = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)]
+    .map(m => normalizeText(m[1]))
+    .filter(Boolean);
+
+  const tables = html.match(/<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>[\s\S]*?<\/table>/gi)
+    || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
+    || [];
+
+  console.log(`parseClassificationByGroupSidgad: detected ${titles.length} group titles, ${tables.length} tables`);
+
+  // Robust matching: associate each parsed table with its title
+  let parsedTableCount = 0;
+  for (let i = 0; i < tables.length; i++) {
+    const classification = parseClassificationSidgad(tables[i]);
+    if (classification.length === 0) {
+      console.log(`  Table ${i}: failed to parse (0 rows)`);
+      continue;
+    }
+    parsedTableCount++;
+
+    const idcHint = (uniqueIdcs && uniqueIdcs[i]) ? String(uniqueIdcs[i]) : null;
+    // IMPROVED: use parsed order, not original index (avoids misalignment)
+    const groupName = titles[parsedTableCount - 1] || `Grup ${parsedTableCount}`;
+    const key = idcHint || `group_${parsedTableCount}`;
+
+    console.log(`  Table ${i}: parsed OK -> Group ${parsedTableCount} (${classification.length} teams) - Name: "${groupName}"`);
+    groups.push({ order: parsedTableCount, key, idc: idcHint, name: groupName, classification });
+    byIdc[key] = classification;
+  }
+
+  console.log(`parseClassificationByGroupSidgad: result=${parsedTableCount} groups extracted (${titles.length} titles found)`);
+  return { byIdc, groups };
 }
 
 // Executa jQuery.load dins la pàgina i retorna el HTML del contenidor
@@ -218,6 +285,21 @@ async function jqLoad(page, containerId, url, postData, timeoutMs = 10000) {
     },
     containerId, url, postData, timeoutMs
   );
+}
+
+// Fallback: llegeix HTML guardat localment per a 4452 (en cas que Puppeteer falli)
+async function loadReferenceLagueHtmlForComparison(compId) {
+  if (String(compId) !== "4452") return "";
+  
+  const refPath = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
+  try {
+    const html = await fs.readFile(refPath, "utf8");
+    console.log(`   📄 Carregat HTML local de referència per comp ${compId} (${html.length} bytes)`);
+    return html;
+  } catch (err) {
+    console.log(`   ⚠️  No es pot llegir HTML local: ${err.message}`);
+    return "";
+  }
 }
 
 async function main() {
@@ -243,7 +325,14 @@ async function main() {
     // ── 1. Obtenir IDs de competicions ───────────────────────
     const comps = await page.$$eval(
       `.listado_competiciones_fila.temp_${TEMP_ID}`,
-      els => els.map(el => ({ id: el.id, name: el.textContent.trim() })).filter(c => c.id)
+      els => els.map(el => {
+        const cfg = el.getAttribute("config_params") || "";
+        return {
+          id: el.id,
+          name: el.textContent.trim(),
+          hideClasif: /(?:^|;)\s*hide_clasif\s*:\s*1\s*(?:;|$)/i.test(cfg),
+        };
+      }).filter(c => c.id)
     );
     const compIds = comps.map(c => c.id);
     const compNames = Object.fromEntries(comps.map(c => [c.id, c.name]));
@@ -257,7 +346,7 @@ async function main() {
     let debugCalLogged   = false;
     let debugClassLogged = false;
 
-    for (const { id: compId, name: compName } of comps) {
+    for (const { id: compId, name: compName, hideClasif } of comps) {
       try {
         await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
         await page.waitForFunction(
@@ -303,28 +392,147 @@ async function main() {
           }
         }
 
-        compData[compId] = { id: compId, name: compName, matches: parsedMatches, classification: [], classificationByGroup: {} };
+        const categoryName = inferCategoryFromCompetitionName(compName);
+        compData[compId] = {
+          id: compId,
+          name: compName,
+          category: categoryName,
+          hideClasif: !!hideClasif,
+          matches: parsedMatches,
+          classification: [],
+          classificationByGroup: {},
+          classificationByGroupName: {},
+          hierarchy: {
+            category: categoryName,
+            competition: { id: compId, name: compName },
+            groups: [],
+          },
+        };
+
+        if (hideClasif) {
+          console.log(`   ℹ️  Comp ${compId} sense classificació (hide_clasif=1)`);
+          continue;
+        }
 
         // ── 2b. Classificació ────────────────────────────────
         // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
+        let classTabMeta = { file: "", filter: "0" };
         const clickClassTab = async () => {
-          const found = await page.evaluate(() => {
-            const allClickable = [...document.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab']")];
+          const expectedClassFile = `clasif_idc_${compId}_1.php`;
+          const tabInfo = await page.evaluate(() => {
+            // 1) Camí preferit: botó oficial de classificacions.
+            const strictBtn = document.getElementById("clasificaciones_btn");
+            if (strictBtn) {
+              strictBtn.click();
+              return {
+                found: true,
+                file: strictBtn.getAttribute("file") || "",
+                filter: strictBtn.getAttribute("filter") || "0",
+              };
+            }
+
+            // 2) Fallback: cerca dins del contenidor de pestanyes de la competició activa.
+            const root = document.getElementById("menu_idc_options_general") || document.getElementById("tab_modal_container") || document;
+            const allClickable = [...root.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab'], [class*='nav']")];
             const tab = allClickable.find(el => {
-              const txt = el.textContent.trim();
+              const txt = (el.textContent || "").trim().toUpperCase();
               const onclick = el.getAttribute("onclick") || "";
               const href = el.getAttribute("href") || "";
-              return /class?ificaci/i.test(txt) || /class?ificaci/i.test(onclick) || /class?ificaci/i.test(href);
+              const id = el.id || "";
+              const file = el.getAttribute("file") || "";
+              return id === "clasificaciones_btn"
+                || file.includes("clasif_idc_")
+                || txt.includes("CLASSIFICACI")
+                || /class?ificaci/i.test(onclick)
+                || /class?ificaci/i.test(href);
             });
-            if (tab) { tab.click(); return true; }
-            return false;
+            if (tab) {
+              tab.click();
+              return {
+                found: true,
+                file: tab.getAttribute("file") || "",
+                filter: tab.getAttribute("filter") || "0",
+              };
+            }
+            return { found: false, file: "", filter: "0" };
           });
-          if (!found) return null;
+          if (!tabInfo?.found) {
+            // Fallback robust: força càrrega de classificació encara que no existeixi el botó.
+            const directHtml = await page.evaluate(async ({ expectedFile }) => {
+              const container = document.getElementById("tab_modal_contenido_competicion");
+              if (!container) return "";
+
+              const route = (typeof window.ruta_files === "string" && window.ruta_files)
+                ? window.ruta_files
+                : "https://www.server2.sidgad.es/fecapa";
+
+              if (typeof window.$j !== "function") return "";
+
+              const loadByFile = (file, payload) => new Promise((resolve) => {
+                let done = false;
+                const finish = () => {
+                  if (done) return;
+                  done = true;
+                  resolve(container.innerHTML || "");
+                };
+                window.$j("#tab_modal_contenido_competicion").load(
+                  `${route}/cerilh/${file}`,
+                  payload,
+                  () => finish()
+                );
+                setTimeout(finish, 9000);
+              });
+
+              const candidates = [
+                expectedFile,
+                expectedFile.replace(/_1\.php$/, ".php"),
+              ];
+
+              for (const file of candidates) {
+                if (!file) continue;
+                const html = await loadByFile(file, { filter: "0" });
+                if ((html || "").length > 200) return html;
+              }
+
+              return "";
+            }, { expectedFile: expectedClassFile });
+
+            if (!directHtml) return null;
+            return directHtml;
+          }
+
+          classTabMeta = {
+            file: tabInfo.file || "",
+            filter: tabInfo.filter || "0",
+          };
+
+          const looksLikeClassification = (html) => {
+            const h = String(html || "");
+            return /div_titulo_fase_idc|tabla_standard|stats_table_special|\bPUNTS\b|\bPT\b|classificaci/i.test(h);
+          };
+
           await page.waitForFunction(
             () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 100; },
             { timeout: 5000 }
           ).catch(() => {});
-          return page.evaluate(() => document.getElementById("tab_modal_contenido_competicion")?.innerHTML || "");
+
+          let html = await page.evaluate(() => document.getElementById("tab_modal_contenido_competicion")?.innerHTML || "");
+          if (looksLikeClassification(html)) return html;
+
+          // Fallback robust: si el clic no ha carregat classificacions, força el load amb el fitxer del botó.
+          if (tabInfo.file) {
+            const forcedHtml = await jqLoad(
+              page,
+              "tab_modal_contenido_competicion",
+              tabInfo.file,
+              { filter: tabInfo.filter || "0" },
+              10000
+            );
+            if (looksLikeClassification(forcedHtml)) return forcedHtml;
+            if (forcedHtml && forcedHtml.length > (html?.length || 0)) html = forcedHtml;
+          }
+
+          return html;
         };
 
         // Helper: intenta seleccionar el grup amb el idc indicat al portal
@@ -350,72 +558,195 @@ async function main() {
         // Grups únics (idc) presents en els partits d'aquesta competició
         const uniqueIdcs = [...new Set(parsedMatches.map(m => m.idc).filter(Boolean))];
 
-        // Detecció addicional de grups des del DOM:
-        // Busca elements [onclick] que continguin el compId — quan en un onclick
-        // apareix el compId + un altre número, és molt probable que sigui un selector de grup.
-        const domGroups = await page.evaluate(cid => {
-          const groups = [];
-          const seen = new Set([cid]);
-          for (const el of document.querySelectorAll("[onclick]")) {
-            const oc = el.getAttribute("onclick") || "";
-            if (!oc.includes(cid)) continue;
-            for (const [, n] of oc.matchAll(/\b(\d{4,5})\b/g)) {
-              if (seen.has(n)) continue;
-              seen.add(n);
-              groups.push({ idc: n, text: el.textContent.trim().slice(0, 50), onclick: oc.slice(0, 80) });
-            }
-          }
-          return groups;
-        }, compId);
-
-        // Fusió: idcs dels partits + idcs detectats al DOM (sense duplicats)
-        for (const { idc } of domGroups) {
-          if (!uniqueIdcs.includes(idc)) uniqueIdcs.push(idc);
-        }
-
-        if (domGroups.length > 0 && !debugCalLogged) {
-          console.log(`   🔍 Grups DOM comp ${compId}: ${domGroups.map(g => g.idc).join(", ")}`);
-        }
+        // IMPORTANT: no fusionem idcs detectats globalment al DOM perquè pot introduir
+        // grups d'altres competicions i provocar falsos "DEBUG GRUP (no trobat)".
 
         if (uniqueIdcs.length > 1) {
-          // Competició amb múltiples grups: navega a cada grup i obté la seva classificació
-          let debugGroupLogged = false;
-          for (const idc of uniqueIdcs) {
-            try {
-              // Torna a clicar la competició per reiniciar l'estat
-              await page.evaluate(id => document.getElementById(id)?.click(), compId);
-              await page.waitForFunction(
-                () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
-                { timeout: 6000 }
-              ).catch(() => {});
+          // Competició amb múltiples grups (p.ex. Copa): intentar clickar CLASSIFICACIONS sense grup
+          // Sidgad mostrarà totes les classificacions de grups separades, i les parsejem per noms
+          console.log(`\n🔍 Intentant carregar clasificacions de TOTS els grups per comp ${compId}...`);
+          let hasGroupData = false;
+          try {
+            const classHtmlAllGroups = await clickClassTab();
+            if (classHtmlAllGroups) {
+              console.log(`   HTML rebut: ${classHtmlAllGroups.length} bytes`);
 
-              // Selecciona el grup
-              const groupResult = await clickGroupTab(idc);
-              if (!groupResult.found) {
-                if (!debugGroupLogged) {
-                  console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
-                  console.log(JSON.stringify(groupResult.sample, null, 2));
-                  console.log("---\n");
-                  debugGroupLogged = true;
+              // DEBUG: guardar el primer HTML de clasificació multi-grup per inspeccionar
+              const debugPath = require("path").join(__dirname, `../public/debug-classif-${compId}.html`);
+              require("fs").promises.writeFile(debugPath, classHtmlAllGroups).catch(() => {});
+              console.log(`   📄 HTML guardat a debug-classif-${compId}.html`);
+
+              const grouped = parseClassificationByGroupSidgad(classHtmlAllGroups, uniqueIdcs);
+              console.log(`   parseClassificationByGroupSidgad() retorna: ${grouped.groups.length} grups`);
+              if (grouped.groups.length > 0) {
+                hasGroupData = true;
+                // Éxit: tenim classificacions per grups
+                for (const g of grouped.groups) {
+                  compData[compId].classificationByGroup[g.key] = g.classification;
+                  compData[compId].classificationByGroupName[g.name] = g.classification;
                 }
-                continue;
-              }
-              await new Promise(r => setTimeout(r, 600));
+                compData[compId].hierarchy.groups = grouped.groups.map(g => ({
+                  key: g.key,
+                  idc: g.idc,
+                  name: g.name,
+                  teams: g.classification.length,
+                }));
 
-              // Obté la classificació del grup
-              const classHtml = await clickClassTab();
-              if (!classHtml) continue;
-              const classification = parseClassificationSidgad(classHtml);
-              if (classification.length > 0) {
-                compData[compId].classificationByGroup[idc] = classification;
+                console.log(`   ✓ Guardades ${grouped.groups.length} classificacions de grups\n`);
                 if (!debugClassLogged) {
-                  console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
-                  console.log(JSON.stringify(classification[0]));
+                  console.log(`\n--- CLASSIFICACIONS GRUPS comp ${compId} (${grouped.groups.length} grups) ---`);
+                  const firstGroup = grouped.groups[0];
+                  console.log(`   Primer grup: ${firstGroup.name} (${firstGroup.key}) - ${firstGroup.classification.length} equips`);
                   console.log("---\n");
                   debugClassLogged = true;
                 }
+              } else {
+                // Fallback: hi ha competicions que, tot i tenir idc variables,
+                // retornen una classificació única en aquest HTML.
+                const flatClassification = parseClassificationSidgad(classHtmlAllGroups);
+                if (flatClassification.length > 0) {
+                  hasGroupData = true;
+                  const fallbackIdc = String(uniqueIdcs[0] || compId);
+                  compData[compId].classification = flatClassification;
+                  compData[compId].classificationByGroup[fallbackIdc] = flatClassification;
+                  compData[compId].classificationByGroupName[compName] = flatClassification;
+                  compData[compId].hierarchy.groups = [{
+                    key: fallbackIdc,
+                    idc: fallbackIdc,
+                    name: compName,
+                    teams: flatClassification.length,
+                  }];
+                  console.log(`   ↪️  Fallback a classificació única: ${flatClassification.length} equips`);
+                } else {
+                  // Fallback robust: forçar càrrega de classificació per cada idc
+                  // utilitzant el mateix "file" de la pestanya Classificació.
+                  if (classTabMeta.file && uniqueIdcs.length > 0) {
+                    for (const idc of uniqueIdcs) {
+                      const payloads = [
+                        { filter: String(idc), idc: String(idc), idm: IDM },
+                        { filter: String(idc), idc: String(idc) },
+                        { idc: String(idc), idm: IDM },
+                        { filter: String(idc) },
+                      ];
+
+                      let byIdc = [];
+                      for (const payload of payloads) {
+                        const classHtmlByIdc = await jqLoad(
+                          page,
+                          "tab_modal_contenido_competicion",
+                          classTabMeta.file,
+                          payload,
+                          10000
+                        );
+                        byIdc = parseClassificationSidgad(classHtmlByIdc);
+                        if (byIdc.length > 0) break;
+                      }
+
+                      if (byIdc.length === 0) continue;
+
+                      hasGroupData = true;
+                      compData[compId].classificationByGroup[String(idc)] = byIdc;
+                      const groupName = `Grup ${idc}`;
+                      compData[compId].classificationByGroupName[groupName] = byIdc;
+                      compData[compId].hierarchy.groups.push({
+                        key: String(idc),
+                        idc: String(idc),
+                        name: groupName,
+                        teams: byIdc.length,
+                      });
+                    }
+
+                    if (hasGroupData) {
+                      const nRecovered = Object.keys(compData[compId].classificationByGroup).length;
+                      const expected = uniqueIdcs.length;
+                      console.log(`   ↪️  Fallback per idc: ${nRecovered} grup(s) detectat(s)`);
+                      if (nRecovered === expected) {
+                        console.log(`   ✓ Grups recuperats via fallback idc (${nRecovered}/${expected})`);
+                      }
+                    } else {
+                      console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
+                    }
+                  } else {
+                    console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
+                  }
+                }
               }
-            } catch { /* continua */ }
+            } else {
+              console.log(`   ⚠️  No es va obtenir HTML de classificacions`);
+            }
+          } catch (e) {
+            console.log(`   ❌ ERROR: ${e.message}\n`);
+          }
+
+          // Si encara falten grups, intentar l'alternativa: clickar cada grup individualment (antiga lógica)
+          // Important: el fallback per idc pot recuperar només una part dels grups.
+          const recoveredIdcs = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
+          const pendingIdcs = uniqueIdcs.map(String).filter(idc => !recoveredIdcs.has(idc));
+          if (pendingIdcs.length > 0) {
+            let debugGroupLogged = false;
+            for (const idc of pendingIdcs) {
+              try {
+                // Torna a clicar la competició per reiniciar l'estat
+                await page.evaluate(id => document.getElementById(id)?.click(), compId);
+                await page.waitForFunction(
+                  () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
+                  { timeout: 6000 }
+                ).catch(() => {});
+
+                // Selecciona el grup
+                const groupResult = await clickGroupTab(idc);
+                if (!groupResult.found) {
+                  if (!debugGroupLogged) {
+                    console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
+                    console.log(JSON.stringify(groupResult.sample, null, 2));
+                    console.log("---\n");
+                    debugGroupLogged = true;
+                  }
+                  continue;
+                }
+                await new Promise(r => setTimeout(r, 600));
+
+                // Obté la classificació del grup
+                const classHtml = await clickClassTab();
+                if (!classHtml) {
+                  if (!debugGroupLogged) {
+                    console.log(`\n--- DEBUG: No es pot obtenir classificació per comp ${compId} idc=${idc} ---`);
+                    debugGroupLogged = true;
+                  }
+                  continue;
+                }
+                const classification = parseClassificationSidgad(classHtml);
+                if (classification.length > 0) {
+                  compData[compId].classificationByGroup[idc] = classification;
+                  const groupName = `Grup ${idc}`;
+                  compData[compId].classificationByGroupName[groupName] = classification;
+                  compData[compId].hierarchy.groups.push({
+                    key: idc,
+                    idc,
+                    name: groupName,
+                    teams: classification.length,
+                  });
+                  if (!debugClassLogged) {
+                    console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
+                    console.log(JSON.stringify(classification[0]));
+                    console.log("---\n");
+                    debugClassLogged = true;
+                  }
+                }
+              } catch (e) {
+                console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
+              }
+            }
+
+            if (Object.keys(compData[compId].classificationByGroup).length > recoveredIdcs.size) {
+              hasGroupData = true;
+            }
+
+            const finalRecovered = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
+            const finalMissing = uniqueIdcs.map(String).filter(idc => !finalRecovered.has(idc));
+            if (finalMissing.length > 0) {
+              console.log(`   ⚠️  Grups pendents sense classificació (comp ${compId}): ${finalMissing.join(", ")}`);
+            }
           }
         } else {
           // Competició d'un sol grup: comportament original
@@ -432,14 +763,74 @@ async function main() {
             debugClassLogged = true;
           }
           if (classHtml) {
-            const classification = parseClassificationSidgad(classHtml);
-            compData[compId].classification = classification;
-            if (uniqueIdcs.length === 1) compData[compId].classificationByGroup[uniqueIdcs[0]] = classification;
-            if (!debugClassLogged && classification.length > 0) {
-              console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
-              console.log(JSON.stringify(classification[0]));
-              console.log("---\n");
-              debugClassLogged = true;
+            let grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
+            let source = "puppeteer";
+
+            // Fallback: si Puppeteer retorna pocs grups, intenta HTTP directe al portal
+            if (grouped.groups.length <= 2) {
+              try {
+                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar ${grouped.groups.length} grups)...`);
+                const directHtml = await fetchLeaguePageDirect(compId);
+                if (directHtml && directHtml.length > 1000) {
+                  const directGrouped = parseClassificationByGroupSidgad(directHtml, uniqueIdcs);
+                  if (directGrouped.groups.length > grouped.groups.length) {
+                    console.log(`   ✓ HTTP direct va retornar ${directGrouped.groups.length} grups (vs ${grouped.groups.length} de Puppeteer)`);
+                    grouped = directGrouped;
+                    source = "http_direct";
+                  }
+                }
+              } catch (err) {
+                console.log(`   ⚠️  HTTP direct error: ${err.message}`);
+              }
+            }
+
+            if (grouped.groups.length > 0) {
+              // Quan no tenim idc als partits (o només en tenim un), podem recuperar
+              // igualment la classificació per grup directament del HTML de classificacions.
+              compData[compId].classificationByGroup = {};
+              compData[compId].classificationByGroupName = {};
+              compData[compId].hierarchy.groups = grouped.groups.map(g => ({
+                key: String(g.key),
+                idc: g.idc ? String(g.idc) : null,
+                name: g.name,
+                teams: g.classification.length,
+              }));
+
+              for (const g of grouped.groups) {
+                compData[compId].classificationByGroup[String(g.key)] = g.classification;
+                compData[compId].classificationByGroupName[g.name] = g.classification;
+              }
+
+              compData[compId].classification = grouped.groups.flatMap(g => g.classification);
+
+              if (!debugClassLogged) {
+                console.log(`\n--- DEBUG CLASSIFICACIÓ GRUPS comp ${compId} (${grouped.groups.length} grups, source=${source}) ---`);
+                if (grouped.groups[0]?.classification?.length > 0) {
+                  console.log(JSON.stringify(grouped.groups[0].classification[0]));
+                }
+                console.log("---\n");
+                debugClassLogged = true;
+              }
+            } else {
+              const classification = parseClassificationSidgad(classHtml);
+              compData[compId].classification = classification;
+              if (uniqueIdcs.length === 1) {
+                const idc = uniqueIdcs[0];
+                compData[compId].classificationByGroup[idc] = classification;
+                compData[compId].classificationByGroupName[compName] = classification;
+                compData[compId].hierarchy.groups = [{
+                  key: String(idc),
+                  idc: String(idc),
+                  name: compName,
+                  teams: classification.length,
+                }];
+              }
+              if (!debugClassLogged && classification.length > 0) {
+                console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
+                console.log(JSON.stringify(classification[0]));
+                console.log("---\n");
+                debugClassLogged = true;
+              }
             }
           }
         }

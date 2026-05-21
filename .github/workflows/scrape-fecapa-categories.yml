@@ -1,0 +1,86 @@
+name: Scrape FECAPA Categories
+
+on:
+  # Execució manual des de Actions
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chrome (for Puppeteer)
+        run: |
+          npx puppeteer browsers install chrome
+
+      - name: Runtime diagnostics
+        run: |
+          set -euxo pipefail
+          echo "Date (UTC): $(date -u)"
+          echo "Working dir: $(pwd)"
+          node -v
+          npm -v
+          npm ls puppeteer || true
+          npx puppeteer --help >/dev/null 2>&1 || true
+      
+      - name: Run FECAPA categories scraper
+        run: |
+          set -euxo pipefail
+          echo "Starting scraper at $(date -u)"
+          node api/scraper-fecapa-categories.js \
+            --category "NACIONAL CATALANA" \
+            --category "PRIMERA CATALANA" \
+            --category "SEGONA CATALANA" \
+            --category "TERCERA CATALANA" \
+            --category FEM \
+            --category JUNIOR \
+            --category JUVENIL \
+            --category INFANTIL \
+            --category PREBENJAMI \
+            --category BENJAMI \
+            --category ALEVI \
+            --category VETERANS \
+            --competition-timeout-ms 45000 \
+            --output public/fecapa-categories.json
+          echo "Scraper finished at $(date -u)"
+        env:
+          NODE_ENV: production
+          FECAPA_COMP_TIMEOUT_MS: "45000"
+      
+      - name: Check for changes
+        id: git_status
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "status=dirty" >> $GITHUB_OUTPUT
+            git diff --name-only
+          fi
+      
+      - name: Commit and push changes
+        if: steps.git_status.outputs.status == 'dirty'
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add public/fecapa-categories.json
+          git commit -m "chore: update FECAPA categories data [automated]"
+          git push
+      
+      - name: Notify if no changes
+        if: steps.git_status.outputs.status == 'clean'
+        run: echo "✓ No changes to commit"

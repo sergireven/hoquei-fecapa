@@ -1,7 +1,10 @@
 // FECAPA app.js v8
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
+const VENUES_URL = "./venues.json";
+const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FAV_KEY  = "hoquei_favs_v8";
+const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
 // ── Supabase auth ─────────────────────────────────────────────
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
@@ -54,27 +57,41 @@ async function loadFavsFromCloud() {
   if (!_sb || !currentProfile?.id) return;
   const { data, error } = await _sb.rpc("get_user_favorites", { p_user_id: currentProfile.id });
   if (error || !data) return;
-  let changed = false;
+  const cloudEmpty = data.length === 0;
+  const hasLocals = favs.length || clubFavs.length || playerFavs.length || levelFavs.length;
+  if (cloudEmpty && hasLocals) {
+    for (const f of favs)       _syncFavToCloud("team",   `${f.compId}::${f.teamName}`, f);
+    for (const f of clubFavs)   _syncFavToCloud("club",   f.key, f);
+    for (const id of playerFavs) _syncFavToCloud("player", id, null);
+    for (const f of levelFavs)  _syncFavToCloud("level",  f.nodeKey, f);
+    return;
+  }
+  favs = []; clubFavs = []; playerFavs = []; levelFavs = [];
   for (const f of data) {
     if (f.fav_type === "team" && f.fav_data) {
       const d = f.fav_data;
-      if (d.compId && d.teamName && !isFav(d.compId, d.teamName)) { favs.push(d); changed = true; }
+      if (d.compId && d.teamName) favs.push(d);
     } else if (f.fav_type === "club" && f.fav_data) {
       const d = f.fav_data;
-      if (d.key && !isClubFav(d.key)) { clubFavs.push(d); changed = true; }
+      if (d.key) clubFavs.push(d);
     } else if (f.fav_type === "player") {
-      if (!isPlayerFav(f.fav_key)) { playerFavs.push(f.fav_key); changed = true; }
+      if (f.fav_key) playerFavs.push(f.fav_key);
+    } else if (f.fav_type === "level" && f.fav_data) {
+      const d = f.fav_data;
+      if (d.nodeKey) levelFavs.push(d);
     }
   }
-  if (changed) { saveFavs(); saveClubFavs(); savePlayerFavs(); }
+  saveFavs(); saveClubFavs(); savePlayerFavs(); saveLevelFavs();
 }
 async function _syncFavToCloud(type, key, data) {
-  if (!_sb || !currentProfile?.id) return;
-  _sb.rpc("upsert_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key, p_data: data });
+  if (!_sb || !currentProfile?.id) { console.warn("[fav] sync skip — no profile", type, key); return; }
+  const { error } = await _sb.rpc("upsert_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key, p_data: data });
+  if (error) console.error("[fav] upsert error", type, key, error);
 }
 async function _removeFavFromCloud(type, key) {
-  if (!_sb || !currentProfile?.id) return;
-  _sb.rpc("delete_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key });
+  if (!_sb || !currentProfile?.id) { console.warn("[fav] remove skip — no profile", type, key); return; }
+  const { error } = await _sb.rpc("delete_user_favorite", { p_user_id: currentProfile.id, p_type: type, p_key: key });
+  if (error) console.error("[fav] delete error", type, key, error);
 }
 
 function renderLoginButton() {
@@ -128,7 +145,12 @@ async function loginWithEmail() {
     _saveSoftSession(profile);
     await loadFavsFromCloud();
     closeLoginModal();
-    renderHome();
+    // Rerenderitza la vista actual (detall o home)
+    if (detailComp) {
+      await renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+    } else {
+      renderHome();
+    }
     return;
   }
 
@@ -208,6 +230,255 @@ window.openUserModal   = openUserModal;
 window.closeUserModal  = closeUserModal;
 
 // Admin panel
+const ADMIN_BENJAMI_TARGET_COMP = "BENJAMÍ COPA BARCELONA 2ª FASE";
+let adminPanelView = "users";
+let adminBenjamiModelCache = null;
+let adminFecapaCategoriesCache = null;
+
+const numOrNull = raw => {
+  const n = parseInt(String(raw || "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+function normalizeSpace(str) {
+  return String(str || "").replace(/\s+/g, " ").trim();
+}
+
+function textOf(el, selector) {
+  return normalizeSpace(el?.querySelector(selector)?.textContent || "");
+}
+
+function parseBenjamiGroupTable(groupName, tableEl) {
+  const teams = [...tableEl.querySelectorAll("tbody tr")].map(row => {
+    const cells = [...row.querySelectorAll("td")];
+    const teamCell = cells[2] || null;
+    const logoSrcRaw = cells[1]?.querySelector("img")?.getAttribute("src") || "";
+    const logoSrc = normalizeSpace(logoSrcRaw);
+    const teamName = normalizeSpace(textOf(teamCell, ".no_mobile") || teamCell?.textContent || "");
+    const teamShort = normalizeSpace(textOf(teamCell, ".mobile"));
+
+    return {
+      position: numOrNull(cells[0]?.textContent),
+      teamName,
+      teamShort: teamShort || null,
+      logoSrc: logoSrc || null,
+      points: numOrNull(cells[3]?.textContent),
+      played: numOrNull(cells[4]?.textContent),
+      won: numOrNull(cells[5]?.textContent),
+      drawn: numOrNull(cells[6]?.textContent),
+      lost: numOrNull(cells[7]?.textContent),
+      goalsFor: numOrNull(cells[8]?.textContent),
+      goalsAgainst: numOrNull(cells[9]?.textContent),
+      goalDiff: numOrNull(cells[10]?.textContent),
+      penalties: numOrNull(cells[11]?.textContent),
+    };
+  }).filter(t => t.teamName);
+
+  return {
+    groupName,
+    teamCount: teams.length,
+    teams,
+  };
+}
+
+function buildAdminBenjamiModelFromHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const containers = [...doc.querySelectorAll(".tab_modal_container")];
+
+  const targetContainer = containers.find(container => {
+    const header = normalizeSpace(container.querySelector("#titulo_competicion_header_text")?.textContent || "");
+    return header === ADMIN_BENJAMI_TARGET_COMP;
+  });
+
+  if (!targetContainer) {
+    throw new Error(`No s'ha trobat el bloc de la competició ${ADMIN_BENJAMI_TARGET_COMP}`);
+  }
+
+  const classifTab = targetContainer.querySelector(".tab_modal_contenido#tab_modal_contenido_competicion");
+  if (!classifTab) {
+    throw new Error("No s'ha trobat la pestanya de classificació de la competició");
+  }
+
+  const titles = [...classifTab.querySelectorAll(".div_titulo_fase_idc")].map(el => normalizeSpace(el.textContent));
+  const tables = [...classifTab.querySelectorAll("table.tabla_standard")];
+  const groups = [];
+  const count = Math.min(titles.length, tables.length);
+
+  for (let i = 0; i < count; i += 1) {
+    groups.push(parseBenjamiGroupTable(titles[i], tables[i]));
+  }
+
+  return {
+    source: "fecapa_html",
+    competition: ADMIN_BENJAMI_TARGET_COMP,
+    generatedAt: new Date().toISOString(),
+    groupCount: groups.length,
+    teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
+    groups,
+  };
+}
+
+async function getAdminBenjamiModel() {
+  if (adminBenjamiModelCache) return adminBenjamiModelCache;
+
+  const res = await fetch(`./HOQUEI%20PATINS%20_%20FCP.html?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar l'HTML (${res.status})`);
+  const html = await res.text();
+
+  adminBenjamiModelCache = buildAdminBenjamiModelFromHtml(html);
+  return adminBenjamiModelCache;
+}
+
+function renderAdminTopNav(activeView) {
+  const btn = (view, label) => `<button onclick="adminSetView('${view}')" style="flex:1;background:${activeView === view ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === view ? "#1a2035" : "#e2e6ef"};color:${activeView === view ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">${label}</button>`;
+  return `<div style="display:flex;gap:8px;margin-bottom:12px">
+    ${btn("users", "Usuaris")}
+    ${btn("fecapa_cats", "Classificacions FECAPA")}
+    ${btn("audit", "Auditoria FECAPA↔jok")}
+  </div>`;
+}
+
+function adminCategoryLabel(key) {
+  if (key === "nacional_catalana") return "Nacional Catalana";
+  if (key === "primera_catalana") return "Primera Catalana";
+  if (key === "segona_catalana") return "Segona Catalana";
+  if (key === "tercera_catalana") return "Tercera Catalana";
+  if (key === "fem") return "Femení";
+  if (key === "junior") return "Júnior";
+  if (key === "juvenil") return "Juvenil";
+  if (key === "infantil") return "Infantil";
+  if (key === "prebenjami") return "Prebenjamí";
+  if (key === "benjami") return "Benjamí";
+  if (key === "alevi") return "Aleví";
+  if (key === "veterans") return "Veterans";
+  return key;
+}
+
+async function getAdminFecapaCategoriesModel({ force = false } = {}) {
+  if (!force && adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
+  // Admin must reflect persisted fecapa-categories output (no live scraping).
+  const res = await fetch(`./fecapa-categories.json?t=${Date.now()}`);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const errJson = await res.json();
+      detail = errJson?.error ? `: ${errJson.error}` : "";
+    } catch {}
+    throw new Error(`No s'ha pogut carregar fecapa-categories.json (${res.status})${detail}`);
+  }
+  const data = await res.json();
+  if (!data?.ok) throw new Error(data?.error || "Resposta invàlida de FECAPA scraper");
+  adminFecapaCategoriesCache = data;
+  return data;
+}
+
+function renderAdminFecapaCompetition(comp) {
+  return `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 12px 4px;margin-bottom:12px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035;line-height:1.2">${esc(comp.competitionName)}</div>
+    <div style="font-size:11px;color:#64748b;margin:4px 0 10px">ID ${esc(comp.competitionId)} · ${comp.groupCount} grups · ${comp.teamCount} equips</div>
+    ${comp.groups.map(renderAdminBenjamiTable).join("")}
+  </div>`;
+}
+
+async function renderAdminFecapaCategoriesPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant fecapa-categories.json...</div>`;
+  try {
+    const model = await getAdminFecapaCategoriesModel({ force: true });
+    const categoryKeys = ["nacional_catalana", "primera_catalana", "segona_catalana", "tercera_catalana", "fem", "junior", "juvenil", "infantil", "prebenjami", "benjami", "alevi", "veterans"];
+    const totalComps = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k]?.length || 0), 0);
+    const totalTeams = categoryKeys.reduce((acc, k) => acc + (model.categories?.[k] || []).reduce((n, c) => n + (c.teamCount || 0), 0), 0);
+
+    body.innerHTML = `
+      ${renderAdminTopNav("fecapa_cats")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Classificacions de FECAPA</div>
+            <div style="font-size:12px;color:#64748b">${totalComps} competicions · ${totalTeams} equips · source: ${esc(model.source || "unknown")}${Number(model.failedCompetitions || 0) ? ` · errors: ${model.failedCompetitions}` : ""}</div>
+          </div>
+          <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+        </div>
+      </div>
+      ${categoryKeys.map(key => {
+        const comps = model.categories?.[key] || [];
+        return `<div style="margin-bottom:14px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1a2035;margin:0 2px 10px">${adminCategoryLabel(key)} (${comps.length})</div>
+          ${comps.length ? comps.map(renderAdminFecapaCompetition).join("") : `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;color:#64748b;font-size:13px">Sense competicions trobades</div>`}
+        </div>`;
+      }).join("")}
+      <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON (fecapa-categories.json)</summary>
+        <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
+      </details>`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant fecapa-categories.json: ${esc(err?.message || "desconegut")}</div>`;
+  }
+}
+
+function renderAdminBenjamiTable(group) {
+  return `<div style="overflow-x:auto;background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;margin-bottom:14px">
+    <div style="padding:12px 12px 8px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#1a2035">${esc(group.groupName)}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-top:1px solid #e2e6ef;border-bottom:1px solid #e2e6ef;background:#f8fafc">
+          <th style="padding:8px 6px;text-align:left;font-size:11px;color:#64748b">#</th>
+          <th style="padding:8px 6px;text-align:left;font-size:11px;color:#64748b">Equip</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">Pts</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">J</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">G</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">E</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">P</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">F</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">C</th>
+          <th style="padding:8px 6px;text-align:center;font-size:11px;color:#64748b">Gav</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${group.teams.map(team => `<tr style="border-bottom:1px solid #f0f2f8">
+          <td style="padding:8px 6px;font-size:12px;font-weight:700;color:#334155">${team.position ?? "-"}</td>
+          <td style="padding:8px 6px">
+            <div style="font-size:12px;font-weight:600;color:#1a2035">${esc(team.teamName)}</div>
+            ${team.teamShort ? `<div style="font-size:10px;color:#94a3b8">${esc(team.teamShort)}</div>` : ""}
+          </td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px;font-weight:700;color:#e5001c">${team.points ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.played ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.won ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.drawn ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.lost ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalsFor ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalsAgainst ?? "-"}</td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">${team.goalDiff ?? "-"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function renderAdminBenjamiPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("benjami")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant classificació...</div>`;
+  try {
+    const model = await getAdminBenjamiModel();
+    body.innerHTML = `
+      ${renderAdminTopNav("benjami")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Representació desacoblada del HTML</div>
+            <div style="font-size:12px;color:#64748b">${esc(model.competition)} · ${model.groupCount} grups · ${model.teamCount} equips</div>
+          </div>
+          <button onclick="adminReloadBenjamiModel()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar HTML</button>
+        </div>
+      </div>
+      ${model.groups.map(renderAdminBenjamiTable).join("")}
+      <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON</summary>
+        <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
+      </details>`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("benjami")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant classificació: ${esc(err?.message || "desconegut")}</div>`;
+  }
+}
+
 function openAdminPanel() {
   ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
   $("screen-admin").style.display = "flex";
@@ -217,11 +488,139 @@ function closeAdminPanel() {
   $("screen-admin").style.display = "none";
   renderHome();
 }
+
+// ── Auditoria FECAPA ↔ jok.cat ────────────────────────────────
+let adminAuditCache = null;
+async function getAdminAuditData({ force = false } = {}) {
+  if (!force && adminAuditCache) return adminAuditCache;
+  const res = await fetch(`./classification-audit.json?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar classification-audit.json (${res.status})`);
+  const data = await res.json();
+  adminAuditCache = data;
+  return data;
+}
+
+function renderAuditFreshnessTag(isFresh) {
+  if (isFresh === true)  return `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Fresc</span>`;
+  if (isFresh === false) return `<span style="background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">Desfasat</span>`;
+  return `<span style="background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.03em">?</span>`;
+}
+
+function renderAuditGroupTable(grp) {
+  const rows = grp.jokcatClassification || grp.fecapaTeams?.map((t, i) => ({ team: t, pos: i + 1 })) || [];
+  const isMissing = grp.status === "fecapa_missing";
+  const sourceTag = isMissing
+    ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok.cat fallback</span>`
+    : `<span style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">FECAPA</span>`;
+
+  const freshnessTag = isMissing ? renderAuditFreshnessTag(grp.isFresh) : "";
+  const pjInfo = grp.jornadesActuals > 0
+    ? `<span style="font-size:10px;color:#64748b;margin-left:6px">J jugades: ${grp.jornadesActuals} | jok pj màx: ${grp.jokcatMaxPj ?? "—"}</span>`
+    : "";
+
+  const teamsHtml = rows.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e6ef">
+        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">#</th>
+        <th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">Equip</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">Pts</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">J</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">G</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">E</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">P</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GF</th>
+        <th style="padding:5px 6px;text-align:center;color:#64748b;font-weight:600">GC</th>
+      </tr></thead>
+      <tbody>${rows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
+        <td style="padding:5px 6px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
+        <td style="padding:5px 6px;color:#1a2035;font-weight:500">${esc(t.team ?? t.teamName ?? "")}</td>
+        <td style="padding:5px 6px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? t.points ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pj ?? t.played ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pg ?? t.won ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pe ?? t.drawn ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.pp ?? t.lost ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.gf ?? t.goalsFor ?? "-"}</td>
+        <td style="padding:5px 6px;text-align:center">${t.gc ?? t.goalsAgainst ?? "-"}</td>
+      </tr>`).join("")}</tbody>
+    </table>` : `<div style="padding:8px;color:#94a3b8;font-size:12px">Sense dades de classificació</div>`;
+
+  return `<div style="border:1.5px solid ${isMissing ? "#fde68a" : "#e2e6ef"};border-radius:10px;margin-bottom:10px;overflow:hidden">
+    <div style="padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:${isMissing ? "#fffbeb" : "#f8fafc"}">
+      ${sourceTag}${freshnessTag}
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
+      ${pjInfo}
+      ${grp.jokcatMatchRatio > 0 ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio}%</span>` : ""}
+    </div>
+    ${teamsHtml}
+  </div>`;
+}
+
+function renderAuditCompetition(entry) {
+  const statusIcon = entry.hasIncomplete ? "⚠️" : "✅";
+  const groupsHtml = entry.groups.map(renderAuditGroupTable).join("");
+  return `<details style="background:#fff;border-radius:12px;border:1.5px solid ${entry.hasIncomplete ? "#fde68a" : "#e2e6ef"};margin-bottom:10px">
+    <summary style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none">
+      <span style="font-size:15px">${statusIcon}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035;flex:1">${esc(entry.competitionName)}</span>
+      <span style="font-size:11px;color:#64748b">${entry.groupsOk} FECAPA${entry.groupsMissing > 0 ? ` + ${entry.groupsMissing} jok fallback` : ""} · ${entry.fecapaTeamCount} equips</span>
+    </summary>
+    <div style="padding:0 10px 10px">${groupsHtml}</div>
+  </details>`;
+}
+
+async function renderAdminAuditPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("audit")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant auditoria...</div>`;
+  try {
+    const audit = await getAdminAuditData({ force: true });
+    const incompleteComps = audit.competitions.filter(c => c.hasIncomplete);
+    const okComps = audit.competitions.filter(c => !c.hasIncomplete);
+    const builtAt = audit.builtAt ? new Date(audit.builtAt).toLocaleString("ca-ES") : "—";
+
+    body.innerHTML = `
+      ${renderAdminTopNav("audit")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Auditoria FECAPA ↔ jok.cat</div>
+            <div style="font-size:12px;color:#64748b">
+              Generat: ${builtAt} ·
+              ${audit.totalGroupsOk} grups FECAPA ·
+              ${audit.totalGroupsMissing} grups jok fallback ·
+              <span style="color:#166534">${audit.totalFresh} frescos</span> ·
+              <span style="color:#854d0e">${audit.totalStale} desfasats</span>
+            </div>
+          </div>
+          <button onclick="adminReloadAudit()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+        </div>
+      </div>
+      ${incompleteComps.length ? `
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups faltants (${incompleteComps.length})</div>
+        ${incompleteComps.map(renderAuditCompetition).join("")}
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Competicions completes (${okComps.length})</div>
+      ` : `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:0 2px 10px;text-transform:uppercase;letter-spacing:.05em">✅ Totes les competicions completes (${okComps.length})</div>`}
+      ${okComps.map(renderAuditCompetition).join("")}`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("audit")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">
+      Error carregant auditoria: ${esc(err?.message || "desconegut")}<br>
+      <small style="color:#94a3b8">Executa: node api/build-classification-audit.js</small>
+    </div>`;
+  }
+}
+
 async function renderAdminPanel() {
   const body = $("admin-body");
-  body.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
+  if (adminPanelView === "fecapa_cats") {
+    await renderAdminFecapaCategoriesPanel(body);
+    return;
+  }
+  if (adminPanelView === "audit") {
+    await renderAdminAuditPanel(body);
+    return;
+  }
+
+  body.innerHTML = `${renderAdminTopNav("users")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
   const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
-  if (error || !profiles) { body.innerHTML = `<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
+  if (error || !profiles) { body.innerHTML = `${renderAdminTopNav("users")}<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
   const ROLES = ["","entrenador","admin"];
   const rows = profiles.map(p => `
     <tr style="border-bottom:1px solid #f0f4f8">
@@ -238,6 +637,7 @@ async function renderAdminPanel() {
       </td>
     </tr>`).join("");
   body.innerHTML = `
+    ${renderAdminTopNav("users")}
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px;margin-bottom:16px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Afegir / editar usuari</div>
       <input id="admin-add-email" type="email" placeholder="email@exemple.com"
@@ -300,13 +700,31 @@ window.updateUserRole      = updateUserRole;
 window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
+window.adminSetView = view => {
+  adminPanelView = ["fecapa_cats", "audit"].includes(view) ? view : "users";
+  renderAdminPanel();
+};
+window.adminReloadBenjamiModel = () => {
+  adminBenjamiModelCache = null;
+  renderAdminPanel();
+};
+window.adminReloadFecapaCategories = () => {
+  adminFecapaCategoriesCache = null;
+  renderAdminPanel();
+};
+window.adminReloadAudit = () => {
+  adminAuditCache = null;
+  renderAdminPanel();
+};
 
 let DB      = null;
+let venuesDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
 let allFilterCat  = "ALL";
 let allOnlyActive = true;  // hide 100% finished comps by default
+let allCompsOpenState = {};
 let clubSearch    = "";
 let selectedClub  = null;  // { name, teams:[{compId, teamName, teamId}] }
 
@@ -342,10 +760,81 @@ function togglePlayerFav(jid) {
   savePlayerFavs();
 }
 
+let levelFavs = [];
+try { levelFavs = JSON.parse(localStorage.getItem(LEVEL_FAV_KEY)||"[]"); } catch {}
+const saveLevelFavs = () => localStorage.setItem(LEVEL_FAV_KEY, JSON.stringify(levelFavs));
+const isLevelFav = nodeKey => levelFavs.some(f=>f.nodeKey===nodeKey);
+function toggleLevelFav(fav) {
+  const key = fav.nodeKey;
+  if (isLevelFav(key)) {
+    levelFavs = levelFavs.filter(f=>f.nodeKey!==key);
+    _removeFavFromCloud("level", key);
+  } else {
+    levelFavs.push(fav);
+    _syncFavToCloud("level", key, fav);
+  }
+  saveLevelFavs();
+}
+
+let favDragCtx = null;
+
+function favKeyOf(type, item) {
+  if (type === "club") return item.key;
+  if (type === "level") return item.nodeKey;
+  if (type === "team") return `${item.compId}::${item.teamName}`;
+  if (type === "player") return item;
+  return "";
+}
+
+function favListRef(type) {
+  if (type === "club") return { list: clubFavs, save: saveClubFavs };
+  if (type === "level") return { list: levelFavs, save: saveLevelFavs };
+  if (type === "team") return { list: favs, save: saveFavs };
+  if (type === "player") return { list: playerFavs, save: savePlayerFavs };
+  return null;
+}
+
+function reorderFavByKey(type, fromKey, toKey) {
+  const ref = favListRef(type);
+  if (!ref || fromKey === toKey) return;
+  const arr = ref.list;
+  const fromIdx = arr.findIndex(x => favKeyOf(type, x) === fromKey);
+  const toIdx = arr.findIndex(x => favKeyOf(type, x) === toKey);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+  const [moved] = arr.splice(fromIdx, 1);
+  arr.splice(toIdx, 0, moved);
+  ref.save();
+}
+
+window.favDragStart = (type, key) => {
+  favDragCtx = { type, key };
+};
+
+window.favDragOver = e => {
+  if (e && e.preventDefault) e.preventDefault();
+};
+
+window.favDrop = (type, key) => {
+  if (!favDragCtx) return;
+  if (favDragCtx.type !== type) {
+    favDragCtx = null;
+    return;
+  }
+  reorderFavByKey(type, favDragCtx.key, key);
+  favDragCtx = null;
+  renderFavs();
+};
+
+window.favDragEnd = () => {
+  favDragCtx = null;
+};
+
 let jugadorSearch = "";
+let jugadorComposing = false;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;");
+const decodeHtml = s => String(s||"").replace(/&#039;/g,"'").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"');
 
 const CAT_EMOJI = {
   "Nacional Catalana":"👑","1ª Catalana":"⭐","2ª Catalana":"🔵","3ª Catalana":"🟣",
@@ -366,6 +855,100 @@ const CAT_COLOR = {
   "Infantil":"#0891b2","Aleví":"#7c3aed","Benjamí":"#dc2626","Prebenjamí":"#d97706",
   "Veterans":"#6b7280","Altres":"#6b7280",
 };
+
+function getPlayerSourceCatCounts(player) {
+  const out = {};
+  for (const src of (player?.sources || [])) {
+    const cat = DB?.actesIndex?.[String(src?.id)];
+    if (!cat) continue;
+    out[cat] = (out[cat] || 0) + 1;
+  }
+  return out;
+}
+
+function normalizePlayerTeamStatsForDisplay(player) {
+  const teamStats = [...(player?.teamStats || [])];
+  if (teamStats.length <= 1) return teamStats;
+
+  const uniqueCats = [...new Set(teamStats.map(t => t.cat).filter(Boolean))];
+  const srcCatCounts = Object.entries(getPlayerSourceCatCounts(player));
+
+  // Heuristic fix: if all teams have same category but sources clearly span multiple categories,
+  // distribute categories by prominence (most matches team -> most frequent source category).
+  if (uniqueCats.length === 1 && srcCatCounts.length > 1) {
+    const catsSorted = srcCatCounts.sort((a,b) => b[1]-a[1]).map(([cat]) => cat);
+    const teamsSorted = [...teamStats].sort((a,b) => (b.count||0) - (a.count||0));
+    const assigned = teamsSorted.map((t, i) => ({ ...t, cat: catsSorted[i] || catsSorted[0] || t.cat }));
+    return assigned;
+  }
+
+  return teamStats;
+}
+
+async function buildPlayerTeamStatsFromSources(player, jid) {
+  const sources = (player?.sources || []).filter(s => s?.type === "acta" && s?.id != null);
+  if (!sources.length) return [];
+
+  const wantedId = String(jid || player?.jugadorId || player?.id || "").trim();
+  if (!wantedId) return [];
+
+  const teamCatCounts = {};
+
+  const addAppearance = (players, team, cat) => {
+    if (!Array.isArray(players) || !team || !cat) return;
+    const appeared = players.some(p => {
+      const pid = String(
+        p?.jugadorId
+        || p?.id
+        || (p?.url?.match(/\/jugador\/(\d+)\//)?.[1] || "")
+      );
+      return pid === wantedId;
+    });
+    if (!appeared) return;
+
+    const key = `${team}::${cat}`;
+    if (!teamCatCounts[key]) teamCatCounts[key] = { team, cat, count: 0 };
+    teamCatCounts[key].count += 1;
+  };
+
+  for (const src of sources) {
+    const actaId = String(src.id);
+    const cat = DB?.actesIndex?.[actaId];
+    if (!cat) continue;
+
+    const actes = await loadCatActes(cat);
+    const acta = actes?.[actaId];
+    if (!acta?.playerStats) continue;
+
+    addAppearance(acta.playerStats.homePlayers, acta.home, cat);
+    addAppearance(acta.playerStats.awayPlayers, acta.away, cat);
+  }
+
+  return Object.values(teamCatCounts).sort((a, b) => b.count - a.count);
+}
+
+async function enrichPlayerOnDemand(jid) {
+  const player = DB?.jugadors?.[jid];
+  if (!player) return;
+  if (Array.isArray(player.careerStats) && player.careerStats.length) return;
+  try {
+    const res = await fetch(`https://jok.cat/api/player/${jid}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (Array.isArray(data.playerStats) && data.playerStats.length) {
+      player.careerStats = data.playerStats.map(s => ({
+        seasonName:   s.seasonName,
+        total_goals:  +s.total_goals,
+        match_count:  +s.match_count,
+        total_blue:   +s.total_blue,
+        total_red:    +s.total_red,
+      }));
+    }
+    const info = data.playerInfo?.[0];
+    if (info?.number != null && player.number == null) player.number = info.number;
+  } catch {}
+}
 
 // ── Club ID lookups ───────────────────────────────────────────
 function getClubIdByTeamId(teamId) {
@@ -415,6 +998,80 @@ function shieldImg(clubId, size) {
   // clubId can be a full filename like "278_3.png" or just "278"
   const src = clubId.includes(".") ? SHIELD + clubId : SHIELD + clubId + ".gif";
   return `<img src="${src}" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
+}
+
+function normalizeCompKey(name) {
+  return String(name || "")
+    .replace(/\s*\((?:20\d{2}|\d{4})[-/]?\d{2,4}\)\s*/g, " ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function hasClassRows(rows) {
+  return Array.isArray(rows) && rows.some(r => r && String(r.team || "").trim());
+}
+
+function buildSidgadClassificationIndex(raw) {
+  const byCompId = new Map();
+  const byName = new Map();
+  const values = Object.values(raw || {});
+
+  for (const comp of values) {
+    if (!comp || typeof comp !== "object") continue;
+
+    const compNameKey = normalizeCompKey(comp.name);
+    const groups = comp.classificationByGroup || {};
+    const groupEntries = Object.entries(groups).filter(([, rows]) => hasClassRows(rows));
+    const flatRows = hasClassRows(comp.classification) ? comp.classification : null;
+
+    for (const [idc, rows] of groupEntries) {
+      if (!byCompId.has(String(idc))) byCompId.set(String(idc), rows);
+    }
+
+    if (flatRows) {
+      const idcs = [...new Set((comp.matches || []).map(m => String(m?.idc || "")).filter(Boolean))];
+      if (idcs.length === 1 && !byCompId.has(idcs[0])) byCompId.set(idcs[0], flatRows);
+      if (comp.id && !byCompId.has(String(comp.id))) byCompId.set(String(comp.id), flatRows);
+      if (compNameKey && !byName.has(compNameKey)) byName.set(compNameKey, flatRows);
+      continue;
+    }
+
+    if (compNameKey && groupEntries.length && !byName.has(compNameKey)) {
+      byName.set(compNameKey, groupEntries[0][1]);
+    }
+  }
+
+  return { byCompId, byName };
+}
+
+function applyClassificationSourceMerge() {
+  if (!DB?.categories) return;
+
+  for (const comps of Object.values(DB.categories)) {
+    for (const comp of comps) {
+      const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
+      if (hasClassRows(jokRows)) {
+        comp.classification = jokRows;
+        comp.classificationSource = "jok";
+      } else {
+        comp.classification = [];
+        comp.classificationSource = "none";
+      }
+    }
+  }
+}
+
+function classifSourceBadgeHtml(comp) {
+  const src = comp?.classificationSource;
+  if (src === "fecapa") {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>okCat360</span></span>`;
+  }
+  if (src === "jok") {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
+  }
+  return "";
 }
 //-- Busca competicions
 function findComp(compId) {
@@ -533,14 +1190,19 @@ function playerTableHtml(players, teamName, teamColor) {
     <div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:${teamColor};letter-spacing:.05em;margin-bottom:6px">${esc(teamName)}</div>
       <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;overflow:hidden">
-        <div style="display:flex;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+        <div style="display:flex;align-items:center;background:#f8fafc;padding:6px 12px;border-bottom:1px solid #e2e6ef">
+          <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</div>
           <div style="flex:1;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</div>
           ${hasStats?`<div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#16a34a">G</div>
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#2563eb">B</div>
           <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#dc2626">V</div>`:""}
         </div>
-        ${players.map(p => `
+        ${players.map(p => {
+          const jid = p.jugadorId;
+          const playerNumber = jid && DB?.jugadors?.[jid]?.number;
+          return `
           <div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f0f2f8">
+            <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#64748b">${playerNumber ?? "–"}</div>
             <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
               ${(()=>{const m=p.url?.match(/\/jugador\/(\d+)\//);const jid=m?.[1];if(jid)return`<button class="player-name-btn" data-jid="${jid}">${esc(p.name)}</button>`;if(p.url)return`<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="color:#003da5;text-decoration:none;font-weight:600">${esc(p.name)}</a>`;return esc(p.name);})()}
             </div>
@@ -548,12 +1210,67 @@ function playerTableHtml(players, teamName, teamColor) {
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.g?"900":"400"};color:${p.g?"#16a34a":"#cbd5e1"}">${p.g||"·"}</div>
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.b?"900":"400"};color:${p.b?"#2563eb":"#cbd5e1"}">${p.b||"·"}</div>
             <div style="width:28px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:${p.v?"900":"400"};color:${p.v?"#dc2626":"#cbd5e1"}">${p.v||"·"}</div>`:""}
-          </div>`).join("")}
+          </div>`;
+        }).join("")}
       </div>
     </div>`;
 }
 
+function getVenueLinks(teamName) {
+  if (!venuesDB?.venues || !teamName) return "";
+  const venue = venuesDB.venues[teamName];
+  if (!venue?.coordinates) return "";
+  const { lat, lng } = venue.coordinates;
+  if (!lat || !lng) return "";
+  return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
+    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
+    <a href="https://maps.apple.com/?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">🗺️ Apple Maps →</a>
+  </div>`;
+}
+
+async function enrichActaPlayerNumbers(acta) {
+  const allPlayers = [
+    ...(acta.playerStats?.homePlayers || []),
+    ...(acta.playerStats?.awayPlayers || [])
+  ];
+  const playerIds = new Set();
+  for (const p of allPlayers) {
+    const m = p.url?.match(/\/jugador\/(\d+)\//);
+    if (m?.[1]) playerIds.add(m[1]);
+  }
+
+  for (const jid of playerIds) {
+    await enrichPlayerOnDemand(jid);
+  }
+
+  rerenderActaPlayers();
+}
+
+function rerenderActaPlayers() {
+  const acta = currentActa;
+  if (!acta) return;
+  let homePlayers, awayPlayers;
+  if (acta.playerStats) {
+    homePlayers = acta.playerStats.homePlayers || [];
+    awayPlayers = acta.playerStats.awayPlayers || [];
+  } else {
+    const psr = acta.playerStatsRaw || {};
+    const links = acta.playerLinks || [];
+    homePlayers = parsePlayerBlock(psr.homeBlock || "", links);
+    awayPlayers = parsePlayerBlock(psr.awayBlock || "", links.slice(homePlayers.length));
+  }
+  const grid = $("acta-body").querySelector(".acta-teams-grid");
+  if (grid) {
+    grid.innerHTML = `
+      ${playerTableHtml(homePlayers, acta.home, "#003da5")}
+      ${playerTableHtml(awayPlayers, acta.away, "#e5001c")}`;
+  }
+}
+
+let currentActa = null;
+
 function openActaDetail(acta) {
+  currentActa = acta;
   let homePlayers, awayPlayers;
   if (acta.playerStats) {
     homePlayers = acta.playerStats.homePlayers || [];
@@ -601,6 +1318,7 @@ function openActaDetail(acta) {
       ${actaUrl?`<div style="border-top:1px solid #f0f2f8;padding:10px 14px">
         <a href="${esc(actaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📄 Veure acta a jok.cat →</a>
       </div>`:""}
+      ${getVenueLinks(acta.home)}
     </div>
 
     <!-- Players -->
@@ -612,6 +1330,7 @@ function openActaDetail(acta) {
   ["screen-home","screen-detail","screen-picker"].forEach(id => $(id).style.display="none");
   $("screen-acta").style.display = "flex";
   window.scrollTo(0, 0);
+  enrichActaPlayerNumbers(acta);
 }
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
@@ -642,12 +1361,21 @@ function getLastAndNext(matches, teamName) {
 }
 
 // ── Match card ────────────────────────────────────────────────
-function matchCard(m, myTeam) {
+function matchCard(m, myTeam, compId) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const cidH   = getClubId(m.home), cidA = getClubId(m.away);
   const acta   = getMatchActa(m);
   const hasActa = !!(acta && (acta.actaUrl || acta.url));
+
+  // Debug logging
+  const effectiveCompId = compId || m.compId;
+  if (!played) {
+    console.log("Match card - played:", played, "compId param:", compId, "m.compId:", m.compId, "effectiveCompId:", effectiveCompId);
+    if (!effectiveCompId) {
+      console.warn("NO COMPID FOR MATCH:", { home: m.home, away: m.away });
+    }
+  }
 
   let border="#e2e6ef", badge="";
   if (played && myTeam) {
@@ -665,6 +1393,29 @@ function matchCard(m, myTeam) {
     ? `<div style="text-align:center;margin-top:6px"><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">📄 Acta</span></div>`
     : "";
 
+  // Afegir icona de ubicació si no és jugat i hi ha coordenades
+  let venueIcon = "";
+  if (!played && venuesDB?.venues?.[m.home]) {
+    const coords = venuesDB.venues[m.home];
+    if (coords.lat && coords.lng) {
+      const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+      const mapsUrl = isApple
+        ? `https://maps.apple.com/?q=${coords.lat},${coords.lng}`
+        : `https://www.google.com/maps?q=${coords.lat},${coords.lng}`;
+      const mapsApp = `maps://?q=${coords.lat},${coords.lng}`;
+      venueIcon = `<div style="text-align:center;margin-top:6px"><a href="${isApple?mapsApp:mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;text-decoration:none;cursor:pointer">📍</a></div>`;
+    }
+  }
+
+  // Icones d'anàlisi (mostrar per a tots els usuaris)
+  const homeAnalysisIcon = !played && effectiveCompId
+    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+    : "";
+
+  const awayAnalysisIcon = !played && effectiveCompId
+    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -674,15 +1425,18 @@ function matchCard(m, myTeam) {
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(m.home)}</span>
+          ${homeAnalysisIcon}
           ${shieldImg(cidH,22)}
         </div>
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
           ${actaBadge}
+          ${venueIcon}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${shieldImg(cidA,22)}
+          ${awayAnalysisIcon}
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(m.away)}</span>
         </div>
       </div>
@@ -697,11 +1451,11 @@ function renderHome() {
   $("screen-home").style.display   = "flex";
   $("home-header").innerHTML = `
     <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900">🏒 <span style="color:#e5001c">FECAPA</span></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900"><img src="Designer_2.png" style="height:28px;vertical-align:middle;margin-right:6px;object-fit:contain"/><span style="color:#e5001c">okCat360</span></div>
       ${renderLoginButton()}
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
-      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus${(favs.length+clubFavs.length+playerFavs.length)?` (${favs.length+clubFavs.length+playerFavs.length})`:""}</button>
+      <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus${(favs.length+clubFavs.length+playerFavs.length+levelFavs.length)?` (${favs.length+clubFavs.length+playerFavs.length+levelFavs.length})`:""}</button>
       <button onclick="setHomeTab('club')" style="flex:1;background:${homeTab==='club'?"#1a2035":"#f0f4f8"};color:${homeTab==='club'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='club'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🏟 Club</button>
       <button onclick="setHomeTab('all')" style="flex:1;background:${homeTab==='all'?"#1a2035":"#f0f4f8"};color:${homeTab==='all'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='all'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">🔍 Comps</button>
       <button onclick="setHomeTab('jugadors')" style="flex:1;background:${homeTab==='jugadors'?"#1a2035":"#f0f4f8"};color:${homeTab==='jugadors'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='jugadors'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">👤 Jugadors</button>
@@ -714,7 +1468,7 @@ function renderHome() {
 window.setHomeTab = t => { homeTab=t; renderHome(); };
 
 // ── JUGADORS ──────────────────────────────────────────────────
-function renderJugadorsTab() {
+function renderJugadorsTab(refreshOnly = false) {
   const body = $("home-body");
   const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
@@ -726,10 +1480,10 @@ function renderJugadorsTab() {
     return today.getFullYear()-dob.getFullYear()-(today<new Date(today.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
   };
 
-  const playerRow = (jid, player) => {
+  const playerRow = (jid, player, dndType = null) => {
     const name = fmtName(player);
     const age  = calcAge(player.birthDate);
-    const team = player.teamStats?.[0];
+    const team = normalizePlayerTeamStatsForDisplay(player)?.[0];
     const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : null;
     const fav  = isPlayerFav(jid);
     const sub  = [
@@ -738,7 +1492,14 @@ function renderJugadorsTab() {
       player.isGK ? `<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;flex-shrink:0">🥅</span>` : "",
       age     ? `<span style="font-size:11px;color:#94a3b8;flex-shrink:0">${age}a</span>` : "",
     ].filter(Boolean);
-    return `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8">
+    const dragAttrs = dndType === "player"
+      ? `draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')"`
+      : "";
+    const dragHandle = dndType === "player"
+      ? `<div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none;flex-shrink:0">⋮⋮</div>`
+      : "";
+    return `<div ${dragAttrs} style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8">
+      ${dragHandle}
       <div data-jid="${esc(jid)}" style="flex:1;min-width:0;cursor:pointer">
         <div style="font-size:14px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
         ${sub.length?`<div style="display:flex;align-items:center;gap:5px;margin-top:2px;flex-wrap:wrap">${sub.join("")}</div>`:""}
@@ -747,12 +1508,13 @@ function renderJugadorsTab() {
     </div>`;
   };
 
-  const q = jugadorSearch.trim();
+  const qRaw = jugadorSearch || "";
+  const q = qRaw.trim();
   let listHtml = "";
 
   // Jugadors seguits
   if (playerFavs.length) {
-    const rows = playerFavs.map(jid=>({jid,p:DB.jugadors[jid]})).filter(x=>x.p).map(x=>playerRow(x.jid,x.p)).join("");
+    const rows = playerFavs.map(jid=>({jid,p:DB.jugadors[jid]})).filter(x=>x.p).map(x=>playerRow(x.jid,x.p,"player")).join("");
     if (rows) listHtml += `
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px">⭐ Seguits</div>
       <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07);margin-bottom:16px">${rows}</div>`;
@@ -781,57 +1543,111 @@ function renderJugadorsTab() {
     </div>`;
   }
 
-  body.innerHTML = `
-    <div style="margin-bottom:14px">
-      <input type="text" id="jugador-search-input" placeholder="🔍  Cerca per nom o cognom..." value="${esc(q)}"
-        style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;background:#fff;outline:none;-webkit-appearance:none"
-        oninput="setJugadorSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
-    </div>
-    ${listHtml}`;
-
-  const inp = $("jugador-search-input");
-  if (inp) {
-    inp.value = q;
-    inp.focus();
-    inp.selectionStart = inp.selectionEnd = inp.value.length;
+  if (!refreshOnly || !$("jugador-results")) {
+    body.innerHTML = `
+      <div style="margin-bottom:14px">
+        <input type="text" id="jugador-search-input" placeholder="🔍  Cerca per nom o cognom..." value="${esc(qRaw)}"
+          style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;background:#fff;outline:none;-webkit-appearance:none"
+          oninput="setJugadorSearch(this.value)" oncompositionstart="jugadorCompStart()" oncompositionend="jugadorCompEnd(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      </div>
+      <div id="jugador-results"></div>`;
   }
+
+  const results = $("jugador-results");
+  if (results) results.innerHTML = listHtml;
 }
-window.setJugadorSearch = q => { jugadorSearch=q; renderJugadorsTab(); };
-window.togglePlayerFavAndRender = jid => { togglePlayerFav(jid); renderJugadorsTab(); };
+window.jugadorCompStart = () => { jugadorComposing = true; };
+window.jugadorCompEnd = v => { jugadorComposing = false; setJugadorSearch(v); };
+window.setJugadorSearch = q => {
+  jugadorSearch = q;
+  if (!jugadorComposing) renderJugadorsTab(true);
+};
+window.togglePlayerFavAndRender = jid => { togglePlayerFav(jid); renderJugadorsTab(true); };
 
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
   const body=$("home-body");
-  if (!favs.length && !clubFavs.length) {
+  if (!favs.length && !clubFavs.length && !levelFavs.length && !playerFavs.length) {
     body.innerHTML=`<div style="text-align:center;padding:48px 20px 32px">
       <div style="font-size:48px;margin-bottom:12px">⭐</div>
-      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#1a2035;margin-bottom:8px">Cap equip afegit</h2>
-      <p style="color:#6b7a99;font-size:14px;line-height:1.6;margin-bottom:24px">Afegeix els equips que vols seguir.</p>
+      <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#1a2035;margin-bottom:8px">Cap favorit afegit</h2>
+      <p style="color:#6b7a99;font-size:14px;line-height:1.6;margin-bottom:24px">Afegeix equips, nivells, clubs o jugadors.</p>
       <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;cursor:pointer">+ Afegir el meu equip</button>
     </div>`;
     return;
   }
   const updAt=DB?.updatedAt?new Date(DB.updatedAt).toLocaleDateString("ca-ES"):"?";
   const clubMap = clubFavs.length ? buildClubMap() : null;
-  const both = favs.length && clubFavs.length;
+  const hasAnyPrev = clubFavs.length || levelFavs.length || playerFavs.length;
+  const both = favs.length && hasAnyPrev;
   const clubSection = clubFavs.length ? `
-    ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:8px">🏟 Clubs</div>`:""}
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:8px">🏟 Clubs</div>
     ${clubFavs.map(f=>buildClubFavCard(f,clubMap)).join("")}` : "";
+  const levelSection = levelFavs.length ? `
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${clubFavs.length?"16px":"0"} 0 8px">🧩 Nivells</div>
+    ${levelFavs.map(buildLevelFavCard).join("")}` : "";
+  const playerSection = playerFavs.length ? `
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${(clubFavs.length||levelFavs.length)?"16px":"0"} 0 8px">👤 Jugadors</div>
+    ${playerFavs.map(buildPlayerFavCard).join("")}` : "";
   const teamSection = favs.length ? `
-    ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${clubFavs.length?"16px":0} 0 8px">🏒 Equips</div>`:""}
+    ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${(clubFavs.length||levelFavs.length||playerFavs.length)?"16px":0} 0 8px">🏒 Equips</div>`:""}
     ${favs.map(buildFavCard).join("")}` : "";
-  body.innerHTML=clubSection+teamSection+
+  body.innerHTML=clubSection+levelSection+playerSection+teamSection+
     `<p style="text-align:center;font-size:11px;color:#cbd5e1;margin-top:4px;padding-bottom:16px">Actualitzat: ${updAt}</p>`;
 }
 
+function buildLevelFavCard(fav) {
+  const color = fav.color || "#475569";
+  const emoji = fav.emoji || "🧩";
+  return `
+    <div draggable="true" ondragstart="favDragStart('level','${esc(fav.nodeKey)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('level','${esc(fav.nodeKey)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid ${color};border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+        <div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none">⋮⋮</div>
+        <div style="width:34px;height:34px;border-radius:9px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">${emoji}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.label||"Nivell")}</div>
+          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.pathLabel||"")}</div>
+        </div>
+        <button onclick="removeLevelFav('${esc(fav.nodeKey)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 11px">
+        <button onclick="openLevelFav('${esc(fav.nodeKey)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">🔍 Veure nivell</button>
+      </div>
+    </div>`;
+}
+
+function buildPlayerFavCard(jid) {
+  const p = DB?.jugadors?.[jid];
+  if (!p) return "";
+  const name = p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const team = normalizePlayerTeamStatsForDisplay(p)?.[0];
+  const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : "";
+  return `
+    <div draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #1a5dc7;border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+        <div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none">⋮⋮</div>
+        <div style="width:34px;height:34px;border-radius:9px;background:#1a5dc718;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">👤</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
+          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(team?.team || "")}${catLabel ? ` · ${esc(catLabel)}` : ""}</div>
+        </div>
+        <button onclick="removePlayerFavHome('${esc(jid)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 11px">
+        <button onclick="openPlayerModal('${esc(jid)}','${esc(name)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">👤 Veure fitxa</button>
+      </div>
+    </div>`;
+}
+
 function buildClubFavCard(fav, clubMap) {
-  const club = clubMap?.get(fav.key);
+  const club = clubMap?.get(fav.key) || clubMap?.get(decodeHtml(fav.key));
   const displayName = club?.displayName || fav.displayName;
   const clubId = club?.clubId || fav.clubId;
   const teamCount = club?.teams.length ?? 0;
   return `
-    <div style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #003da5;border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+    <div draggable="true" ondragstart="favDragStart('club','${esc(fav.key)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('club','${esc(fav.key)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #003da5;border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+        <div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none">⋮⋮</div>
         ${shieldImg(clubId,40)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(displayName)}</div>
@@ -879,8 +1695,9 @@ function buildFavCard(fav) {
   }
 
   return `
-    <div style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid ${catColor};border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
+    <div draggable="true" ondragstart="favDragStart('team','${esc(fav.compId)}::${esc(fav.teamName)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('team','${esc(fav.compId)}::${esc(fav.teamName)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid ${catColor};border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
+        <div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none">⋮⋮</div>
         ${shieldImg(cid,40)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fav.teamName)}</div>
@@ -894,8 +1711,8 @@ function buildFavCard(fav) {
       </div>
       ${classifHtml}
       <div style="padding:9px 12px">
-        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName)}`:""}
-        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName)}`:""}
+        ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName,fav.compId)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId)}`:""}
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
@@ -910,6 +1727,32 @@ window.removeFav = (compId,teamName) => {
   favs = favs.filter(f=>!(f.compId===compId&&f.teamName===teamName));
   saveFavs();
   _removeFavFromCloud("team", key);
+  renderHome();
+};
+
+window.removeLevelFav = nodeKey => {
+  levelFavs = levelFavs.filter(f=>f.nodeKey!==nodeKey);
+  saveLevelFavs();
+  _removeFavFromCloud("level", nodeKey);
+  renderHome();
+};
+
+window.removePlayerFavHome = jid => {
+  playerFavs = playerFavs.filter(id=>id!==jid);
+  savePlayerFavs();
+  _removeFavFromCloud("player", jid);
+  renderHome();
+};
+
+window.openLevelFav = nodeKey => {
+  const fav = levelFavs.find(f=>f.nodeKey===nodeKey);
+  if (!fav) return;
+  homeTab = "all";
+  if (fav.l1Key) allFilterCat = fav.l1Key;
+  if (fav.l1Key) allCompsOpenState[`l1:${fav.l1Key}`] = true;
+  if (fav.l2Key) allCompsOpenState[`l2:${fav.l1Key}:${fav.l2Key}`] = true;
+  if (fav.l3Key) allCompsOpenState[`l3:${fav.l1Key}:${fav.l2Key}:${fav.l3Key}`] = true;
+  if (fav.l4Key) allCompsOpenState[`l4:${fav.l1Key}:${fav.l2Key}:${fav.l3Key}:${fav.l4Key}`] = true;
   renderHome();
 };
 
@@ -937,21 +1780,45 @@ window.removeClubFav = key => {
 
 // ── CLUB TAB ──────────────────────────────────────────────────
 
+function competitionPriority(comp) {
+  if (!comp) return 0;
+  const name = String(comp.name || "").toUpperCase();
+  let score = 0;
+  if (/COPA|2\s*ª\s*FASE|2A\s*FASE|RANKING|FASE\s*FINAL/.test(name)) score += 1000;
+  if (comp.sidgadParentId) score += 300;
+  if (comp.classificationSource === "fecapa") score += 150;
+  score += parseInt(comp.id, 10) || 0;
+  return score;
+}
+
+function teamKeyFromRow(row) {
+  if (row?.teamId) return `id:${row.teamId}`;
+  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+}
+
 function buildClubMap() {
   const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
-      if (allOnlyActive && !isActive(comp)) continue;
       for (const row of (comp.classification||[])) {
         if (!row.team) continue;
-        const clubName = row.team.toLowerCase().replace(/\s+[a-e]$/,"").trim();
+        const teamName = decodeHtml(row.team);
+        const clubName = teamName.toLowerCase().replace(/\s+[a-e]$/,"").trim();
         if (!clubMap.has(clubName)) {
-          clubMap.set(clubName, { displayName: row.team.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
+          clubMap.set(clubName, { displayName: teamName.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
         }
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row);
-        if (!club.teams.some(t=>t.compId===comp.id&&t.teamName===row.team))
-          club.teams.push({ compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp) });
+        const key = teamKeyFromRow(row);
+        const existingIdx = club.teams.findIndex(t => t.teamKey === key);
+        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp), teamKey:key };
+        if (existingIdx < 0) {
+          club.teams.push(candidate);
+        } else {
+          const existing = club.teams[existingIdx];
+          const keepCandidate = competitionPriority(comp) > competitionPriority(findComp(existing.compId));
+          if (keepCandidate) club.teams[existingIdx] = candidate;
+        }
       }
     }
   }
@@ -966,17 +1833,23 @@ function buildClubMap() {
   }
   for (const keys of byId.values()) {
     if (keys.length <= 1) continue;
-    // Canonical = prefer name starting with "club", then longest
+    // Canonical = prefer name starting with "club", then shortest (main club names tend to be shorter than section names like "veterans")
     const canonical = [...keys].sort((a,b) => {
       const ac = a.startsWith("club") ? 1 : 0, bc = b.startsWith("club") ? 1 : 0;
-      return ac !== bc ? bc - ac : b.length - a.length;
+      return ac !== bc ? bc - ac : a.length - b.length;
     })[0];
     const main = clubMap.get(canonical);
     for (const key of keys) {
       if (key === canonical) continue;
-      for (const t of clubMap.get(key).teams)
-        if (!main.teams.some(x=>x.compId===t.compId&&x.teamName===t.teamName))
+      for (const t of clubMap.get(key).teams) {
+        const existingIdx = main.teams.findIndex(x => x.teamKey === t.teamKey);
+        if (existingIdx < 0) {
           main.teams.push(t);
+        } else {
+          const keepCandidate = competitionPriority(findComp(t.compId)) > competitionPriority(findComp(main.teams[existingIdx].compId));
+          if (keepCandidate) main.teams[existingIdx] = t;
+        }
+      }
       clubMap.delete(key);
     }
   }
@@ -1009,13 +1882,19 @@ function renderClubTab(cursor) {
         </label>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
-        ${filtered.map(([key,club])=>`
+        ${filtered.map(([key,club])=>{
+          // Check how many teams have venues mapped
+          const teamsWithVenue = club.teams.filter(t=>venuesDB?.venues?.[t.teamName]?.lat).length;
+          const venueIcon = teamsWithVenue > 0 ? "📍" : "❌";
+          const venuePercent = club.teams.length > 0 ? Math.round(teamsWithVenue / club.teams.length * 100) : 0;
+          return `
           <div onclick="selectClub('${esc(key)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .15s;text-align:center;position:relative" onmouseover="this.style.borderColor='#003da5';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
             <button onclick="event.stopPropagation();toggleClubFav('${esc(key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubTab()" style="position:absolute;top:5px;right:5px;background:none;border:none;font-size:15px;cursor:pointer;padding:2px;line-height:1">${isClubFav(key)?"⭐":"☆"}</button>
             ${shieldImg(club.clubId,36)}
             <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.2">${esc(club.displayName)}</div>
-            <div style="font-size:10px;color:#94a3b8">${club.teams.length} equip${club.teams.length!==1?"s":""}</div>
-          </div>`).join("")}
+            <div style="font-size:10px;color:#94a3b8"><span title="${teamsWithVenue}/${club.teams.length} equips amb ubicació">${club.teams.length} equip${club.teams.length!==1?"s":""} <span style="font-size:12px;margin-left:2px">${venueIcon}</span></span></div>
+          </div>`;
+        }).join("")}
       </div>
       ${!filtered.length?`<p style="text-align:center;padding:32px;color:#94a3b8">Cap club trobat per «${esc(clubSearch)}»</p>`:""}
     </div>`;
@@ -1034,12 +1913,12 @@ function getCatForComp(comp) {
 
 window.selectClub = function(key) {
   const entry = buildClubMap().get(key);
-  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); }
+  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); window.scrollTo(0,0); }
 };
 
 function renderClubDashboard() {
   const club = selectedClub;
-  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Fem","Veterans","Altres"];
+  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Veterans","Altres","Fem"];
 
   // Sort teams by category order
   const sorted = [...club.teams].sort((a,b)=>{
@@ -1049,6 +1928,7 @@ function renderClubDashboard() {
 
   const teamCards = sorted.map(t=>{
     const comp=findComp(t.compId); if (!comp) return "";
+    if (allOnlyActive && !isActive(comp)) return "";
     const cl=comp.classification||[], cal=comp.calendar||[];
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
     const myCal=cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
@@ -1061,51 +1941,545 @@ function renderClubDashboard() {
         <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
           <span style="font-size:14px">${catEmoji}</span>
           <div style="flex:1;min-width:0">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.teamName)}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${decodeHtml(t.teamName)}</div>
             <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
         </div>
         <div style="padding:7px 10px">
-          ${last?matchCard(last,t.teamName):""}
-          ${next?matchCard(next,t.teamName):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
+          ${last?matchCard(last,t.teamName,t.compId):""}
+          ${next?matchCard(next,t.teamName,t.compId):`${!last?`<p style="font-size:11px;color:#94a3b8;padding:2px">Sense partits</p>`:""}`}
         </div>
       </div>`;
   }).join("");
 
   $("home-body").innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
-      ${shieldImg(club.clubId,36)}
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
-        <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+    <div style="position:relative;background:linear-gradient(to bottom,#fff,rgba(255,255,255,.98));padding:8px 0;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,30,80,.04);border-bottom:1px solid #f0f2f8">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="selectedClub=null;renderClubTab()" style="background:#f0f4f8;border:1px solid #e2e6ef;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:#334155;cursor:pointer">← Clubs</button>
+        ${shieldImg(club.clubId,36)}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
+          <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+          ${(() => {
+            // Get unique addresses from teams
+            const addresses = new Map();
+            sorted.forEach(t => {
+              if (venuesDB?.venues?.[t.teamName]?.lat && venuesDB?.venues?.[t.teamName]?.address) {
+                const key = venuesDB.venues[t.teamName].lat + ',' + venuesDB.venues[t.teamName].lng;
+                if (!addresses.has(key)) {
+                  addresses.set(key, {
+                    lat: venuesDB.venues[t.teamName].lat,
+                    lng: venuesDB.venues[t.teamName].lng,
+                    address: venuesDB.venues[t.teamName].address
+                  });
+                }
+              }
+            });
+
+            if (addresses.size === 0) return '';
+
+            return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' +
+              Array.from(addresses.values()).map(loc => {
+                const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+                const mapsUrl = isApple
+                  ? `https://maps.apple.com/?q=${loc.lat},${loc.lng}`
+                  : `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+                const shortAddr = loc.address.split(',')[0];
+                return '<a href="' + mapsUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 6px;border-radius:4px;text-decoration:none;display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + loc.address + '">' + shortAddr + '</a>';
+              }).join('') +
+              '</div>';
+          })()}
+        </div>
+        <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
+          En curs
+        </label>
       </div>
-      <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
-        <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
-        En curs
-      </label>
     </div>
     ${teamCards||`<p style="text-align:center;padding:32px;color:#94a3b8">Cap equip actiu</p>`}`;
 }
 
 // ── ALL COMPS ─────────────────────────────────────────────────
+function normalizeCompName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function detectTier(nameNorm) {
+  if (/\bOR\b/.test(nameNorm)) return "OR";
+  if (/\bPLATA\b/.test(nameNorm)) return "PLATA";
+  if (/\bBRONZE\b/.test(nameNorm)) return "BRONZE";
+  if (/INICIACIO|INICIACI[OÓ]/.test(nameNorm)) return "INICIACIO";
+  return "ALTRES";
+}
+
+function detectZone(nameNorm) {
+  if (/\bGIRONA\b/.test(nameNorm)) return "Girona";
+  if (/\bTARRAGONA\b/.test(nameNorm)) return "Tarragona";
+  if (/\bBARCELONA\b|\bBCN\b/.test(nameNorm)) return "Barcelona";
+  if (/\bLLEIDA\b/.test(nameNorm)) return "Lleida";
+  return "Altres";
+}
+
+function detectBenjamiCup(nameNorm) {
+  if (/\bCOPA\s*BCN\b/.test(nameNorm)) return "Copa BCN";
+  if (/\bCOPA\s*FCP\b/.test(nameNorm)) return "Copa FCP";
+  return null;
+}
+
+function tierLabel(t) {
+  if (t === "OR") return "Or";
+  if (t === "PLATA") return "Plata";
+  if (t === "BRONZE") return "Bronze";
+  if (t === "INICIACIO") return "Iniciació";
+  return "Altres";
+}
+
+function getCompHierarchy(comp) {
+  const n = normalizeCompName(comp?.name);
+  const tier = detectTier(n);
+  const tierOrder = { OR: 0, PLATA: 1, BRONZE: 2, INICIACIO: 3, ALTRES: 4 };
+  const zoneOrder = { Barcelona: 0, Girona: 1, Tarragona: 2, Lleida: 3, Altres: 4 };
+
+  if (/\bNACIONAL\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "Nacional Catalana", label: "Nacional Catalana", emoji: "👑", color: "#003da5", order: 10 },
+      level2: null,
+      level3: null,
+      level4: null,
+    };
+  }
+  if (/\b1[ªA]\s*\bCATAL/.test(n) || /\bPRIMERA\b\s*\bCATAL/.test(n)) {
+    const gender = /\bFEM\b|FEMENI|FEMENINA/.test(n) ? "Femenina" : "Masculina";
+    return {
+      level1: { key: "1ª Catalana", label: "1ª Catalana", emoji: "⭐", color: "#1a5dc7", order: 20 },
+      level2: { key: `1ª Catalana::${gender}`, label: gender, order: gender === "Femenina" ? 1 : 0 },
+      level3: null,
+      level4: null,
+    };
+  }
+  if (/\b2[ªA]\s*\bCATAL/.test(n) || /\bSEGONA\b\s*\bCATAL/.test(n)) {
+    const gender = /\bFEM\b|FEMENI|FEMENINA/.test(n) ? "Femenina" : "Masculina";
+    return {
+      level1: { key: "2ª Catalana", label: "2ª Catalana", emoji: "🔵", color: "#2563eb", order: 30 },
+      level2: { key: `2ª Catalana::${gender}`, label: gender, order: gender === "Femenina" ? 1 : 0 },
+      level3: null,
+      level4: null,
+    };
+  }
+  if (/\b3[ªA]\s*\bCATAL/.test(n) || /\bTERCERA\b\s*\bCATAL/.test(n)) {
+    return {
+      level1: { key: "3ª Catalana", label: "3ª Catalana", emoji: "🟣", color: "#7c3aed", order: 40 },
+      level2: null,
+      level3: null,
+      level4: null,
+    };
+  }
+
+  if (/\bFEM|MINIFEM/.test(n)) {
+    // Extract age/category from FEM11, FEM 11, FEM13, FEM 13, FEM15, FEM 15, FEM17, FEM 17, FEM19, FEM 19, MINIFEM, etc
+    let femCategory = "Fem";
+    let categoryOrder = 9;
+
+    if (/MINIFEM/.test(n)) {
+      femCategory = "MiniFem";
+      categoryOrder = 0;
+    } else if (/FEM\s*11/.test(n)) {
+      femCategory = "FEM 11";
+      categoryOrder = 1;
+    } else if (/FEM\s*13/.test(n)) {
+      femCategory = "FEM 13";
+      categoryOrder = 2;
+    } else if (/FEM\s*15/.test(n)) {
+      femCategory = "FEM 15";
+      categoryOrder = 3;
+    } else if (/FEM\s*17/.test(n)) {
+      femCategory = "FEM 17";
+      categoryOrder = 4;
+    } else if (/FEM\s*19/.test(n)) {
+      femCategory = "FEM 19";
+      categoryOrder = 5;
+    }
+
+    const tier = detectTier(n);
+    return {
+      level1: { key: "Fem", label: "Fem", emoji: "♀", color: "#db2777", order: 50 },
+      level2: { key: `Fem::${femCategory}`, label: femCategory, order: categoryOrder },
+      level3: { key: `Fem::${femCategory}::${tier}`, label: tierLabel(tier), order: tierOrder[tier] },
+      level4: null,
+    };
+  }
+
+  const baseAge = /\bJUNIOR\b/.test(n) ? "Júnior"
+    : /\bJUVENIL\b/.test(n) ? "Juvenil"
+    : /\bINFANTIL\b/.test(n) ? "Infantil"
+    : /\bALEVI\b/.test(n) ? "Aleví"
+    : null;
+
+  if (baseAge) {
+    const ageOrder = { "Júnior": 100, "Juvenil": 110, "Infantil": 120, "Aleví": 130 };
+    return {
+      level1: {
+        key: baseAge,
+        label: baseAge,
+        emoji: baseAge === "Júnior" ? "🎯" : baseAge === "Juvenil" ? "⚡" : baseAge === "Infantil" ? "🏆" : "💪",
+        color: CAT_COLOR[baseAge] || "#6b7280",
+        order: ageOrder[baseAge],
+      },
+      level2: {
+        key: `${baseAge}::${tier}`,
+        label: tierLabel(tier),
+        order: tierOrder[tier],
+      },
+      level3: null,
+      level4: null,
+    };
+  }
+
+  const miniAge = /PREBENJAM[IÍ]/.test(n) || /\bPB\b/.test(n) ? "Prebenjamí"
+    : /\bBENJAM[IÍ]\b/.test(n) ? "Benjamí"
+    : null;
+
+  if (miniAge) {
+    const zone = detectZone(n);
+    const base = miniAge === "Benjamí" ? 200 : 240;
+    const cup = miniAge === "Benjamí" ? detectBenjamiCup(n) : null;
+    const cupOrder = { "Copa BCN": 0, "Copa FCP": 1 };
+    return {
+      level1: {
+        key: miniAge,
+        label: miniAge,
+        emoji: miniAge === "Benjamí" ? "🔥" : "⭐",
+        color: CAT_COLOR[miniAge] || "#6b7280",
+        order: base,
+      },
+      level2: {
+        key: `${miniAge}::${zone}`,
+        label: zone,
+        order: zoneOrder[zone],
+      },
+      level3: {
+        key: `${miniAge}::${zone}::${tier}`,
+        label: tierLabel(tier),
+        order: tierOrder[tier],
+      },
+      level4: cup ? {
+        key: `${miniAge}::${zone}::${tier}::${cup}`,
+        label: cup,
+        order: cupOrder[cup] ?? 99,
+      } : null,
+    };
+  }
+
+  const fallback = getCatForComp(comp);
+  return {
+    level1: {
+      key: fallback,
+      label: fallback,
+      emoji: CAT_EMOJI[fallback] || "📋",
+      color: CAT_COLOR[fallback] || "#6b7280",
+      order: 900,
+    },
+    level2: null,
+    level3: null,
+    level4: null,
+  };
+}
+
+function collectAllCompsFromMeta(meta) {
+  const comps = [...(meta.comps || [])];
+  for (const [, g2] of (meta.groupsArr || [])) {
+    comps.push(...(g2.comps || []));
+    for (const [, g3] of (g2.groupsArr || [])) {
+      comps.push(...(g3.comps || []));
+      for (const [, g4] of (g3.groupsArr || [])) {
+        comps.push(...(g4.comps || []));
+      }
+    }
+  }
+  return comps;
+}
+
+function computeClusterStats(meta) {
+  const comps = collectAllCompsFromMeta(meta);
+  const teamMap = new Map();
+  for (const comp of comps) {
+    for (const r of (comp.classification || [])) {
+      if (!r.team || !(r.pj > 0)) continue;
+      if (!teamMap.has(r.team)) teamMap.set(r.team, { team: r.team, gf: 0, gc: 0, pg: 0, pj: 0 });
+      const s = teamMap.get(r.team);
+      s.gf += r.gf || 0;
+      s.gc += r.gc || 0;
+      s.pg += r.pg || 0;
+      s.pj += r.pj || 0;
+    }
+  }
+  const teams = [...teamMap.values()].filter(t => t.pj >= 3);
+  if (!teams.length) return null;
+  return {
+    topScorer:   teams.reduce((a, b) => a.gf > b.gf ? a : b),
+    topWinner:   teams.reduce((a, b) => a.pg > b.pg ? a : b),
+    bestDefense: teams.reduce((a, b) => a.gc < b.gc ? a : b),
+  };
+}
+
+function renderClusterStats(meta, color) {
+  const s = computeClusterStats(meta);
+  if (!s) return `<div style="text-align:center;padding:10px;font-size:12px;color:#94a3b8">Sense dades suficients per calcular estadístiques</div>`;
+  const card = (emoji, title, team, value, vc) => `
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 5px 8px;text-align:center;min-width:0;overflow:hidden">
+      <div style="font-size:17px;line-height:1">${emoji}</div>
+      <div style="font-size:8px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin:3px 0 2px;white-space:nowrap">${title}</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#1a2035;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px">${esc(team)}</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${vc};margin-top:2px">${value}</div>
+    </div>`;
+  return `
+    <div style="margin-top:10px;padding:10px 12px 12px;background:${color}0a;border:1.5px solid ${color}28;border-radius:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">📊 Rànquing global del grup</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${card("⚽", "Més golejador",   s.topScorer.team,   s.topScorer.gf  +" GF", "#16a34a")}
+        ${card("🏆", "Més victòries",   s.topWinner.team,   s.topWinner.pg  +" V",  "#003da5")}
+        ${card("🛡️", "Menys gols enc.", s.bestDefense.team, s.bestDefense.gc+" GC", "#e5001c")}
+      </div>
+    </div>`;
+}
+
+function renderConsolidatedClassif(subMeta, color) {
+  const comps = collectAllCompsFromMeta(subMeta)
+    .filter(c => !allOnlyActive || isActive(c))
+    .filter(c => (c.classification||[]).some(r => r.team && r.pts != null));
+  if (!comps.length) return "";
+  const topTeams = [];
+  for (const comp of comps) {
+    const cl = (comp.classification||[]).filter(r => r.team && r.pts != null);
+    const sorted = [...cl].sort((a,b) => (a.pos||999)-(b.pos||999) || (b.pts||0)-(a.pts||0));
+    for (const r of sorted.slice(0,3)) {
+      const avg = (r.gf || 0) - (r.gc || 0);
+      topTeams.push({ team:r.team, pts:r.pts||0, pj:r.pj||0, gf:r.gf||0, gc:r.gc||0, avg,
+        compName: comp.name.replace(/\s*\(\d{4}-\d{2}\)/,"") });
+    }
+  }
+  if (!topTeams.length) return "";
+  topTeams.sort((a,b) => b.pts - a.pts || b.avg - a.avg);
+  const posIcon = i => i===0?"🥇":i===1?"🥈":i===2?"🥉":
+    `<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#6b7a99">${i+1}</span>`;
+  return `
+    <div style="margin-top:8px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">📋 Classificació consolidada · top 3 per lliga</div>
+      <div style="background:#fff;border-radius:11px;overflow:hidden;border:1.5px solid #e2e6ef">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f8fafc">
+            ${["#","Equip","PJ","Pts","Avg"].map((h,i)=>`<th style="padding:5px ${i<2?5:3}px;font-size:9px;font-weight:700;color:${i===3?color:"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
+          </tr></thead>
+          <tbody>${topTeams.map((t,i)=>`
+            <tr style="border-bottom:1px solid #f0f2f8">
+              <td style="padding:6px 3px;text-align:center;font-size:12px">${posIcon(i)}</td>
+              <td style="padding:6px 5px">
+                <div style="font-size:12px;font-weight:700;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(t.team)}</div>
+                <div style="font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">${esc(t.compName)}</div>
+              </td>
+              <td style="padding:6px 3px;text-align:center;font-size:11px;color:#94a3b8">${t.pj}</td>
+              <td style="padding:6px 3px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${color}">${t.pts}</td>
+              <td style="padding:6px 3px;text-align:center;font-size:11px;font-weight:600;color:${t.avg>0?"#16a34a":t.avg<0?"#dc2626":"#6b7a99"}">${t.avg>0?"+":""}${t.avg}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function buildCompsHierarchy() {
+  const allComps = [];
+  const seen = new Set();
+  for (const comps of Object.values(DB.categories || {})) {
+    for (const comp of comps) {
+      if (!comp?.id || seen.has(comp.id)) continue;
+      seen.add(comp.id);
+      allComps.push(comp);
+    }
+  }
+
+  const root = new Map();
+  for (const comp of allComps) {
+    const meta = getCompHierarchy(comp);
+    const l1 = meta.level1;
+    const l2 = meta.level2;
+    const l3 = meta.level3;
+    const l4 = meta.level4;
+
+    if (!root.has(l1.key)) {
+      root.set(l1.key, { ...l1, groups: new Map(), comps: [] });
+    }
+    const g1 = root.get(l1.key);
+
+    if (!l2) {
+      g1.comps.push(comp);
+      continue;
+    }
+
+    if (!g1.groups.has(l2.key)) {
+      g1.groups.set(l2.key, { ...l2, groups: new Map(), comps: [] });
+    }
+    const g2 = g1.groups.get(l2.key);
+
+    if (!l3) {
+      g2.comps.push(comp);
+      continue;
+    }
+
+    if (!g2.groups.has(l3.key)) {
+      g2.groups.set(l3.key, { ...l3, groups: new Map(), comps: [] });
+    }
+    const g3 = g2.groups.get(l3.key);
+
+    if (!l4) {
+      g3.comps.push(comp);
+      continue;
+    }
+
+    if (!g3.groups.has(l4.key)) {
+      g3.groups.set(l4.key, { ...l4, comps: [] });
+    }
+    g3.groups.get(l4.key).comps.push(comp);
+  }
+
+  const sortComps = list => list.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const sortMapEntries = map => [...map.entries()].sort((a, b) => (a[1].order - b[1].order) || a[1].label.localeCompare(b[1].label));
+
+  const level1 = sortMapEntries(root).map(([key, g1]) => {
+    sortComps(g1.comps);
+    const level2 = sortMapEntries(g1.groups).map(([k2, g2]) => {
+      sortComps(g2.comps);
+      const level3 = sortMapEntries(g2.groups).map(([k3, g3]) => {
+        sortComps(g3.comps);
+        const level4 = sortMapEntries(g3.groups || new Map()).map(([k4, g4]) => {
+          sortComps(g4.comps);
+          return [k4, g4];
+        });
+        return [k3, { ...g3, groupsArr: level4 }];
+      });
+      return [k2, { ...g2, groupsArr: level3 }];
+    });
+    return [key, { ...g1, groupsArr: level2 }];
+  });
+
+  return level1;
+}
+
 function renderAllComps(cursor) {
-  const catNames=Object.keys(DB.categories).filter(k=>DB.categories[k].length>0);
-  const allCats=["ALL",...catNames];
+  const hierarchy = buildCompsHierarchy();
+  const topKeys = hierarchy.map(([k]) => k);
+  if (allFilterCat !== "ALL" && !topKeys.includes(allFilterCat)) allFilterCat = "ALL";
+  const allCats=["ALL",...topKeys];
+
+  const filterComps = comps => comps.filter(c => {
+    if (allOnlyActive && !isActive(c)) return false;
+    if (!allSearch) return true;
+    const q = allSearch.toLowerCase();
+    return c.name.toLowerCase().includes(q) || (c.classification || []).some(r => r.team && r.team.toLowerCase().includes(q));
+  });
+
+  const computeCount = node => {
+    let total = filterComps(node.comps || []).length;
+    for (const [, g2] of (node.groupsArr || [])) {
+      total += filterComps(g2.comps || []).length;
+      for (const [, g3] of (g2.groupsArr || [])) {
+        total += filterComps(g3.comps || []).length;
+        for (const [, g4] of (g3.groupsArr || [])) total += filterComps(g4.comps || []).length;
+      }
+    }
+    return total;
+  };
+
+  const renderCompCard = (comp, color) => `
+    <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
+        <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
+        </div>
+        <span style="color:#cbd5e1;font-size:18px">›</span>
+      </div>
+      <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
+    </div>`;
+
+  const isNodeOpen = (nodeKey, defaultOpen) => {
+    if (Object.prototype.hasOwnProperty.call(allCompsOpenState, nodeKey)) return !!allCompsOpenState[nodeKey];
+    return !!defaultOpen;
+  };
+  window.toggleCompsNode = nodeKey => {
+    allCompsOpenState[nodeKey] = !isNodeOpen(nodeKey, false);
+    renderAllComps();
+  };
+  window.toggleClusterStats = (l1Key, l2Keys) => {
+    const statsKey = `stats:${l1Key}`;
+    const opening = !isNodeOpen(statsKey, false);
+    allCompsOpenState[statsKey] = opening;
+    if (opening) {
+      allCompsOpenState[`l1:${l1Key}`] = true;
+      (l2Keys || []).forEach(k => { allCompsOpenState[`l2:${l1Key}:${k}`] = true; });
+    }
+    renderAllComps();
+  };
+  window.toggleSubgroupStats = (statsKey, nodeKey) => {
+    const opening = !isNodeOpen(statsKey, false);
+    allCompsOpenState[statsKey] = opening;
+    if (opening) allCompsOpenState[nodeKey] = true;
+    renderAllComps();
+  };
+  window.toggleLevelFavNode = (nodeKey, l1Key, l2Key, l3Key, l4Key, labelText, pathLabel, nodeColor, nodeEmoji) => {
+    toggleLevelFav({
+      nodeKey,
+      l1Key: l1Key || null,
+      l2Key: l2Key || null,
+      l3Key: l3Key || null,
+      l4Key: l4Key || null,
+      label: labelText,
+      pathLabel,
+      color: nodeColor,
+      emoji: nodeEmoji || "🧩",
+    });
+    renderAllComps();
+  };
+
+  const catMetas = allCats.map(key => {
+    const active = allFilterCat === key;
+    if (key === "ALL") {
+      const count = hierarchy.reduce((acc, [,n]) => acc + computeCount(n), 0);
+      return { key, active, label: "Totes", emoji: "🏒", count, color: "#1a2035" };
+    }
+    const item = hierarchy.find(([k]) => k === key);
+    if (!item) return null;
+    return { key, active, label: item[1].label, emoji: item[1].emoji || "📋", count: computeCount(item[1]), color: item[1].color || "#6b7280" };
+  }).filter(Boolean);
 
   const filterBar=`
-    <div style="background:#fff;border-bottom:1px solid #e2e6ef;overflow-x:auto;white-space:nowrap">
-      <div style="display:inline-flex;padding:0 12px">
-        ${allCats.map(cat=>{
-          const active=allFilterCat===cat, label=cat==="ALL"?"Totes":cat;
-          const emoji=cat==="ALL"?"🏒":(CAT_EMOJI[cat]||"📋");
-          const comps=cat==="ALL"?Object.values(DB.categories).flat():DB.categories[cat]||[];
-          const count=allOnlyActive?comps.filter(isActive).length:comps.length;
-          return `<button onclick="allFilterCat='${esc(cat)}';renderAllComps()" style="background:none;border:none;border-bottom:3px solid ${active?"#e5001c":"transparent"};font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active?"#e5001c":"#6b7a99"};padding:9px 10px 6px;cursor:pointer;white-space:nowrap;text-transform:uppercase">${emoji} ${label} <span style="font-size:10px;opacity:.6">${count}</span></button>`;
-        }).join("")}
+    <div style="background:#fff;border-bottom:1px solid #e2e6ef;padding:10px 14px 8px">
+      <div style="max-width:720px;margin:0 auto">
+        <button onclick="allFilterCat='ALL';renderAllComps()" style="width:100%;margin-bottom:8px;background:${allFilterCat==="ALL"?"#1a2035":"#f0f4f8"};color:${allFilterCat==="ALL"?"#fff":"#475569"};border:1.5px solid ${allFilterCat==="ALL"?"#1a2035":"#e2e6ef"};border-radius:10px;padding:9px 12px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;display:flex;justify-content:space-between;align-items:center">
+          <span>🏒 Totes les competicions</span>
+          <span style="font-size:11px;opacity:.7;font-weight:600">${hierarchy.reduce((acc,[,n])=>acc+computeCount(n),0)}</span>
+        </button>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          ${catMetas.filter(m=>m.key!=="ALL").map(m=>{
+            const bg = m.active ? m.color : "#f8fafc";
+            const fg = m.active ? "#fff" : "#334155";
+            const bd = m.active ? m.color : "#e2e6ef";
+            return `<button onclick="allFilterCat='${esc(m.key)}';renderAllComps()" style="background:${bg};color:${fg};border:1.5px solid ${bd};border-radius:9px;padding:4px 2px 3px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-align:center;line-height:1.2;overflow:hidden">
+              <div style="font-size:12px;line-height:1.1">${m.emoji}</div>
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;font-size:10px">${esc(m.label)}</div>
+              <div style="font-size:9px;opacity:.7;font-weight:600">${m.count}</div>
+            </button>`;
+          }).join("")}
+        </div>
       </div>
     </div>
     <div style="padding:8px 14px 4px;max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:center">
@@ -1118,45 +2492,130 @@ function renderAllComps(cursor) {
       </label>
     </div>`;
 
-  let cats=allFilterCat==="ALL"?Object.entries(DB.categories):[[allFilterCat,DB.categories[allFilterCat]||[]]];
-  cats=cats.map(([cat,comps])=>[cat, comps.filter(c=>{
-    if (allOnlyActive && !isActive(c)) return false;
-    if (!allSearch) return true;
-    const q=allSearch.toLowerCase();
-    return c.name.toLowerCase().includes(q)||(c.classification||[]).some(r=>r.team&&r.team.toLowerCase().includes(q));
-  })]).filter(([,c])=>c.length>0);
+  const visibleTop = allFilterCat === "ALL"
+    ? hierarchy
+    : hierarchy.filter(([key]) => key === allFilterCat);
 
-  const compsHtml=cats.map(([cat,comps])=>{
-    if (!comps.length) return "";
-    const color=CAT_COLOR[cat]||"#666", emoji=CAT_EMOJI[cat]||"📋";
+  const compsHtml=visibleTop.map(([,meta])=>{
+    const color = meta.color || "#666";
+    const emoji = meta.emoji || "📋";
+    const label = meta.label || "Altres";
+    const key1 = `l1:${meta.key}`;
+    const open1 = isNodeOpen(key1, true);
+    const topLeafComps = filterComps(meta.comps || []);
+    const level2 = (meta.groupsArr || []).map(([,g2]) => {
+      const key2 = `l2:${meta.key}:${g2.key}`;
+      const open2 = isNodeOpen(key2, false);
+      const level2LeafComps = filterComps(g2.comps || []);
+      const level3 = (g2.groupsArr || []).map(([,g3]) => {
+        const key3 = `l3:${meta.key}:${g2.key}:${g3.key}`;
+        const statsKey3 = `stats:${key3}`;
+        const open3 = isNodeOpen(key3, false);
+        const statsOpen3 = isNodeOpen(statsKey3, false);
+        const isMiniCat = ["Benjamí", "Prebenjamí", "Fem"].includes(meta.key);
+        const isBenjami = meta.key === "Benjamí";
+        const comps3 = filterComps(g3.comps || []);
+        const level4 = (g3.groupsArr || []).map(([,g4]) => {
+          const key4 = `l4:${meta.key}:${g2.key}:${g3.key}:${g4.key}`;
+          const statsKey4 = `stats:${key4}`;
+          const open4 = isNodeOpen(key4, false);
+          const statsOpen4 = isNodeOpen(statsKey4, false);
+          const fav4 = isLevelFav(key4);
+          const comps4 = filterComps(g4.comps || []);
+          if (!comps4.length && !statsOpen4) return "";
+          return `
+            <div style="margin-top:7px;padding-left:14px;border-left:2px dashed ${color}33">
+              <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
+                <button onclick="toggleCompsNode('${esc(key4)}')" style="flex:1;min-width:0;text-align:left;background:#fff;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:11px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
+                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g4.label} <span style="font-size:10px;color:#94a3b8">(${comps4.length})</span></span>
+                  <span style="color:#94a3b8;flex-shrink:0">${open4 ? '▾' : '▸'}</span>
+                </button>
+                <button onclick="toggleLevelFavNode('${esc(key4)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','${esc(g4.key)}','${esc(g4.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label + ' › ' + g4.label)}','${esc(color)}','🏆')" style="background:${fav4?'#fef9c3':'#f0f4f8'};color:${fav4?'#a16207':'#6b7a99'};border:1.5px solid ${fav4?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav4?'★':'☆'}</button>
+                <button data-sk="${esc(statsKey4)}" data-nk="${esc(key4)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen4?color:'#f0f4f8'};color:${statsOpen4?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen4?color:'#e2e6ef'};border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;flex-shrink:0" title="Estadístiques del subgrup">📊</button>
+              </div>
+              ${open4 ? comps4.map(c=>renderCompCard(c, color)).join("") : ""}
+              ${statsOpen4 ? renderClusterStats(g4, color) : ""}
+              ${statsOpen4 ? renderConsolidatedClassif(g4, color) : ""}
+            </div>`;
+        }).join("");
+        const fav3 = isLevelFav(key3);
+        const count3 = comps3.length + (g3.groupsArr||[]).reduce((a,[,x]) => a + filterComps(x.comps||[]).length, 0);
+        if (!comps3.length && !level4 && !statsOpen3) return "";
+        return `
+          <div style="margin-top:8px;padding-left:18px;border-left:2px solid #e2e6ef">
+            <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
+              <button onclick="toggleCompsNode('${esc(key3)}')" style="flex:1;min-width:0;text-align:left;background:#f8fafc;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:12px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g3.label} <span style="font-size:10px;color:#94a3b8">(${count3})</span></span>
+                <span style="color:#94a3b8;flex-shrink:0">${open3 ? '▾' : '▸'}</span>
+              </button>
+              <button onclick="toggleLevelFavNode('${esc(key3)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','','${esc(g3.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label)}','${esc(color)}','🥉')" style="background:${fav3?'#fef9c3':'#f0f4f8'};color:${fav3?'#a16207':'#6b7a99'};border:1.5px solid ${fav3?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav3?'★':'☆'}</button>
+              ${isMiniCat && !isBenjami ? `<button data-sk="${esc(statsKey3)}" data-nk="${esc(key3)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen3?color:'#f0f4f8'};color:${statsOpen3?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen3?color:'#e2e6ef'};border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;flex-shrink:0" title="Estadístiques del subgrup">📊</button>` : ""}
+            </div>
+            ${open3 ? comps3.map(c=>renderCompCard(c, color)).join("") : ""}
+            ${open3 ? level4 : ""}
+            ${statsOpen3 && !isBenjami ? renderClusterStats(g3, color) : ""}
+            ${statsOpen3 && !isBenjami ? renderConsolidatedClassif(g3, color) : ""}
+          </div>`;
+      }).join("");
+      const isAgeCat = ["Júnior","Juvenil","Infantil","Aleví"].includes(meta.key);
+      const isCatalonaCat = ["1ª Catalana","2ª Catalana"].includes(meta.key);
+      const showStatsL2 = isAgeCat || isCatalonaCat;
+      const fav2 = isLevelFav(key2);
+      const statsKey2 = `stats:${key2}`;
+      const statsOpen2 = isNodeOpen(statsKey2, false);
+      const l2Count = level2LeafComps.length + (g2.groupsArr||[]).reduce((a,[,x])=>a+filterComps(x.comps||[]).length + (x.groupsArr||[]).reduce((aa,[,y])=>aa+filterComps(y.comps||[]).length,0),0);
+      if (!level2LeafComps.length && !level3 && !statsOpen2) return "";
+      return `
+        <div style="margin-top:10px;padding-left:12px;border-left:3px solid ${color}33">
+          <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
+            <button onclick="toggleCompsNode('${esc(key2)}')" style="flex:1;min-width:0;text-align:left;background:${color}14;border:1px solid ${color}33;border-radius:8px;padding:7px 9px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:${color};display:flex;align-items:center;justify-content:space-between;gap:6px">
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g2.label} <span style="font-size:10px;color:#6b7a99;font-weight:600">(${l2Count})</span></span>
+              <span style="color:${color};flex-shrink:0">${open2 ? '▾' : '▸'}</span>
+            </button>
+            <button onclick="toggleLevelFavNode('${esc(key2)}','${esc(meta.key)}','${esc(g2.key)}','','','${esc(g2.label)}','${esc(meta.label + ' › ' + g2.label)}','${esc(color)}','🥈')" style="background:${fav2?'#fef9c3':'#f0f4f8'};color:${fav2?'#a16207':'#6b7a99'};border:1.5px solid ${fav2?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:7px 9px;cursor:pointer;font-size:14px;flex-shrink:0" title="Favorit de nivell">${fav2?'★':'☆'}</button>
+            ${showStatsL2 ? `<button data-sk="${esc(statsKey2)}" data-nk="${esc(key2)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen2?color:'#f0f4f8'};color:${statsOpen2?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen2?color:'#e2e6ef'};border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;flex-shrink:0" title="Rànquing del grup">📊</button>` : ""}
+          </div>
+          ${open2 ? level2LeafComps.map(c=>renderCompCard(c, color)).join("") : ""}
+          ${open2 ? level3 : ""}
+          ${statsOpen2 ? renderClusterStats(g2, color) : ""}
+          ${statsOpen2 ? renderConsolidatedClassif(g2, color) : ""}
+        </div>`;
+    }).join("");
+
+    const isAgeCatL1 = ["Júnior","Juvenil","Infantil","Aleví"].includes(meta.key);
+    const isMiniCatL1 = ["Benjamí", "Prebenjamí"].includes(meta.key);
+    const isCatalonaCatL1 = ["1ª Catalana","2ª Catalana"].includes(meta.key);
+    const isFemL1 = meta.key === "Fem";
+    const showL1Stats = !isAgeCatL1 && !isMiniCatL1 && !isCatalonaCatL1 && !isFemL1;
+    const statsKey1 = `stats:${meta.key}`;
+    const fav1 = isLevelFav(key1);
+    const statsOpen1 = isNodeOpen(statsKey1, false);
+    const l2Keys1 = (meta.groupsArr||[]).map(([,g2])=>g2.key);
+    if (!topLeafComps.length && !level2 && !statsOpen1) return "";
+
     return `
       <div style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:0 14px">
-          <span style="font-size:15px">${emoji}</span>
-          <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;text-transform:uppercase;color:${color}">${cat}</span>
-          <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${comps.length}</span>
-        </div>
         <div style="padding:0 14px">
-          ${comps.map(comp=>`
-            <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
-              <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
-                <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
-                </div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
-                </div>
-                <span style="color:#cbd5e1;font-size:18px">›</span>
-              </div>
-              <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
-            </div>`).join("")}
+          <div style="display:flex;gap:5px;align-items:stretch">
+            <button onclick="toggleCompsNode('${esc(key1)}')" style="flex:1;min-width:0;text-align:left;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 11px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="display:flex;align-items:center;gap:7px;min-width:0">
+                <span style="font-size:15px">${emoji}</span>
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</span>
+                <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${computeCount(meta)}</span>
+              </span>
+              <span style="color:#94a3b8">${open1 ? '▾' : '▸'}</span>
+            </button>
+            <button onclick="toggleLevelFavNode('${esc(key1)}','${esc(meta.key)}','','','','${esc(label)}','${esc(label)}','${esc(color)}','${esc(emoji)}')" style="background:${fav1?'#fef9c3':'#f0f4f8'};color:${fav1?'#a16207':'#6b7a99'};border:1.5px solid ${fav1?'#fcd34d':'#e2e6ef'};border-radius:10px;padding:9px 11px;cursor:pointer;font-size:15px;flex-shrink:0" title="Favorit de nivell">${fav1?'★':'☆'}</button>
+            ${showL1Stats ? `<button data-l1key="${esc(meta.key)}" data-l2keys="${esc(JSON.stringify(l2Keys1))}" onclick="toggleClusterStats(this.dataset.l1key, JSON.parse(this.dataset.l2keys))" style="background:${statsOpen1?color:'#f0f4f8'};color:${statsOpen1?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen1?color:'#e2e6ef'};border-radius:10px;padding:9px 12px;cursor:pointer;font-size:15px;flex-shrink:0" title="Rànquing global del grup">📊</button>` : ""}
+          </div>
+          ${open1 ? `<div style="margin-top:8px">${topLeafComps.map(c=>renderCompCard(c, color)).join("")}${level2}</div>` : ""}
+          ${statsOpen1 && showL1Stats ? renderClusterStats(meta, color) : ""}
         </div>
       </div>`;
-  }).join("");
+  }).filter(Boolean).join("");
 
   $("home-body").innerHTML=filterBar+`<div style="max-width:720px;margin:0 auto;padding-bottom:24px">${
-    cats.some(([,c])=>c.length)?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
+    compsHtml?compsHtml:`<div style="text-align:center;padding:40px;color:#94a3b8">Cap competició${allOnlyActive?" en curs":""} trobada</div>`
   }</div>`;
   if (cursor !== undefined) {
     const inp = document.getElementById('all-search');
@@ -1166,72 +2625,206 @@ function renderAllComps(cursor) {
 
 // ── PICKER ────────────────────────────────────────────────────
 function openPicker() {
+  pickerClubSearch="";
+  currentPickerClub=null;
+  currentPickerCat=null;
+  currentPickerTeamKey=null;
+  currentPickerTeamData=null;
   $("screen-home").style.display="none"; $("screen-detail").style.display="none";
   $("screen-picker").style.display="flex"; renderPicker();
 }
 window.openPicker=openPicker;
 
+let pickerClubSearch = "";
+let currentPickerClub = null;
+let currentPickerCat = null;
+let currentPickerTeamKey = null;
+let currentPickerTeamData = null;
+
 function renderPicker() {
-  const catNames=Object.entries(DB.categories).filter(([,v])=>v.length>0).map(([k])=>k);
   $("picker-content").innerHTML=`
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
-      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Selecciona categoria, competició i equip</p>
+      <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Cerca el club i selecciona l'equip</p>
       <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;margin-bottom:16px">
-        <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPicker()" style="width:16px;height:16px;accent-color:#003da5"/>
+        <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPickerCatSection()" style="width:16px;height:16px;accent-color:#003da5"/>
         Mostrar només competicions en curs
       </label>
       <div style="margin-bottom:14px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Categoria</label>
-        <select id="pick-cat" onchange="onPickCat()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona una categoria —</option>
-          ${catNames.map(c=>`<option value="${esc(c)}">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</option>`).join("")}
-        </select>
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Club</label>
+        <div id="picker-club-section"></div>
       </div>
-      <div id="pick-comp-wrap" style="display:none;margin-bottom:14px">
-        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Competició</label>
-        <select id="pick-comp" onchange="onPickComp()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona la competició —</option>
-        </select>
+      <div id="pick-cat-wrap" style="display:none;margin-bottom:14px">
+        <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">2. Categoria</label>
+        <div id="picker-cat-section"></div>
       </div>
       <div id="pick-team-wrap" style="display:none;margin-bottom:20px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">3. Equip</label>
-        <select id="pick-team" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;cursor:pointer">
-          <option value="">— Selecciona l'equip —</option>
-        </select>
+        <div id="picker-team-section"></div>
       </div>
       <div id="pick-add-wrap" style="display:none">
         <button onclick="addFavFromPicker()" style="width:100%;background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer">⭐ Afegir als favorits</button>
       </div>
     </div>`;
+  renderPickerClubSection();
 }
 
-window.onPickCat=function(){
-  const cat=$("pick-cat").value;
-  $("pick-comp-wrap").style.display=cat?"block":"none";
-  $("pick-team-wrap").style.display="none"; $("pick-add-wrap").style.display="none";
-  if (!cat) return;
-  const comps=(DB.categories[cat]||[]).filter(c=>!allOnlyActive||isActive(c));
-  $("pick-comp").innerHTML=`<option value="">— Selecciona la competició —</option>`+
-    comps.map(c=>`<option value="${esc(c.id)}">${esc(c.name.replace(/\s*\(2025-26\)/,""))}</option>`).join("");
+function renderPickerClubSection() {
+  const section = $("picker-club-section");
+  if (!section) return;
+  if (currentPickerClub) {
+    const clubMap = buildClubMap();
+    const club = clubMap.get(currentPickerClub);
+    section.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;background:#f0f4f8;border-radius:10px;padding:10px 14px">
+        ${shieldImg(club?.clubId, 22)}
+        <span style="font-size:14px;font-weight:600;color:#1a2035;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(club?.displayName||"")}</span>
+        <button onclick="clearPickerClub()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:17px;padding:2px 4px;flex-shrink:0;line-height:1">✕</button>
+      </div>`;
+    renderPickerCatSection();
+  } else {
+    section.innerHTML = `
+      <input id="picker-club-search" placeholder="🔍 Cerca club per nom..." value="${esc(pickerClubSearch)}"
+        style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:11px 14px;font-size:14px;color:#1a2035;outline:none"
+        oninput="pickerClubInput(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div id="picker-suggestions"></div>`;
+    renderPickerSuggestions();
+    setTimeout(() => { const el = document.getElementById("picker-club-search"); if (el) el.focus(); }, 30);
+  }
+}
+
+window.pickerClubInput = function(val) {
+  pickerClubSearch = val;
+  renderPickerSuggestions();
 };
 
-window.onPickComp=function(){
-  const compId=$("pick-comp").value;
-  $("pick-team-wrap").style.display=compId?"block":"none"; $("pick-add-wrap").style.display="none";
-  if (!compId) return;
-  const comp=findComp(compId); if (!comp) return;
-  const cl=comp.classification||[], cal=comp.calendar||[];
-  const names=cl.length?cl.map(r=>r.team).filter(Boolean):[...new Set([...cal.map(m=>m.home),...cal.map(m=>m.away)].filter(Boolean))].sort();
-  $("pick-team").innerHTML=`<option value="">— Selecciona l'equip —</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
-  $("pick-team").onchange=()=>{ $("pick-add-wrap").style.display=$("pick-team").value?"block":"none"; };
+function renderPickerSuggestions() {
+  const sugg = $("picker-suggestions");
+  if (!sugg) return;
+  const q = (pickerClubSearch || "").toLowerCase().trim();
+  if (!q) { sugg.innerHTML = ""; return; }
+  const clubMap = buildClubMap();
+  const filtered = [...clubMap.entries()]
+    .filter(([,v]) => v.displayName.toLowerCase().includes(q))
+    .sort((a,b) => a[1].displayName.localeCompare(b[1].displayName))
+    .slice(0, 25);
+  if (!filtered.length) {
+    sugg.innerHTML = `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:10px 14px;margin-top:4px;text-align:center;color:#94a3b8;font-size:13px">Cap club trobat</div>`;
+    return;
+  }
+  sugg.innerHTML = `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;max-height:200px;overflow-y:auto;margin-top:4px">
+    ${filtered.map(([k,v]) => `<div onmousedown="selectPickerClub('${esc(k)}','${esc(v.displayName)}')" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8;cursor:pointer;font-size:14px;color:#1a2035" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      ${shieldImg(v.clubId, 18)} ${esc(v.displayName)}
+    </div>`).join("")}
+  </div>`;
+}
+
+window.selectPickerClub = function(clubKey) {
+  pickerClubSearch = "";
+  currentPickerClub = clubKey;
+  currentPickerCat = null;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  renderPickerClubSection();
 };
 
-window.addFavFromPicker=function(){
-  const cat=$("pick-cat").value, compId=$("pick-comp").value, team=$("pick-team").value;
-  const comp=findComp(compId);
-  if (!cat||!compId||!team||!comp) return;
-  if (!isFav(compId,team)) { favs.push({compId,teamName:team,category:cat,compName:comp.name}); saveFavs(); }
+window.clearPickerClub = function() {
+  currentPickerClub = null;
+  currentPickerCat = null;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  pickerClubSearch = "";
+  $("pick-cat-wrap").style.display = "none";
+  $("pick-team-wrap").style.display = "none";
+  $("pick-add-wrap").style.display = "none";
+  renderPickerClubSection();
+};
+
+function renderPickerCatSection() {
+  const catWrap = $("pick-cat-wrap");
+  const catSection = $("picker-cat-section");
+  if (!catWrap || !catSection || !currentPickerClub) return;
+  const clubMap = buildClubMap();
+  const club = clubMap.get(currentPickerClub);
+  if (!club) return;
+  const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Veterans","Altres","Fem"];
+  let cats = [...new Set(club.teams.map(t => t.category))];
+  if (allOnlyActive) {
+    cats = cats.filter(cat => {
+      const t = club.teams.find(t2 => t2.category === cat);
+      const comp = t ? findComp(t.compId) : null;
+      return comp && isActive(comp);
+    });
+  }
+  cats.sort((a,b) => { const ai=catOrder.indexOf(a),bi=catOrder.indexOf(b); return (ai<0?99:ai)-(bi<0?99:bi); });
+  if (!cats.length) { catWrap.style.display = "none"; return; }
+  catWrap.style.display = "block";
+  catSection.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
+    ${cats.map(c => { const sel=currentPickerCat===c; const col=CAT_COLOR[c]||"#1a2035"; return `<button onmousedown="selectPickerCat('${esc(c)}')" style="background:${sel?col:'#f0f4f8'};color:${sel?'#fff':'#334155'};border:1.5px solid ${sel?col:'#e2e6ef'};border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">${CAT_EMOJI[c]||"🏒"} ${esc(c)}</button>`; }).join("")}
+  </div>`;
+  if (currentPickerCat && cats.includes(currentPickerCat)) renderPickerTeamSection();
+  else { $("pick-team-wrap").style.display = "none"; $("pick-add-wrap").style.display = "none"; }
+}
+window.renderPickerCatSection = renderPickerCatSection;
+
+window.selectPickerCat = function(cat) {
+  currentPickerCat = cat;
+  currentPickerTeamKey = null;
+  currentPickerTeamData = null;
+  $("pick-add-wrap").style.display = "none";
+  renderPickerCatSection();
+  renderPickerTeamSection();
+};
+
+function renderPickerTeamSection() {
+  const teamWrap = $("pick-team-wrap");
+  const teamSection = $("picker-team-section");
+  if (!teamWrap || !teamSection || !currentPickerClub || !currentPickerCat) return;
+  const clubMap = buildClubMap();
+  const club = clubMap.get(currentPickerClub);
+  if (!club) return;
+  let teamsInCat = club.teams.filter(t => t.category === currentPickerCat);
+  if (allOnlyActive) teamsInCat = teamsInCat.filter(t => { const comp = findComp(t.compId); return comp && isActive(comp); });
+  // Deduplicate by teamName; prefer the comp with more calendar entries or active status
+  const seen = new Map();
+  for (const t of teamsInCat) {
+    if (!seen.has(t.teamName)) { seen.set(t.teamName, t); continue; }
+    const existing = seen.get(t.teamName);
+    const existComp = findComp(existing.compId);
+    const newComp = findComp(t.compId);
+    const score = c => (c?.calendar?.length||0) + (isActive(c)?100:0);
+    if (score(newComp) > score(existComp)) seen.set(t.teamName, t);
+  }
+  const teams = [...seen.values()].sort((a,b) => a.teamName.localeCompare(b.teamName));
+  if (!teams.length) { teamWrap.style.display = "none"; return; }
+  teamWrap.style.display = "block";
+  const catColor = CAT_COLOR[currentPickerCat] || "#003da5";
+  teamSection.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
+    ${teams.map(t => {
+      const key = `${t.compId}::${t.teamName}`;
+      const sel = currentPickerTeamKey === key;
+      const cid = getClubIdByTeamId(t.teamId) || getClubId(t.teamName);
+      const shortName = t.teamName.replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi,"").trim();
+      return `<button onmousedown="selectPickerTeam('${esc(t.compId)}','${esc(t.teamName)}','${esc(t.compName||"")}','${esc(currentPickerCat)}')" style="display:inline-flex;align-items:center;gap:6px;background:${sel?catColor:'#f0f4f8'};color:${sel?'#fff':'#334155'};border:1.5px solid ${sel?catColor:'#e2e6ef'};border-radius:20px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer">${shieldImg(cid,16)} ${esc(shortName)}</button>`;
+    }).join("")}
+  </div>`;
+  $("pick-add-wrap").style.display = currentPickerTeamKey ? "block" : "none";
+}
+
+window.selectPickerTeam = function(compId, team, compName, cat) {
+  currentPickerTeamKey = `${compId}::${team}`;
+  currentPickerTeamData = { compId, team, compName, cat };
+  renderPickerTeamSection();
+};
+
+window.addFavFromPicker = function() {
+  const d = currentPickerTeamData;
+  if (!d) return;
+  const comp = findComp(d.compId);
+  if (!isFav(d.compId, d.team)) {
+    favs.push({ compId: d.compId, teamName: d.team, category: d.cat, compName: d.compName || comp?.name || "" });
+    saveFavs();
+  }
   $("screen-picker").style.display="none"; homeTab="favs"; renderHome();
 };
 
@@ -1243,16 +2836,25 @@ function openDetail(compId,teamName,tab){
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
-  $("detail-meta").textContent=`${(detailComp.classification||[]).length} equips · ${detailComp.pctPlayed??"?"}% jugat`;
+  const srcLabel = detailComp.classificationSource === "fecapa" ? " · FECAPA" : (detailComp.classificationSource === "jok" ? " · jok.cat" : "");
+  const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
+  const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
+  const eqLabel = (detailComp.classification||[]).length; 
+  $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
+    <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
+    <span style="opacity:.7">${srcLabel}</span>
+  </div>`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
   window.scrollTo(0,0);
 }
 window.openDetail=openDetail;
 
 // ── Fitxa de jugador (bottom sheet) ──────────────────────────
-function openPlayerModal(jid, fallbackName) {
+async function openPlayerModal(jid, fallbackName) {
+  await enrichPlayerOnDemand(jid);
   const player = DB?.jugadors?.[jid];
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
   const name   = (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : null)
@@ -1260,7 +2862,11 @@ function openPlayerModal(jid, fallbackName) {
                || "Jugador";
 
   // Team i categoria del teamStats principal
-  const firstTeam  = player?.teamStats?.[0];
+  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, jid);
+  const fixedTeamStats = sourceTeamStats.length
+    ? sourceTeamStats
+    : normalizePlayerTeamStatsForDisplay(player);
+  const firstTeam  = fixedTeamStats?.[0];
   const teamSuffix = firstTeam ? `, ${firstTeam.team}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
   const url    = player?.url || `https://jok.cat/jugador/${jid}`;
@@ -1310,7 +2916,7 @@ function openPlayerModal(jid, fallbackName) {
     `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
 
   // ── Equips (teamStats del scraper) ────────────────────────────
-  const teamStats = player?.teamStats || [];
+  const teamStats = fixedTeamStats || [];
 
   // Fallback: categories des de sources si no hi ha teamStats
   const catCounts = {};
@@ -1429,10 +3035,79 @@ function setupListeners(){
   });
 }
 
-function renderDetailClassif(){
+async function renderDetailClassif(){
   const cl=detailComp.classification||[];
+  const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
+
+  // Calculate highlights from matches and classification
+  const matches = detailComp.calendar || [];
+  const played = matches.filter(m => m.homeScore != null && m.awayScore != null);
+
+  const stats = {};
+  cl.forEach(r => {
+    stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, cards: 0 };
+  });
+
+  // Calculate shutouts
+  played.forEach(m => {
+    if (m.awayScore === 0 && stats[m.home]) stats[m.home].shutouts++;
+    if (m.homeScore === 0 && stats[m.away]) stats[m.away].shutouts++;
+  });
+
+  // Calculate cards (blaves/vermelles) from actes
+  const catSlug = getCatSlugForComp(detailComp);
+  if (catSlug) {
+    const actes = await loadCatActes(catSlug);
+    const compIdStr = String(detailComp.id);
+
+    for (const acta of Object.values(actes)) {
+      if (String(acta.compId) !== compIdStr) continue;
+      const countCards = (players) => {
+        let count = 0;
+        for (const p of (players || [])) {
+          count += (p.b || 0) + (p.v || 0);
+        }
+        return count;
+      };
+
+      const homeCards = countCards(acta.playerStats?.homePlayers || []);
+      const awayCards = countCards(acta.playerStats?.awayPlayers || []);
+
+      if (stats[acta.home]) stats[acta.home].cards += homeCards;
+      if (stats[acta.away]) stats[acta.away].cards += awayCards;
+    }
+  }
+
+  // Find highlight teams
+  const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
+  const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gc - b[1].gc)[0];
+  const mostCards = Object.entries(stats).sort((a,b) => b[1].cards - a[1].cards)[0];
+  const mostShutouts = Object.entries(stats).sort((a,b) => b[1].shutouts - a[1].shutouts)[0];
+
+  const highlightCard = (emoji, label, team, value) => {
+    if (!team) return '';
+    return `<div style="flex:1;min-width:150px;background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">${emoji}</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:6px">${label}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px">
+        ${shieldImg(rowClubId(cl.find(r=>r.team===team)),20)}
+        <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.3">${esc(team)}</div>
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#e5001c">${value}</div>
+    </div>`;
+  };
+
+  const highlightsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    ${highlightCard('⚽', 'Més Gols', topGoals?.[0], topGoals?.[1]?.gf || 0)}
+    ${highlightCard('🛡️', 'Defensa (menys gols)', fewestGoals?.[0], fewestGoals?.[1]?.gc || 0)}
+    ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.cards || 0)}
+    ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
+  </div>`;
+
   $("panel-classif").innerHTML=`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${sourceBadge}</div>
+    ${highlightsHtml}
     <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f8fafc">
@@ -1440,7 +3115,7 @@ function renderDetailClassif(){
         </tr></thead>
         <tbody>${cl.map(r=>{
           const mine=teamIn(r.team,detailTeam), cid=rowClubId(r), pc=posColor(r.pos);
-          const pos=r.pos<=3?["🥇","🥈","🥉"][r.pos-1]:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
+          const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
             <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(r.team)}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
@@ -1459,6 +3134,7 @@ function renderDetailClassif(){
 
 function renderDetailCalendar(){
   const all=detailComp.calendar||[];
+  console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
   if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
   const names=[...new Set([...all.map(m=>m.home),...all.map(m=>m.away)].filter(Boolean))].sort();
   const chips=`<div style="margin-bottom:10px">
@@ -1471,10 +3147,15 @@ function renderDetailCalendar(){
   const matches=detailTeam?all.filter(m=>teamIn(m.home,detailTeam)||teamIn(m.away,detailTeam)):all;
   const byJ={};
   matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
-  $("panel-calendar").innerHTML=chips+Object.entries(byJ).map(([j,ms])=>`
+  const sortedJornades=Object.entries(byJ).sort((a,b)=>{
+    const getNum=k=>{const m=k[0].match(/Jornada (\d+)/);return m?parseInt(m[1]):-1;};
+    const numA=getNum(a), numB=getNum(b);
+    return numA===-1||numB===-1?0:numB-numA;
+  });
+  $("panel-calendar").innerHTML=chips+sortedJornades.map(([j,ms])=>`
     <div style="margin-bottom:10px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-      ${ms.map(m=>matchCard(m,detailTeam)).join("")}
+      ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
     </div>`).join("");
 }
 window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); };
@@ -1572,7 +3253,7 @@ async function renderDetailJugadors(){
 
 function setJugadorsTeam(team) {
   detailTeam = team;
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -1583,6 +3264,18 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    // Load venues/coordinates
+    try {
+      const venuesRes = await fetch(VENUES_URL);
+      if (venuesRes.ok) venuesDB = await venuesRes.json();
+      console.log("✓ Venues loaded:", Object.keys(venuesDB?.venues||{}).length, "teams");
+    } catch(e) {
+      console.log("Venues file not available:", e.message);
+    }
+
+    applyClassificationSourceMerge();
+
     if (DB.lastUpdate) {
       const d = new Date(DB.lastUpdate);
       const fmt = new Intl.DateTimeFormat('ca', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -1599,4 +3292,438 @@ async function init(){
     $("loading-note").innerHTML=`<span style="color:#e5001c;font-weight:700">⚠️ Error</span><br/><span style="font-size:12px;color:#6b7a99">${esc(e.message)}</span>`;
   }
 }
+
+function normalizeTeamName(name) {
+  if (!name) return "";
+  return String(name)
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[''´`]/g, "")
+    .replace(/[-–—]/g, "-")
+    .replace(/[àáäâ]/g, "a")
+    .replace(/[èéëê]/g, "e")
+    .replace(/[ìíïî]/g, "i")
+    .replace(/[òóöô]/g, "o")
+    .replace(/[ùúüû]/g, "u")
+    .replace(/ç/g, "c")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+// ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
+function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
+  if (!comp) return null;
+
+  const matches = comp.calendar || [];
+  const classif = comp.classification || [];
+  const acteData = actes || {};
+  const allActesData = allActes || {};
+
+  // Get team row from classification
+  let teamRow = teamInClassif;
+  if (!teamRow) {
+    teamRow = classif.find(r => r.team === teamName);
+  }
+  if (!teamRow) return null;
+
+  // Match team name from calendar
+  const calTeamName = [...new Set([...matches.map(m => m.home), ...matches.map(m => m.away)].filter(Boolean))].find(t =>
+    normalizeTeamName(t) === normalizeTeamName(teamName)
+  ) || teamName;
+
+  // Get matches for this team
+  const teamMatches = matches.filter(m =>
+    (m.homeScore != null && m.awayScore != null) &&
+    (normalizeTeamName(m.home) === normalizeTeamName(calTeamName) || normalizeTeamName(m.away) === normalizeTeamName(calTeamName))
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 1. Trend últims 5 partits
+  const last5 = teamMatches.slice(0, 5);
+  let trend = { w: 0, d: 0, l: 0 };
+  last5.forEach(m => {
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
+    const myScore = isHome ? m.homeScore : m.awayScore;
+    const theirScore = isHome ? m.awayScore : m.homeScore;
+    if (myScore > theirScore) trend.w++;
+    else if (myScore === theirScore) trend.d++;
+    else trend.l++;
+  });
+
+  // 2. Jugadores per partit (rotació) - from actes
+  const playersByMatch = {};
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    playersByMatch[acta.matchDate || acta.date] = players.length;
+  }
+  const playerCounts = Object.values(playersByMatch);
+  const avgPlayersPerMatch = playerCounts.length > 0 ? playerCounts.reduce((a,b) => a+b, 0) / playerCounts.length : 0;
+
+  // 3. Gols promig
+  const totalGoals = teamMatches.reduce((sum, m) => {
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
+    return sum + (isHome ? m.homeScore : m.awayScore);
+  }, 0);
+  const avgGoals = teamMatches.length > 0 ? totalGoals / teamMatches.length : 0;
+
+  // 4. Porteries a zero
+  const shutouts = teamMatches.filter(m => {
+    const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
+    return isHome ? m.awayScore === 0 : m.homeScore === 0;
+  }).length;
+
+  // 5. Gols a favor y en contra
+  const goalsFor = teamRow.gf || 0;
+  const goalsAgainst = teamRow.gc || 0;
+
+  // 6. Top golejador - from actes
+  const playerStats = {};
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    for (const p of players) {
+      if (!p.jugadorId) continue;
+      if (!playerStats[p.jugadorId]) {
+        playerStats[p.jugadorId] = { name: p.name, goals: 0, matches: 0 };
+      }
+      playerStats[p.jugadorId].goals += p.g || 0;
+      playerStats[p.jugadorId].matches += 1;
+    }
+  }
+  const topScorer = Object.values(playerStats).length > 0
+    ? Object.values(playerStats).reduce((a, b) => a.goals > b.goals ? a : b)
+    : { name: "—", goals: 0, matches: 0 };
+
+  // 7. Mitjana d'edat - from DB.jugadors
+  const agesInTeam = [];
+  for (const pid of Object.keys(playerStats)) {
+    const player = DB.jugadors?.[pid];
+    if (player?.birthDate) {
+      const bd = player.birthDate;
+      const pts = bd.split(/[\/\-]/);
+      const dob = pts[0].length === 4
+        ? new Date(`${pts[0]}-${pts[1]}-${pts[2]}`)
+        : new Date(`${pts[2]}-${pts[1]}-${pts[0]}`);
+      if (!isNaN(dob)) {
+        const now = new Date();
+        const y = now.getFullYear() - dob.getFullYear();
+        const age = y - (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+        if (age > 0 && age < 100) agesInTeam.push(age);
+      }
+    }
+  }
+  const avgAge = agesInTeam.length > 0 ? Math.round(agesInTeam.reduce((a,b) => a+b, 0) / agesInTeam.length) : "—";
+
+  // 8. Sancionats, Blaves i Vermelles
+  const suspended = [];
+  let totalYellowCards = 0;
+  let totalRedCards = 0;
+  let matchesWithYellowCards = 0;
+  let matchesWithRedCards = 0;
+  const playerCards = {};
+
+  for (const acta of Object.values(acteData)) {
+    if (String(acta.compId) !== String(comp.id)) continue;
+    const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+    const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+
+    let yellowThisMatch = 0, redThisMatch = 0;
+    for (const p of players) {
+      if (!p.jugadorId) continue;
+      if (!playerCards[p.jugadorId]) {
+        playerCards[p.jugadorId] = { name: p.name, blaves: 0, vermelles: 0 };
+      }
+      const yellowCount = p.b || 0;
+      const redCount = p.v || 0;
+      playerCards[p.jugadorId].blaves += yellowCount;
+      playerCards[p.jugadorId].vermelles += redCount;
+      totalYellowCards += yellowCount;
+      totalRedCards += redCount;
+      yellowThisMatch += yellowCount;
+      redThisMatch += redCount;
+    }
+    if (yellowThisMatch > 0) matchesWithYellowCards++;
+    if (redThisMatch > 0) matchesWithRedCards++;
+  }
+
+  // Identify suspended players
+  for (const [pid, cards] of Object.entries(playerCards)) {
+    if (cards.blaves >= 5) {
+      suspended.push(`${cards.name} (${cards.blaves} blaves)`);
+    }
+    if (cards.vermelles > 0) {
+      suspended.push(`${cards.name} (vermella)`);
+    }
+  }
+
+  const avgYellowCards = matchesWithYellowCards > 0 ? (totalYellowCards / matchesWithYellowCards).toFixed(1) : 0;
+  const avgRedCards = matchesWithRedCards > 0 ? (totalRedCards / matchesWithRedCards).toFixed(1) : 0;
+
+  // 9. Porters
+  let goalkeepers = 0;
+  for (const pid of Object.keys(playerStats)) {
+    const player = DB.jugadors?.[pid];
+    if (player?.isGK) goalkeepers++;
+  }
+  if (goalkeepers === 0) goalkeepers = 1;
+
+  // 10. Probabilitat de victòria
+  const winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
+
+  // 11. Jugadors que juguen a altres categories (refuerzos)
+  const playerInOtherCat = new Set();
+  for (const categoryActes of Object.values(allActesData)) {
+    for (const acta of Object.values(categoryActes)) {
+      if (String(acta.compId) === String(comp.id)) continue;
+      const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
+      const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
+      if (!isHome && !isAway) continue;
+      const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+      for (const p of players) {
+        if (p.jugadorId && playerStats[p.jugadorId]) {
+          playerInOtherCat.add(p.jugadorId);
+        }
+      }
+    }
+  }
+  const fixedPlayers = Object.keys(playerStats).length - playerInOtherCat.size;
+  const reinforcementRatio = fixedPlayers > 0 ? (playerInOtherCat.size / Object.keys(playerStats).length).toFixed(2) : "0.00";
+  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${Object.keys(playerStats).length} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
+
+  // 12. Millorament vs 1ª ronda
+  const improvement = "N/A";
+
+  return {
+    teamName: calTeamName,
+    trend,
+    avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
+    avgGoals: Math.round(avgGoals * 100) / 100,
+    avgGoalsAgainst: teamMatches.length > 0 ? Math.round((goalsAgainst / teamRow.pj) * 100) / 100 : 0,
+    shutouts,
+    totalMatches: teamMatches.length,
+    points: teamRow.pts || 0,
+    position: teamRow.pos || "?",
+    goalsFor,
+    goalsAgainst,
+    goalsDiff: goalsFor - goalsAgainst,
+    winRate: last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0,
+    topScorer,
+    suspended,
+    goalkeepers,
+    winProbability,
+    reinforcements,
+    avgAge,
+    improvement,
+    totalYellowCards,
+    avgYellowCards,
+    totalRedCards,
+    avgRedCards
+  };
+}
+
+window.openRivalAnalysis = async function(teamName, compId) {
+  console.log("openRivalAnalysis called with:", { teamName, compId, role: currentProfile?.role });
+
+  const comp = findComp(compId);
+  if (!comp) {
+    console.error("Competició no trobada:", compId);
+    console.log("Competicions disponibles:", Object.values(DB?.categories || {}).flat().map(c => ({ id: c.id, name: c.name })));
+    alert("Competició no trobada");
+    return;
+  }
+
+  if (!comp.classification || comp.classification.length === 0) {
+    alert("Aquesta competició no té classificació");
+    return;
+  }
+
+  const normalizedInput = normalizeTeamName(teamName);
+
+  // Crear mapa de noms normalitzats a teamId
+  const teamMap = {};
+  comp.classification.forEach(r => {
+    const normalized = normalizeTeamName(r.team);
+    teamMap[normalized] = r;
+  });
+
+  let teamInClassif = teamMap[normalizedInput];
+
+  if (!teamInClassif) {
+    console.error("Equip no trobat:", teamName, "normalized:", normalizedInput);
+    console.log("Equips disponibles:", Object.keys(teamMap));
+    alert(`Equip "${teamName}" no trobat en la classificació`);
+    return;
+  }
+
+  // Load actes for this competition
+  const catSlug = getCatSlugForComp(comp);
+  const actes = catSlug ? await loadCatActes(catSlug) : {};
+
+  // Load actes from other categories for reinforcements analysis
+  const allActes = { ...actesCache };
+
+  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes);
+  console.log("Metrics calculated for", teamName, ":", metrics ? "OK" : "FAILED");
+  if (!metrics) {
+    alert("No es pot calcular l'anàlisi d'aquest equip");
+    return;
+  }
+
+  console.log("Showing modal...");
+  showRivalModal(metrics, teamName);
+  console.log("Modal shown");
+};
+
+function showRivalModal(metrics, teamName) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  `;
+
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 16px; padding: 24px; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3)">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
+        <h2 style="margin: 0; font-family: 'Barlow Condensed'; font-size: 24px; font-weight: 900">${teamName}</h2>
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px">
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Posició</div>
+          <div style="font-size: 32px; font-weight: 900; color: #e5001c">${metrics.position}º</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.points} pts</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Trend Últim 5</div>
+          <div style="font-size: 24px; font-weight: 900; margin: 8px 0">
+            <span style="color: #16a34a">${metrics.trend.w}V</span>
+            <span style="color: #d97706"> ${metrics.trend.d}E</span>
+            <span style="color: #dc2626"> ${metrics.trend.l}L</span>
+          </div>
+          <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de gols marcats ÷ total de partits jugats">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Promig</div>
+          <div style="font-size: 32px; font-weight: 900; color: #003da5">${metrics.avgGoals}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols en contra (GC) ÷ total de partits jugats">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Gols Rebuts</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.avgGoalsAgainst}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">per partit</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Gols a favor − Gols en contra">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Diferencial</div>
+          <div style="font-size: 32px; font-weight: 900; color: ${metrics.goalsDiff > 0 ? '#16a34a' : '#dc2626'}">${metrics.goalsDiff > 0 ? '+' : ''}${metrics.goalsDiff}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">${metrics.goalsFor} a favor, ${metrics.goalsAgainst} contra</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Porteries a 0</div>
+          <div style="font-size: 32px; font-weight: 900; color: #1d4ed8">${metrics.shutouts}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">últims ${metrics.totalMatches} partits</div>
+        </div>
+
+        <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; text-align: center" title="Suma de jugadors en cada acta ÷ total de partits">
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700">Media jugadors convocats</div>
+          <div style="font-size: 32px; font-weight: 900; color: #7c3aed">${metrics.avgPlayersPerMatch}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">jugadors</div>
+        </div>
+
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #92400e; text-transform: uppercase; font-weight: 700">⚽ Màxim Golejador</div>
+          <div style="font-size: 20px; font-weight: 900; color: #b45309">${metrics.topScorer.name}</div>
+          <div style="font-size: 13px; color: #92400e; margin-top: 4px">${metrics.topScorer.goals} gols (${metrics.topScorer.matches} partits)</div>
+        </div>
+
+        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; text-align: center">
+          <div style="font-size: 12px; color: #0c4a6e; text-transform: uppercase; font-weight: 700">🧤 Porters</div>
+          <div style="font-size: 32px; font-weight: 900; color: #0284c7">${metrics.goalkeepers}</div>
+          <div style="font-size: 11px; color: #0c4a6e; margin-top: 4px">porteries</div>
+        </div>
+
+        <div style="background: #f3e8ff; border-radius: 12px; padding: 16px; text-align: center" title="Suma d'edats dels jugadors ÷ total de jugadors">
+          <div style="font-size: 12px; color: #5b21b6; text-transform: uppercase; font-weight: 700">📊 Mitjana Edat</div>
+          <div style="font-size: 32px; font-weight: 900; color: #a855f7">${metrics.avgAge}</div>
+          <div style="font-size: 11px; color: #5b21b6; margin-top: 4px">anys</div>
+        </div>
+
+        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="(Victòries / últims 5 partits) * 100, mostrat com a probabilitat inversa vs rival">
+          <div style="font-size: 12px; color: #7f1d1d; text-transform: uppercase; font-weight: 700">📈 Probabilitat Victòria</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${100 - metrics.winProbability}%</div>
+          <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">estimat</div>
+        </div>
+
+        ${metrics.suspended && metrics.suspended.length > 0 ? `
+        <div style="background: #fee2e2; border-radius: 12px; padding: 16px; grid-column: span 1" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
+          <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; font-weight: 700">⚠️ Targetes</div>
+          <div style="font-size: 13px; color: #7f1d1d; margin-top: 8px; line-height: 1.4">
+            ${metrics.suspended.map(p => `<div>• ${p}</div>`).join('')}
+          </div>
+          <div style="font-size: 10px; color: #991b1b; margin-top: 8px; padding-top: 8px; border-top: 1px solid #fca5a5">
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
+          </div>
+        </div>
+        ` : `
+        <div style="background: #dcfce7; border-radius: 12px; padding: 16px; text-align: center" title="Blaves: suma de totes les blaves ÷ partits amb blaves. Vermelles: suma de totes les vermelles ÷ partits amb vermelles">
+          <div style="font-size: 12px; color: #166534; text-transform: uppercase; font-weight: 700">✓ Targetes</div>
+          <div style="font-size: 13px; font-weight: 700; color: #16a34a; margin-top: 8px">Controlades</div>
+          <div style="font-size: 10px; color: #166534; margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbf7d0">
+            <div>🟦 Blaves: ${metrics.totalYellowCards} total (${metrics.avgYellowCards}/partit)</div>
+            <div>🟥 Vermelles: ${metrics.totalRedCards} total (${metrics.avgRedCards}/partit)</div>
+          </div>
+        </div>
+        `}
+
+        ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
+        <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
+          <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
+          <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
+            ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
+          </div>
+          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
+        </div>
+        ` : `
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
+          <div style="font-size: 12px; color: #4b5563; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
+          <div style="font-size: 13px; font-weight: 700; color: #6b7280; margin-top: 8px">Mateixa plantilla</div>
+        </div>
+        `}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.remove();
+  };
+}
+
 init();
