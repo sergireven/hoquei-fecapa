@@ -13,7 +13,20 @@ const REMOTE_COMP_URLS = [
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/Millores-12/public/competicions-sidgad.json",
   "https://raw.githubusercontent.com/sergireven/hoquei-fecapa/main/public/competicions-sidgad.json",
 ];
-const TARGET_CATEGORIES = new Set(["PREBENJAMI", "BENJAMI", "ALEVI"]);
+const TARGET_CATEGORIES = new Set([
+  "NACIONAL CATALANA",
+  "PRIMERA CATALANA",
+  "SEGONA CATALANA",
+  "TERCERA CATALANA",
+  "FEM",
+  "JUNIOR",
+  "JUVENIL",
+  "INFANTIL",
+  "PREBENJAMI",
+  "BENJAMI",
+  "ALEVI",
+  "VETERANS",
+]);
 const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
 
@@ -52,9 +65,18 @@ function normName(name) {
 
 function inferBaseCategory(name) {
   const n = normName(name);
+  if (n.includes("NACIONAL CATALANA")) return "nacional_catalana";
+  if (n.includes("PRIMERA CATALANA")) return "primera_catalana";
+  if (n.includes("SEGONA CATALANA")) return "segona_catalana";
+  if (n.includes("TERCERA CATALANA")) return "tercera_catalana";
+  if (n === "FEM" || n.startsWith("FEM ")) return "fem";
+  if (n.includes("JUNIOR")) return "junior";
+  if (n.includes("JUVENIL")) return "juvenil";
+  if (n.includes("INFANTIL")) return "infantil";
   if (n.includes("PREBENJAMI")) return "prebenjami";
   if (n.includes("BENJAMI")) return "benjami";
   if (n.includes("ALEVI")) return "alevi";
+  if (n.includes("VETERANS")) return "veterans";
   return null;
 }
 
@@ -496,9 +518,18 @@ async function scrapeCompetitionLive(page, comp) {
 
     const mapCategory = (c) => {
       const n = normalize(c);
-      if (n === "BENJAMI") return "BENJAMI";
+      if (n === "NACIONAL CATALANA") return "NACIONAL CATALANA";
+      if (n === "PRIMERA CATALANA") return "PRIMERA CATALANA";
+      if (n === "SEGONA CATALANA") return "SEGONA CATALANA";
+      if (n === "TERCERA CATALANA") return "TERCERA CATALANA";
+      if (n === "FEM") return "FEM";
+      if (n === "JUNIOR") return "JUNIOR";
+      if (n === "JUVENIL") return "JUVENIL";
+      if (n === "INFANTIL") return "INFANTIL";
       if (n === "PREBENJAMI") return "PREBENJAMI";
+      if (n === "BENJAMI") return "BENJAMI";
       if (n === "ALEVI") return "ALEVI";
+      if (n === "VETERANS") return "VETERANS";
       return "";
     };
 
@@ -894,9 +925,18 @@ async function getCategoriesData(options = {}) {
     const selected = selectTargetCompetitions(compIndex, effectiveCategories);
 
     const categories = {
+      nacional_catalana: [],
+      primera_catalana: [],
+      segona_catalana: [],
+      tercera_catalana: [],
+      fem: [],
+      junior: [],
+      juvenil: [],
+      infantil: [],
       prebenjami: [],
       benjami: [],
       alevi: [],
+      veterans: [],
     };
 
     const errors = [];
