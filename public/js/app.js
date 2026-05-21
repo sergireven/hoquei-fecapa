@@ -354,15 +354,15 @@ function adminCategoryLabel(key) {
 
 async function getAdminFecapaCategoriesModel({ force = false } = {}) {
   if (!force && adminFecapaCategoriesCache) return adminFecapaCategoriesCache;
-  // Admin should inspect current scraper output, not snapshot cache.
-  const res = await fetch(`/api/fecapa-categories?live=1&t=${Date.now()}`);
+  // Admin must reflect persisted fecapa-categories output (no live scraping).
+  const res = await fetch(`./fecapa-categories.json?t=${Date.now()}`);
   if (!res.ok) {
     let detail = "";
     try {
       const errJson = await res.json();
       detail = errJson?.error ? `: ${errJson.error}` : "";
     } catch {}
-    throw new Error(`No s'ha pogut carregar l'scraper de FECAPA (${res.status})${detail}`);
+    throw new Error(`No s'ha pogut carregar fecapa-categories.json (${res.status})${detail}`);
   }
   const data = await res.json();
   if (!data?.ok) throw new Error(data?.error || "Resposta invàlida de FECAPA scraper");
@@ -379,7 +379,7 @@ function renderAdminFecapaCompetition(comp) {
 }
 
 async function renderAdminFecapaCategoriesPanel(body) {
-  body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Scrapejant FECAPA en viu...</div>`;
+  body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant fecapa-categories.json...</div>`;
   try {
     const model = await getAdminFecapaCategoriesModel({ force: true });
     const categoryKeys = ["nacional_catalana", "primera_catalana", "segona_catalana", "tercera_catalana", "fem", "junior", "juvenil", "infantil", "prebenjami", "benjami", "alevi", "veterans"];
@@ -394,7 +394,7 @@ async function renderAdminFecapaCategoriesPanel(body) {
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Classificacions de FECAPA</div>
             <div style="font-size:12px;color:#64748b">${totalComps} competicions · ${totalTeams} equips · source: ${esc(model.source || "unknown")}${Number(model.failedCompetitions || 0) ? ` · errors: ${model.failedCompetitions}` : ""}</div>
           </div>
-          <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Re-scrapejar</button>
+          <button onclick="adminReloadFecapaCategories()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
         </div>
       </div>
       ${categoryKeys.map(key => {
@@ -405,11 +405,11 @@ async function renderAdminFecapaCategoriesPanel(body) {
         </div>`;
       }).join("")}
       <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
-        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON (scraper FECAPA)</summary>
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON (fecapa-categories.json)</summary>
         <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
       </details>`;
   } catch (err) {
-    body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant scraper FECAPA: ${esc(err?.message || "desconegut")}</div>`;
+    body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant fecapa-categories.json: ${esc(err?.message || "desconegut")}</div>`;
   }
 }
 
