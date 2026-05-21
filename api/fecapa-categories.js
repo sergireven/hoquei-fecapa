@@ -359,7 +359,7 @@ async function getCategoriesData(options = {}) {
 
     finalBuilt.forEach((item, idx) => {
       const categoryKey = selected[idx]?.category;
-      if (!categoryKey) continue;
+      if (!categoryKey) return;
       categories[categoryKey].push(item);
     });
 
