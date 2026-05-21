@@ -287,6 +287,21 @@ async function jqLoad(page, containerId, url, postData, timeoutMs = 10000) {
   );
 }
 
+// Fallback: llegeix HTML guardat localment per a 4452 (en cas que Puppeteer falli)
+async function loadReferenceLagueHtmlForComparison(compId) {
+  if (String(compId) !== "4452") return "";
+  
+  const refPath = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
+  try {
+    const html = await fs.readFile(refPath, "utf8");
+    console.log(`   📄 Carregat HTML local de referència per comp ${compId} (${html.length} bytes)`);
+    return html;
+  } catch (err) {
+    console.log(`   ⚠️  No es pot llegir HTML local: ${err.message}`);
+    return "";
+  }
+}
+
 async function main() {
   console.log("🏒 FECAPA Sidgad Scraper — iniciant...\n");
 
@@ -751,111 +766,21 @@ async function main() {
             let grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
             let source = "puppeteer";
 
-            // Fallback: si Puppeteer retorna pocs grups, navega pestanyes de grup al modal
+            // Fallback: si Puppeteer retorna pocs grups, intenta HTTP directe al portal
             if (grouped.groups.length <= 2) {
               try {
-                console.log(`   ↪ Intentant recuperar grups via pestanyes UI per comp ${compId} (Puppeteer va retornar ${grouped.groups.length} grups)...`);
-                const navResult = await page.evaluate(async () => {
-                  const sleep = ms => new Promise(r => setTimeout(r, ms));
-                  const container = document.getElementById("tab_modal_contenido_competicion");
-                  if (!container) return { totalCandidates: 0, snapshots: [] };
-
-                  const root = document.getElementById("menu_idc_options_general")
-                    || document.getElementById("tab_modal_container")
-                    || container.parentElement
-                    || document;
-
-                  const rawCandidates = [...root.querySelectorAll("a, button, li, span, td, div[onclick]")];
-                  const candidates = rawCandidates.filter(el => {
-                    const txt = (el.textContent || "").trim();
-                    const onclick = el.getAttribute("onclick") || "";
-                    const href = el.getAttribute("href") || "";
-                    const cls = typeof el.className === "string" ? el.className : "";
-                    const sig = `${txt} ${onclick} ${href} ${cls}`.toLowerCase();
-                    if (!sig) return false;
-                    if (/calendari|jornada|resultat|partit|designacio/.test(sig)) return false;
-                    return /idc|fase|grup|grupo|group|classificaci|clasif/.test(sig);
-                  });
-
-                  const uniqueCandidates = [];
-                  const seenCandidates = new Set();
-                  for (const el of candidates) {
-                    const key = `${(el.textContent || "").trim()}|${el.getAttribute("onclick") || ""}|${el.getAttribute("href") || ""}`;
-                    if (seenCandidates.has(key)) continue;
-                    seenCandidates.add(key);
-                    uniqueCandidates.push(el);
-                  }
-
-                  const snapshots = [];
-                  const seenSnapshots = new Set();
-                  for (const el of uniqueCandidates.slice(0, 40)) {
-                    try { el.click(); } catch (_) {}
-                    await sleep(800);
-                    const html = container.innerHTML || "";
-                    if (html.length < 250) continue;
-
-                    const titleMatch = html.match(/<div[^>]*class=['\"]?[^'\"]*div_titulo_fase_idc[^'\"]*['\"]?[^>]*>([\s\S]*?)<\/div>/i);
-                    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
-                    const signature = `${title}|${(html.match(/<tr/gi) || []).length}|${(html.match(/div_titulo_fase_idc/gi) || []).length}|${html.length}`;
-                    if (seenSnapshots.has(signature)) continue;
-                    seenSnapshots.add(signature);
-                    snapshots.push({ html, clickedText: (el.textContent || "").trim(), title });
-                  }
-
-                  return { totalCandidates: uniqueCandidates.length, snapshots };
-                });
-
-                if (navResult?.snapshots?.length > 0) {
-                  const mergedByName = new Map();
-
-                  for (const g of grouped.groups || []) {
-                    mergedByName.set(g.name, g);
-                  }
-
-                  for (const snap of navResult.snapshots) {
-                    const parsed = parseClassificationByGroupSidgad(snap.html, uniqueIdcs);
-                    if (parsed.groups.length > 0) {
-                      for (const g of parsed.groups) {
-                        const prev = mergedByName.get(g.name);
-                        if (!prev || (g.classification?.length || 0) > (prev.classification?.length || 0)) {
-                          mergedByName.set(g.name, g);
-                        }
-                      }
-                      continue;
-                    }
-
-                    const classification = parseClassificationSidgad(snap.html);
-                    if (classification.length === 0) continue;
-                    const snapName = normalizeText(snap.title || snap.clickedText) || `Grup recuperat ${mergedByName.size + 1}`;
-                    const prev = mergedByName.get(snapName);
-                    if (!prev || classification.length > (prev.classification?.length || 0)) {
-                      mergedByName.set(snapName, {
-                        order: mergedByName.size + 1,
-                        key: `group_${mergedByName.size + 1}`,
-                        idc: null,
-                        name: snapName,
-                        classification,
-                      });
-                    }
-                  }
-
-                  const mergedGroups = Array.from(mergedByName.values()).map((g, idx) => ({
-                    ...g,
-                    order: idx + 1,
-                    key: String(g.key || `group_${idx + 1}`),
-                  }));
-
-                  if (mergedGroups.length > grouped.groups.length) {
-                    grouped = {
-                      byIdc: Object.fromEntries(mergedGroups.map(g => [String(g.key), g.classification])),
-                      groups: mergedGroups,
-                    };
-                    source = "ui_tabs";
-                    console.log(`   ✓ Recuperats ${mergedGroups.length} grups via pestanyes UI (candidats: ${navResult.totalCandidates}, snapshots: ${navResult.snapshots.length})`);
+                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar ${grouped.groups.length} grups)...`);
+                const directHtml = await fetchLeaguePageDirect(compId);
+                if (directHtml && directHtml.length > 1000) {
+                  const directGrouped = parseClassificationByGroupSidgad(directHtml, uniqueIdcs);
+                  if (directGrouped.groups.length > grouped.groups.length) {
+                    console.log(`   ✓ HTTP direct va retornar ${directGrouped.groups.length} grups (vs ${grouped.groups.length} de Puppeteer)`);
+                    grouped = directGrouped;
+                    source = "http_direct";
                   }
                 }
               } catch (err) {
-                console.log(`   ⚠️  Recuperació via pestanyes UI fallida: ${err.message}`);
+                console.log(`   ⚠️  HTTP direct error: ${err.message}`);
               }
             }
 
