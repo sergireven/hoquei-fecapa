@@ -1183,24 +1183,65 @@ function teamMatchesLoose(a, b) {
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 
+function normalizeTeamNameStrict(name) {
+  return normalizeTeamName(shortTeamDisplayName(name || ""));
+}
+
+function extractTeamSuffix(name) {
+  const m = String(name || "").match(/\s+([a-zA-Z])$/);
+  return m ? m[1].toUpperCase() : null;
+}
+
+function getTeamBase(name) {
+  return String(name || "").replace(/\s+[a-zA-Z]$/, "").trim();
+}
+
 function findBestClassifRow(classificationRows, teamName) {
   const rows = classificationRows || [];
-  const targetNorm = normalizeTeamName(teamName || "");
-
+  const targetNorm = normalizeTeamNameStrict(teamName || "");
+  const targetSuffix = extractTeamSuffix(teamName);
+  const targetBase = getTeamBase(teamName);
+  
   if (targetNorm) {
-    const exact = rows.find(r => normalizeTeamName(r?.team || "") === targetNorm);
+    const exact = rows.find(r => normalizeTeamNameStrict(r?.team || "") === targetNorm);
     if (exact) return exact;
   }
-
-  const loose = rows.find(r => teamMatchesLoose(r?.team || "", teamName || ""));
-  if (loose) return loose;
-
+  
+  if (targetBase && targetSuffix) {
+    const sameBaseAndSuffix = rows.filter(r => {
+      const rBase = getTeamBase(r?.team || "");
+      const rSuffix = extractTeamSuffix(r?.team || "");
+      return rBase && normalizeTeamNameStrict(rBase) === normalizeTeamNameStrict(targetBase)
+        && rSuffix === targetSuffix;
+    });
+    if (sameBaseAndSuffix.length === 1) return sameBaseAndSuffix[0];
+    if (sameBaseAndSuffix.length > 1) {
+      const refClubId = getClubId(teamName);
+      if (refClubId) {
+        const byClubId = sameBaseAndSuffix.find(r => r.clubId === refClubId);
+        if (byClubId) return byClubId;
+      }
+      return sameBaseAndSuffix[0];
+    }
+  }
+  
   const targetKey = normalizeTeamKeyForMatching(teamName || "");
   if (!targetKey) return null;
-  return rows.find(r => {
+  const keyMatches = rows.filter(r => {
     const rowKey = normalizeTeamKeyForMatching(r?.team || "");
-    return rowKey && (rowKey.includes(targetKey) || targetKey.includes(rowKey));
-  }) || null;
+    return rowKey && (rowKey === targetKey || (rowKey.includes(targetKey) && rowKey.length < targetKey.length + 5));
+  });
+  if (keyMatches.length === 1) return keyMatches[0];
+  if (keyMatches.length > 1) {
+    const refClubId = getClubId(teamName);
+    if (refClubId) {
+      const byClubId = keyMatches.find(r => r.clubId === refClubId);
+      if (byClubId) return byClubId;
+    }
+    return keyMatches[0];
+  }
+  
+  return null;
 }
 
 function resolveCanonicalClassifTeamName(classificationRows, teamName) {
