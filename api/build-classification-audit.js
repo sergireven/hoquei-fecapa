@@ -66,6 +66,11 @@ function normalizeText(s) {
     .trim();
 }
 
+function isRestPlaceholderTeamName(name) {
+  const n = normalizeText(name);
+  return /\bDESCANSA\b|\bDESCANS\b|\bBYE\b/.test(n);
+}
+
 function jokCategoryToKey(name) {
   const n = normalizeText(name);
   return JOKCAT_CATEGORY_MAP[n] || null;
@@ -139,7 +144,36 @@ function phaseScore(fecapaName, jokName) {
 }
 
 function isOmittedFecapaGroupName(name) {
-  return normalizeText(name) === FECAPA_PLACEHOLDER_GROUP_NAME;
+  const n = normalizeText(name);
+  if (!n) return true;
+  if (n === FECAPA_PLACEHOLDER_GROUP_NAME) return true;
+
+  // Variants detectades al portal/sidgad amb el mateix placeholder de classificacio.
+  const placeholderTokens = ["CLASIFICACION", "CLASSIFICATION", "CLASSIFICACIO", "CLASSIFICA"];
+  const hits = placeholderTokens.filter(t => n.includes(t)).length;
+  return hits >= 3;
+}
+
+function isSemanticallyCompatibleFecapaGroup(catKey, competitionName, groupName) {
+  const compSource = String(competitionName || "");
+  const groupSource = String(groupName || "");
+
+  const compRegion = extractRegionTag(compSource);
+  const groupRegion = extractRegionTag(groupSource);
+  if (compRegion && groupRegion && compRegion !== groupRegion) return false;
+
+  const compTags = extractPhaseTags(compSource);
+  const groupTags = extractPhaseTags(groupSource);
+  const ladder = ["OR", "PLATA", "BRONZE"];
+  const compMain = ladder.find(t => compTags.has(t)) || null;
+  const groupMain = ladder.find(t => groupTags.has(t)) || null;
+  if (compMain && groupMain && compMain !== groupMain) return false;
+
+  const compAge = extractAgeBand(compSource) || extractAgeBand(catKey);
+  const groupAge = extractAgeBand(groupSource);
+  if (compAge && groupAge && compAge !== groupAge) return false;
+
+  return true;
 }
 
 function haveConflictingPhaseTags(fecapaName, jokName) {
@@ -192,6 +226,7 @@ function jaccardScore(aWords, bWords) {
 }
 
 function teamTokens(name) {
+  if (isRestPlaceholderTeamName(name)) return [];
   return normalizeText(name)
     .replace(/\b(CLUB|HOQUEI|PATI|PATI|PATIN|PATINS|ES|MOU|DEL|DE|LA|EL|ELS|LES)\b/g, " ")
     .replace(/\b(CH|CP|CHP|UE|CE|UC|SK|HC|AE|CF|FS|SD|AD|CD|FC|CPI)\b/g, " ")
@@ -324,13 +359,16 @@ function isCompatibleCompetition(fecapaCatKey, fecapaCompName, fecapaGroupName, 
 
 // ── Normalitza nom d'equip per comparació fuzzy ──────────────
 function normTeam(name) {
-  return normalizeApostrophes(name)
+  const normalized = normalizeApostrophes(name)
     .toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9 ]/g, " ")
     .replace(/\b(CH|CP|CHP|UE|CE|UC|SK|HC|AE|CF|FS|SD|AD|CD|FC)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (isRestPlaceholderTeamName(normalized)) return "";
+  return normalized;
 }
 
 // ── Extrau noms d'equip d'un grup FECAPA ─────────────────────
@@ -571,7 +609,10 @@ async function main() {
       const usedJokcatInThisComp = new Set();
       const fecapaGroupsRaw = (fecapaComp.groups || []).filter(g => !isOmittedFecapaGroupName(g.groupName));
       const sidgadGroups = sidgadGroupsForCompetition(fecapaId, sidgadComp);
-      const validFecapaGroups = sidgadGroups.length > fecapaGroupsRaw.length ? sidgadGroups : fecapaGroupsRaw;
+      const preferredGroups = sidgadGroups.length > fecapaGroupsRaw.length ? sidgadGroups : fecapaGroupsRaw;
+      const validFecapaGroups = preferredGroups
+        .filter(g => !isOmittedFecapaGroupName(g.groupName))
+        .filter(g => isSemanticallyCompatibleFecapaGroup(catKey, fecapaName, g.groupName));
 
       for (const group of validFecapaGroups) {
         const fecapaTeams = fecapaGroupTeams(group);
