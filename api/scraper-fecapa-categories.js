@@ -16,7 +16,7 @@ const { getCategoriesData } = require("./fecapa-categories");
 async function main() {
   const args = process.argv.slice(2);
   const liveModeRequested = args.includes("--live");
-  const liveMode = false;
+  const liveMode = true;
   const outputIdx = args.indexOf("--output");
   const outputFile = outputIdx !== -1 ? args[outputIdx + 1] : null;
   const timeoutIdx = args.indexOf("--competition-timeout-ms");
@@ -35,9 +35,9 @@ async function main() {
 
   const timestamp = new Date().toISOString();
   console.log(`🏒 FECAPA Categories Scraper — ${timestamp}`);
-  console.log(`   Mode: SNAPSHOT`);
-  if (liveModeRequested) {
-    console.log("   ⚠️  --live ignorat (mode desactivat; pipeline estable de snapshot)");
+  console.log("   Mode: LIVE (portal) + snapshot fallback");
+  if (!liveModeRequested) {
+    console.log("   ℹ️  Live mode és obligatori en aquest scraper (no cal passar --live)");
   }
   console.log(`   Competition timeout: ${competitionTimeoutMs}ms`);
   if (categoryArgs.length) {
@@ -49,6 +49,7 @@ async function main() {
     console.log("📚 Carregant dades de categories...");
     const data = await getCategoriesData({
       liveMode,
+      useCache: false,
       categoriesFilter: categoryArgs.length ? categoryArgs : null,
       competitionTimeoutMs,
     });

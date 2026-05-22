@@ -344,6 +344,62 @@ function maxPjInJokcatComp(comp) {
   return Math.max(0, ...comp.classification.map(t => t.pj || 0));
 }
 
+function sidgadGroupsForCompetition(compId, sidgadComp) {
+  const byName = sidgadComp?.classificationByGroupName && typeof sidgadComp.classificationByGroupName === "object"
+    ? sidgadComp.classificationByGroupName
+    : null;
+  if (byName) {
+    const entries = Object.entries(byName).filter(([, rows]) => Array.isArray(rows) && rows.length > 0);
+    if (entries.length) {
+      return entries.map(([groupName, rows], idx) => ({
+        groupId: `${compId}-SIDGAD-${idx + 1}`,
+        groupName,
+        teamCount: rows.length,
+        teams: rows.map(r => ({
+          position: r.pos ?? null,
+          teamName: r.team || "",
+          points: r.pts ?? null,
+          played: r.pj ?? null,
+          won: r.pg ?? null,
+          drawn: r.pe ?? null,
+          lost: r.pp ?? null,
+          goalsFor: r.gf ?? null,
+          goalsAgainst: r.gc ?? null,
+          goalDiff: r.gav ?? null,
+          penalties: r.pen ?? null,
+        })).filter(t => t.teamName),
+      })).filter(g => g.teams.length > 0);
+    }
+  }
+
+  const byKey = sidgadComp?.classificationByGroup && typeof sidgadComp.classificationByGroup === "object"
+    ? sidgadComp.classificationByGroup
+    : null;
+  if (!byKey) return [];
+
+  return Object.entries(byKey)
+    .filter(([, rows]) => Array.isArray(rows) && rows.length > 0)
+    .map(([key, rows], idx) => ({
+      groupId: `${compId}-${key}`,
+      groupName: `${sidgadComp?.name || compId} - ${key}`,
+      teamCount: rows.length,
+      teams: rows.map(r => ({
+        position: r.pos ?? null,
+        teamName: r.team || "",
+        points: r.pts ?? null,
+        played: r.pj ?? null,
+        won: r.pg ?? null,
+        drawn: r.pe ?? null,
+        lost: r.pp ?? null,
+        goalsFor: r.gf ?? null,
+        goalsAgainst: r.gc ?? null,
+        goalDiff: r.gav ?? null,
+        penalties: r.pen ?? null,
+      })).filter(t => t.teamName),
+    }))
+    .filter(g => g.teams.length > 0);
+}
+
 function toFiniteOrNull(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -493,7 +549,9 @@ async function main() {
       // Per cada grup FECAPA: buscar la millor coincidència a jok.cat
       const groupEntries = [];
       const usedJokcatInThisComp = new Set();
-      const validFecapaGroups = (fecapaComp.groups || []).filter(g => !isOmittedFecapaGroupName(g.groupName));
+      const fecapaGroupsRaw = (fecapaComp.groups || []).filter(g => !isOmittedFecapaGroupName(g.groupName));
+      const sidgadGroups = sidgadGroupsForCompetition(fecapaId, sidgadComp);
+      const validFecapaGroups = sidgadGroups.length > fecapaGroupsRaw.length ? sidgadGroups : fecapaGroupsRaw;
 
       for (const group of validFecapaGroups) {
         const fecapaTeams = fecapaGroupTeams(group);

@@ -1678,13 +1678,12 @@ async function scrapeCompetitionLive(page, comp) {
 // ── Core function: obtenir dades de categories ───────────────
 async function getCategoriesData(options = {}) {
   const {
+    liveMode = false,
     useCache = true,
     categoriesFilter = null,
     validate4452 = false,
+    competitionTimeoutMs = 45000,
   } = options;
-
-  // Live mode is intentionally disabled to keep snapshot pipeline stable.
-  const liveMode = false;
 
   const now = Date.now();
   if (useCache && memoryCache && (now - memoryCacheAt) < CACHE_TTL_MS) {
@@ -1758,10 +1757,59 @@ async function getCategoriesData(options = {}) {
       return built;
     });
 
-    // Flux estable: només snapshot + persisted fallback, sense xarxa en runtime.
-    const finalBuilt = snapshotBuilt;
-    const liveUsed = false;
-    const liveUnavailableReason = "disabled";
+    let liveUsed = false;
+    let liveUnavailableReason = liveMode ? "not-started" : "disabled";
+    let finalBuilt = snapshotBuilt;
+
+    if (liveMode && selected.length > 0) {
+      let browser = null;
+      const liveById = new Map();
+      try {
+        browser = await puppeteer.launch({
+          headless: true,
+          args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+        });
+
+        const page = await browser.newPage();
+        await page.goto(PORTAL_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
+
+        for (const comp of selected) {
+          try {
+            const liveComp = await withTimeout(
+              scrapeCompetitionLive(page, comp),
+              competitionTimeoutMs,
+              `live-${comp.competitionId}`
+            );
+
+            if (liveComp && liveComp.groupCount > 0) {
+              liveById.set(String(comp.competitionId), liveComp);
+              liveUsed = true;
+            }
+          } catch (err) {
+            errors.push({
+              competitionId: comp.competitionId,
+              competitionName: comp.competitionName,
+              error: `Live scrape failed: ${err.message}`,
+            });
+          }
+        }
+
+        liveUnavailableReason = liveUsed ? null : "live-no-groups";
+      } catch (err) {
+        liveUnavailableReason = err.message || "live-init-failed";
+        errors.push({ error: `Live mode unavailable: ${liveUnavailableReason}` });
+      } finally {
+        if (browser) {
+          try { await browser.close(); } catch {}
+        }
+      }
+
+      finalBuilt = snapshotBuilt.map((snap) => {
+        const live = liveById.get(String(snap?.competitionId || ""));
+        return live || snap;
+      });
+    }
+
     const leagueEnrichEnabled = false;
     const leagueEnrichProbeError = "disabled";
 
