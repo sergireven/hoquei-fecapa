@@ -278,24 +278,44 @@ function computeCandidateScore({ fecapaName, jokName, fecapaTeams, jokTeams }) {
   return { nameScore, teamsScore, sizeScore, phaseScore: phScore, compositeScore };
 }
 
-function isCompatibleCompetition(fecapaCatKey, fecapaName, jokComp) {
+function extractAgeBand(name) {
+  const n = normalizeText(name);
+  if (/\bPREBENJAMI\b/.test(n)) return "PREBENJAMI";
+  if (/\bBENJAMI\b/.test(n)) return "BENJAMI";
+  if (/\bALEVI\b/.test(n)) return "ALEVI";
+  if (/\bINFANTIL\b/.test(n)) return "INFANTIL";
+  if (/\bJUVENIL\b/.test(n)) return "JUVENIL";
+  if (/\bJUNIOR\b/.test(n)) return "JUNIOR";
+  if (/\bVETERANS\b/.test(n)) return "VETERANS";
+  return null;
+}
+
+function isCompatibleCompetition(fecapaCatKey, fecapaCompName, fecapaGroupName, jokComp) {
   if (!jokComp || jokComp._catKey !== fecapaCatKey) return false;
 
-  const f = competitionProfile(fecapaName);
+  const semanticSource = String(fecapaGroupName || fecapaCompName || "");
+
+  const f = competitionProfile(fecapaCompName);
   const j = competitionProfile(jokComp.name || "");
 
   if (f.isFeminine && !j.isFeminine && jokComp._catKey !== "fem") return false;
   if (f.isMasculine && j.isFeminine) return false;
   if (f.tier && j.tier && f.tier !== j.tier) return false;
-  if (haveConflictingPhaseTags(fecapaName, jokComp.name || "")) return false;
+  if (haveConflictingPhaseTags(semanticSource, jokComp.name || "")) return false;
+
+  // Regla estricta de categoria d'edat per evitar BENJAMI <-> PREBENJAMI.
+  const fAge = extractAgeBand(semanticSource);
+  const jAge = extractAgeBand(jokComp.name || "");
+  if (fAge && !jAge) return false;
+  if (fAge && jAge && fAge !== jAge) return false;
 
   // Lligues especials: no barrejar amb grups veterans "normals".
-  const fBucket = extractSpecialBucket(fecapaName);
+  const fBucket = extractSpecialBucket(semanticSource);
   const jBucket = extractSpecialBucket(jokComp.name || "");
   if ((fBucket || jBucket) && fBucket !== jBucket) return false;
 
   // Si ambdós noms indiquen fase, ha de coincidir (prioritat alta al nom de fase).
-  const fPhase = extractPhaseNumber(fecapaName);
+  const fPhase = extractPhaseNumber(semanticSource);
   const jPhase = extractPhaseNumber(jokComp.name || "");
   if (fPhase !== null && jPhase !== null && fPhase !== jPhase) return false;
 
@@ -556,6 +576,7 @@ async function main() {
       for (const group of validFecapaGroups) {
         const fecapaTeams = fecapaGroupTeams(group);
         const manualFeedback = getManualFeedbackForGroup(feedbackMap, fecapaId, group);
+        const thresholds = matchingThresholds(catKey);
         let bestId    = null;
         let bestRatio = 0;
         let bestScore = -1;
@@ -567,7 +588,7 @@ async function main() {
         for (const jokId of allJokcatIds) {
           if (usedJokcatInThisComp.has(jokId)) continue;
           const jokComp = jokcatIndex[jokId];
-          if (!isCompatibleCompetition(catKey, fecapaName, jokComp)) continue;
+          if (!isCompatibleCompetition(catKey, fecapaName, group.groupName, jokComp)) continue;
           const jokTeams = jokcatCompTeams(jokComp);
           const candidate = computeCandidateScore({
             fecapaName,
@@ -608,6 +629,11 @@ async function main() {
           bestComp = bestQualified.comp;
         }
 
+        const hasUsefulSuggestionSignal =
+          bestMatchesInfo.matched > 0
+          || bestScoreBreakdown.teamsScore >= Math.max(0.2, thresholds.minTeamScore * 0.5)
+          || bestScoreBreakdown.nameScore >= 0.45;
+
         let hasMappedJokcat = Boolean(bestQualified && bestId);
         let matchSource = hasMappedJokcat ? "auto" : "none";
 
@@ -640,7 +666,7 @@ async function main() {
         if (hasMappedJokcat) usedJokcatInThisComp.add(bestId);
 
         const jokcatComp   = hasMappedJokcat ? jokcatIndex[bestId] : null;
-        const suggestedComp = !hasMappedJokcat ? bestComp : null;
+        const suggestedComp = !hasMappedJokcat && hasUsefulSuggestionSignal ? bestComp : null;
         const jokcatMaxPj  = jokcatComp ? maxPjInJokcatComp(jokcatComp) : null;
         const freshness = computeJokcatFreshness({
           jornadesActuals,
@@ -713,7 +739,7 @@ async function main() {
       for (const jokId of allJokcatIds) {
         if (usedJokcatInThisComp.has(jokId)) continue;
         const jokComp  = jokcatIndex[jokId];
-        if (!isCompatibleCompetition(catKey, fecapaName, jokComp)) continue;
+        if (!isCompatibleCompetition(catKey, fecapaName, fecapaName, jokComp)) continue;
         const jokTeams = jokcatCompTeams(jokComp);
         if (jokTeams.length === 0) continue;
         if ((jokComp.classification?.length || 0) === 0) continue;
