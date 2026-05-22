@@ -103,6 +103,7 @@ function extractPhaseTags(name) {
   const tags = new Set();
   if (/\bOR\b/.test(n)) tags.add("OR");
   if (/\bPLATA\b/.test(n)) tags.add("PLATA");
+  if (/\bBRONZE\b|\bBRONCE\b/.test(n)) tags.add("BRONZE");
   if (/\bPREFERENT\b/.test(n)) tags.add("PREFERENT");
   if (/\bCOPA\b/.test(n)) tags.add("COPA");
   if (/\bFEDERACIO\b/.test(n)) tags.add("FEDERACIO");
@@ -141,11 +142,32 @@ function haveConflictingPhaseTags(fecapaName, jokName) {
   const fTags = extractPhaseTags(fecapaName);
   const jTags = extractPhaseTags(jokName);
 
-  const ladder = ["OR", "PLATA", "PREFERENT"];
+  // Regla estricta: si FECAPA és OR/PLATA/BRONZE, jok ha de tenir exactament la mateixa fase.
+  if (fTags.has("OR") && !jTags.has("OR")) return true;
+  if (fTags.has("PLATA") && !jTags.has("PLATA")) return true;
+  if (fTags.has("BRONZE") && !jTags.has("BRONZE")) return true;
+
+  const fRegion = extractRegionTag(fecapaName);
+  const jRegion = extractRegionTag(jokName);
+
+  // Regla estricta de regió: si FECAPA porta regió, jok ha de portar la mateixa.
+  if (fRegion && !jRegion) return true;
+  if (fRegion && jRegion && fRegion !== jRegion) return true;
+
+  const ladder = ["OR", "PLATA", "BRONZE", "PREFERENT"];
   const fMain = ladder.find(t => fTags.has(t)) || null;
   const jMain = ladder.find(t => jTags.has(t)) || null;
 
   return Boolean(fMain && jMain && fMain !== jMain);
+}
+
+function extractRegionTag(name) {
+  const n = normalizeText(name);
+  if (/\bLLEIDA\b/.test(n)) return "LLEIDA";
+  if (/\bBARCELONA\b|\bBCN\b/.test(n)) return "BARCELONA";
+  if (/\bTARRAGONA\b/.test(n)) return "TARRAGONA";
+  if (/\bGIRONA\b/.test(n)) return "GIRONA";
+  return null;
 }
 
 function wordsForNameScore(name) {
