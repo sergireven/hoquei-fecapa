@@ -67,6 +67,23 @@ function jokCategoryToKey(name) {
   return JOKCAT_CATEGORY_MAP[n] || null;
 }
 
+function inferCategoryFromCompetitionName(compName) {
+  const n = normalizeText(compName);
+  if (/\bNACIONAL\s+CATALANA\b/.test(n)) return "nacional_catalana";
+  if (/\b(1|1A|PRIMERA)\s+CATALANA\b/.test(n)) return "primera_catalana";
+  if (/\b(2|2A|SEGONA)\s+CATALANA\b/.test(n)) return "segona_catalana";
+  if (/\b(3|3A|TERCERA)\s+CATALANA\b/.test(n)) return "tercera_catalana";
+  if (/\bFEM\b|\bFEMENI\b|\bFEMENINA\b/.test(n)) return "fem";
+  if (/\bJUNIOR\b/.test(n)) return "junior";
+  if (/\bJUVENIL\b/.test(n)) return "juvenil";
+  if (/\bINFANTIL\b/.test(n)) return "infantil";
+  if (/\bALEVI\b/.test(n)) return "alevi";
+  if (/\bBENJAMI\b/.test(n)) return "benjami";
+  if (/\bPREBENJAMI\b/.test(n)) return "prebenjami";
+  if (/\bVETERANS\b/.test(n)) return "veterans";
+  return null;
+}
+
 function competitionProfile(name) {
   const n = normalizeText(name);
   const isFeminine = /\bFEM\b|\bFEMENI|\bFEMENINA\b/.test(n);
@@ -366,13 +383,16 @@ function computeJokcatFreshness({ jornadesActuals, jokcatMaxPj, fecapaRows, jokc
 function buildJokcatIndex(dataJson) {
   const index = {}; // id → comp
   for (const [rawCategory, comps] of Object.entries(dataJson.categories || {})) {
-    const catKey = jokCategoryToKey(rawCategory);
     for (const comp of comps) {
       if (!comp.id) continue;
+      const catFromRaw = jokCategoryToKey(rawCategory);
+      const catFromName = inferCategoryFromCompetitionName(comp.name || "");
+      const catKey = catFromRaw || catFromName;
       index[comp.id] = {
         ...comp,
         _catKey: catKey,
         _rawCategory: rawCategory,
+        _catKeySource: catFromRaw ? "raw_category" : (catFromName ? "name_inference" : "unknown"),
       };
     }
   }
