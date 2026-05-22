@@ -357,6 +357,28 @@ function isCompatibleCompetition(fecapaCatKey, fecapaCompName, fecapaGroupName, 
   return true;
 }
 
+function isThreeByThreeCompetitionName(name) {
+  return extractSpecialBucket(name) === "3X3" || extractSpecialBucket(name) === "COPA_CATALUNYA_3X3";
+}
+
+function isStrongCrossCategoryRescue({ fecapaCompName, fecapaGroupName, jokComp, candidate, teamMatches, fecapaTeams, jokTeams }) {
+  if (!jokComp) return false;
+  if (isThreeByThreeCompetitionName(fecapaCompName) || isThreeByThreeCompetitionName(fecapaGroupName)) return false;
+  if (isThreeByThreeCompetitionName(jokComp.name || "")) return false;
+
+  const semanticSource = String(fecapaGroupName || fecapaCompName || "");
+  const fBucket = extractSpecialBucket(semanticSource);
+  const jBucket = extractSpecialBucket(jokComp.name || "");
+  if ((fBucket || jBucket) && fBucket !== jBucket) return false;
+
+  const ratio = teamMatches.matched / Math.max(1, Math.max(fecapaTeams.length, jokTeams.length));
+  return (
+    teamMatches.matched >= 8
+    && ratio >= 0.75
+    && candidate.teamsScore >= 0.75
+  );
+}
+
 // ── Normalitza nom d'equip per comparació fuzzy ──────────────
 function normTeam(name) {
   const normalized = normalizeApostrophes(name)
@@ -525,6 +547,7 @@ function buildJokcatIndex(dataJson) {
   for (const [rawCategory, comps] of Object.entries(dataJson.categories || {})) {
     for (const comp of comps) {
       if (!comp.id) continue;
+      if (isThreeByThreeCompetitionName(comp.name || "")) continue;
       const catFromRaw = jokCategoryToKey(rawCategory);
       const catFromName = inferCategoryFromCompetitionName(comp.name || "");
       const catKey = catFromRaw || catFromName;
@@ -599,6 +622,7 @@ async function main() {
     for (const fecapaComp of comps) {
       const fecapaId   = fecapaComp.competitionId;
       const fecapaName = fecapaComp.competitionName;
+      if (isThreeByThreeCompetitionName(fecapaName)) continue;
       const sidgadComp = sidgadComps[fecapaId] || null;
 
       // Jornades jugades (des de competicions-sidgad.json)
@@ -612,6 +636,7 @@ async function main() {
       const preferredGroups = sidgadGroups.length > fecapaGroupsRaw.length ? sidgadGroups : fecapaGroupsRaw;
       const validFecapaGroups = preferredGroups
         .filter(g => !isOmittedFecapaGroupName(g.groupName))
+        .filter(g => !isThreeByThreeCompetitionName(g.groupName))
         .filter(g => isSemanticallyCompatibleFecapaGroup(catKey, fecapaName, g.groupName));
 
       for (const group of validFecapaGroups) {
@@ -662,6 +687,48 @@ async function main() {
           }
         }
 
+        if (!bestQualified) {
+          for (const jokId of allJokcatIds) {
+            if (usedJokcatInThisComp.has(jokId)) continue;
+            const jokComp = jokcatIndex[jokId];
+            if (!jokComp) continue;
+
+            const jokTeams = jokcatCompTeams(jokComp);
+            const candidate = computeCandidateScore({
+              fecapaName,
+              jokName: jokComp.name || "",
+              fecapaTeams,
+              jokTeams,
+            });
+            const teamMatches = bestTeamMatches(fecapaTeams, jokTeams);
+            const ratio = teamMatches.matched / Math.max(fecapaTeams.length, jokTeams.length);
+
+            if (!isStrongCrossCategoryRescue({
+              fecapaCompName: fecapaName,
+              fecapaGroupName: group.groupName,
+              jokComp,
+              candidate,
+              teamMatches,
+              fecapaTeams,
+              jokTeams,
+            })) {
+              continue;
+            }
+
+            if (!bestQualified || candidate.compositeScore > bestQualified.score) {
+              bestQualified = {
+                id: jokId,
+                ratio,
+                score: candidate.compositeScore,
+                scoreBreakdown: candidate,
+                matchesInfo: teamMatches,
+                comp: jokComp,
+                crossCategoryRescue: true,
+              };
+            }
+          }
+        }
+
         if (bestQualified) {
           bestId = bestQualified.id;
           bestRatio = bestQualified.ratio;
@@ -676,7 +743,9 @@ async function main() {
           || bestScoreBreakdown.nameScore >= 0.45;
 
         let hasMappedJokcat = Boolean(bestQualified && bestId);
-        let matchSource = hasMappedJokcat ? "auto" : "none";
+        let matchSource = hasMappedJokcat
+          ? (bestQualified?.crossCategoryRescue ? "auto_cross_category" : "auto")
+          : "none";
 
         if (manualFeedback?.manualJokcatGroupId) {
           const forcedId = String(manualFeedback.manualJokcatGroupId).trim();

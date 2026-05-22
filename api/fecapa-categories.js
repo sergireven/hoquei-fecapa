@@ -537,24 +537,65 @@ function splitFlatClassificationIntoGroups(rows) {
   return groups;
 }
 
+function sanitizeSnapshotGroupName({ rawGroupName, idx, compMeta, hierarchyKeyToName, hierarchyNames }) {
+  const fallbackName = `Grup ${idx + 1}`;
+  const raw = String(rawGroupName || "").trim();
+  if (!raw) {
+    return hierarchyNames[idx] || fallbackName;
+  }
+
+  const keyMatch = raw.match(/^group[_\s-]*(\d+)$/i);
+  if (keyMatch) {
+    const mapped = hierarchyKeyToName.get(`group_${keyMatch[1]}`) || hierarchyKeyToName.get(raw);
+    if (mapped) return mapped;
+    return fallbackName;
+  }
+
+  if (/^\d{4,}$/.test(raw)) {
+    return hierarchyNames[idx] || fallbackName;
+  }
+
+  return raw;
+}
+
 function buildCompetitionFromSnapshot(compMeta, compRaw) {
   const byGroup = compRaw?.classificationByGroup || {};
   const byGroupName = compRaw?.classificationByGroupName || {};
+  const hierarchyGroups = Array.isArray(compRaw?.hierarchy?.groups) ? compRaw.hierarchy.groups : [];
+  const hierarchyNames = hierarchyGroups.map(g => String(g?.name || "").trim()).filter(Boolean);
+  const hierarchyKeyToName = new Map(
+    hierarchyGroups
+      .map(g => [String(g?.key || ""), String(g?.name || "").trim()])
+      .filter(([k, n]) => k && n)
+  );
   let groups = [];
 
   if (Object.keys(byGroupName).length) {
     groups = Object.entries(byGroupName).map(([groupName, rows], idx) => {
       const teams = (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName);
+      const normalizedGroupName = sanitizeSnapshotGroupName({
+        rawGroupName: groupName,
+        idx,
+        compMeta,
+        hierarchyKeyToName,
+        hierarchyNames,
+      });
       return {
-        groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
-        groupName: String(groupName || `Grup ${idx + 1}`),
+        groupId: buildGroupId(compMeta.competitionId, normalizedGroupName, idx + 1),
+        groupName: normalizedGroupName,
         teamCount: teams.length,
         teams,
       };
     }).filter(g => g.teamCount > 0);
   } else if (Object.keys(byGroup).length) {
     groups = Object.entries(byGroup).map(([groupKey, rows], idx) => {
-      const groupName = String(groupKey || `Grup ${idx + 1}`);
+      const groupName = sanitizeSnapshotGroupName({
+        rawGroupName: groupKey,
+        idx,
+        compMeta,
+        hierarchyKeyToName,
+        hierarchyNames,
+      });
       const teams = (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName);
       return {
         groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
@@ -568,9 +609,6 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
   if (!groups.length) {
     const rawFlat = compRaw?.classification || [];
     const split = splitFlatClassificationIntoGroups(rawFlat);
-    const hierarchyNames = Array.isArray(compRaw?.hierarchy?.groups)
-      ? compRaw.hierarchy.groups.map(g => String(g?.name || "").trim()).filter(Boolean)
-      : [];
 
     groups = split.map((chunk, idx) => {
       const teams = chunk.map(mapRowFromSnapshot).filter(r => r.teamName);
@@ -1784,8 +1822,45 @@ async function getCategoriesData(options = {}) {
             if (liveComp && liveComp.groupCount > 0) {
               liveById.set(String(comp.competitionId), liveComp);
               liveUsed = true;
+              continue;
+            }
+
+            const leagueComp = await withTimeout(
+              scrapeCompetitionFromLeaguePage(comp),
+              Math.min(competitionTimeoutMs, 30000),
+              `league-${comp.competitionId}`
+            );
+            if (leagueComp && leagueComp.groupCount > 0) {
+              liveById.set(String(comp.competitionId), leagueComp);
+              liveUsed = true;
+              console.log(
+                `[fecapa-categories] ${comp.competitionId} recovered via league fallback (${leagueComp.groupCount} groups)`
+              );
             }
           } catch (err) {
+            try {
+              const leagueComp = await withTimeout(
+                scrapeCompetitionFromLeaguePage(comp),
+                Math.min(competitionTimeoutMs, 30000),
+                `league-after-live-fail-${comp.competitionId}`
+              );
+              if (leagueComp && leagueComp.groupCount > 0) {
+                liveById.set(String(comp.competitionId), leagueComp);
+                liveUsed = true;
+                console.log(
+                  `[fecapa-categories] ${comp.competitionId} recovered via league fallback after live error (${leagueComp.groupCount} groups)`
+                );
+                continue;
+              }
+            } catch (leagueErr) {
+              errors.push({
+                competitionId: comp.competitionId,
+                competitionName: comp.competitionName,
+                error: `Live scrape failed: ${err.message} | League fallback failed: ${leagueErr.message}`,
+              });
+              continue;
+            }
+
             errors.push({
               competitionId: comp.competitionId,
               competitionName: comp.competitionName,
@@ -1851,7 +1926,7 @@ async function getCategoriesData(options = {}) {
 
     const out = {
       ok: true,
-      source: "sidgad_snapshot",
+      source: liveUsed ? "league_page+fecapa_live" : "sidgad_snapshot",
       fetchedAt: new Date().toISOString(),
       liveMode,
       validate4452,
