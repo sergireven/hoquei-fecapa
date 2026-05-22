@@ -56,6 +56,10 @@ function normalizeApostrophes(s) {
 function normalizeText(s) {
   return normalizeApostrophes(s)
     .toUpperCase()
+    // Canonicalitza només ordinals explícits per no trencar casos com "BCN 1".
+    .replace(/\b1\s*(?:A|ª)\b/g, " PRIMERA ")
+    .replace(/\b2\s*(?:A|ª)\b/g, " SEGONA ")
+    .replace(/\b3\s*(?:A|ª)\b/g, " TERCERA ")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9 ]/g, " ")
     .replace(/\s+/g, " ")
