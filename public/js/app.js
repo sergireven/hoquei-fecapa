@@ -235,6 +235,7 @@ let adminPanelView = "users";
 let adminBenjamiModelCache = null;
 let adminFecapaCategoriesCache = null;
 let adminAuditSearchQuery = "";
+let adminAuditSearchTimer = null;
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -596,6 +597,57 @@ function prepareAuditCompetitionForView(entry, queryNorm) {
   };
 }
 
+function buildAuditEntryFromGroups(entry, groups) {
+  const fecapaGroups = groups.filter(g => g.fecapaGroupId || g.groupId);
+  const groupsOk = fecapaGroups.length;
+  const groupsMissing = groups.length - groupsOk;
+  const groupsWithMatching = fecapaGroups.filter(g => !!g.jokcatCompId).length;
+  const groupsWithoutMatching = groupsOk - groupsWithMatching;
+  return {
+    ...entry,
+    groups,
+    groupsOk,
+    groupsMissing,
+    groupsWithMatching,
+    groupsWithoutMatching,
+    hasIncomplete: groupsWithoutMatching > 0,
+  };
+}
+
+function buildAuditCategoryBuckets(entries) {
+  const byCategory = new Map();
+  for (const entry of entries || []) {
+    const key = entry.category || "altres";
+    if (!byCategory.has(key)) byCategory.set(key, { key, missing: [], matched: [] });
+    const bucket = byCategory.get(key);
+
+    const missingGroups = (entry.groups || []).filter(g => {
+      const isFecapaGroup = Boolean(g.fecapaGroupId || g.groupId);
+      if (!isFecapaGroup) return true;
+      return !g.jokcatCompId;
+    });
+    const matchedGroups = (entry.groups || []).filter(g => {
+      const isFecapaGroup = Boolean(g.fecapaGroupId || g.groupId);
+      return isFecapaGroup && !!g.jokcatCompId;
+    });
+
+    if (missingGroups.length) bucket.missing.push(buildAuditEntryFromGroups(entry, missingGroups));
+    if (matchedGroups.length) bucket.matched.push(buildAuditEntryFromGroups(entry, matchedGroups));
+  }
+
+  const order = [
+    "nacional_catalana", "primera_catalana", "segona_catalana", "tercera_catalana",
+    "fem", "junior", "juvenil", "infantil", "alevi", "benjami", "prebenjami", "veterans",
+  ];
+  const orderIndex = new Map(order.map((k, i) => [k, i]));
+  return [...byCategory.values()].sort((a, b) => {
+    const ai = orderIndex.has(a.key) ? orderIndex.get(a.key) : 999;
+    const bi = orderIndex.has(b.key) ? orderIndex.get(b.key) : 999;
+    if (ai !== bi) return ai - bi;
+    return String(a.key).localeCompare(String(b.key));
+  });
+}
+
 function renderAuditTable(rows, source) {
   const normalizedRows = (rows || []).map((t, i) => ({
     pos: t.pos ?? t.position ?? i + 1,
@@ -728,14 +780,23 @@ function renderAuditCompetition(entry) {
 async function renderAdminAuditPanel(body) {
   body.innerHTML = `${renderAdminTopNav("audit")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant auditoria...</div>`;
   try {
-    const audit = await getAdminAuditData({ force: true });
+    const audit = await getAdminAuditData({ force: false });
     const queryNorm = normalizeAuditSearchText(adminAuditSearchQuery);
     const filteredCompetitions = (audit.competitions || [])
       .map(entry => prepareAuditCompetitionForView(entry, queryNorm))
       .filter(Boolean);
-    const incompleteComps = filteredCompetitions.filter(c => c.hasIncomplete);
-    const okComps = filteredCompetitions.filter(c => !c.hasIncomplete);
+    const byCategory = buildAuditCategoryBuckets(filteredCompetitions);
     const builtAt = audit.builtAt ? new Date(audit.builtAt).toLocaleString("ca-ES") : "—";
+
+    const categoryBlocksHtml = byCategory.map(cat => {
+      const missingGroupsCount = cat.missing.reduce((acc, e) => acc + (e.groupsWithoutMatching || 0) + (e.groupsMissing || 0), 0);
+      const matchedGroupsCount = cat.matched.reduce((acc, e) => acc + (e.groupsWithMatching || 0), 0);
+      return `<section style="margin-bottom:16px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;color:#1a2035;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.06em">${esc(adminCategoryLabel(cat.key))}</div>
+        ${cat.missing.length ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Sense matching (${missingGroupsCount})</div>${cat.missing.map(renderAuditCompetition).join("")}` : `<div style="font-size:12px;color:#94a3b8;margin:0 2px 8px">Sense grups pendents de matching</div>`}
+        ${cat.matched.length ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#166534;margin:10px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Amb matching (${matchedGroupsCount})</div>${cat.matched.map(renderAuditCompetition).join("")}` : ""}
+      </section>`;
+    }).join("");
 
     body.innerHTML = `
       ${renderAdminTopNav("audit")}
@@ -762,12 +823,7 @@ async function renderAdminAuditPanel(body) {
         <div style="margin-top:8px;font-size:11px;color:#94a3b8">MVP: exporta el JSON i puja'l a .github/audit-feedback/inbox/ per executar el workflow manual de processament.</div>
       </div>
       ${filteredCompetitions.length === 0 ? `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:14px;color:#64748b;font-size:12px">Sense resultats per a la cerca actual.</div>` : ""}
-      ${incompleteComps.length ? `
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#92400e;margin:0 2px 8px;text-transform:uppercase;letter-spacing:.05em">⚠️ Competicions amb grups sense matching (${incompleteComps.length})</div>
-        ${incompleteComps.map(renderAuditCompetition).join("")}
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.05em">✅ Competicions amb matching complet (${okComps.length})</div>
-      ` : `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#166534;margin:0 2px 10px;text-transform:uppercase;letter-spacing:.05em">✅ Totes les competicions amb matching complet (${okComps.length})</div>`}
-      ${okComps.map(renderAuditCompetition).join("")}`;
+      ${filteredCompetitions.length ? categoryBlocksHtml : ""}`;
   } catch (err) {
     body.innerHTML = `${renderAdminTopNav("audit")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">
       Error carregant auditoria: ${esc(err?.message || "desconegut")}<br>
@@ -922,7 +978,10 @@ window.adminReloadAudit = () => {
 };
 window.adminAuditSetSearch = value => {
   adminAuditSearchQuery = String(value || "");
-  renderAdminPanel();
+  if (adminAuditSearchTimer) clearTimeout(adminAuditSearchTimer);
+  adminAuditSearchTimer = setTimeout(() => {
+    renderAdminPanel();
+  }, 220);
 };
 window.adminExportAuditFeedback = () => {
   const payload = downloadableAuditFeedbackPayload();
