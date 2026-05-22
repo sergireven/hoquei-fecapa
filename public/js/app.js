@@ -3,8 +3,17 @@ const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
 const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
+const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
+
+const CLASSIFICATION_SOURCE_PILOTS = [
+  {
+    jokCompId: "4478",
+    fecapaCompetitionId: "4452",
+    preferredGroupToken: "PLATA 4",
+  },
+];
 
 // ── Supabase auth ─────────────────────────────────────────────
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
@@ -1015,6 +1024,7 @@ window.adminClearAuditFeedback = () => {
 
 let DB      = null;
 let venuesDB = null;
+let fecapaCategoriesDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
@@ -1145,6 +1155,26 @@ function shortTeamDisplayName(name) {
   return normalizeJokClubDisplayName(name)
     .replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi, "")
     .trim();
+}
+
+function normalizeTeamKeyForMatching(name) {
+  return normalizeTeamName(shortTeamDisplayName(name || ""))
+    .replace(/\bhoquei\b/g, "")
+    .replace(/\bclub\b/g, "")
+    .replace(/\bc\b/g, "")
+    .replace(/\bh\b/g, "")
+    .replace(/\bpati\b/g, "")
+    .replace(/\bcp\b/g, "")
+    .replace(/\bch\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function teamMatchesLoose(a, b) {
+  const ka = normalizeTeamKeyForMatching(a);
+  const kb = normalizeTeamKeyForMatching(b);
+  if (!ka || !kb) return false;
+  return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 
 const CAT_EMOJI = {
@@ -1360,6 +1390,56 @@ function buildSidgadClassificationIndex(raw) {
 function applyClassificationSourceMerge() {
   if (!DB?.categories) return;
 
+  const normalizeFecapaClassificationRows = rows =>
+    (rows || []).map(r => ({
+      pos: r?.position ?? r?.pos ?? null,
+      teamId: r?.teamId || null,
+      team: normalizeJokClubDisplayName(r?.teamName || r?.team || ""),
+      clubId: r?.logoSrc || r?.clubId || null,
+      pts: r?.points ?? r?.pts ?? null,
+      pj: r?.played ?? r?.pj ?? null,
+      pg: r?.won ?? r?.pg ?? null,
+      pe: r?.drawn ?? r?.pe ?? null,
+      pp: r?.lost ?? r?.pp ?? null,
+      gf: r?.goalsFor ?? r?.gf ?? null,
+      gc: r?.goalsAgainst ?? r?.gc ?? null,
+    })).filter(r => String(r.team || "").trim());
+
+  const bestFecapaGroupForPilot = (pilot, jokComp) => {
+    const allComps = Object.values(fecapaCategoriesDB?.categories || {})
+      .flat()
+      .filter(Boolean);
+    const targetComp = allComps.find(c => String(c?.competitionId || "") === String(pilot.fecapaCompetitionId || ""));
+    if (!targetComp) return null;
+
+    const groups = (targetComp.groups || []).filter(g => Array.isArray(g?.teams) && g.teams.length > 0);
+    if (!groups.length) return null;
+
+    const preferredToken = normalizeCompKey(pilot.preferredGroupToken || "");
+    if (preferredToken) {
+      const preferred = groups.find(g => normalizeCompKey(g?.groupName || "").includes(preferredToken));
+      if (preferred) return preferred;
+    }
+
+    const jokTeams = new Set((jokComp?.classification || [])
+      .map(r => normalizeTeamName(r?.team || ""))
+      .filter(Boolean));
+
+    let best = null;
+    let bestScore = -1;
+    for (const group of groups) {
+      const gTeams = (group.teams || [])
+        .map(r => normalizeTeamName(r?.teamName || r?.team || ""))
+        .filter(Boolean);
+      const overlap = gTeams.filter(t => jokTeams.has(t)).length;
+      if (overlap > bestScore) {
+        bestScore = overlap;
+        best = group;
+      }
+    }
+    return best;
+  };
+
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
       const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
@@ -1370,6 +1450,24 @@ function applyClassificationSourceMerge() {
         comp.classification = [];
         comp.classificationSource = "none";
       }
+
+      const pilot = CLASSIFICATION_SOURCE_PILOTS.find(p => String(p.jokCompId) === String(comp.id));
+      if (!pilot) continue;
+
+      const bestFecapaGroup = bestFecapaGroupForPilot(pilot, comp);
+      if (!bestFecapaGroup) continue;
+
+      const fecapaRows = normalizeFecapaClassificationRows(bestFecapaGroup.teams || []);
+      if (!hasClassRows(fecapaRows)) continue;
+
+      comp.classification = fecapaRows;
+      comp.classificationSource = "fecapa";
+      comp.classificationPilot = {
+        jokCompId: String(comp.id),
+        fecapaCompetitionId: String(pilot.fecapaCompetitionId),
+        fecapaGroupId: String(bestFecapaGroup.groupId || ""),
+        fecapaGroupName: String(bestFecapaGroup.groupName || ""),
+      };
     }
   }
 }
@@ -1975,15 +2073,16 @@ function buildClubFavCard(fav, clubMap) {
 function buildFavCard(fav) {
   const comp=findComp(fav.compId); if (!comp) return "";
   const cl=comp.classification||[], cal=comp.calendar||[];
-  const myRow=cl.find(r=>teamIn(r.team,fav.teamName));
+  const myRow=cl.find(r=>teamMatchesLoose(r.team,fav.teamName));
   const myCal=cal.filter(m=>teamIn(m.home,fav.teamName)||teamIn(m.away,fav.teamName));
   const {last, next} = getLastAndNext(cal, fav.teamName);
   const cid=myRow?rowClubId(myRow):getClubId(fav.teamName);
   const catColor=CAT_COLOR[fav.category]||"#e5001c";
+  const sourceBadge = classifSourceBadgeHtml(comp);
 
   let classifHtml="";
   if (cl.length&&myRow) {
-    const myIdx=cl.findIndex(r=>teamIn(r.team,fav.teamName));
+    const myIdx=cl.findIndex(r=>teamMatchesLoose(r.team,fav.teamName));
     const slice=cl.slice(Math.max(0,myIdx-2),Math.min(cl.length,myIdx+3));
     classifHtml=`
       <div style="border-top:1px solid #f0f2f8;border-bottom:1px solid #f0f2f8">
@@ -1991,7 +2090,7 @@ function buildFavCard(fav) {
           ${["#","Equip","PJ","G","E","Pe","Pts"].map((h,i)=>`<div style="width:${i===0?26:i===1?'auto':i===6?32:22}px;${i===1?"flex:1;":""}font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===6?"#e5001c":"#94a3b8"};${i>1?"text-align:center":""}">${h}</div>`).join("")}
         </div>
         ${slice.map(r=>{
-          const mine=teamIn(r.team,fav.teamName), rcid=rowClubId(r);
+          const mine=teamMatchesLoose(r.team,fav.teamName), rcid=rowClubId(r);
           return `<div style="display:flex;align-items:center;background:${mine?"#eff6ff":"#fff"};border-top:1px solid #f0f2f8;padding:5px 12px">
             <div style="width:26px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${posColor(r.pos)}">${r.pos}</div>
             <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0">${shieldImg(rcid,18)}<span style="font-size:12px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(r.team))}</span></div>
@@ -2013,6 +2112,7 @@ function buildFavCard(fav) {
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(fav.teamName))}</div>
           <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
+          ${sourceBadge ? `<div style="margin-top:4px">${sourceBadge}</div>` : ""}
         </div>
         ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;line-height:1">${myRow.pos}è</div>
@@ -2572,7 +2672,8 @@ function renderConsolidatedClassif(subMeta, color) {
     for (const r of sorted.slice(0,3)) {
       const avg = (r.gf || 0) - (r.gc || 0);
       topTeams.push({ team:r.team, pts:r.pts||0, pj:r.pj||0, gf:r.gf||0, gc:r.gc||0, avg,
-        compName: comp.name.replace(/\s*\(\d{4}-\d{2}\)/,"") });
+        compName: comp.name.replace(/\s*\(\d{4}-\d{2}\)/,""),
+        source: comp.classificationSource || "none" });
     }
   }
   if (!topTeams.length) return "";
@@ -2585,7 +2686,7 @@ function renderConsolidatedClassif(subMeta, color) {
       <div style="background:#fff;border-radius:11px;overflow:hidden;border:1.5px solid #e2e6ef">
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:#f8fafc">
-            ${["#","Equip","PJ","Pts","Avg"].map((h,i)=>`<th style="padding:5px ${i<2?5:3}px;font-size:9px;font-weight:700;color:${i===3?color:"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
+            ${["#","Equip","PJ","Pts","Avg","Src"].map((h,i)=>`<th style="padding:5px ${i<2?5:3}px;font-size:9px;font-weight:700;color:${i===3?color:"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
           </tr></thead>
           <tbody>${topTeams.map((t,i)=>`
             <tr style="border-bottom:1px solid #f0f2f8">
@@ -2597,6 +2698,7 @@ function renderConsolidatedClassif(subMeta, color) {
               <td style="padding:6px 3px;text-align:center;font-size:11px;color:#94a3b8">${t.pj}</td>
               <td style="padding:6px 3px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${color}">${t.pts}</td>
               <td style="padding:6px 3px;text-align:center;font-size:11px;font-weight:600;color:${t.avg>0?"#16a34a":t.avg<0?"#dc2626":"#6b7a99"}">${t.avg>0?"+":""}${t.avg}</td>
+              <td style="padding:6px 3px;text-align:center;font-size:10px;color:#64748b">${t.source === "fecapa" ? "🛡️" : (t.source === "jok" ? "🌐" : "-")}</td>
             </tr>`).join("")}
           </tbody>
         </table>
@@ -3147,14 +3249,14 @@ function openDetail(compId,teamName,tab){
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
-  const srcLabel = detailComp.classificationSource === "fecapa" ? " · FECAPA" : (detailComp.classificationSource === "jok" ? " · jok.cat" : "");
+  const sourceBadge = classifSourceBadgeHtml(detailComp);
   const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
   const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
   const eqLabel = (detailComp.classification||[]).length; 
   $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
     <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
-    <span style="opacity:.7">${srcLabel}</span>
+    ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
   </div>`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
@@ -3575,6 +3677,14 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    // Load FECAPA categories used for per-league classification source pilots.
+    try {
+      const fecapaRes = await fetch(FECAPA_CATEGORIES_URL + "?t=" + Date.now());
+      if (fecapaRes.ok) fecapaCategoriesDB = await fecapaRes.json();
+    } catch {
+      fecapaCategoriesDB = null;
+    }
 
     // Load venues/coordinates
     try {

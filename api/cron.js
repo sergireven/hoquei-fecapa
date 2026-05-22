@@ -5,6 +5,15 @@
 const { execSync } = require("child_process");
 const path = require("path");
 
+function runNodeStep(scriptName, timeoutMs) {
+  const scriptPath = path.join(__dirname, scriptName);
+  execSync(`node ${scriptPath}`, {
+    timeout: timeoutMs,
+    stdio: "pipe",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+}
+
 module.exports = async (req, res) => {
   // Seguretat: comprova que la crida ve del cron de Vercel o té el secret correcte
   const authHeader = req.headers["authorization"];
@@ -16,29 +25,32 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   try {
-    console.log("🏒 Iniciant scraper...");
+    const steps = [];
 
-    // Executa el scraper principal
-    execSync("node " + path.join(__dirname, "scraper.js"), {
-      timeout: 290000, // 290 segons (Vercel té límit de 300s en pla Pro)
-      stdio: "pipe",
-      env: { ...process.env, NODE_ENV: "production" }
-    });
+    console.log("🏒 Pas 1/4: actualitzant data.json...");
+    runNodeStep("scraper.js", 290000);
+    steps.push("scraper.js");
+
+    console.log("🏟️ Pas 2/4: actualitzant fecapa-categories.json...");
+    runNodeStep("scraper-fecapa-categories.js", 290000);
+    steps.push("scraper-fecapa-categories.js");
+
+    console.log("🧭 Pas 3/4: construint classification-audit.json...");
+    runNodeStep("build-classification-audit.js", 120000);
+    steps.push("build-classification-audit.js");
 
     // Genera el fitxer compacte per al Club Hoquei Ripollet
-    console.log("🔵 Generant ripollet.json...");
-    execSync("node " + path.join(__dirname, "generate-ripollet.js"), {
-      timeout: 10000,
-      stdio: "pipe",
-      env: { ...process.env, NODE_ENV: "production" }
-    });
+    console.log("🔵 Pas 4/4: generant ripollet.json...");
+    runNodeStep("generate-ripollet.js", 10000);
+    steps.push("generate-ripollet.js");
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    console.log(`✅ Scraper + ripollet.json completats en ${elapsed}s`);
+    console.log(`✅ Pipeline completat en ${elapsed}s (${steps.join(" -> ")})`);
     
     return res.status(200).json({
       ok: true,
-      message: "Scraper executat correctament",
+      message: "Pipeline executat correctament",
+      steps,
       elapsed: elapsed + "s",
       updatedAt: new Date().toISOString()
     });
