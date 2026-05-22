@@ -686,6 +686,16 @@ function buildCompetitionFromParsedGroups(comp, parsedGroups) {
   };
 }
 
+function isBetterCompetitionData(candidate, baseline) {
+  const cGroups = candidate?.groupCount || 0;
+  const bGroups = baseline?.groupCount || 0;
+  if (cGroups !== bGroups) return cGroups > bGroups;
+
+  const cTeams = candidate?.teamCount || 0;
+  const bTeams = baseline?.teamCount || 0;
+  return cTeams > bTeams;
+}
+
 function normalizeFingerprintToken(s) {
   return String(s || "")
     .toUpperCase()
@@ -1818,24 +1828,35 @@ async function getCategoriesData(options = {}) {
               competitionTimeoutMs,
               `live-${comp.competitionId}`
             );
+            let bestComp = liveComp;
 
-            if (liveComp && liveComp.groupCount > 0) {
-              liveById.set(String(comp.competitionId), liveComp);
-              liveUsed = true;
-              continue;
+            try {
+              const leagueComp = await withTimeout(
+                scrapeCompetitionFromLeaguePage(comp),
+                Math.min(competitionTimeoutMs, 30000),
+                `league-${comp.competitionId}`
+              );
+
+              if (!bestComp || isBetterCompetitionData(leagueComp, bestComp)) {
+                if ((bestComp?.groupCount || 0) > 0) {
+                  console.log(
+                    `[fecapa-categories] ${comp.competitionId} league preferred over live (${bestComp.groupCount} -> ${leagueComp.groupCount} groups)`
+                  );
+                } else {
+                  console.log(
+                    `[fecapa-categories] ${comp.competitionId} recovered via league fallback (${leagueComp.groupCount} groups)`
+                  );
+                }
+                bestComp = leagueComp;
+              }
+            } catch {
+              // League comparison is best-effort; keep live result if available.
             }
 
-            const leagueComp = await withTimeout(
-              scrapeCompetitionFromLeaguePage(comp),
-              Math.min(competitionTimeoutMs, 30000),
-              `league-${comp.competitionId}`
-            );
-            if (leagueComp && leagueComp.groupCount > 0) {
-              liveById.set(String(comp.competitionId), leagueComp);
+            if (bestComp && bestComp.groupCount > 0) {
+              liveById.set(String(comp.competitionId), bestComp);
               liveUsed = true;
-              console.log(
-                `[fecapa-categories] ${comp.competitionId} recovered via league fallback (${leagueComp.groupCount} groups)`
-              );
+              continue;
             }
           } catch (err) {
             try {
