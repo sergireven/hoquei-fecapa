@@ -1720,11 +1720,11 @@ function matchCard(m, myTeam, compId) {
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const homeAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
     : "";
 
   const awayAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
@@ -3625,8 +3625,143 @@ function normalizeTeamName(name) {
     .replace(/\s+/g, " ");
 }
 
+function extractSeasonStartYear(compName) {
+  const m = String(compName || "").match(/\((20\d{2})-(\d{2})\)/);
+  if (m) return parseInt(m[1], 10);
+  return new Date().getFullYear();
+}
+
+function parseMatchTimestamp(dateInput, compName = "") {
+  if (!dateInput) return 0;
+  if (typeof dateInput === "number") return dateInput;
+  if (dateInput instanceof Date) return dateInput.getTime();
+
+  const raw = String(dateInput).trim();
+  if (!raw) return 0;
+
+  const yyyyMmDd = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (yyyyMmDd) {
+    const y = parseInt(yyyyMmDd[1], 10);
+    const m = parseInt(yyyyMmDd[2], 10);
+    const d = parseInt(yyyyMmDd[3], 10);
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const ddMmYyyy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (ddMmYyyy) {
+    const d = parseInt(ddMmYyyy[1], 10);
+    const m = parseInt(ddMmYyyy[2], 10);
+    const y = parseInt(ddMmYyyy[3], 10);
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const ddMm = raw.match(/^(\d{1,2})[\/-](\d{1,2})$/);
+  if (ddMm) {
+    const d = parseInt(ddMm[1], 10);
+    const m = parseInt(ddMm[2], 10);
+    const seasonStart = extractSeasonStartYear(compName);
+    const y = m >= 8 ? seasonStart : seasonStart + 1;
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function competitionStrengthScore(compName) {
+  const n = String(compName || "").toUpperCase();
+
+  const ageBase = /NACIONAL\s*CATALANA/.test(n) ? 90
+    : /PRIMERA\s*CATALANA|\b1A?\s*CATALANA/.test(n) ? 85
+    : /SEGONA\s*CATALANA|\b2A?\s*CATALANA/.test(n) ? 80
+    : /TERCERA\s*CATALANA|\b3A?\s*CATALANA/.test(n) ? 75
+    : /JUNIOR/.test(n) ? 60
+    : /JUVENIL/.test(n) ? 50
+    : /INFANTIL/.test(n) ? 40
+    : /ALEVI/.test(n) ? 30
+    : /BENJAMI/.test(n) ? 20
+    : /PREBENJAMI/.test(n) ? 10
+    : /VETERANS/.test(n) ? 45
+    : 25;
+
+  const tierBoost = /\bOR\b/.test(n) ? 4
+    : /PLATA/.test(n) ? 3
+    : /BRONZE|BRONCE/.test(n) ? 2
+    : /INICIACIO|INICIACI[OÓ]/.test(n) ? 1
+    : 0;
+
+  return ageBase * 10 + tierBoost;
+}
+
+function buildEloRatingsFromCompetition(comp) {
+  const matches = comp?.calendar || [];
+  const ratings = new Map();
+  const baseRating = 1500;
+  const homeAdv = 55;
+  const kFactor = 24;
+
+  const ensure = (teamName) => {
+    const key = normalizeTeamName(teamName);
+    if (!key) return null;
+    if (!ratings.has(key)) ratings.set(key, baseRating);
+    return key;
+  };
+
+  const played = matches
+    .filter(m => m.home && m.away && m.homeScore != null && m.awayScore != null)
+    .sort((a, b) => parseMatchTimestamp(a.date, comp?.name || "") - parseMatchTimestamp(b.date, comp?.name || ""));
+
+  for (const m of played) {
+    const homeKey = ensure(m.home);
+    const awayKey = ensure(m.away);
+    if (!homeKey || !awayKey) continue;
+
+    const homeRating = ratings.get(homeKey) || baseRating;
+    const awayRating = ratings.get(awayKey) || baseRating;
+
+    const expectedHome = 1 / (1 + Math.pow(10, -((homeRating + homeAdv - awayRating) / 400)));
+    const actualHome = m.homeScore > m.awayScore ? 1 : (m.homeScore === m.awayScore ? 0.5 : 0);
+
+    const delta = kFactor * (actualHome - expectedHome);
+    ratings.set(homeKey, homeRating + delta);
+    ratings.set(awayKey, awayRating - delta);
+  }
+
+  return { ratings, baseRating, homeAdv };
+}
+
+function poissonOutcomeProbabilities(lambdaA, lambdaB, maxGoals = 12) {
+  const la = Math.max(0.05, Number(lambdaA) || 0.05);
+  const lb = Math.max(0.05, Number(lambdaB) || 0.05);
+  const pA = new Array(maxGoals + 1).fill(0);
+  const pB = new Array(maxGoals + 1).fill(0);
+
+  pA[0] = Math.exp(-la);
+  pB[0] = Math.exp(-lb);
+  for (let i = 1; i <= maxGoals; i++) {
+    pA[i] = pA[i - 1] * la / i;
+    pB[i] = pB[i - 1] * lb / i;
+  }
+
+  let win = 0;
+  let draw = 0;
+  let loss = 0;
+  for (let i = 0; i <= maxGoals; i++) {
+    for (let j = 0; j <= maxGoals; j++) {
+      const p = pA[i] * pB[j];
+      if (i > j) win += p;
+      else if (i === j) draw += p;
+      else loss += p;
+    }
+  }
+
+  const total = win + draw + loss;
+  if (total <= 0) return { win: 0.33, draw: 0.34, loss: 0.33 };
+  return { win: win / total, draw: draw / total, loss: loss / total };
+}
+
 // ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
-function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
+function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, referenceTeamName = "") {
   if (!comp) return null;
 
   const matches = comp.calendar || [];
@@ -3650,18 +3785,48 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   const teamMatches = matches.filter(m =>
     (m.homeScore != null && m.awayScore != null) &&
     (normalizeTeamName(m.home) === normalizeTeamName(calTeamName) || normalizeTeamName(m.away) === normalizeTeamName(calTeamName))
-  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+  ).sort((a, b) => parseMatchTimestamp(b.date, comp.name) - parseMatchTimestamp(a.date, comp.name));
+
+  const fallbackMatches = [];
+  const seenFallback = new Set();
+  for (const categoryComps of Object.values(DB.categories || {})) {
+    for (const otherComp of (categoryComps || [])) {
+      if (!otherComp?.id || String(otherComp.id) === String(comp.id)) continue;
+      for (const m of (otherComp.calendar || [])) {
+        if (m.homeScore == null || m.awayScore == null) continue;
+        const isMine = normalizeTeamName(m.home) === normalizeTeamName(calTeamName)
+          || normalizeTeamName(m.away) === normalizeTeamName(calTeamName);
+        if (!isMine) continue;
+        const key = `${otherComp.id}|${m.home}|${m.away}|${m.date}|${m.homeScore}|${m.awayScore}`;
+        if (seenFallback.has(key)) continue;
+        seenFallback.add(key);
+        fallbackMatches.push({ ...m, _compName: otherComp.name || "" });
+      }
+    }
+  }
+  fallbackMatches.sort((a, b) => parseMatchTimestamp(b.date, b._compName) - parseMatchTimestamp(a.date, a._compName));
 
   // 1. Trend últims 5 partits
   const last5 = teamMatches.slice(0, 5);
+  if (last5.length < 5) {
+    last5.push(...fallbackMatches.slice(0, 5 - last5.length));
+  }
   let trend = { w: 0, d: 0, l: 0 };
+  const recentForm = [];
   last5.forEach(m => {
     const isHome = normalizeTeamName(m.home) === normalizeTeamName(calTeamName);
     const myScore = isHome ? m.homeScore : m.awayScore;
     const theirScore = isHome ? m.awayScore : m.homeScore;
-    if (myScore > theirScore) trend.w++;
-    else if (myScore === theirScore) trend.d++;
-    else trend.l++;
+    if (myScore > theirScore) {
+      trend.w++;
+      recentForm.push("W");
+    } else if (myScore === theirScore) {
+      trend.d++;
+      recentForm.push("D");
+    } else {
+      trend.l++;
+      recentForm.push("L");
+    }
   });
 
   // 2. Jugadores per partit (rotació) - from actes
@@ -3739,8 +3904,6 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   const suspended = [];
   let totalYellowCards = 0;
   let totalRedCards = 0;
-  let matchesWithYellowCards = 0;
-  let matchesWithRedCards = 0;
   const playerCards = {};
 
   for (const acta of Object.values(acteData)) {
@@ -3765,8 +3928,6 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
       yellowThisMatch += yellowCount;
       redThisMatch += redCount;
     }
-    if (yellowThisMatch > 0) matchesWithYellowCards++;
-    if (redThisMatch > 0) matchesWithRedCards++;
   }
 
   // Identify suspended players
@@ -3779,8 +3940,9 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
     }
   }
 
-  const avgYellowCards = matchesWithYellowCards > 0 ? (totalYellowCards / matchesWithYellowCards).toFixed(1) : 0;
-  const avgRedCards = matchesWithRedCards > 0 ? (totalRedCards / matchesWithRedCards).toFixed(1) : 0;
+  const totalTeamPlayedMatches = Math.max(1, Number(teamRow.pj || teamMatches.length || 0));
+  const avgYellowCards = (totalYellowCards / totalTeamPlayedMatches).toFixed(3);
+  const avgRedCards = (totalRedCards / totalTeamPlayedMatches).toFixed(3);
 
   // 9. Porters
   let goalkeepers = 0;
@@ -3790,11 +3952,96 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   }
   if (goalkeepers === 0) goalkeepers = 1;
 
-  // 10. Probabilitat de victòria
-  const winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
+  // 10. Probabilitat de victòria (Elo + Poisson)
+  let winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
+  let probabilityModel = null;
+  if (referenceTeamName) {
+    const refNorm = normalizeTeamName(referenceTeamName);
+    const refRow = classif.find(r => normalizeTeamName(r.team) === refNorm) || null;
+
+    if (refRow) {
+      const directUpcoming = matches
+        .filter(m => {
+          const h = normalizeTeamName(m.home);
+          const a = normalizeTeamName(m.away);
+          const t = normalizeTeamName(calTeamName);
+          return (h === t && a === refNorm) || (a === t && h === refNorm);
+        })
+        .filter(m => m.homeScore == null || m.awayScore == null)
+        .sort((a, b) => parseMatchTimestamp(a.date, comp.name) - parseMatchTimestamp(b.date, comp.name));
+
+      const teamIsHome = directUpcoming.length > 0
+        ? normalizeTeamName(directUpcoming[0].home) === normalizeTeamName(calTeamName)
+        : null;
+
+      const elo = buildEloRatingsFromCompetition(comp);
+      const teamKey = normalizeTeamName(calTeamName);
+      const refKey = normalizeTeamName(referenceTeamName);
+      const teamRating = elo.ratings.get(teamKey) || elo.baseRating;
+      const refRating = elo.ratings.get(refKey) || elo.baseRating;
+      const eloDiff = teamRating - refRating + (teamIsHome === null ? 0 : (teamIsHome ? elo.homeAdv : -elo.homeAdv));
+      const expectedNoDraw = 1 / (1 + Math.pow(10, -(eloDiff / 400)));
+      const pDrawElo = Math.min(0.35, Math.max(0.12, 0.20 + 0.14 * Math.exp(-Math.abs(eloDiff) / 220)));
+      const pWinElo = (1 - pDrawElo) * expectedNoDraw;
+      const pLossElo = 1 - pWinElo - pDrawElo;
+
+      const leagueRows = classif.filter(r => Number(r.pj || 0) > 0);
+      const totalLeagueGf = leagueRows.reduce((acc, r) => acc + Number(r.gf || 0), 0);
+      const totalLeaguePj = leagueRows.reduce((acc, r) => acc + Number(r.pj || 0), 0);
+      const leagueAvgGoals = totalLeaguePj > 0 ? totalLeagueGf / totalLeaguePj : 1.5;
+
+      const teamGfPg = Number(teamRow.gf || 0) / Math.max(1, Number(teamRow.pj || 1));
+      const teamGcPg = Number(teamRow.gc || 0) / Math.max(1, Number(teamRow.pj || 1));
+      const refGfPg = Number(refRow.gf || 0) / Math.max(1, Number(refRow.pj || 1));
+      const refGcPg = Number(refRow.gc || 0) / Math.max(1, Number(refRow.pj || 1));
+
+      const homeFactor = 1.08;
+      const teamHomeAdj = teamIsHome === null ? 1 : (teamIsHome ? homeFactor : 1 / homeFactor);
+      const refHomeAdj = teamIsHome === null ? 1 : (teamIsHome ? 1 / homeFactor : homeFactor);
+
+      const atkTeam = Math.max(0.4, teamGfPg / Math.max(0.2, leagueAvgGoals));
+      const defTeam = Math.max(0.4, teamGcPg / Math.max(0.2, leagueAvgGoals));
+      const atkRef = Math.max(0.4, refGfPg / Math.max(0.2, leagueAvgGoals));
+      const defRef = Math.max(0.4, refGcPg / Math.max(0.2, leagueAvgGoals));
+
+      const lambdaTeam = Math.max(0.2, leagueAvgGoals * atkTeam * defRef * teamHomeAdj);
+      const lambdaRef = Math.max(0.2, leagueAvgGoals * atkRef * defTeam * refHomeAdj);
+      const pPoisson = poissonOutcomeProbabilities(lambdaTeam, lambdaRef, 12);
+
+      const pWinBlend = 0.55 * pWinElo + 0.45 * pPoisson.win;
+      const pDrawBlend = 0.55 * pDrawElo + 0.45 * pPoisson.draw;
+      const pLossBlend = Math.max(0, 1 - pWinBlend - pDrawBlend);
+
+      winProbability = Math.round(pWinBlend * 100);
+      probabilityModel = {
+        teamRating: Math.round(teamRating),
+        opponentRating: Math.round(refRating),
+        lambdaTeam: Number(lambdaTeam.toFixed(2)),
+        lambdaOpponent: Number(lambdaRef.toFixed(2)),
+        elo: {
+          win: Math.round(pWinElo * 100),
+          draw: Math.round(pDrawElo * 100),
+          loss: Math.round(pLossElo * 100),
+        },
+        poisson: {
+          win: Math.round(pPoisson.win * 100),
+          draw: Math.round(pPoisson.draw * 100),
+          loss: Math.round(pPoisson.loss * 100),
+        },
+        blended: {
+          win: Math.round(pWinBlend * 100),
+          draw: Math.round(pDrawBlend * 100),
+          loss: Math.round(pLossBlend * 100),
+        },
+      };
+    }
+  }
 
   // 11. Jugadors que juguen a altres categories (refuerzos)
   const playerInOtherCat = new Set();
+  const reinforceOthers = new Set();
+  const reinforcedByLower = new Set();
+  const currentCompStrength = competitionStrengthScore(comp.name || "");
   for (const categoryActes of Object.values(allActesData)) {
     for (const acta of Object.values(categoryActes)) {
       if (String(acta.compId) === String(comp.id)) continue;
@@ -3805,13 +4052,17 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
       for (const p of players) {
         if (p.jugadorId && playerStats[p.jugadorId]) {
           playerInOtherCat.add(p.jugadorId);
+          const otherComp = findComp(acta.compId);
+          const otherStrength = competitionStrengthScore(otherComp?.name || "");
+          if (otherStrength > currentCompStrength) reinforceOthers.add(p.jugadorId);
+          if (otherStrength < currentCompStrength) reinforcedByLower.add(p.jugadorId);
         }
       }
     }
   }
-  const fixedPlayers = Object.keys(playerStats).length - playerInOtherCat.size;
-  const reinforcementRatio = fixedPlayers > 0 ? (playerInOtherCat.size / Object.keys(playerStats).length).toFixed(2) : "0.00";
-  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${Object.keys(playerStats).length} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
+  const totalKnownPlayers = Object.keys(playerStats).length;
+  const reinforcementRatio = totalKnownPlayers > 0 ? (playerInOtherCat.size / totalKnownPlayers).toFixed(2) : "0.00";
+  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${totalKnownPlayers} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
 
   // 12. Millorament vs 1ª ronda
   const improvement = "N/A";
@@ -3819,6 +4070,7 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   return {
     teamName: calTeamName,
     trend,
+    recentForm,
     avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
     avgGoals: Math.round(avgGoals * 100) / 100,
     avgGoalsAgainst: teamMatches.length > 0 ? Math.round((goalsAgainst / teamRow.pj) * 100) / 100 : 0,
@@ -3835,6 +4087,10 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
     goalkeepers,
     winProbability,
     reinforcements,
+    reinforcesOthersCount: reinforceOthers.size,
+    reinforcedByLowerCount: reinforcedByLower.size,
+    probabilityModel,
+    referenceTeamName,
     avgAge,
     improvement,
     totalYellowCards,
@@ -3844,7 +4100,7 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   };
 }
 
-window.openRivalAnalysis = async function(teamName, compId) {
+window.openRivalAnalysis = async function(teamName, compId, referenceTeamName = "") {
   console.log("openRivalAnalysis called with:", { teamName, compId, role: currentProfile?.role });
 
   const comp = findComp(compId);
@@ -3885,7 +4141,7 @@ window.openRivalAnalysis = async function(teamName, compId) {
   // Load actes from other categories for reinforcements analysis
   const allActes = { ...actesCache };
 
-  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes);
+  const metrics = calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, referenceTeamName);
   console.log("Metrics calculated for", teamName, ":", metrics ? "OK" : "FAILED");
   if (!metrics) {
     alert("No es pot calcular l'anàlisi d'aquest equip");
@@ -3933,6 +4189,9 @@ function showRivalModal(metrics, teamName) {
             <span style="color: #16a34a">${metrics.trend.w}V</span>
             <span style="color: #d97706"> ${metrics.trend.d}E</span>
             <span style="color: #dc2626"> ${metrics.trend.l}L</span>
+          </div>
+          <div style="display:flex;justify-content:center;gap:6px;margin:6px 0 2px">
+            ${(metrics.recentForm || []).map(r => `<span title="${r === "W" ? "Victòria" : r === "D" ? "Empat" : "Derrota"}" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${r === "W" ? "#16a34a" : r === "D" ? "#d97706" : "#dc2626"}"></span>`).join("")}
           </div>
           <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
         </div>
@@ -3985,10 +4244,11 @@ function showRivalModal(metrics, teamName) {
           <div style="font-size: 11px; color: #5b21b6; margin-top: 4px">anys</div>
         </div>
 
-        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="(Victòries / últims 5 partits) * 100, mostrat com a probabilitat inversa vs rival">
+        <div style="background: #fecaca; border-radius: 12px; padding: 16px; text-align: center" title="Model híbrid: Elo (amb empat i avantatge camp) + Poisson de gols">
           <div style="font-size: 12px; color: #7f1d1d; text-transform: uppercase; font-weight: 700">📈 Probabilitat Victòria</div>
-          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${100 - metrics.winProbability}%</div>
-          <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">estimat</div>
+          <div style="font-size: 32px; font-weight: 900; color: #dc2626">${metrics.winProbability}%</div>
+          <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px">${metrics.probabilityModel ? `Híbrid W/D/L: ${metrics.probabilityModel.blended.win}% / ${metrics.probabilityModel.blended.draw}% / ${metrics.probabilityModel.blended.loss}%` : "Sense dades per model Elo+Poisson"}</div>
+          ${metrics.probabilityModel ? `<div style="font-size:10px;color:#7f1d1d;margin-top:6px;line-height:1.35">Elo ${metrics.probabilityModel.elo.win}/${metrics.probabilityModel.elo.draw}/${metrics.probabilityModel.elo.loss} · Poisson ${metrics.probabilityModel.poisson.win}/${metrics.probabilityModel.poisson.draw}/${metrics.probabilityModel.poisson.loss}<br/>xG ${metrics.probabilityModel.lambdaTeam} - ${metrics.probabilityModel.lambdaOpponent} · Rating ${metrics.probabilityModel.teamRating} vs ${metrics.probabilityModel.opponentRating}</div>` : ""}
         </div>
 
         ${metrics.suspended && metrics.suspended.length > 0 ? `
@@ -4013,13 +4273,14 @@ function showRivalModal(metrics, teamName) {
         </div>
         `}
 
-        ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
+        ${(metrics.reinforcesOthersCount > 0 || metrics.reinforcedByLowerCount > 0) ? `
         <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
-            ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
+            <div>Reforça altres: ${metrics.reinforcesOthersCount}</div>
+            <div>És reforçat: ${metrics.reinforcedByLowerCount}</div>
           </div>
-          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
+          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">moviments entre categories</div>
         </div>
         ` : `
         <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
