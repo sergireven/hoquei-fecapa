@@ -458,7 +458,7 @@ async function main() {
         let bestScoreBreakdown = { nameScore: 0, teamsScore: 0, sizeScore: 0, compositeScore: 0 };
         let bestMatchesInfo = { matched: 0, pairs: [] };
         let bestComp = null;
-        const { minCompositeScore, minTeamScore } = matchingThresholds(catKey);
+        let bestQualified = null;
 
         for (const jokId of allJokcatIds) {
           if (usedJokcatInThisComp.has(jokId)) continue;
@@ -481,14 +481,30 @@ async function main() {
             bestId = jokId;
             bestComp = jokComp;
           }
+
+          if (ratio >= MIN_MATCH_RATIO) {
+            if (!bestQualified || candidate.compositeScore > bestQualified.score) {
+              bestQualified = {
+                id: jokId,
+                ratio,
+                score: candidate.compositeScore,
+                scoreBreakdown: candidate,
+                matchesInfo: teamMatches,
+                comp: jokComp,
+              };
+            }
+          }
         }
 
-        let hasMappedJokcat = Boolean(
-          bestId
-          && bestRatio >= MIN_MATCH_RATIO
-          && bestScoreBreakdown.teamsScore >= minTeamScore
-          && bestScoreBreakdown.compositeScore >= minCompositeScore
-        );
+        if (bestQualified) {
+          bestId = bestQualified.id;
+          bestRatio = bestQualified.ratio;
+          bestScoreBreakdown = bestQualified.scoreBreakdown;
+          bestMatchesInfo = bestQualified.matchesInfo;
+          bestComp = bestQualified.comp;
+        }
+
+        let hasMappedJokcat = Boolean(bestQualified && bestId);
         let matchSource = hasMappedJokcat ? "auto" : "none";
 
         if (manualFeedback?.manualJokcatGroupId) {

@@ -503,6 +503,22 @@ function saveAuditFeedback(feedback) {
   localStorage.setItem(AUDIT_FEEDBACK_KEY, JSON.stringify(feedback));
 }
 
+function downloadableAuditFeedbackPayload() {
+  const all = loadAuditFeedback();
+  const nonEmpty = Object.fromEntries(
+    Object.entries(all).filter(([, v]) => v && (v.verdict || (v.manualJokcatGroupId || "").trim()))
+  );
+  return {
+    schemaVersion: 1,
+    source: "audit_ui_local_export",
+    exportedAt: new Date().toISOString(),
+    actor: currentUser?.email || null,
+    auditBuiltAt: adminAuditCache?.builtAt || null,
+    totalMatches: Object.keys(nonEmpty).length,
+    matches: nonEmpty,
+  };
+}
+
 function auditDomKey(compId, groupKey) {
   return String(`${compId}__${groupKey}`).replace(/[^a-zA-Z0-9_-]/g, "_");
 }
@@ -738,9 +754,12 @@ async function renderAdminAuditPanel(body) {
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" value="${esc(adminAuditSearchQuery)}" oninput="adminAuditSetSearch(this.value)" placeholder="Cercar grup, FECAPA ID, jok ID, nom..." style="width:min(320px,68vw);padding:8px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:12px;font-family:inherit;outline:none" />
+            <button onclick="adminExportAuditFeedback()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Exportar feedback</button>
+            <button onclick="adminClearAuditFeedback()" style="background:#f8fafc;border:1.5px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:8px 11px;border-radius:9px;cursor:pointer">Netejar local</button>
             <button onclick="adminReloadAudit()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
           </div>
         </div>
+        <div style="margin-top:8px;font-size:11px;color:#94a3b8">MVP: exporta el JSON i puja'l a .github/audit-feedback/inbox/ per executar el workflow manual de processament.</div>
       </div>
       ${filteredCompetitions.length === 0 ? `<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:14px;color:#64748b;font-size:12px">Sense resultats per a la cerca actual.</div>` : ""}
       ${incompleteComps.length ? `
@@ -903,6 +922,30 @@ window.adminReloadAudit = () => {
 };
 window.adminAuditSetSearch = value => {
   adminAuditSearchQuery = String(value || "");
+  renderAdminPanel();
+};
+window.adminExportAuditFeedback = () => {
+  const payload = downloadableAuditFeedbackPayload();
+  if (!payload.totalMatches) {
+    alert("No hi ha feedback local per exportar.");
+    return;
+  }
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const actor = (currentUser?.email || "anon").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const fileName = `audit-feedback-${actor}-${stamp}.json`;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+window.adminClearAuditFeedback = () => {
+  if (!confirm("Vols esborrar tot el feedback local d'auditoria?")) return;
+  saveAuditFeedback({});
   renderAdminPanel();
 };
 
