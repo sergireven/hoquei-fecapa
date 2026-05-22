@@ -289,10 +289,24 @@ function mergeGroupsByName(baseGroups, extraGroups) {
   const out = [];
   const seen = new Set();
 
+  const teamFingerprint = (g) => {
+    const names = (g?.teams || [])
+      .map(t => normalizeToken(t?.teamName || t?.team || ""))
+      .filter(Boolean)
+      .sort();
+    return names.join("|");
+  };
+
   const pushUnique = (g) => {
-    const key = normalizeToken(g?.groupName || "");
-    if (!key || seen.has(key)) return;
-    seen.add(key);
+    const nameKey = normalizeToken(g?.groupName || "");
+    const teamsKey = teamFingerprint(g);
+
+    const dedupeKey = teamsKey
+      ? `teams:${teamsKey}`
+      : (nameKey ? `name:${nameKey}` : "");
+
+    if (!dedupeKey || seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
     out.push(g);
   };
 
@@ -489,6 +503,19 @@ function normalizeToken(s) {
     .trim();
 }
 
+function normalizeGroupNameForCompetition(competitionName, groupName, idx = 0) {
+  const raw = String(groupName || "").trim();
+  const fallback = `Grup ${idx + 1}`;
+  const effective = raw || fallback;
+  const n = normalizeToken(effective);
+
+  if (/^GRUP\s+\d+$/.test(n) || /^GROUP\s+\d+$/.test(n)) {
+    return `${competitionName} - ${effective}`;
+  }
+
+  return effective;
+}
+
 function buildGroupId(competitionId, groupName, fallbackOrder) {
   const n = normalizeToken(groupName);
   const tierMatch = n.match(/\b(OR|PLATA|BRONZE|INICIACIO|PREFERENT|GOLD|SILVER)\b/);
@@ -596,9 +623,10 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
         hierarchyKeyToName,
         hierarchyNames,
       });
+      const finalGroupName = normalizeGroupNameForCompetition(compMeta.competitionName, normalizedGroupName, idx);
       return {
-        groupId: buildGroupId(compMeta.competitionId, normalizedGroupName, idx + 1),
-        groupName: normalizedGroupName,
+        groupId: buildGroupId(compMeta.competitionId, finalGroupName, idx + 1),
+        groupName: finalGroupName,
         teamCount: teams.length,
         teams,
       };
@@ -612,10 +640,11 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
         hierarchyKeyToName,
         hierarchyNames,
       });
+      const finalGroupName = normalizeGroupNameForCompetition(compMeta.competitionName, groupName, idx);
       const teams = (rows || []).map(mapRowFromSnapshot).filter(r => r.teamName);
       return {
-        groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
-        groupName,
+        groupId: buildGroupId(compMeta.competitionId, finalGroupName, idx + 1),
+        groupName: finalGroupName,
         teamCount: teams.length,
         teams,
       };
@@ -631,7 +660,11 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
       const fallbackName = split.length > 1
         ? `${compMeta.competitionName} - Grup ${idx + 1}`
         : compMeta.competitionName;
-      const groupName = hierarchyNames[idx] || fallbackName;
+      const groupName = normalizeGroupNameForCompetition(
+        compMeta.competitionName,
+        hierarchyNames[idx] || fallbackName,
+        idx
+      );
       return {
         groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
         groupName,
@@ -687,8 +720,8 @@ function withTimeout(promise, timeoutMs, label) {
 
 function buildCompetitionFromParsedGroups(comp, parsedGroups) {
   const groupsOut = (parsedGroups || []).map((g, idx) => ({
-    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
-    groupName: g.groupName,
+    groupId: buildGroupId(comp.competitionId, normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx), idx + 1),
+    groupName: normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx),
     teamCount: g.teamCount || (g.teams || []).length,
     teams: g.teams || [],
   })).filter(g => g.teamCount > 0);
@@ -1692,8 +1725,8 @@ async function scrapeCompetitionLive(page, comp) {
 
   // Regex parser on the stable HTML snapshot.
   const parsedGroupsFromHtml = parseClassificationByGroupSidgad(containerHtml).map((g, idx) => ({
-    groupId: buildGroupId(comp.competitionId, g.groupName, idx + 1),
-    groupName: g.groupName,
+    groupId: buildGroupId(comp.competitionId, normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx), idx + 1),
+    groupName: normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx),
     teamCount: g.teamCount,
     teams: g.teams,
   })).filter(g => g.teamCount > 0);
@@ -1701,9 +1734,10 @@ async function scrapeCompetitionLive(page, comp) {
   const parsedGroupsFromLeagueContainers = (domLeagueBlocks || []).map((block, idx) => {
     const rows = parseClassificationSidgad(block.html || "");
     if (!rows.length) return null;
+    const normalizedBlockName = normalizeGroupNameForCompetition(comp.competitionName, block.groupName, idx);
     return {
-      groupId: buildGroupId(comp.competitionId, block.groupName, idx + 1),
-      groupName: block.groupName,
+      groupId: buildGroupId(comp.competitionId, normalizedBlockName, idx + 1),
+      groupName: normalizedBlockName,
       teamCount: rows.length,
       teams: rows,
     };
