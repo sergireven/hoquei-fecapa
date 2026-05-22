@@ -1927,7 +1927,7 @@ function matchCard(m, myTeam, compId) {
         </div>
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
-          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${m.jornada?`J${m.jornada} · `:""}${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
           ${actaBadge}
           ${venueIcon}
         </div>
@@ -3987,11 +3987,35 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
   }
   if (!teamRow) return null;
 
-  // Match team name from calendar
+  // Match team name from calendar - use stricter matching to avoid Ripollet B/C confusion
   const calCandidates = [...new Set([...matches.map(m => m.home), ...matches.map(m => m.away)].filter(Boolean))];
-  const calTeamName = calCandidates.find(t => teamMatchesLoose(t, teamName))
-    || calCandidates.find(t => teamMatchesLoose(t, teamRow?.team || ""))
-    || teamName;
+  const targetNormStrict = normalizeTeamNameStrict(teamName);
+  const rowNormStrict = normalizeTeamNameStrict(teamRow?.team || "");
+  
+  let calTeamName = calCandidates.find(t => normalizeTeamNameStrict(t) === targetNormStrict)
+    || calCandidates.find(t => normalizeTeamNameStrict(t) === rowNormStrict);
+  
+  if (!calTeamName) {
+    const teamSuffix = extractTeamSuffix(teamName);
+    const teamBase = getTeamBase(teamName);
+    const candidates_withSuffix = calCandidates.filter(c => {
+      const cBase = getTeamBase(c);
+      const cSuffix = extractTeamSuffix(c);
+      return normalizeTeamNameStrict(cBase) === normalizeTeamNameStrict(teamBase) && cSuffix === teamSuffix;
+    });
+    if (candidates_withSuffix.length === 1) {
+      calTeamName = candidates_withSuffix[0];
+    } else if (candidates_withSuffix.length > 0) {
+      const refClubId = rowClubId(teamRow);
+      calTeamName = candidates_withSuffix.find(c => rowClubId({ team: c }) === refClubId) || candidates_withSuffix[0];
+    }
+  }
+  
+  if (!calTeamName) {
+    calTeamName = calCandidates.find(t => teamMatchesLoose(t, teamName))
+      || calCandidates.find(t => teamMatchesLoose(t, teamRow?.team || ""))
+      || teamName;
+  }
 
   // Get matches for this team
   const teamMatches = matches.filter(m =>
