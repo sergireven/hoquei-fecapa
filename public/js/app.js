@@ -681,8 +681,12 @@ function renderAuditTable(rows, source) {
       <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">G</th>
       <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">E</th>
       <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">P</th>
+      <th style="padding:5px 4px;text-align:center;color:#64748b;font-weight:600">Avg</th>
     </tr></thead>
-    <tbody>${normalizedRows.map(t => `<tr style="border-bottom:1px solid #f8fafc">
+    <tbody>${normalizedRows.map(t => {
+      const avg = calcGoalAverage(t.gf, t.gc);
+      const avgColor = goalAverageColor(avg);
+      return `<tr style="border-bottom:1px solid #f8fafc">
       <td style="padding:4px 4px;font-weight:700;color:#334155">${t.pos ?? "-"}</td>
       <td style="padding:4px 4px;color:#1a2035;font-weight:500">${esc(normalizeJokClubDisplayName(t.team))}</td>
       <td style="padding:4px 4px;text-align:center;font-weight:700;color:#e5001c">${t.pts ?? "-"}</td>
@@ -690,7 +694,9 @@ function renderAuditTable(rows, source) {
       <td style="padding:4px 4px;text-align:center">${t.pg ?? "-"}</td>
       <td style="padding:4px 4px;text-align:center">${t.pe ?? "-"}</td>
       <td style="padding:4px 4px;text-align:center">${t.pp ?? "-"}</td>
-    </tr>`).join("")}</tbody>
+      <td style="padding:4px 4px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:${avgColor}">${formatGoalAverage(avg)}</td>
+    </tr>`;
+    }).join("")}</tbody>
   </table>`;
 }
 
@@ -1177,6 +1183,47 @@ function teamMatchesLoose(a, b) {
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 
+function findBestClassifRow(classificationRows, teamName) {
+  const rows = classificationRows || [];
+  const targetNorm = normalizeTeamName(teamName || "");
+
+  if (targetNorm) {
+    const exact = rows.find(r => normalizeTeamName(r?.team || "") === targetNorm);
+    if (exact) return exact;
+  }
+
+  const loose = rows.find(r => teamMatchesLoose(r?.team || "", teamName || ""));
+  if (loose) return loose;
+
+  const targetKey = normalizeTeamKeyForMatching(teamName || "");
+  if (!targetKey) return null;
+  return rows.find(r => {
+    const rowKey = normalizeTeamKeyForMatching(r?.team || "");
+    return rowKey && (rowKey.includes(targetKey) || targetKey.includes(rowKey));
+  }) || null;
+}
+
+function resolveCanonicalClassifTeamName(classificationRows, teamName) {
+  return findBestClassifRow(classificationRows, teamName)?.team || null;
+}
+
+function calcGoalAverage(gf, gc) {
+  if (gf == null && gc == null) return null;
+  return Number(gf || 0) - Number(gc || 0);
+}
+
+function goalAverageColor(avg) {
+  if (avg == null) return "#64748b";
+  if (avg > 0) return "#16a34a";
+  if (avg < 0) return "#dc2626";
+  return "#64748b";
+}
+
+function formatGoalAverage(avg) {
+  if (avg == null) return "-";
+  return `${avg > 0 ? "+" : ""}${avg}`;
+}
+
 const CAT_EMOJI = {
   "Nacional Catalana":"👑","1ª Catalana":"⭐","2ª Catalana":"🔵","3ª Catalana":"🟣",
   "Fem":"♀","Júnior":"🎯","Juvenil":"⚡","Infantil":"🏆","Aleví":"💪",
@@ -1475,7 +1522,7 @@ function applyClassificationSourceMerge() {
 function classifSourceBadgeHtml(comp) {
   const src = comp?.classificationSource;
   if (src === "fecapa") {
-    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>okCat360</span></span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>fecapa</span></span>`;
   }
   if (src === "jok") {
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
@@ -2087,10 +2134,12 @@ function buildFavCard(fav) {
     classifHtml=`
       <div style="border-top:1px solid #f0f2f8;border-bottom:1px solid #f0f2f8">
         <div style="display:flex;background:#f8fafc;padding:3px 12px">
-          ${["#","Equip","PJ","G","E","Pe","Pts"].map((h,i)=>`<div style="width:${i===0?26:i===1?'auto':i===6?32:22}px;${i===1?"flex:1;":""}font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===6?"#e5001c":"#94a3b8"};${i>1?"text-align:center":""}">${h}</div>`).join("")}
+          ${["#","Equip","PJ","G","E","Pe","Avg","Pts"].map((h,i)=>`<div style="width:${i===0?26:i===1?'auto':i===7?32:i===6?30:22}px;${i===1?"flex:1;":""}font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===6?"#64748b":i===7?"#e5001c":"#94a3b8"};${i>1?"text-align:center":""}">${h}</div>`).join("")}
         </div>
         ${slice.map(r=>{
           const mine=teamMatchesLoose(r.team,fav.teamName), rcid=rowClubId(r);
+          const avg = calcGoalAverage(r.gf, r.gc);
+          const avgColor = goalAverageColor(avg);
           return `<div style="display:flex;align-items:center;background:${mine?"#eff6ff":"#fff"};border-top:1px solid #f0f2f8;padding:5px 12px">
             <div style="width:26px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${posColor(r.pos)}">${r.pos}</div>
             <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0">${shieldImg(rcid,18)}<span style="font-size:12px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(r.team))}</span></div>
@@ -2098,6 +2147,7 @@ function buildFavCard(fav) {
             <div style="width:22px;text-align:center;font-size:12px;color:#16a34a;font-weight:600">${r.pg??"-"}</div>
             <div style="width:22px;text-align:center;font-size:12px;color:#d97706">${r.pe??"-"}</div>
             <div style="width:22px;text-align:center;font-size:12px;color:#dc2626">${r.pp??"-"}</div>
+            <div style="width:30px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${avgColor}">${formatGoalAverage(avg)}</div>
             <div style="width:32px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;color:${mine?"#e5001c":"#1a2035"}">${r.pts??"-"}</div>
           </div>`;
         }).join("")}
@@ -2697,7 +2747,7 @@ function renderConsolidatedClassif(subMeta, color) {
               </td>
               <td style="padding:6px 3px;text-align:center;font-size:11px;color:#94a3b8">${t.pj}</td>
               <td style="padding:6px 3px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${color}">${t.pts}</td>
-              <td style="padding:6px 3px;text-align:center;font-size:11px;font-weight:600;color:${t.avg>0?"#16a34a":t.avg<0?"#dc2626":"#6b7a99"}">${t.avg>0?"+":""}${t.avg}</td>
+              <td style="padding:6px 3px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${goalAverageColor(t.avg)}">${formatGoalAverage(t.avg)}</td>
               <td style="padding:6px 3px;text-align:center;font-size:10px;color:#64748b">${t.source === "fecapa" ? "🛡️" : (t.source === "jok" ? "🌐" : "-")}</td>
             </tr>`).join("")}
           </tbody>
@@ -3453,19 +3503,23 @@ async function renderDetailClassif(){
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
 
+  const resolveTeamName = name => resolveCanonicalClassifTeamName(cl, name);
+
   // Calculate highlights from matches and classification
   const matches = detailComp.calendar || [];
   const played = matches.filter(m => m.homeScore != null && m.awayScore != null);
 
   const stats = {};
   cl.forEach(r => {
-    stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, cards: 0 };
+    stats[r.team] = { gf: r.gf || 0, gc: r.gc || 0, shutouts: 0, blueCards: 0 };
   });
 
   // Calculate shutouts
   played.forEach(m => {
-    if (m.awayScore === 0 && stats[m.home]) stats[m.home].shutouts++;
-    if (m.homeScore === 0 && stats[m.away]) stats[m.away].shutouts++;
+    const homeTeam = resolveTeamName(m.home);
+    const awayTeam = resolveTeamName(m.away);
+    if (m.awayScore === 0 && homeTeam && stats[homeTeam]) stats[homeTeam].shutouts++;
+    if (m.homeScore === 0 && awayTeam && stats[awayTeam]) stats[awayTeam].shutouts++;
   });
 
   // Calculate cards (blaves/vermelles) from actes
@@ -3476,26 +3530,29 @@ async function renderDetailClassif(){
 
     for (const acta of Object.values(actes)) {
       if (String(acta.compId) !== compIdStr) continue;
-      const countCards = (players) => {
+      const countBlueCards = players => {
         let count = 0;
         for (const p of (players || [])) {
-          count += (p.b || 0) + (p.v || 0);
+          count += (p.b || 0);
         }
         return count;
       };
 
-      const homeCards = countCards(acta.playerStats?.homePlayers || []);
-      const awayCards = countCards(acta.playerStats?.awayPlayers || []);
+      const homeCards = countBlueCards(acta.playerStats?.homePlayers || []);
+      const awayCards = countBlueCards(acta.playerStats?.awayPlayers || []);
 
-      if (stats[acta.home]) stats[acta.home].cards += homeCards;
-      if (stats[acta.away]) stats[acta.away].cards += awayCards;
+      const homeTeam = resolveTeamName(acta.home);
+      const awayTeam = resolveTeamName(acta.away);
+
+      if (homeTeam && stats[homeTeam]) stats[homeTeam].blueCards += homeCards;
+      if (awayTeam && stats[awayTeam]) stats[awayTeam].blueCards += awayCards;
     }
   }
 
   // Find highlight teams
   const topGoals = Object.entries(stats).sort((a,b) => b[1].gf - a[1].gf)[0];
   const fewestGoals = Object.entries(stats).sort((a,b) => a[1].gc - b[1].gc)[0];
-  const mostCards = Object.entries(stats).sort((a,b) => b[1].cards - a[1].cards)[0];
+  const mostCards = Object.entries(stats).sort((a,b) => b[1].blueCards - a[1].blueCards)[0];
   const mostShutouts = Object.entries(stats).sort((a,b) => b[1].shutouts - a[1].shutouts)[0];
 
   const highlightCard = (emoji, label, team, value) => {
@@ -3504,7 +3561,7 @@ async function renderDetailClassif(){
       <div style="font-size:20px;margin-bottom:4px">${emoji}</div>
       <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:6px">${label}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px">
-        ${shieldImg(rowClubId(cl.find(r=>r.team===team)),20)}
+        ${shieldImg(rowClubId(findBestClassifRow(cl, team) || {}),20)}
         <div style="font-size:12px;font-weight:700;color:#1a2035;line-height:1.3">${esc(normalizeJokClubDisplayName(team))}</div>
       </div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:#e5001c">${value}</div>
@@ -3514,7 +3571,7 @@ async function renderDetailClassif(){
   const highlightsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     ${highlightCard('⚽', 'Més Gols', topGoals?.[0], topGoals?.[1]?.gf || 0)}
     ${highlightCard('🛡️', 'Defensa (menys gols)', fewestGoals?.[0], fewestGoals?.[1]?.gc || 0)}
-    ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.cards || 0)}
+    ${highlightCard('🟦', 'Més Blaves', mostCards?.[0], mostCards?.[1]?.blueCards || 0)}
     ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
   </div>`;
 
@@ -3524,10 +3581,12 @@ async function renderDetailClassif(){
     <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f8fafc">
-          ${["#","Equip","PJ","G","E","Pe","GF","GC","Pts"].map((h,i)=>`<th style="padding:8px ${i<2?6:4}px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===8?"#e5001c":"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
+          ${["#","Equip","PJ","G","E","Pe","GF","GC","Avg","Pts"].map((h,i)=>`<th style="padding:8px ${i<2?6:4}px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===8?"#64748b":i===9?"#e5001c":"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
         </tr></thead>
         <tbody>${cl.map(r=>{
           const mine=teamIn(r.team,detailTeam), cid=rowClubId(r), pc=posColor(r.pos);
+          const avg = calcGoalAverage(r.gf, r.gc);
+          const avgColor = goalAverageColor(avg);
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
@@ -3538,6 +3597,7 @@ async function renderDetailClassif(){
             <td style="padding:9px 4px;text-align:center;color:#dc2626">${r.pp??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.gf??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.gc??"-"}</td>
+            <td style="padding:9px 4px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${avgColor}">${formatGoalAverage(avg)}</td>
             <td style="padding:9px 4px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${mine?"#e5001c":"#1a2035"}">${r.pts??"-"}</td>
           </tr>`;
         }).join("")}</tbody>
@@ -3882,14 +3942,15 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
   // Get team row from classification
   let teamRow = teamInClassif;
   if (!teamRow) {
-    teamRow = classif.find(r => r.team === teamName);
+    teamRow = findBestClassifRow(classif, teamName);
   }
   if (!teamRow) return null;
 
   // Match team name from calendar
-  const calTeamName = [...new Set([...matches.map(m => m.home), ...matches.map(m => m.away)].filter(Boolean))].find(t =>
-    normalizeTeamName(t) === normalizeTeamName(teamName)
-  ) || teamName;
+  const calCandidates = [...new Set([...matches.map(m => m.home), ...matches.map(m => m.away)].filter(Boolean))];
+  const calTeamName = calCandidates.find(t => teamMatchesLoose(t, teamName))
+    || calCandidates.find(t => teamMatchesLoose(t, teamRow?.team || ""))
+    || teamName;
 
   // Get matches for this team
   const teamMatches = matches.filter(m =>
@@ -4226,20 +4287,11 @@ window.openRivalAnalysis = async function(teamName, compId, referenceTeamName = 
     return;
   }
 
-  const normalizedInput = normalizeTeamName(teamName);
-
-  // Crear mapa de noms normalitzats a teamId
-  const teamMap = {};
-  comp.classification.forEach(r => {
-    const normalized = normalizeTeamName(r.team);
-    teamMap[normalized] = r;
-  });
-
-  let teamInClassif = teamMap[normalizedInput];
+  const teamInClassif = findBestClassifRow(comp.classification || [], teamName);
 
   if (!teamInClassif) {
-    console.error("Equip no trobat:", teamName, "normalized:", normalizedInput);
-    console.log("Equips disponibles:", Object.keys(teamMap));
+    console.error("Equip no trobat:", teamName);
+    console.log("Equips disponibles:", (comp.classification || []).map(r => r.team));
     alert(`Equip "${teamName}" no trobat en la classificació`);
     return;
   }
