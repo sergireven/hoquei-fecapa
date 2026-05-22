@@ -319,16 +319,32 @@ function extractFilterValuesFromLeagueHtml(html) {
   return [...values].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 }
 
+function expectedMinGroupsByCompetitionName(comp) {
+  const n = normName(comp?.competitionName || "");
+  if (n.includes("SEGONA CATALANA FEMENINA")) return 2;
+  if (n.includes("JUVENIL PLATA")) return 18;
+  if (n.includes("INFANTIL PLATA")) return 21;
+  if (n.includes("ALEVI PLATA")) return 23;
+  return 0;
+}
+
 function buildBruteforceFilters(comp, existing) {
   const out = new Set(existing || []);
+  const compName = String(comp?.competitionName || "");
+  const compNameNorm = normName(compName);
+  const expectedMinGroups = expectedMinGroupsByCompetitionName(comp);
   const isLikelyMultiGroup = comp?.category === "benjami"
     || comp?.category === "alevi"
     || comp?.category === "prebenjami"
-    || /\bCOPA\b/i.test(String(comp?.competitionName || ""));
+    || /\bCOPA\b/i.test(compName)
+    || /\bPLATA\b/.test(compNameNorm)
+    || /\bSEGONA\s+CATALANA\s+FEMENINA\b/.test(compNameNorm);
 
   if (!isLikelyMultiGroup) return [...out];
 
-  for (let i = 1; i <= 24; i += 1) {
+  // Keep a generous scan window for competitions where FECAPA exposes many phase filters.
+  const upperBound = Math.max(24, expectedMinGroups + 10, 48);
+  for (let i = 1; i <= upperBound; i += 1) {
     out.add(String(i));
   }
   return [...out].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -341,7 +357,7 @@ async function loadGroupedClassificationByFilters(comp, leagueHtml) {
   const cleanFile = classFile.replace(/^\/+/, "");
   const classUrl = new URL(cleanFile, SIDGAD_CERILH_BASE_URL).href;
   const extractedFilters = extractFilterValuesFromLeagueHtml(leagueHtml);
-  const filterValues = buildBruteforceFilters(comp, extractedFilters).slice(0, 40);
+  const filterValues = buildBruteforceFilters(comp, extractedFilters);
   let mergedGroups = [];
 
   for (const filter of filterValues) {
