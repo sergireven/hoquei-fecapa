@@ -15,39 +15,6 @@ const CLASSIFICATION_SOURCE_PILOTS = [
   },
 ];
 
-// Auto-detect competitions containing Ripollet or Benjamí Plata teams
-function buildDynamicPilots(categories, pilots) {
-  if (!categories) return pilots;
-  
-  const result = [...pilots];
-  const seen = new Set(pilots.map(p => String(p.jokCompId)));
-  
-  for (const comps of Object.values(categories)) {
-    for (const comp of comps) {
-      if (seen.has(String(comp.id))) continue;
-      
-      const classif = comp.classification || [];
-      const hasRipollet = classif.some(r => 
-        String(r.team || "").toLowerCase().includes("ripollet")
-      );
-      const hasBenjamiBranded = comp.name && (
-        /benjam[íi].*plata|plata.*benjam[íi]/i.test(comp.name)
-      );
-      
-      if (hasRipollet || hasBenjamiBranded) {
-        result.push({
-          jokCompId: String(comp.id),
-          fecapaCompetitionId: "4452",
-          preferredGroupToken: hasBenjamiBranded ? "PLATA" : "RIPOLLET",
-        });
-        seen.add(String(comp.id));
-      }
-    }
-  }
-  
-  return result;
-}
-
 // ── Supabase auth ─────────────────────────────────────────────
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
@@ -1231,62 +1198,47 @@ function getTeamBase(name) {
 
 function findBestClassifRow(classificationRows, teamName) {
   const rows = classificationRows || [];
-  if (!rows.length || !teamName) return null;
-  
-  const targetNorm = normalizeTeamName(teamName);
-  const targetStrict = normalizeTeamNameStrict(teamName);
+  const targetNorm = normalizeTeamNameStrict(teamName || "");
   const targetSuffix = extractTeamSuffix(teamName);
   const targetBase = getTeamBase(teamName);
   
-  // Phase 1: Exact normalized match
   if (targetNorm) {
-    const exact = rows.find(r => normalizeTeamName(r?.team || "") === targetNorm);
+    const exact = rows.find(r => normalizeTeamNameStrict(r?.team || "") === targetNorm);
     if (exact) return exact;
   }
   
-  // Phase 2: Strict normalized match
-  if (targetStrict) {
-    const strict = rows.find(r => normalizeTeamNameStrict(r?.team || "") === targetStrict);
-    if (strict) return strict;
-  }
-  
-  // Phase 3: Suffix-aware matching (for B, C variants)
   if (targetBase && targetSuffix) {
-    const baseSameAndSuffix = rows.filter(r => {
+    const sameBaseAndSuffix = rows.filter(r => {
       const rBase = getTeamBase(r?.team || "");
       const rSuffix = extractTeamSuffix(r?.team || "");
-      if (!rBase || rSuffix !== targetSuffix) return false;
-      const rBaseNorm = normalizeTeamName(rBase);
-      const tBaseNorm = normalizeTeamName(targetBase);
-      return rBaseNorm === tBaseNorm;
+      return rBase && normalizeTeamNameStrict(rBase) === normalizeTeamNameStrict(targetBase)
+        && rSuffix === targetSuffix;
     });
-    if (baseSameAndSuffix.length === 1) return baseSameAndSuffix[0];
-    if (baseSameAndSuffix.length > 1) {
+    if (sameBaseAndSuffix.length === 1) return sameBaseAndSuffix[0];
+    if (sameBaseAndSuffix.length > 1) {
       const refClubId = getClubId(teamName);
       if (refClubId) {
-        const byClubId = baseSameAndSuffix.find(r => r.clubId === refClubId);
+        const byClubId = sameBaseAndSuffix.find(r => r.clubId === refClubId);
         if (byClubId) return byClubId;
       }
-      return baseSameAndSuffix[0];
+      return sameBaseAndSuffix[0];
     }
   }
   
-  // Phase 4: Loose key matching
-  const targetKey = normalizeTeamKeyForMatching(teamName);
-  if (targetKey) {
-    const keyMatches = rows.filter(r => {
-      const rowKey = normalizeTeamKeyForMatching(r?.team || "");
-      return rowKey && (rowKey === targetKey || (rowKey.includes(targetKey) && rowKey.length < targetKey.length + 5));
-    });
-    if (keyMatches.length === 1) return keyMatches[0];
-    if (keyMatches.length > 1) {
-      const refClubId = getClubId(teamName);
-      if (refClubId) {
-        const byClubId = keyMatches.find(r => r.clubId === refClubId);
-        if (byClubId) return byClubId;
-      }
-      return keyMatches[0];
+  const targetKey = normalizeTeamKeyForMatching(teamName || "");
+  if (!targetKey) return null;
+  const keyMatches = rows.filter(r => {
+    const rowKey = normalizeTeamKeyForMatching(r?.team || "");
+    return rowKey && (rowKey === targetKey || (rowKey.includes(targetKey) && rowKey.length < targetKey.length + 5));
+  });
+  if (keyMatches.length === 1) return keyMatches[0];
+  if (keyMatches.length > 1) {
+    const refClubId = getClubId(teamName);
+    if (refClubId) {
+      const byClubId = keyMatches.find(r => r.clubId === refClubId);
+      if (byClubId) return byClubId;
     }
+    return keyMatches[0];
   }
   
   return null;
@@ -1526,10 +1478,6 @@ function buildSidgadClassificationIndex(raw) {
 function applyClassificationSourceMerge() {
   if (!DB?.categories) return;
 
-  // Build dynamic pilots for competitions with Ripollet or Benjamí Plata teams
-  const activePilots = buildDynamicPilots(DB.categories, CLASSIFICATION_SOURCE_PILOTS);
-  console.log("Active classification source pilots:", activePilots.map(p => `${p.jokCompId}(${p.preferredGroupToken})`).join(", "));
-
   const normalizeFecapaClassificationRows = rows =>
     (rows || []).map(r => ({
       pos: r?.position ?? r?.pos ?? null,
@@ -1591,7 +1539,7 @@ function applyClassificationSourceMerge() {
         comp.classificationSource = "none";
       }
 
-      const pilot = activePilots.find(p => String(p.jokCompId) === String(comp.id));
+      const pilot = CLASSIFICATION_SOURCE_PILOTS.find(p => String(p.jokCompId) === String(comp.id));
       if (!pilot) continue;
 
       const bestFecapaGroup = bestFecapaGroupForPilot(pilot, comp);
@@ -1896,45 +1844,9 @@ function dateSort(m) {
 
 // Get last played and next pending, sorted by actual date
 function getLastAndNext(matches, teamName) {
-  if (!matches?.length || !teamName) return { last: null, next: null };
-  
-  const targetNorm = normalizeTeamName(teamName);
-  const targetStrict = normalizeTeamNameStrict(teamName);
-  const targetBase = getTeamBase(teamName);
-  const targetSuffix = extractTeamSuffix(teamName);
-  
-  let mine = matches.filter(m => {
-    const hNorm = normalizeTeamName(m.home || "");
-    const aNorm = normalizeTeamName(m.away || "");
-    return hNorm === targetNorm || aNorm === targetNorm;
-  });
-  
-  if (!mine.length) {
-    mine = matches.filter(m => {
-      const hStrict = normalizeTeamNameStrict(m.home || "");
-      const aStrict = normalizeTeamNameStrict(m.away || "");
-      return hStrict === targetStrict || aStrict === targetStrict;
-    });
-  }
-  
-  if (!mine.length && targetBase && targetSuffix) {
-    mine = matches.filter(m => {
-      const hBase = getTeamBase(m.home || "");
-      const aSuffix = extractTeamSuffix(m.away || "");
-      const aBase = getTeamBase(m.away || "");
-      const hSuffix = extractTeamSuffix(m.home || "");
-      return (normalizeTeamNameStrict(hBase) === normalizeTeamNameStrict(targetBase) && hSuffix === targetSuffix)
-        || (normalizeTeamNameStrict(aBase) === normalizeTeamNameStrict(targetBase) && aSuffix === targetSuffix);
-    });
-  }
-  
-  if (!mine.length) {
-    const lower = teamName.toLowerCase();
-    mine = matches.filter(m =>
-      (m.home || "").toLowerCase().includes(lower) || (m.away || "").toLowerCase().includes(lower)
-    );
-  }
-  
+  const mine = matches.filter(m =>
+    teamIn(m.home, teamName) || teamIn(m.away, teamName)
+  );
   const played  = mine.filter(m => m.played !== false && m.homeScore != null)
                       .sort((a,b) => dateSort(a) - dateSort(b));
   const pending = mine.filter(m => m.played === false  || m.homeScore == null)
@@ -4152,7 +4064,6 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
       recentForm.push("L");
     }
   });
-  recentForm.reverse(); // Invertir ordre: primer match més antic al final
 
   // 2. Jugadores per partit (rotació) - from actes
   const playersByMatch = {};
