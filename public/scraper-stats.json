@@ -4,5 +4,17 @@
     "total": 9615,
     "enrichits": 7219,
     "pendents": 2396
+  },
+  "sidgad": {
+    "runAt": "2026-05-22T13:42:13.162Z",
+    "total": 9811,
+    "enrichits": 9811,
+    "pendents": 0,
+    "processatsAquestRun": 11,
+    "buitsOErrors": 0,
+    "partitsPendents": 1582,
+    "competicions": 95,
+    "partitsSidgad": 3131,
+    "classificacions": 67
   }
 }
