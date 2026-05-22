@@ -719,6 +719,11 @@ function renderAuditGroupRow(entry, grp, idx) {
   const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
   const effectiveJokName = normalizeJokClubDisplayName(grp.jokcatCompName || grp.suggestedJokcatCompName || "—");
   const effectiveCalc = grp.coincidenceCalc || grp.suggestedCoincidenceCalc || "matched/max(FECAPA,JOK)";
+  const effectiveRatio = grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio || 0;
+  const ratioLabel = isMissing ? "solapament equips (competicio FECAPA)" : "coincidencia";
+  const ratioCalc = isMissing
+    ? effectiveCalc.replace("matched/max(FECAPA,JOK)", "matched/max(FECAPA_comp,JOK)")
+    : effectiveCalc;
   const rightSourceTag = grp.jokcatCompId
     ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">jok match</span>`
     : grp.suggestedJokcatCompId
@@ -742,7 +747,7 @@ function renderAuditGroupRow(entry, grp, idx) {
       ${feedbackBadge}
       <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#1a2035">${esc(grp.groupName)}</span>
       ${idsInfo}
-      ${(grp.jokcatMatchRatio > 0 || grp.suggestedJokcatMatchRatio > 0) ? `<span style="font-size:10px;color:#94a3b8">coincidència: ${grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio}% · ${esc(effectiveCalc)}</span>` : ""}
+      ${effectiveRatio > 0 ? `<span style="font-size:10px;color:#94a3b8">${ratioLabel}: ${effectiveRatio}% · ${esc(ratioCalc)}</span>` : ""}
     </div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:8px;padding:8px">
       <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
