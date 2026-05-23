@@ -1831,7 +1831,7 @@ function openActaDetail(acta) {
 }
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
-const teamIn   = (name,filter) => !!(filter&&name&&name.toLowerCase().includes(filter.toLowerCase()));
+const teamIn = teamMatchesLoose;
 const isActive = comp => (comp.pctPlayed||0) < 100;
 
 // Parse DD-MM date to sortable number (MMDD)
