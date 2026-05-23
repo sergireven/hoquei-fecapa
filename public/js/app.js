@@ -1640,7 +1640,7 @@ function openActaDetail(acta) {
 }
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
-const teamIn   = (name,filter) => !!(filter&&name&&name.toLowerCase().includes(filter.toLowerCase()));
+const teamIn = teamMatchesLoose;
 const isActive = comp => (comp.pctPlayed||0) < 100;
 
 // Parse DD-MM date to sortable number (MMDD)
@@ -3855,20 +3855,11 @@ window.openRivalAnalysis = async function(teamName, compId) {
     return;
   }
 
-  const normalizedInput = normalizeTeamName(teamName);
-
-  // Crear mapa de noms normalitzats a teamId
-  const teamMap = {};
-  comp.classification.forEach(r => {
-    const normalized = normalizeTeamName(r.team);
-    teamMap[normalized] = r;
-  });
-
-  let teamInClassif = teamMap[normalizedInput];
+  const teamInClassif = findBestClassifRow(comp.classification || [], teamName);
 
   if (!teamInClassif) {
-    console.error("Equip no trobat:", teamName, "normalized:", normalizedInput);
-    console.log("Equips disponibles:", Object.keys(teamMap));
+    console.error("Equip no trobat:", teamName);
+    console.log("Equips disponibles:", (comp.classification || []).map(r => r.team));
     alert(`Equip "${teamName}" no trobat en la classificació`);
     return;
   }
