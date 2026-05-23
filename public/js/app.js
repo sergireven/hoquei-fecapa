@@ -4278,14 +4278,29 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
   const reinforceOthers = new Set();
   const reinforcedByLower = new Set();
   const currentCompStrength = competitionStrengthScore(comp.name || "");
+  const currentClubId = rowClubId(teamRow) || getClubId(calTeamName) || null;
+
+  const teamBelongsToCurrentClub = (teamName) => {
+    if (!teamName) return false;
+    if (currentClubId) {
+      const sideClubId = getClubId(teamName);
+      if (sideClubId && sideClubId === currentClubId) return true;
+    }
+    return teamMatchesLoose(teamName, calTeamName);
+  };
+
   for (const categoryActes of Object.values(allActesData)) {
     for (const acta of Object.values(categoryActes)) {
       if (String(acta.compId) === String(comp.id)) continue;
-      const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
-      const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
-      if (!isHome && !isAway) continue;
-      const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
-      for (const p of players) {
+      const homeMatchesClub = teamBelongsToCurrentClub(acta.home || "");
+      const awayMatchesClub = teamBelongsToCurrentClub(acta.away || "");
+      if (!homeMatchesClub && !awayMatchesClub) continue;
+
+      const sidesPlayers = [];
+      if (homeMatchesClub) sidesPlayers.push(...(acta.playerStats?.homePlayers || []));
+      if (awayMatchesClub) sidesPlayers.push(...(acta.playerStats?.awayPlayers || []));
+
+      for (const p of sidesPlayers) {
         if (p.jugadorId && playerStats[p.jugadorId]) {
           playerInOtherCat.add(p.jugadorId);
           const otherComp = findComp(acta.compId);
