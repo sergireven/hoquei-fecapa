@@ -3620,6 +3620,27 @@ function normalizeTeamName(name) {
     .replace(/\s+/g, " ");
 }
 
+function categoryStrengthScore(categoryName) {
+  const order = [
+    "Nacional Catalana",
+    "1ª Catalana",
+    "2ª Catalana",
+    "3ª Catalana",
+    "Júnior",
+    "Juvenil",
+    "Infantil",
+    "Aleví",
+    "Benjamí",
+    "Prebenjamí",
+    "Veterans",
+    "Fem",
+    "Altres"
+  ];
+  const idx = order.indexOf(String(categoryName || "Altres"));
+  if (idx === -1) return 0;
+  return order.length - idx;
+}
+
 // ── ANÁLISIS DE RIVAL (Admin) ─────────────────────────────────────────
 function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   if (!comp) return null;
@@ -3788,25 +3809,42 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
   // 10. Probabilitat de victòria
   const winProbability = last5.length > 0 ? Math.round((trend.w / last5.length) * 100) : 0;
 
-  // 11. Jugadors que juguen a altres categories (refuerzos)
-  const playerInOtherCat = new Set();
+  // 11. Reforços entre categories:
+  // a) Reforça altres = jugadors d'aquest equip que juguen a categories superiors.
+  // b) És reforçat = jugadors d'aquest equip que també juguen a categories inferiors.
+  const reinforceOthers = new Set();
+  const reinforcedByLower = new Set();
+  const currentCompCategory = getCatForComp(comp);
+  const currentCompStrength = categoryStrengthScore(currentCompCategory);
+
   for (const categoryActes of Object.values(allActesData)) {
     for (const acta of Object.values(categoryActes)) {
       if (String(acta.compId) === String(comp.id)) continue;
-      const isHome = normalizeTeamName(acta.home || "") === normalizeTeamName(calTeamName);
-      const isAway = normalizeTeamName(acta.away || "") === normalizeTeamName(calTeamName);
-      if (!isHome && !isAway) continue;
-      const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
-      for (const p of players) {
-        if (p.jugadorId && playerStats[p.jugadorId]) {
-          playerInOtherCat.add(p.jugadorId);
+
+      const otherComp = findComp(acta.compId);
+      if (!otherComp) continue;
+
+      const otherCompCategory = getCatForComp(otherComp);
+      const otherCompStrength = categoryStrengthScore(otherCompCategory);
+      if (otherCompStrength === currentCompStrength) continue;
+
+      const allPlayers = [
+        ...(acta.playerStats?.homePlayers || []),
+        ...(acta.playerStats?.awayPlayers || [])
+      ];
+
+      for (const p of allPlayers) {
+        const pid = p?.jugadorId;
+        if (!pid || !playerStats[pid]) continue;
+
+        if (otherCompStrength > currentCompStrength) {
+          reinforceOthers.add(pid);
+        } else if (otherCompStrength < currentCompStrength) {
+          reinforcedByLower.add(pid);
         }
       }
     }
   }
-  const fixedPlayers = Object.keys(playerStats).length - playerInOtherCat.size;
-  const reinforcementRatio = fixedPlayers > 0 ? (playerInOtherCat.size / Object.keys(playerStats).length).toFixed(2) : "0.00";
-  const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${Object.keys(playerStats).length} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
 
   // 12. Millorament vs 1ª ronda
   const improvement = "N/A";
@@ -3829,7 +3867,8 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes) {
     suspended,
     goalkeepers,
     winProbability,
-    reinforcements,
+    reinforcesOthersCount: reinforceOthers.size,
+    reinforcedByLowerCount: reinforcedByLower.size,
     avgAge,
     improvement,
     totalYellowCards,
@@ -3999,13 +4038,14 @@ function showRivalModal(metrics, teamName) {
         </div>
         `}
 
-        ${metrics.reinforcements && (Array.isArray(metrics.reinforcements) ? metrics.reinforcements.length > 0 : metrics.reinforcements !== "0.00") ? `
+        ${(metrics.reinforcesOthersCount > 0 || metrics.reinforcedByLowerCount > 0) ? `
         <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
-            ${typeof metrics.reinforcements === 'string' ? metrics.reinforcements : 'Llista disponible'}
+            <div>Reforça altres: ${metrics.reinforcesOthersCount}</div>
+            <div>És reforçat: ${metrics.reinforcedByLowerCount}</div>
           </div>
-          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">jugadors d'altres categories</div>
+          <div style="font-size: 10px; color: #3730a3; margin-top: 4px">moviments entre categories</div>
         </div>
         ` : `
         <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
