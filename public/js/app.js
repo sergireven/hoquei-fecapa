@@ -1167,11 +1167,8 @@ function normalizeTeamKeyForMatching(name) {
   return normalizeTeamName(shortTeamDisplayName(name || ""))
     .replace(/\bhoquei\b/g, "")
     .replace(/\bclub\b/g, "")
-    .replace(/\bc\b/g, "")
-    .replace(/\bh\b/g, "")
     .replace(/\bpati\b/g, "")
     .replace(/\bcp\b/g, "")
-    .replace(/\bch\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1180,6 +1177,10 @@ function teamMatchesLoose(a, b) {
   const ka = normalizeTeamKeyForMatching(a);
   const kb = normalizeTeamKeyForMatching(b);
   if (!ka || !kb) return false;
+  const sa = extractTeamSuffix(a);
+  const sb = extractTeamSuffix(b);
+  // If both sides have explicit team letters, do not merge different squads (e.g. Ripollet B vs C).
+  if (sa && sb && sa !== sb) return false;
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 
@@ -1386,9 +1387,11 @@ function getClubIdByTeamId(teamId) {
 }
 
 let _nameMap = null;
+let _nameMapNorm = null;
 function buildNameMap() {
-  if (_nameMap||!DB) return;
+  if (_nameMap || !DB) return;
   _nameMap = new Map();
+  _nameMapNorm = new Map();
   // Use classification rows — correct mixed-case names with reliable clubId
   for (const comps of Object.values(DB.categories||{})) {
     for (const comp of comps) {
@@ -1396,8 +1399,12 @@ function buildNameMap() {
         if (!r.clubId||!r.team) continue;
         const n = r.team.toLowerCase();
         const base = n.replace(/\s+[a-z]$/,"").trim();
+        const norm = normalizeTeamKeyForMatching(r.team);
+        const baseNorm = normalizeTeamKeyForMatching(getTeamBase(r.team));
         if (!_nameMap.has(n))    _nameMap.set(n,    r.clubId);
         if (!_nameMap.has(base)) _nameMap.set(base, r.clubId);
+        if (norm && !_nameMapNorm.has(norm)) _nameMapNorm.set(norm, r.clubId);
+        if (baseNorm && !_nameMapNorm.has(baseNorm)) _nameMapNorm.set(baseNorm, r.clubId);
       }
     }
   }
@@ -1406,10 +1413,14 @@ function buildNameMap() {
 function getClubId(name) {
   if (!DB||!name) return null;
   buildNameMap();
-  const n    = name.toLowerCase();
-  const base = n.replace(/\s+[a-d]$/,"").trim();
+  const n = String(name).toLowerCase();
+  const base = n.replace(/\s+[a-z]$/, "").trim();
+  const norm = normalizeTeamKeyForMatching(name);
+  const baseNorm = normalizeTeamKeyForMatching(getTeamBase(name));
   if (_nameMap.has(n))    return _nameMap.get(n);
   if (_nameMap.has(base)) return _nameMap.get(base);
+  if (norm && _nameMapNorm?.has(norm)) return _nameMapNorm.get(norm);
+  if (baseNorm && _nameMapNorm?.has(baseNorm)) return _nameMapNorm.get(baseNorm);
   for (const [k,v] of _nameMap) {
     if (k.length>5 && (k.includes(base)||base.includes(k))) return v;
   }
@@ -1573,8 +1584,9 @@ function classifSourceBadgeHtml(comp) {
 //-- Busca competicions
 function findComp(compId) {
   if (!DB) return null;
+  const wanted = String(compId || "");
   for (const comps of Object.values(DB.categories)) {
-    const c = comps.find(c=>c.id===compId);
+    const c = comps.find(c => String(c?.id || "") === wanted);
     if (c) return c;
   }
   return null;
@@ -1905,12 +1917,16 @@ function matchCard(m, myTeam, compId) {
   }
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
+  const encHome = encodeURIComponent(String(m.home || ""));
+  const encAway = encodeURIComponent(String(m.away || ""));
+  const encComp = encodeURIComponent(String(effectiveCompId || ""));
+  const encMine = encodeURIComponent(String(myTeam || ""));
   const homeAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encHome}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
     : "";
 
   const awayAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encAway}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
@@ -3825,12 +3841,7 @@ function normalizeTeamName(name) {
     .replace(/&gt;/g, ">")
     .replace(/[''´`]/g, "")
     .replace(/[-–—]/g, "-")
-    .replace(/[àáäâ]/g, "a")
-    .replace(/[èéëê]/g, "e")
-    .replace(/[ìíïî]/g, "i")
-    .replace(/[òóöô]/g, "o")
-    .replace(/[ùúüû]/g, "u")
-    .replace(/ç/g, "c")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ");
@@ -4367,7 +4378,14 @@ window.openRivalAnalysis = async function(teamName, compId, referenceTeamName = 
     return;
   }
 
-  const teamInClassif = findBestClassifRow(comp.classification || [], teamName);
+  let teamInClassif = findBestClassifRow(comp.classification || [], teamName);
+  // Pilot safety: recover the best row from calendar aliases when source names differ.
+  if (!teamInClassif) {
+    const calCandidates = [...new Set([...(comp.calendar || []).map(m => m.home), ...(comp.calendar || []).map(m => m.away)].filter(Boolean))];
+    const alias = calCandidates.find(t => normalizeTeamNameStrict(t) === normalizeTeamNameStrict(teamName))
+      || calCandidates.find(t => teamMatchesLoose(t, teamName));
+    if (alias) teamInClassif = findBestClassifRow(comp.classification || [], alias);
+  }
 
   if (!teamInClassif) {
     console.error("Equip no trobat:", teamName);
