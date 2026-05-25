@@ -1650,7 +1650,7 @@ function applyClassificationSourceMerge() {
 function classifSourceBadgeHtml(comp) {
   const src = comp?.classificationSource;
   if (src === "fecapa") {
-    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🛡️</span><span>fecapa</span></span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f2ff;border:1px solid #bfdbfe;color:#003da5;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span style="width:14px;height:10px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span><span>fecapa</span></span>`;
   }
   if (src === "jok") {
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
@@ -1956,6 +1956,78 @@ const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
 const teamIn = teamMatchesLoose;
 const isActive = comp => (comp.pctPlayed||0) < 100;
 
+function isDescansaTeamName(teamName) {
+  const n = normalizeCompKey(teamName || "");
+  return n === "descansa" || n === "descans" || n.startsWith("descansa ");
+}
+
+function scoredCalendarMatchesCount(comp) {
+  return (comp?.calendar || []).filter(m => m?.homeScore != null && m?.awayScore != null).length;
+}
+
+function unresolvedCalendarMatchesCount(comp) {
+  return (comp?.calendar || []).filter(m =>
+    (m?.homeScore == null || m?.awayScore == null) &&
+    String(m?.time || "") === "00:00"
+  ).length;
+}
+
+function buildDetailCompView(baseComp) {
+  if (!baseComp || !DB?.categories) return baseComp;
+
+  const catKey = getCatForComp(baseComp);
+  const nameKey = normalizeCompKey(baseComp.name || "");
+  const siblings = (DB.categories?.[catKey] || [])
+    .filter(c => normalizeCompKey(c?.name || "") === nameKey);
+
+  if (siblings.length <= 1) {
+    return {
+      ...baseComp,
+      detailMergeInfo: {
+        merged: false,
+        baseCompId: String(baseComp.id || ""),
+        classificationFromCompId: String(baseComp.id || ""),
+        calendarFromCompId: String(baseComp.id || ""),
+        sameNameCompIds: [String(baseComp.id || "")],
+      },
+    };
+  }
+
+  const classScore = c => {
+    const rows = hasClassRows(c?.classification) ? c.classification.length : 0;
+    return rows * 100 + scoredCalendarMatchesCount(c);
+  };
+  const calScore = c => {
+    const scored = scoredCalendarMatchesCount(c);
+    const unresolved = unresolvedCalendarMatchesCount(c);
+    return (scored * 10) + (c?.calendar?.length || 0) + Number(c?.pctPlayed || 0) - (unresolved * 2);
+  };
+
+  const bestClassComp = siblings.reduce((best, c) => classScore(c) > classScore(best) ? c : best, siblings[0]);
+  const bestCalendarComp = siblings.reduce((best, c) => calScore(c) > calScore(best) ? c : best, siblings[0]);
+
+  const merged = {
+    ...baseComp,
+    classification: Array.isArray(bestClassComp?.classification) ? bestClassComp.classification : [],
+    calendar: Array.isArray(bestCalendarComp?.calendar)
+      ? bestCalendarComp.calendar.map(m => ({ ...m, compId: String(bestCalendarComp.id || baseComp.id || "") }))
+      : [],
+    pctPlayed: Math.max(...siblings.map(c => Number(c?.pctPlayed || 0))),
+    detailMergeInfo: {
+      merged: String(bestClassComp?.id || "") !== String(baseComp.id || "") || String(bestCalendarComp?.id || "") !== String(baseComp.id || ""),
+      baseCompId: String(baseComp.id || ""),
+      classificationFromCompId: String(bestClassComp?.id || baseComp.id || ""),
+      calendarFromCompId: String(bestCalendarComp?.id || baseComp.id || ""),
+      sameNameCompIds: siblings.map(c => String(c?.id || "")).filter(Boolean),
+    },
+  };
+
+  if (bestClassComp?.classificationSource) merged.classificationSource = bestClassComp.classificationSource;
+  if (bestClassComp?.classificationPilot) merged.classificationPilot = bestClassComp.classificationPilot;
+
+  return merged;
+}
+
 // Parse DD-MM date to sortable number (MMDD)
 function dateSort(m) {
   if (!m.date) return 9999;
@@ -1983,7 +2055,10 @@ function getLastAndNext(matches, teamName) {
 function matchCard(m, myTeam, compId) {
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
-  const cidH   = getClubId(m.home), cidA = getClubId(m.away);
+  const isByeHome = isDescansaTeamName(m.home);
+  const isByeAway = isDescansaTeamName(m.away);
+  const cidH   = isByeHome ? null : getClubId(m.home);
+  const cidA   = isByeAway ? null : getClubId(m.away);
   const acta   = getMatchActa(m);
   const hasActa = !!(acta && (acta.actaUrl || acta.url));
 
@@ -2014,7 +2089,7 @@ function matchCard(m, myTeam, compId) {
 
   // Afegir icona de ubicació si no és jugat i hi ha coordenades
   let venueIcon = "";
-  if (!played && venuesDB?.venues?.[m.home]) {
+  if (!played && !isByeHome && venuesDB?.venues?.[m.home]) {
     const coords = venuesDB.venues[m.home];
     if (coords.lat && coords.lng) {
       const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
@@ -2031,11 +2106,11 @@ function matchCard(m, myTeam, compId) {
   const encAway = encodeURIComponent(String(m.away || ""));
   const encComp = encodeURIComponent(String(effectiveCompId || ""));
   const encMine = encodeURIComponent(String(myTeam || ""));
-  const homeAnalysisIcon = !played && effectiveCompId
+  const homeAnalysisIcon = !played && effectiveCompId && !isByeHome
     ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encHome}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
     : "";
 
-  const awayAnalysisIcon = !played && effectiveCompId
+  const awayAnalysisIcon = !played && effectiveCompId && !isByeAway
     ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encAway}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
@@ -2049,7 +2124,7 @@ function matchCard(m, myTeam, compId) {
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.home))}</span>
           ${homeAnalysisIcon}
-          ${shieldImg(cidH,22)}
+          ${isByeHome ? "" : shieldImg(cidH,22)}
         </div>
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
@@ -2058,7 +2133,7 @@ function matchCard(m, myTeam, compId) {
           ${venueIcon}
         </div>
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
-          ${shieldImg(cidA,22)}
+          ${isByeAway ? "" : shieldImg(cidA,22)}
           ${awayAnalysisIcon}
           <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
         </div>
@@ -3462,7 +3537,9 @@ window.addFavFromPicker = function() {
 let detailComp=null, detailTeam=null, detailTab="classif";
 
 function openDetail(compId,teamName,tab){
-  detailComp=findComp(compId); detailTeam=teamName||null; detailTab=tab||"classif";
+  const rawComp = findComp(compId);
+  detailComp = buildDetailCompView(rawComp);
+  detailTeam=teamName||null; detailTab=tab||"classif";
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
@@ -3470,11 +3547,20 @@ function openDetail(compId,teamName,tab){
   const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
   const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
   const eqLabel = (detailComp.classification||[]).length; 
+  const isAdmin = currentProfile?.role === "admin";
+  const pilotCfg = CLASSIFICATION_SOURCE_PILOTS.find(p => String(p.jokCompId) === String(detailComp.id));
+  const pilotMap = detailComp.classificationPilot || null;
+  const mergeInfo = detailComp.detailMergeInfo || null;
+  const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
+    <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
+    <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>
+    ${mergeInfo && mergeInfo.merged ? `<div><span style="font-weight:700;color:#1a2035">Vista fusionada:</span> classif de ${esc(mergeInfo.classificationFromCompId || "?")} · calendari de ${esc(mergeInfo.calendarFromCompId || "?")} · candidats: ${esc((mergeInfo.sameNameCompIds || []).join(", "))}</div>` : ""}
+  </div>` : "";
   $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
     <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
     ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
-  </div>`;
+  </div>${adminMeta}`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
   renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
