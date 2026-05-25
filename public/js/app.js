@@ -3841,12 +3841,7 @@ function normalizeTeamName(name) {
     .replace(/&gt;/g, ">")
     .replace(/[''´`]/g, "")
     .replace(/[-–—]/g, "-")
-    .replace(/[àáäâ]/g, "a")
-    .replace(/[èéëê]/g, "e")
-    .replace(/[ìíïî]/g, "i")
-    .replace(/[òóöô]/g, "o")
-    .replace(/[ùúüû]/g, "u")
-    .replace(/ç/g, "c")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ");
