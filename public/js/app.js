@@ -1917,12 +1917,16 @@ function matchCard(m, myTeam, compId) {
   }
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
+  const encHome = encodeURIComponent(String(m.home || ""));
+  const encAway = encodeURIComponent(String(m.away || ""));
+  const encComp = encodeURIComponent(String(effectiveCompId || ""));
+  const encMine = encodeURIComponent(String(myTeam || ""));
   const homeAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Home lupa clicked:', '${m.home}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.home)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encHome}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.home}">🔍</button>`
     : "";
 
   const awayAnalysisIcon = !played && effectiveCompId
-    ? `<button onclick="console.log('Away lupa clicked:', '${m.away}', '${effectiveCompId}'); event.stopPropagation(); openRivalAnalysis('${esc(m.away)}', '${effectiveCompId}', '${esc(myTeam || "")}')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
+    ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encAway}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
   const clickAttrs = hasActa
