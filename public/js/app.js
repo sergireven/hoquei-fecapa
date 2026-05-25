@@ -8,6 +8,24 @@ const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
 const CLASSIFICATION_SOURCE_PILOTS = [
+  // ── PREBENJAMÍ PLATA BARCELONA (3949) ───────────────────────
+  { jokCompId: "4191", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 1" },
+  { jokCompId: "4192", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 2" },
+  { jokCompId: "4193", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 3" },
+  { jokCompId: "4194", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 4" },
+  { jokCompId: "4195", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 5" },
+  { jokCompId: "4196", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 6" },
+  // ── PREBENJAMÍ OR BARCELONA 2ª FASE (4300) ──────────────────
+  { jokCompId: "4301", fecapaCompetitionId: "4300", preferredGroupToken: "OR 1" },
+  { jokCompId: "4302", fecapaCompetitionId: "4300", preferredGroupToken: "OR 2" },
+  { jokCompId: "4303", fecapaCompetitionId: "4300", preferredGroupToken: "OR 3" },
+  // ── PREBENJAMÍ PLATA BARCELONA 2ª FASE (4304) ───────────────
+  { jokCompId: "4305", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 1" },
+  { jokCompId: "4311", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 2" },
+  { jokCompId: "4307", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 3" },
+  { jokCompId: "4308", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 4" },
+  { jokCompId: "4309", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 5" },
+  { jokCompId: "4310", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 6" },
   // ── BENJAMÍ OR BARCELONA (3946) ──────────────────────────────
   { jokCompId: "4141", fecapaCompetitionId: "3946", preferredGroupToken: "OR 1" },
   { jokCompId: "4143", fecapaCompetitionId: "3946", preferredGroupToken: "OR 2" },
