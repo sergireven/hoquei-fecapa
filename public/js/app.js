@@ -8,21 +8,44 @@ const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
 const CLASSIFICATION_SOURCE_PILOTS = [
-  {
-    jokCompId: "4478",
-    fecapaCompetitionId: "4452",
-    preferredGroupToken: "PLATA 4",
-  },
-  {
-    jokCompId: "4479",
-    fecapaCompetitionId: "4452",
-    preferredGroupToken: "PLATA 5",
-  },
-  {
-    jokCompId: "4480",
-    fecapaCompetitionId: "4452",
-    preferredGroupToken: "PLATA 6",
-  },
+  // ── BENJAMÍ OR BARCELONA (3946) ──────────────────────────────
+  { jokCompId: "4141", fecapaCompetitionId: "3946", preferredGroupToken: "OR 1" },
+  { jokCompId: "4143", fecapaCompetitionId: "3946", preferredGroupToken: "OR 2" },
+  { jokCompId: "4144", fecapaCompetitionId: "3946", preferredGroupToken: "OR 3" },
+  { jokCompId: "4145", fecapaCompetitionId: "3946", preferredGroupToken: "OR 4" },
+  { jokCompId: "4147", fecapaCompetitionId: "3946", preferredGroupToken: "OR 5" },
+  { jokCompId: "4149", fecapaCompetitionId: "3946", preferredGroupToken: "OR 6" },
+  // ── BENJAMÍ PLATA BARCELONA (3947) ───────────────────────────
+  { jokCompId: "4158", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 1" },
+  { jokCompId: "4222", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 2" },
+  { jokCompId: "4224", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 3" },
+  { jokCompId: "4225", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 4" },
+  { jokCompId: "4226", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 5" },
+  { jokCompId: "4227", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 6" },
+  { jokCompId: "4228", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 7" },
+  { jokCompId: "4229", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 8" },
+  // ── BENJAMÍ COPA BARCELONA 2ª FASE (4452) ────────────────────
+  { jokCompId: "4475", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 1" },
+  { jokCompId: "4476", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 2" },
+  { jokCompId: "4477", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 3" },
+  { jokCompId: "4478", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 4" },
+  { jokCompId: "4479", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 5" },
+  { jokCompId: "4480", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 6" },
+  // ── BENJAMÍ COPA FEDERACIÓ 2ª FASE (4459) ────────────────────
+  { jokCompId: "4481", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 1" },
+  { jokCompId: "4482", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 2" },
+  { jokCompId: "4483", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 3" },
+  // ── BENJAMÍ RANKING 2ª FASE (4463) ───────────────────────────
+  { jokCompId: "4484", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 1" },
+  { jokCompId: "4485", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 2" },
+  { jokCompId: "4486", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 3" },
+  { jokCompId: "4487", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 4" },
+  { jokCompId: "4488", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 5" },
+  // ── BENJAMÍ OR BARCELONA PREFERENT 2ª FASE (4469) ────────────
+  { jokCompId: "4470", fecapaCompetitionId: "4469", preferredGroupToken: "OR P1" },
+  { jokCompId: "4471", fecapaCompetitionId: "4469", preferredGroupToken: "OR P2" },
+  { jokCompId: "4472", fecapaCompetitionId: "4469", preferredGroupToken: "OR P3" },
+  { jokCompId: "4473", fecapaCompetitionId: "4469", preferredGroupToken: "OR P4" },
 ];
 
 // ── Supabase auth ─────────────────────────────────────────────
