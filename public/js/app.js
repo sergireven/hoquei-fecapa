@@ -1606,6 +1606,40 @@ async function loadCatActes(slug) {
   return actesCache[slug];
 }
 
+async function preloadReinforcementActes(comp, teamName, teamInClassif, currentCatSlug, actes) {
+  const teamPlayerIds = new Set();
+  const teamAliases = [teamName, teamInClassif?.team].filter(Boolean);
+
+  const sideMatchesTeam = (sideName) => {
+    if (!sideName) return false;
+    return teamAliases.some(alias => normalizeTeamName(sideName) === normalizeTeamName(alias) || teamMatchesLoose(sideName, alias));
+  };
+
+  for (const acta of Object.values(actes || {})) {
+    if (String(acta?.compId || "") !== String(comp?.id || "")) continue;
+    const isHome = sideMatchesTeam(acta.home || "");
+    const isAway = sideMatchesTeam(acta.away || "");
+    if (!isHome && !isAway) continue;
+    const players = isHome ? (acta.playerStats?.homePlayers || []) : (acta.playerStats?.awayPlayers || []);
+    for (const p of players) {
+      if (p?.jugadorId != null) teamPlayerIds.add(String(p.jugadorId));
+    }
+  }
+
+  const extraCats = new Set();
+  for (const pid of teamPlayerIds) {
+    const player = DB?.jugadors?.[pid];
+    for (const src of (player?.sources || [])) {
+      if (src?.type !== "acta" || src?.id == null) continue;
+      const slug = DB?.actesIndex?.[String(src.id)];
+      if (!slug || slug === currentCatSlug) continue;
+      extraCats.add(slug);
+    }
+  }
+
+  await Promise.all([...extraCats].map(slug => loadCatActes(slug)));
+}
+
 function findActa(actaId) {
   if (!DB || !actaId) return null;
   const id = String(actaId);
@@ -3891,7 +3925,9 @@ function parseMatchTimestamp(dateInput, compName = "") {
 }
 
 function competitionStrengthScore(compName) {
-  const n = String(compName || "").toUpperCase();
+  const n = String(compName || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
 
   const ageBase = /NACIONAL\s*CATALANA/.test(n) ? 90
     : /PRIMERA\s*CATALANA|\b1A?\s*CATALANA/.test(n) ? 85
@@ -4288,43 +4324,77 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
   const playerInOtherCat = new Set();
   const reinforceOthers = new Set();
   const reinforcedByLower = new Set();
-  const currentCompStrength = competitionStrengthScore(comp.name || "");
-  const currentClubId = rowClubId(teamRow) || getClubId(calTeamName) || null;
-
-  const teamBelongsToCurrentClub = (teamName) => {
-    if (!teamName) return false;
-    if (currentClubId) {
-      const sideClubId = getClubId(teamName);
-      if (sideClubId && sideClubId === currentClubId) return true;
-    }
-    return teamMatchesLoose(teamName, calTeamName);
+  const alsoFemPlayers = new Set();
+  const categoryStageFromCompName = (name) => {
+    const n = String(name || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase();
+    if (/NACIONAL\s*CATALANA|PRIMERA\s*CATALANA|\b1A?\s*CATALANA|SEGONA\s*CATALANA|\b2A?\s*CATALANA|TERCERA\s*CATALANA|\b3A?\s*CATALANA/.test(n)) return 7;
+    if (/JUNIOR/.test(n)) return 6;
+    if (/JUVENIL/.test(n)) return 5;
+    if (/INFANTIL/.test(n)) return 4;
+    if (/ALEVI/.test(n)) return 3;
+    if (/BENJAMI/.test(n)) return 2;
+    if (/PREBENJAMI/.test(n)) return 1;
+    return null;
   };
 
-  for (const categoryActes of Object.values(allActesData)) {
-    for (const acta of Object.values(categoryActes)) {
-      if (String(acta.compId) === String(comp.id)) continue;
-      const homeMatchesClub = teamBelongsToCurrentClub(acta.home || "");
-      const awayMatchesClub = teamBelongsToCurrentClub(acta.away || "");
-      if (!homeMatchesClub && !awayMatchesClub) continue;
+  const categoryStageFromCatSlug = (cat) => {
+    const c = String(cat || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    if (c === "prebenjami") return 1;
+    if (c === "benjami") return 2;
+    if (c === "alevi") return 3;
+    if (c === "infantil") return 4;
+    if (c === "juvenil") return 5;
+    if (c === "junior") return 6;
+    if (["nacional-catalana", "1a-catalana", "2a-catalana", "3a-catalana", "altres", "veterans"].includes(c)) return 7;
+    return null;
+  };
 
-      const sidesPlayers = [];
-      if (homeMatchesClub) sidesPlayers.push(...(acta.playerStats?.homePlayers || []));
-      if (awayMatchesClub) sidesPlayers.push(...(acta.playerStats?.awayPlayers || []));
+  const currentCategoryStage = categoryStageFromCompName(comp?.name || "");
 
-      for (const p of sidesPlayers) {
-        if (p.jugadorId && playerStats[p.jugadorId]) {
-          playerInOtherCat.add(p.jugadorId);
-          const otherComp = findComp(acta.compId);
-          const otherStrength = competitionStrengthScore(otherComp?.name || "");
-          if (otherStrength > currentCompStrength) reinforceOthers.add(p.jugadorId);
-          if (otherStrength < currentCompStrength) reinforcedByLower.add(p.jugadorId);
-        }
+  reinforceOthers.clear();
+  reinforcedByLower.clear();
+  playerInOtherCat.clear();
+  alsoFemPlayers.clear();
+
+  for (const pid of Object.keys(playerStats)) {
+    const player = DB?.jugadors?.[pid];
+    if (!player) continue;
+
+    let hasUp = false;
+    let hasDown = false;
+    let hasFem = false;
+
+    for (const ts of (player.teamStats || [])) {
+      const cat = String(ts?.cat || "");
+      if (!cat) continue;
+      const catNorm = cat.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      if (catNorm === "fem") {
+        hasFem = true;
+        continue;
       }
+      const stage = categoryStageFromCatSlug(catNorm);
+      if (stage == null || currentCategoryStage == null) continue;
+      if (stage > currentCategoryStage) hasUp = true;
+      else if (stage < currentCategoryStage) hasDown = true;
     }
+
+    if (hasUp || hasDown || hasFem) playerInOtherCat.add(pid);
+    if (hasUp) reinforceOthers.add(pid);
+    if (hasDown) reinforcedByLower.add(pid);
+    if (hasFem) alsoFemPlayers.add(pid);
   }
+
   const totalKnownPlayers = Object.keys(playerStats).length;
   const reinforcementRatio = totalKnownPlayers > 0 ? (playerInOtherCat.size / totalKnownPlayers).toFixed(2) : "0.00";
   const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${totalKnownPlayers} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
+  const alsoFemNames = [...alsoFemPlayers]
+    .map(pid => playerStats[pid]?.name)
+    .filter(Boolean)
+    .sort((a, b) => String(a).localeCompare(String(b), "ca"));
 
   // 12. Millorament vs 1ª ronda
   const improvement = "N/A";
@@ -4333,6 +4403,7 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
     teamName: calTeamName,
     trend,
     recentForm,
+    recentFormOldToNew: [...recentForm].reverse(),
     avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
     avgGoals: Math.round(avgGoals * 100) / 100,
     avgGoalsAgainst: teamMatches.length > 0 ? Math.round((goalsAgainst / teamRow.pj) * 100) / 100 : 0,
@@ -4351,6 +4422,8 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
     reinforcements,
     reinforcesOthersCount: reinforceOthers.size,
     reinforcedByLowerCount: reinforcedByLower.size,
+    alsoFemCount: alsoFemPlayers.size,
+    alsoFemNames,
     probabilityModel,
     referenceTeamName,
     avgAge,
@@ -4397,6 +4470,9 @@ window.openRivalAnalysis = async function(teamName, compId, referenceTeamName = 
   // Load actes for this competition
   const catSlug = getCatSlugForComp(comp);
   const actes = catSlug ? await loadCatActes(catSlug) : {};
+
+  // Ensure reinforcement analysis sees categories where current squad players also appear.
+  await preloadReinforcementActes(comp, teamName, teamInClassif, catSlug, actes);
 
   // Load actes from other categories for reinforcements analysis
   const allActes = { ...actesCache };
@@ -4451,7 +4527,7 @@ function showRivalModal(metrics, teamName) {
             <span style="color: #dc2626"> ${metrics.trend.l}L</span>
           </div>
           <div style="display:flex;justify-content:center;gap:6px;margin:6px 0 2px">
-            ${(metrics.recentForm || []).map(r => `<span title="${r === "W" ? "Victòria" : r === "D" ? "Empat" : "Derrota"}" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${r === "W" ? "#16a34a" : r === "D" ? "#d97706" : "#dc2626"}"></span>`).join("")}
+            ${(metrics.recentFormOldToNew || metrics.recentForm || []).map(r => `<span title="${r === "W" ? "Victòria" : r === "D" ? "Empat" : "Derrota"}" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${r === "W" ? "#16a34a" : r === "D" ? "#d97706" : "#dc2626"}"></span>`).join("")}
           </div>
           <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
         </div>
@@ -4533,13 +4609,15 @@ function showRivalModal(metrics, teamName) {
         </div>
         `}
 
-        ${(metrics.reinforcesOthersCount > 0 || metrics.reinforcedByLowerCount > 0) ? `
+        ${(metrics.reinforcesOthersCount > 0 || metrics.reinforcedByLowerCount > 0 || (metrics.alsoFemCount || 0) > 0) ? `
         <div style="background: #e0e7ff; border-radius: 12px; padding: 16px; text-align: center" title="Jugadors que jugan en altres categories / total de jugadors * 100">
           <div style="font-size: 12px; color: #3730a3; text-transform: uppercase; font-weight: 700">🆙 Reforços</div>
           <div style="font-size: 20px; color: #3730a3; margin-top: 8px; line-height: 1.4; font-weight: 700">
             <div>Reforça altres: ${metrics.reinforcesOthersCount}</div>
             <div>És reforçat: ${metrics.reinforcedByLowerCount}</div>
+            <div>També al FEM: ${metrics.alsoFemCount || 0}</div>
           </div>
+          ${(metrics.alsoFemNames || []).length ? `<div style="font-size:11px;color:#3730a3;margin-top:6px;line-height:1.35">${(metrics.alsoFemNames || []).map(n => esc(n)).join(", ")}</div>` : ""}
           <div style="font-size: 10px; color: #3730a3; margin-top: 4px">moviments entre categories</div>
         </div>
         ` : `
