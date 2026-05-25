@@ -15,6 +15,10 @@ const CLASSIFICATION_SOURCE_PILOTS = [
   { jokCompId: "4194", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 4" },
   { jokCompId: "4195", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 5" },
   { jokCompId: "4196", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 6" },
+  // ── PREBENJAMÍ BRONZE TARRAGONA (3960) ──────────────────────
+  { jokCompId: "4237", fecapaCompetitionId: "3960", preferredGroupToken: "BRONZE TARRAGONA" },
+  { jokCompId: "4595", fecapaCompetitionId: "3960", preferredGroupToken: "GRUP A" },
+  { jokCompId: "4598", fecapaCompetitionId: "3960", preferredGroupToken: "GRUP B" },
   // ── PREBENJAMÍ OR BARCELONA 2ª FASE (4300) ──────────────────
   { jokCompId: "4301", fecapaCompetitionId: "4300", preferredGroupToken: "OR 1" },
   { jokCompId: "4302", fecapaCompetitionId: "4300", preferredGroupToken: "OR 2" },
