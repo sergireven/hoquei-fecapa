@@ -4300,28 +4300,60 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
     return teamMatchesLoose(teamName, calTeamName);
   };
 
+  const categoryStageFromCompName = (name) => {
+    const n = String(name || "").toUpperCase();
+    if (/NACIONAL\s*CATALANA|PRIMERA\s*CATALANA|\b1A?\s*CATALANA|SEGONA\s*CATALANA|\b2A?\s*CATALANA|TERCERA\s*CATALANA|\b3A?\s*CATALANA/.test(n)) return 7;
+    if (/JUNIOR/.test(n)) return 6;
+    if (/JUVENIL/.test(n)) return 5;
+    if (/INFANTIL/.test(n)) return 4;
+    if (/ALEVI/.test(n)) return 3;
+    if (/BENJAMI/.test(n)) return 2;
+    if (/PREBENJAMI/.test(n)) return 1;
+    return null;
+  };
+
+  const currentCategoryStage = categoryStageFromCompName(comp?.name || "");
+  const classifyReinforcementDirection = (otherComp) => {
+    const otherCategoryStage = categoryStageFromCompName(otherComp?.name || "");
+
+    // Primary rule: reinforcement direction is based on category ladder.
+    if (currentCategoryStage != null && otherCategoryStage != null && otherCategoryStage !== currentCategoryStage) {
+      if (otherCategoryStage > currentCategoryStage) return "up";
+      if (otherCategoryStage < currentCategoryStage) return "down";
+    }
+
+    // Fallback when category cannot be inferred from competition name.
+    const otherStrength = competitionStrengthScore(otherComp?.name || "");
+    if (otherStrength > currentCompStrength) return "up";
+    if (otherStrength < currentCompStrength) return "down";
+    return "none";
+  };
+
+  reinforceOthers.clear();
+  reinforcedByLower.clear();
+  playerInOtherCat.clear();
+
   for (const categoryActes of Object.values(allActesData)) {
     for (const acta of Object.values(categoryActes)) {
       if (String(acta.compId) === String(comp.id)) continue;
-      const homeMatchesClub = teamBelongsToCurrentClub(acta.home || "");
-      const awayMatchesClub = teamBelongsToCurrentClub(acta.away || "");
-      if (!homeMatchesClub && !awayMatchesClub) continue;
+      const otherComp = findComp(acta.compId);
 
-      const sidesPlayers = [];
-      if (homeMatchesClub) sidesPlayers.push(...(acta.playerStats?.homePlayers || []));
-      if (awayMatchesClub) sidesPlayers.push(...(acta.playerStats?.awayPlayers || []));
-
-      for (const p of sidesPlayers) {
-        if (p.jugadorId && playerStats[p.jugadorId]) {
+      const processSide = (sideTeamName, players) => {
+        if (!teamBelongsToCurrentClub(sideTeamName || "")) return;
+        const direction = classifyReinforcementDirection(otherComp);
+        for (const p of (players || [])) {
+          if (!(p.jugadorId && playerStats[p.jugadorId])) continue;
           playerInOtherCat.add(p.jugadorId);
-          const otherComp = findComp(acta.compId);
-          const otherStrength = competitionStrengthScore(otherComp?.name || "");
-          if (otherStrength > currentCompStrength) reinforceOthers.add(p.jugadorId);
-          if (otherStrength < currentCompStrength) reinforcedByLower.add(p.jugadorId);
+          if (direction === "up") reinforceOthers.add(p.jugadorId);
+          else if (direction === "down") reinforcedByLower.add(p.jugadorId);
         }
-      }
+      };
+
+      processSide(acta.home, acta.playerStats?.homePlayers || []);
+      processSide(acta.away, acta.playerStats?.awayPlayers || []);
     }
   }
+
   const totalKnownPlayers = Object.keys(playerStats).length;
   const reinforcementRatio = totalKnownPlayers > 0 ? (playerInOtherCat.size / totalKnownPlayers).toFixed(2) : "0.00";
   const reinforcements = playerInOtherCat.size > 0 ? `${playerInOtherCat.size}/${totalKnownPlayers} (${(reinforcementRatio * 100).toFixed(0)}%)` : [];
@@ -4333,6 +4365,7 @@ function calculateRivalMetrics(teamName, comp, teamInClassif, actes, allActes, r
     teamName: calTeamName,
     trend,
     recentForm,
+    recentFormOldToNew: [...recentForm].reverse(),
     avgPlayersPerMatch: Math.round(avgPlayersPerMatch * 10) / 10,
     avgGoals: Math.round(avgGoals * 100) / 100,
     avgGoalsAgainst: teamMatches.length > 0 ? Math.round((goalsAgainst / teamRow.pj) * 100) / 100 : 0,
@@ -4451,7 +4484,7 @@ function showRivalModal(metrics, teamName) {
             <span style="color: #dc2626"> ${metrics.trend.l}L</span>
           </div>
           <div style="display:flex;justify-content:center;gap:6px;margin:6px 0 2px">
-            ${(metrics.recentForm || []).map(r => `<span title="${r === "W" ? "Victòria" : r === "D" ? "Empat" : "Derrota"}" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${r === "W" ? "#16a34a" : r === "D" ? "#d97706" : "#dc2626"}"></span>`).join("")}
+            ${(metrics.recentFormOldToNew || metrics.recentForm || []).map(r => `<span title="${r === "W" ? "Victòria" : r === "D" ? "Empat" : "Derrota"}" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${r === "W" ? "#16a34a" : r === "D" ? "#d97706" : "#dc2626"}"></span>`).join("")}
           </div>
           <div style="font-size: 13px; font-weight: 700; color: ${metrics.winRate >= 60 ? '#e5001c' : metrics.winRate >= 40 ? '#d97706' : '#16a34a'}">${metrics.winRate}% victòries</div>
         </div>
