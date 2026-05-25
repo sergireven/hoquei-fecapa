@@ -13,6 +13,16 @@ const CLASSIFICATION_SOURCE_PILOTS = [
     fecapaCompetitionId: "4452",
     preferredGroupToken: "PLATA 4",
   },
+  {
+    jokCompId: "4479",
+    fecapaCompetitionId: "4452",
+    preferredGroupToken: "PLATA 5",
+  },
+  {
+    jokCompId: "4480",
+    fecapaCompetitionId: "4452",
+    preferredGroupToken: "PLATA 6",
+  },
 ];
 
 // ── Supabase auth ─────────────────────────────────────────────
@@ -1173,6 +1183,8 @@ function normalizeTeamKeyForMatching(name) {
     .trim();
 }
 
+const TEAM_SQUAD_SUFFIX_RE = /\s+([A-Z])$/i;
+
 function teamMatchesLoose(a, b) {
   const ka = normalizeTeamKeyForMatching(a);
   const kb = normalizeTeamKeyForMatching(b);
@@ -1181,6 +1193,13 @@ function teamMatchesLoose(a, b) {
   const sb = extractTeamSuffix(b);
   // If both sides have explicit team letters, do not merge different squads (e.g. Ripollet B vs C).
   if (sa && sb && sa !== sb) return false;
+  // If only one side has an explicit squad suffix and the base is the same,
+  // avoid collapsing a specific squad into a generic club entry.
+  if ((sa && !sb) || (!sa && sb)) {
+    const baseA = normalizeTeamNameStrict(getTeamBase(a));
+    const baseB = normalizeTeamNameStrict(getTeamBase(b));
+    if (baseA && baseB && baseA === baseB) return false;
+  }
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 
@@ -1189,12 +1208,12 @@ function normalizeTeamNameStrict(name) {
 }
 
 function extractTeamSuffix(name) {
-  const m = String(name || "").match(/\s+([a-zA-Z])$/);
+  const m = String(name || "").match(TEAM_SQUAD_SUFFIX_RE);
   return m ? m[1].toUpperCase() : null;
 }
 
 function getTeamBase(name) {
-  return String(name || "").replace(/\s+[a-zA-Z]$/, "").trim();
+  return String(name || "").replace(TEAM_SQUAD_SUFFIX_RE, "").trim();
 }
 
 function findBestClassifRow(classificationRows, teamName) {
@@ -1435,9 +1454,43 @@ function shieldImg(clubId, size) {
   size = size||22;
   const r = size<=22?4:8, p = size>22?2:1;
   if (!clubId) return `<span style="width:${size}px;height:${size}px;background:#e8ecf4;border-radius:${r}px;display:inline-block;flex-shrink:0"></span>`;
-  // clubId can be a full filename like "278_3.png" or just "278"
-  const src = clubId.includes(".") ? SHIELD + clubId : SHIELD + clubId + ".gif";
-  return `<img src="${src}" width="${size}" height="${size}" style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="this.style.visibility='hidden'" alt=""/>`;
+  const safeId = String(clubId || "").trim();
+  const hasExt = safeId.includes(".");
+  // clubId can be a full filename like "278_3.png" or just "278".
+  // When extension is unknown, try gif -> png -> jpg before showing placeholder.
+  const src = hasExt ? SHIELD + safeId : SHIELD + safeId + ".gif";
+  const fallbackScript = hasExt
+    ? "this.onerror=null;this.style.display='none'"
+    : "if(this.dataset.try==='gif'){this.dataset.try='png';this.src=this.dataset.base+'.png';return;}if(this.dataset.try==='png'){this.dataset.try='jpg';this.src=this.dataset.base+'.jpg';return;}this.onerror=null;this.style.display='none'";
+  const dataAttrs = hasExt ? "" : ` data-base="${SHIELD + safeId}" data-try="gif"`;
+  return `<img src="${src}" width="${size}" height="${size}"${dataAttrs} style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="${fallbackScript}" alt=""/>`;
+}
+
+function runIdentityRegressionChecks() {
+  const checks = [];
+  checks.push({
+    key: "team_match_suffix_isolation",
+    ok: teamMatchesLoose("Club Hoquei Ripollet B", "Club Hoquei Ripollet C") === false,
+  });
+  checks.push({
+    key: "team_match_diacritics",
+    ok: teamMatchesLoose("CH Mataró B", "Ch Mataro B") === true,
+  });
+  checks.push({
+    key: "lupa_param_roundtrip",
+    ok: decodeURIComponent(encodeURIComponent("Cp Vilanova d'Hoquei")) === "Cp Vilanova d'Hoquei",
+  });
+  checks.push({
+    key: "shield_fallback_markup",
+    ok: /onerror=/.test(shieldImg("123", 22)),
+  });
+
+  const failed = checks.filter(c => !c.ok);
+  if (failed.length) {
+    console.warn("[regression-check] identity safeguards failed:", failed.map(c => c.key));
+  } else {
+    console.log("[regression-check] identity safeguards OK");
+  }
 }
 
 function normalizeCompKey(name) {
@@ -3847,6 +3900,7 @@ async function init(){
     }
 
     applyClassificationSourceMerge();
+    runIdentityRegressionChecks();
 
     if (DB.lastUpdate) {
       const d = new Date(DB.lastUpdate);
