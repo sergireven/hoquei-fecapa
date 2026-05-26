@@ -6,15 +6,15 @@
     "pendents": 2396
   },
   "sidgad": {
-    "runAt": "2026-05-25T16:04:33.369Z",
-    "total": 9836,
-    "enrichits": 9836,
+    "runAt": "2026-05-26T17:41:39.483Z",
+    "total": 9844,
+    "enrichits": 9844,
     "pendents": 0,
-    "processatsAquestRun": 3,
+    "processatsAquestRun": 8,
     "buitsOErrors": 0,
-    "partitsPendents": 1100,
+    "partitsPendents": 337,
     "competicions": 95,
-    "partitsSidgad": 3263,
+    "partitsSidgad": 2694,
     "classificacions": 67
   }
 }
