@@ -33,6 +33,7 @@ const TARGET_CATEGORIES = new Set([
 ]);
 const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
+const NO_MATCHES_PLAYED_MESSAGE = "Sense partits disputats";
 
 let memoryCache = null;
 let memoryCacheAt = 0;
@@ -525,6 +526,37 @@ function buildGroupId(competitionId, groupName, fallbackOrder) {
   return `${competitionId}-${tier}-${lastNumber}`;
 }
 
+function annotateCompetitionNoMatches(compData) {
+  const groups = Array.isArray(compData?.groups) ? compData.groups : [];
+  const hasAnyTeam = groups.some(g => (g?.teamCount || 0) > 0);
+
+  if (!hasAnyTeam) {
+    const annotatedGroups = groups.map(g => ({
+      ...g,
+      teamCount: Number.isFinite(g?.teamCount) ? g.teamCount : ((g?.teams || []).length || 0),
+      teams: Array.isArray(g?.teams) ? g.teams : [],
+      statusMessage: NO_MATCHES_PLAYED_MESSAGE,
+    }));
+
+    return {
+      ...compData,
+      groupCount: annotatedGroups.length,
+      teamCount: 0,
+      groups: annotatedGroups,
+      statusMessage: NO_MATCHES_PLAYED_MESSAGE,
+    };
+  }
+
+  return {
+    ...compData,
+    groups: groups.map(g => ({
+      ...g,
+      teamCount: Number.isFinite(g?.teamCount) ? g.teamCount : ((g?.teams || []).length || 0),
+      teams: Array.isArray(g?.teams) ? g.teams : [],
+    })),
+  };
+}
+
 function mapRowFromSnapshot(row) {
   return {
     position: toNumberOrNull(row?.pos),
@@ -630,7 +662,7 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
         teamCount: teams.length,
         teams,
       };
-    }).filter(g => g.teamCount > 0);
+    });
   } else if (Object.keys(byGroup).length) {
     groups = Object.entries(byGroup).map(([groupKey, rows], idx) => {
       const groupName = sanitizeSnapshotGroupName({
@@ -648,7 +680,7 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
         teamCount: teams.length,
         teams,
       };
-    }).filter(g => g.teamCount > 0);
+    });
   }
 
   if (!groups.length) {
@@ -671,16 +703,26 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
         teamCount: teams.length,
         teams,
       };
-    }).filter(g => g.teamCount > 0);
+    });
   }
 
-  return {
+  if (!groups.length) {
+    const fallbackGroupName = normalizeGroupNameForCompetition(compMeta.competitionName, compMeta.competitionName, 0);
+    groups = [{
+      groupId: buildGroupId(compMeta.competitionId, fallbackGroupName, 1),
+      groupName: fallbackGroupName,
+      teamCount: 0,
+      teams: [],
+    }];
+  }
+
+  return annotateCompetitionNoMatches({
     competitionId: compMeta.competitionId,
     competitionName: compMeta.competitionName,
     groupCount: groups.length,
     teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
     groups,
-  };
+  });
 }
 
 async function mapWithConcurrency(items, limit, mapper) {
@@ -1839,7 +1881,7 @@ async function getCategoriesData(options = {}) {
       const builtTeams = built?.teamCount || 0;
       const persistedTeams = persistedComp?.teamCount || 0;
       const shouldUsePersisted = !!persistedComp && (
-        builtTeams === 0
+        builtGroups === 0
         || persistedGroups > builtGroups
         || (persistedGroups === builtGroups && persistedTeams > builtTeams)
       );
