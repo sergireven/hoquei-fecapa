@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "description": "Pilot mappings to move classifications from jok.cat to FECAPA by competition/group",
+  "pilots": [
+    { "jokCompId": "4191", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 1" },
+    { "jokCompId": "4192", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 2" },
+    { "jokCompId": "4193", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 3" },
+    { "jokCompId": "4194", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 4" },
+    { "jokCompId": "4195", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 5" },
+    { "jokCompId": "4196", "fecapaCompetitionId": "3949", "preferredGroupToken": "PLATA 6" },
+
+    { "jokCompId": "4237", "fecapaCompetitionId": "3960", "preferredGroupToken": "BRONZE TARRAGONA" },
+    { "jokCompId": "4595", "fecapaCompetitionId": "3960", "preferredGroupToken": "GRUP A" },
+    { "jokCompId": "4598", "fecapaCompetitionId": "3960", "preferredGroupToken": "GRUP B" },
+
+    { "jokCompId": "4301", "fecapaCompetitionId": "4300", "preferredGroupToken": "OR 1" },
+    { "jokCompId": "4302", "fecapaCompetitionId": "4300", "preferredGroupToken": "OR 2" },
+    { "jokCompId": "4303", "fecapaCompetitionId": "4300", "preferredGroupToken": "OR 3" },
+
+    { "jokCompId": "4305", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 1" },
+    { "jokCompId": "4311", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 2" },
+    { "jokCompId": "4307", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 3" },
+    { "jokCompId": "4308", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 4" },
+    { "jokCompId": "4309", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 5" },
+    { "jokCompId": "4310", "fecapaCompetitionId": "4304", "preferredGroupToken": "PLATA 6" },
+
+    { "jokCompId": "4141", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 1" },
+    { "jokCompId": "4143", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 2" },
+    { "jokCompId": "4144", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 3" },
+    { "jokCompId": "4145", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 4" },
+    { "jokCompId": "4147", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 5" },
+    { "jokCompId": "4149", "fecapaCompetitionId": "3946", "preferredGroupToken": "OR 6" },
+
+    { "jokCompId": "4158", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 1" },
+    { "jokCompId": "4222", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 2" },
+    { "jokCompId": "4224", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 3" },
+    { "jokCompId": "4225", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 4" },
+    { "jokCompId": "4226", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 5" },
+    { "jokCompId": "4227", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 6" },
+    { "jokCompId": "4228", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 7" },
+    { "jokCompId": "4229", "fecapaCompetitionId": "3947", "preferredGroupToken": "PLATA 8" },
+
+    { "jokCompId": "4475", "fecapaCompetitionId": "4452", "preferredGroupToken": "OR COPA BCN 1" },
+    { "jokCompId": "4476", "fecapaCompetitionId": "4452", "preferredGroupToken": "OR COPA BCN 2" },
+    { "jokCompId": "4477", "fecapaCompetitionId": "4452", "preferredGroupToken": "OR COPA BCN 3" },
+    { "jokCompId": "4478", "fecapaCompetitionId": "4452", "preferredGroupToken": "PLATA COPA BCN 4" },
+    { "jokCompId": "4479", "fecapaCompetitionId": "4452", "preferredGroupToken": "PLATA COPA BCN 5" },
+    { "jokCompId": "4480", "fecapaCompetitionId": "4452", "preferredGroupToken": "PLATA COPA BCN 6" },
+
+    { "jokCompId": "4481", "fecapaCompetitionId": "4459", "preferredGroupToken": "COPA FCP 1" },
+    { "jokCompId": "4482", "fecapaCompetitionId": "4459", "preferredGroupToken": "COPA FCP 2" },
+    { "jokCompId": "4483", "fecapaCompetitionId": "4459", "preferredGroupToken": "COPA FCP 3" },
+
+    { "jokCompId": "4484", "fecapaCompetitionId": "4463", "preferredGroupToken": "RANKING 1" },
+    { "jokCompId": "4485", "fecapaCompetitionId": "4463", "preferredGroupToken": "RANKING 2" },
+    { "jokCompId": "4486", "fecapaCompetitionId": "4463", "preferredGroupToken": "RANKING 3" },
+    { "jokCompId": "4487", "fecapaCompetitionId": "4463", "preferredGroupToken": "RANKING 4" },
+    { "jokCompId": "4488", "fecapaCompetitionId": "4463", "preferredGroupToken": "RANKING 5" },
+
+    { "jokCompId": "4470", "fecapaCompetitionId": "4469", "preferredGroupToken": "OR P1" },
+    { "jokCompId": "4471", "fecapaCompetitionId": "4469", "preferredGroupToken": "OR P2" },
+    { "jokCompId": "4472", "fecapaCompetitionId": "4469", "preferredGroupToken": "OR P3" },
+    { "jokCompId": "4473", "fecapaCompetitionId": "4469", "preferredGroupToken": "OR P4" }
+  ]
+}
