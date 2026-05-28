@@ -1814,6 +1814,17 @@ function classifSourceBadgeHtml(comp) {
   }
   return "";
 }
+
+function classifSourceIconHtml(comp) {
+  const src = String(comp?.classificationSource || "").toLowerCase();
+  if (src === "fecapa") {
+    return `<span title="Classificació FECAPA" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:#e8f2ff;border:1px solid #bfdbfe"><span style="width:14px;height:10px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span></span>`;
+  }
+  if (src === "jok") {
+    return `<span title="Classificació jok.cat" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:#eefcf3;border:1px solid #bbf7d0;font-size:13px;line-height:1">🌐</span>`;
+  }
+  return "";
+}
 //-- Busca competicions
 function findComp(compId) {
   if (!DB) return null;
@@ -3357,6 +3368,44 @@ function renderAllComps(cursor) {
       <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
     </div>`;
 
+  const summarizeSourcesFromComps = comps => {
+    const summary = { hasFecapa: false, hasJok: false };
+    for (const c of (comps || [])) {
+      const src = String(c?.classificationSource || "").toLowerCase();
+      if (src === "fecapa") summary.hasFecapa = true;
+      if (src === "jok") summary.hasJok = true;
+      if (summary.hasFecapa && summary.hasJok) break;
+    }
+    return summary;
+  };
+
+  const mergeSourceSummary = (a, b) => ({
+    hasFecapa: !!(a?.hasFecapa || b?.hasFecapa),
+    hasJok: !!(a?.hasJok || b?.hasJok),
+  });
+
+  const summarizeNodeSources = node => {
+    let summary = summarizeSourcesFromComps(filterComps(node?.comps || []));
+    for (const [, child] of (node?.groupsArr || [])) {
+      summary = mergeSourceSummary(summary, summarizeNodeSources(child));
+      if (summary.hasFecapa && summary.hasJok) break;
+    }
+    return summary;
+  };
+
+  const renderGroupSourceIcon = summary => {
+    if (summary?.hasFecapa && summary?.hasJok) {
+      return `<span title="Sources mixtes: FECAPA + jok.cat" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #dbe3f0;border-radius:999px;padding:2px 6px;font-size:10px;color:#64748b"><span style="width:12px;height:8px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span><span>+</span><span style="font-size:11px;line-height:1">🌐</span></span>`;
+    }
+    if (summary?.hasFecapa) {
+      return `<span title="Source: FECAPA" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#e8f2ff;border:1px solid #bfdbfe;border-radius:999px"><span style="width:12px;height:8px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span></span>`;
+    }
+    if (summary?.hasJok) {
+      return `<span title="Source: jok.cat" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#eefcf3;border:1px solid #bbf7d0;border-radius:999px;font-size:11px;line-height:1">🌐</span>`;
+    }
+    return "";
+  };
+
   const isNodeOpen = (nodeKey, defaultOpen) => {
     if (Object.prototype.hasOwnProperty.call(allCompsOpenState, nodeKey)) return !!allCompsOpenState[nodeKey];
     return !!defaultOpen;
@@ -3468,12 +3517,16 @@ function renderAllComps(cursor) {
           const statsOpen4 = isNodeOpen(statsKey4, false);
           const fav4 = isLevelFav(key4);
           const comps4 = filterComps(g4.comps || []);
+          const sourceIcon4 = renderGroupSourceIcon(summarizeNodeSources(g4));
           if (!comps4.length && !statsOpen4) return "";
           return `
             <div style="margin-top:7px;padding-left:14px;border-left:2px dashed ${color}33">
               <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
                 <button onclick="toggleCompsNode('${esc(key4)}')" style="flex:1;min-width:0;text-align:left;background:#fff;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:11px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
-                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g4.label} <span style="font-size:10px;color:#94a3b8">(${comps4.length})</span></span>
+                  <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g4.label} <span style="font-size:10px;color:#94a3b8">(${comps4.length})</span></span>
+                    ${sourceIcon4}
+                  </span>
                   <span style="color:#94a3b8;flex-shrink:0">${open4 ? '▾' : '▸'}</span>
                 </button>
                 <button onclick="toggleLevelFavNode('${esc(key4)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','${esc(g4.key)}','${esc(g4.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label + ' › ' + g4.label)}','${esc(color)}','🏆')" style="background:${fav4?'#fef9c3':'#f0f4f8'};color:${fav4?'#a16207':'#6b7a99'};border:1.5px solid ${fav4?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav4?'★':'☆'}</button>
@@ -3485,13 +3538,17 @@ function renderAllComps(cursor) {
             </div>`;
         }).join("");
         const fav3 = isLevelFav(key3);
+        const sourceIcon3 = renderGroupSourceIcon(summarizeNodeSources(g3));
         const count3 = comps3.length + (g3.groupsArr||[]).reduce((a,[,x]) => a + filterComps(x.comps||[]).length, 0);
         if (!comps3.length && !level4 && !statsOpen3) return "";
         return `
           <div style="margin-top:8px;padding-left:18px;border-left:2px solid #e2e6ef">
             <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
               <button onclick="toggleCompsNode('${esc(key3)}')" style="flex:1;min-width:0;text-align:left;background:#f8fafc;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:12px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g3.label} <span style="font-size:10px;color:#94a3b8">(${count3})</span></span>
+                <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g3.label} <span style="font-size:10px;color:#94a3b8">(${count3})</span></span>
+                  ${sourceIcon3}
+                </span>
                 <span style="color:#94a3b8;flex-shrink:0">${open3 ? '▾' : '▸'}</span>
               </button>
               <button onclick="toggleLevelFavNode('${esc(key3)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','','${esc(g3.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label)}','${esc(color)}','🥉')" style="background:${fav3?'#fef9c3':'#f0f4f8'};color:${fav3?'#a16207':'#6b7a99'};border:1.5px solid ${fav3?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav3?'★':'☆'}</button>
@@ -3509,13 +3566,17 @@ function renderAllComps(cursor) {
       const fav2 = isLevelFav(key2);
       const statsKey2 = `stats:${key2}`;
       const statsOpen2 = isNodeOpen(statsKey2, false);
+      const sourceIcon2 = renderGroupSourceIcon(summarizeNodeSources(g2));
       const l2Count = level2LeafComps.length + (g2.groupsArr||[]).reduce((a,[,x])=>a+filterComps(x.comps||[]).length + (x.groupsArr||[]).reduce((aa,[,y])=>aa+filterComps(y.comps||[]).length,0),0);
       if (!level2LeafComps.length && !level3 && !statsOpen2) return "";
       return `
         <div style="margin-top:10px;padding-left:12px;border-left:3px solid ${color}33">
           <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
             <button onclick="toggleCompsNode('${esc(key2)}')" style="flex:1;min-width:0;text-align:left;background:${color}14;border:1px solid ${color}33;border-radius:8px;padding:7px 9px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:${color};display:flex;align-items:center;justify-content:space-between;gap:6px">
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g2.label} <span style="font-size:10px;color:#6b7a99;font-weight:600">(${l2Count})</span></span>
+              <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g2.label} <span style="font-size:10px;color:#6b7a99;font-weight:600">(${l2Count})</span></span>
+                ${sourceIcon2}
+              </span>
               <span style="color:${color};flex-shrink:0">${open2 ? '▾' : '▸'}</span>
             </button>
             <button onclick="toggleLevelFavNode('${esc(key2)}','${esc(meta.key)}','${esc(g2.key)}','','','${esc(g2.label)}','${esc(meta.label + ' › ' + g2.label)}','${esc(color)}','🥈')" style="background:${fav2?'#fef9c3':'#f0f4f8'};color:${fav2?'#a16207':'#6b7a99'};border:1.5px solid ${fav2?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:7px 9px;cursor:pointer;font-size:14px;flex-shrink:0" title="Favorit de nivell">${fav2?'★':'☆'}</button>
@@ -3536,6 +3597,7 @@ function renderAllComps(cursor) {
     const statsKey1 = `stats:${meta.key}`;
     const fav1 = isLevelFav(key1);
     const statsOpen1 = isNodeOpen(statsKey1, false);
+    const sourceIcon1 = renderGroupSourceIcon(summarizeNodeSources(meta));
     const l2Keys1 = (meta.groupsArr||[]).map(([,g2])=>g2.key);
     if (!topLeafComps.length && !level2 && !statsOpen1) return "";
 
@@ -3548,6 +3610,7 @@ function renderAllComps(cursor) {
                 <span style="font-size:15px">${emoji}</span>
                 <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</span>
                 <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${computeCount(meta)}</span>
+                ${sourceIcon1}
               </span>
               <span style="color:#94a3b8">${open1 ? '▾' : '▸'}</span>
             </button>
