@@ -3353,7 +3353,7 @@ function renderAllComps(cursor) {
     return total;
   };
 
-  const renderCompCard = (comp, color) => `
+  const renderCompCard = (comp, color, showSourceIcon = false) => `
     <div onclick="openDetail('${comp.id}')" style="background:#fff;border:1.5px solid #e2e6ef;border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,30,80,.04)" onmouseover="this.style.borderColor='${color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='#e2e6ef';this.style.transform='none'">
       <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
         <div style="width:36px;height:36px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -3363,6 +3363,7 @@ function renderAllComps(cursor) {
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
         </div>
+        ${showSourceIcon ? classifSourceIconHtml(comp) : ""}
         <span style="color:#cbd5e1;font-size:18px">›</span>
       </div>
       <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
@@ -3532,7 +3533,7 @@ function renderAllComps(cursor) {
                 <button onclick="toggleLevelFavNode('${esc(key4)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','${esc(g4.key)}','${esc(g4.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label + ' › ' + g4.label)}','${esc(color)}','🏆')" style="background:${fav4?'#fef9c3':'#f0f4f8'};color:${fav4?'#a16207':'#6b7a99'};border:1.5px solid ${fav4?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav4?'★':'☆'}</button>
                 <button data-sk="${esc(statsKey4)}" data-nk="${esc(key4)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen4?color:'#f0f4f8'};color:${statsOpen4?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen4?color:'#e2e6ef'};border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;flex-shrink:0" title="Estadístiques del subgrup">📊</button>
               </div>
-              ${open4 ? comps4.map(c=>renderCompCard(c, color)).join("") : ""}
+              ${open4 ? comps4.map(c=>renderCompCard(c, color, true)).join("") : ""}
               ${statsOpen4 ? renderClusterStats(g4, color) : ""}
               ${statsOpen4 ? renderConsolidatedClassif(g4, color) : ""}
             </div>`;
@@ -3554,7 +3555,7 @@ function renderAllComps(cursor) {
               <button onclick="toggleLevelFavNode('${esc(key3)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','','${esc(g3.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label)}','${esc(color)}','🥉')" style="background:${fav3?'#fef9c3':'#f0f4f8'};color:${fav3?'#a16207':'#6b7a99'};border:1.5px solid ${fav3?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav3?'★':'☆'}</button>
               ${isMiniCat && !isBenjami ? `<button data-sk="${esc(statsKey3)}" data-nk="${esc(key3)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen3?color:'#f0f4f8'};color:${statsOpen3?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen3?color:'#e2e6ef'};border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;flex-shrink:0" title="Estadístiques del subgrup">📊</button>` : ""}
             </div>
-            ${open3 ? comps3.map(c=>renderCompCard(c, color)).join("") : ""}
+            ${open3 ? comps3.map(c=>renderCompCard(c, color, true)).join("") : ""}
             ${open3 ? level4 : ""}
             ${statsOpen3 && !isBenjami ? renderClusterStats(g3, color) : ""}
             ${statsOpen3 && !isBenjami ? renderConsolidatedClassif(g3, color) : ""}
@@ -3582,7 +3583,7 @@ function renderAllComps(cursor) {
             <button onclick="toggleLevelFavNode('${esc(key2)}','${esc(meta.key)}','${esc(g2.key)}','','','${esc(g2.label)}','${esc(meta.label + ' › ' + g2.label)}','${esc(color)}','🥈')" style="background:${fav2?'#fef9c3':'#f0f4f8'};color:${fav2?'#a16207':'#6b7a99'};border:1.5px solid ${fav2?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:7px 9px;cursor:pointer;font-size:14px;flex-shrink:0" title="Favorit de nivell">${fav2?'★':'☆'}</button>
             ${showStatsL2 ? `<button data-sk="${esc(statsKey2)}" data-nk="${esc(key2)}" onclick="toggleSubgroupStats(this.dataset.sk,this.dataset.nk)" style="background:${statsOpen2?color:'#f0f4f8'};color:${statsOpen2?'#fff':'#6b7a99'};border:1.5px solid ${statsOpen2?color:'#e2e6ef'};border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;flex-shrink:0" title="Rànquing del grup">📊</button>` : ""}
           </div>
-          ${open2 ? level2LeafComps.map(c=>renderCompCard(c, color)).join("") : ""}
+          ${open2 ? level2LeafComps.map(c=>renderCompCard(c, color, true)).join("") : ""}
           ${open2 ? level3 : ""}
           ${statsOpen2 ? renderClusterStats(g2, color) : ""}
           ${statsOpen2 ? renderConsolidatedClassif(g2, color) : ""}

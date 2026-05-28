@@ -29,7 +29,7 @@ jobs:
         run: node api/process-audit-feedback-inbox.js --consume --fail-on-invalid
 
       - name: Build classification audit snapshot
-        run: node api/build-classification-audit.js
+        run: npm run build:audit
 
       - name: Check for changes
         id: git_status
@@ -46,7 +46,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add public/classification-audit-feedback.json public/classification-audit.json .github/audit-feedback/inbox .github/audit-feedback/last-process-report.json
+          git add public/classification-audit-feedback.json public/classification-audit.json public/entity-mapping.json .github/audit-feedback/inbox .github/audit-feedback/last-process-report.json
           git commit -m "chore: process audit feedback inbox [automated]"
           git push
 

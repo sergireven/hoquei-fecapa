@@ -27,20 +27,24 @@ module.exports = async (req, res) => {
   try {
     const steps = [];
 
-    console.log("🏟️ Pas 1/4: actualitzant fecapa-categories.json...");
+    console.log("🏟️ Pas 1/5: actualitzant fecapa-categories.json...");
     runNodeStep("scraper-fecapa-categories.js", 290000);
     steps.push("scraper-fecapa-categories.js");
 
-    console.log("🏒 Pas 2/4: actualitzant data.json...");
+    console.log("🏒 Pas 2/5: actualitzant data.json...");
     runNodeStep("scraper.js", 290000);
     steps.push("scraper.js");
 
-    console.log("🧭 Pas 3/4: construint classification-audit.json...");
+    console.log("🧩 Pas 3/5: construint entity-mapping.json...");
+    runNodeStep("build-entity-mapping.js", 120000);
+    steps.push("build-entity-mapping.js");
+
+    console.log("🧭 Pas 4/5: construint classification-audit.json...");
     runNodeStep("build-classification-audit.js", 120000);
     steps.push("build-classification-audit.js");
 
     // Genera el fitxer compacte per al Club Hoquei Ripollet
-    console.log("🔵 Pas 4/4: generant ripollet.json...");
+    console.log("🔵 Pas 5/5: generant ripollet.json...");
     runNodeStep("generate-ripollet.js", 10000);
     steps.push("generate-ripollet.js");
 
