@@ -1640,9 +1640,10 @@ function applyClassificationSourceMerge() {
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
       const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
+      const existingSource = String(comp.classificationSource || "").toLowerCase();
       if (hasClassRows(jokRows)) {
         comp.classification = jokRows;
-        comp.classificationSource = "jok";
+        comp.classificationSource = existingSource === "fecapa" ? "fecapa" : "jok";
       } else {
         comp.classification = [];
         comp.classificationSource = "none";
