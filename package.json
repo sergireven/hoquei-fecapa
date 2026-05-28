@@ -7,7 +7,7 @@
     "scrape:actes:load": "node api/scraper-actes-load.js",
     "scrape:sidgad": "node api/scraper-sidgad.js",
     "build:mapping": "node api/build-entity-mapping.js",
-    "build:audit": "node api/build-classification-audit.js",
+    "build:audit": "npm run build:mapping && node api/build-classification-audit.js",
     "feedback:merge": "node api/merge-audit-feedback.js",
     "feedback:process:inbox": "node api/process-audit-feedback-inbox.js",
     "dev": "npx serve public -p 3000"
