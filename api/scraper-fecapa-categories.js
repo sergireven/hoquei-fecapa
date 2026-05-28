@@ -85,7 +85,8 @@ async function main() {
     for (const [cat, comps] of Object.entries(categories)) {
       console.log(`   ${cat.toUpperCase()}: ${comps.length} competitions`);
       comps.forEach(c => {
-        console.log(`      - [${c.competitionId || "n/a"}] ${c.competitionName} (${c.groupCount} groups, ${c.teamCount} teams)`);
+        const status = c?.statusMessage ? ` — ${c.statusMessage}` : "";
+        console.log(`      - [${c.competitionId || "n/a"}] ${c.competitionName} (${c.groupCount} groups, ${c.teamCount} teams)${status}`);
       });
     }
 
