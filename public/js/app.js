@@ -2516,9 +2516,20 @@ function competitionPriority(comp) {
   return score;
 }
 
-function teamKeyFromRow(row) {
-  if (row?.teamId) return `id:${row.teamId}`;
-  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+function teamKeyFromRow(row, category) {
+  const catKey = normalizeCompKey(category || "altres");
+  if (row?.teamId) return `id:${row.teamId}::cat:${catKey}`;
+  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}::cat:${catKey}`;
+}
+
+function semanticClubKey(name) {
+  return String(name || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\b(club|hoquei|hockey|pati|patins|patin|ch|cp|hc|clubes|clubi|d|de|del|la|el|els|les)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function rowsForClubMap(comp) {
@@ -2538,7 +2549,23 @@ function rowsForClubMap(comp) {
     })
     .filter(r => String(r.team || "").trim() && !isDescansaTeamName(r.team));
 
-  return teamRows;
+  if (teamRows.length) return teamRows;
+
+  const seen = new Set();
+  const calRows = [];
+  for (const m of (comp?.calendar || [])) {
+    const pair = [m?.home, m?.away];
+    for (const rawName of pair) {
+      const team = normalizeJokClubDisplayName(rawName || "");
+      if (!team || isDescansaTeamName(team)) continue;
+      const k = team.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      calRows.push({ teamId: null, team, clubId: getClubId(team) || null });
+    }
+  }
+
+  return calRows;
 }
 
 function buildClubMap() {
@@ -2554,9 +2581,10 @@ function buildClubMap() {
         }
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row);
-        const key = teamKeyFromRow(row);
+        const category = getCatForComp(comp);
+        const key = teamKeyFromRow(row, category);
         const existingIdx = club.teams.findIndex(t => t.teamKey === key);
-        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp), teamKey:key };
+        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category, teamKey:key };
         if (existingIdx < 0) {
           club.teams.push(candidate);
         } else {
@@ -2598,6 +2626,39 @@ function buildClubMap() {
       clubMap.delete(key);
     }
   }
+
+  // Merge aliases by semantic club name (e.g. "CH Ripollet" vs "Club Hoquei Ripollet").
+  const bySemantic = new Map();
+  for (const key of clubMap.keys()) {
+    const semantic = semanticClubKey(key);
+    if (!semantic || semantic.length < 4) continue;
+    if (!bySemantic.has(semantic)) bySemantic.set(semantic, []);
+    bySemantic.get(semantic).push(key);
+  }
+
+  for (const keys of bySemantic.values()) {
+    if (keys.length <= 1) continue;
+    const canonical = [...keys].sort((a, b) => a.length - b.length)[0];
+    const main = clubMap.get(canonical);
+    if (!main) continue;
+    for (const key of keys) {
+      if (key === canonical) continue;
+      const other = clubMap.get(key);
+      if (!other) continue;
+      if (!main.clubId && other.clubId) main.clubId = other.clubId;
+      for (const t of other.teams) {
+        const existingIdx = main.teams.findIndex(x => x.teamKey === t.teamKey);
+        if (existingIdx < 0) {
+          main.teams.push(t);
+        } else {
+          const keepCandidate = competitionPriority(findComp(t.compId)) > competitionPriority(findComp(main.teams[existingIdx].compId));
+          if (keepCandidate) main.teams[existingIdx] = t;
+        }
+      }
+      clubMap.delete(key);
+    }
+  }
+
   return clubMap;
 }
 
