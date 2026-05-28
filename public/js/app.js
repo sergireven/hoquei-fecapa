@@ -2516,9 +2516,10 @@ function competitionPriority(comp) {
   return score;
 }
 
-function teamKeyFromRow(row) {
-  if (row?.teamId) return `id:${row.teamId}`;
-  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+function teamKeyFromRow(row, category) {
+  const catKey = normalizeCompKey(category || "altres");
+  if (row?.teamId) return `id:${row.teamId}::cat:${catKey}`;
+  return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}::cat:${catKey}`;
 }
 
 function rowsForClubMap(comp) {
@@ -2538,7 +2539,23 @@ function rowsForClubMap(comp) {
     })
     .filter(r => String(r.team || "").trim() && !isDescansaTeamName(r.team));
 
-  return teamRows;
+  if (teamRows.length) return teamRows;
+
+  const seen = new Set();
+  const calRows = [];
+  for (const m of (comp?.calendar || [])) {
+    const pair = [m?.home, m?.away];
+    for (const rawName of pair) {
+      const team = normalizeJokClubDisplayName(rawName || "");
+      if (!team || isDescansaTeamName(team)) continue;
+      const k = team.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      calRows.push({ teamId: null, team, clubId: getClubId(team) || null });
+    }
+  }
+
+  return calRows;
 }
 
 function buildClubMap() {
@@ -2554,9 +2571,10 @@ function buildClubMap() {
         }
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row);
-        const key = teamKeyFromRow(row);
+        const category = getCatForComp(comp);
+        const key = teamKeyFromRow(row, category);
         const existingIdx = club.teams.findIndex(t => t.teamKey === key);
-        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category:getCatForComp(comp), teamKey:key };
+        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category, teamKey:key };
         if (existingIdx < 0) {
           club.teams.push(candidate);
         } else {
