@@ -2522,6 +2522,16 @@ function teamKeyFromRow(row, category) {
   return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}::cat:${catKey}`;
 }
 
+function semanticClubKey(name) {
+  return String(name || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\b(club|hoquei|hockey|pati|patins|patin|ch|cp|hc|clubes|clubi|d|de|del|la|el|els|les)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function rowsForClubMap(comp) {
   const classRows = (comp?.classification || []).filter(r => r && String(r.team || "").trim());
   if (classRows.length) return classRows;
@@ -2616,6 +2626,39 @@ function buildClubMap() {
       clubMap.delete(key);
     }
   }
+
+  // Merge aliases by semantic club name (e.g. "CH Ripollet" vs "Club Hoquei Ripollet").
+  const bySemantic = new Map();
+  for (const key of clubMap.keys()) {
+    const semantic = semanticClubKey(key);
+    if (!semantic || semantic.length < 4) continue;
+    if (!bySemantic.has(semantic)) bySemantic.set(semantic, []);
+    bySemantic.get(semantic).push(key);
+  }
+
+  for (const keys of bySemantic.values()) {
+    if (keys.length <= 1) continue;
+    const canonical = [...keys].sort((a, b) => a.length - b.length)[0];
+    const main = clubMap.get(canonical);
+    if (!main) continue;
+    for (const key of keys) {
+      if (key === canonical) continue;
+      const other = clubMap.get(key);
+      if (!other) continue;
+      if (!main.clubId && other.clubId) main.clubId = other.clubId;
+      for (const t of other.teams) {
+        const existingIdx = main.teams.findIndex(x => x.teamKey === t.teamKey);
+        if (existingIdx < 0) {
+          main.teams.push(t);
+        } else {
+          const keepCandidate = competitionPriority(findComp(t.compId)) > competitionPriority(findComp(main.teams[existingIdx].compId));
+          if (keepCandidate) main.teams[existingIdx] = t;
+        }
+      }
+      clubMap.delete(key);
+    }
+  }
+
   return clubMap;
 }
 
