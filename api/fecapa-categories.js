@@ -34,6 +34,15 @@ const TARGET_CATEGORIES = new Set([
 const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
 const NO_MATCHES_PLAYED_MESSAGE = "Sense partits disputats";
+const PLAYOFF_UNAVAILABLE_MESSAGE = "No disponible actualment";
+
+function getEmptyGroupStatusMessage(groupName) {
+  const name = String(groupName || "").trim();
+  if (/\bplay\s*-?\s*off\b/i.test(name)) {
+    return PLAYOFF_UNAVAILABLE_MESSAGE;
+  }
+  return NO_MATCHES_PLAYED_MESSAGE;
+}
 
 let memoryCache = null;
 let memoryCacheAt = 0;
@@ -150,9 +159,7 @@ function parseClassificationByGroupSidgad(html) {
 
   while ((match = blockRe.exec(html)) !== null) {
     const groupName = normalizeText(match[1]);
-    const tableHtml = match[0].includes("<table") ? `<table>${match[2]}</table>` : match[2];
     const parsedRows = parseClassificationSidgad(`<table>${match[2]}</table>`);
-    if (!parsedRows.length) continue;
     groups.push({
       groupName: groupName || `Grup ${idx + 1}`,
       teamCount: parsedRows.length,
@@ -167,13 +174,10 @@ function parseClassificationByGroupSidgad(html) {
   idx = 0;
 
   while ((match = leagueContainerRe.exec(html)) !== null) {
-    const containerId = match[1];
     const containerContent = match[2];
     const groupName = normalizeText(containerContent.match(/<[^>]*(?:h1|h2|h3|h4|title|font-bold)[^>]*>([^<]*)<\/[^>]*>/i)?.[1] || `Grup ${idx + 1}`);
 
     const parsedRows = parseClassificationSidgad(containerContent);
-    if (!parsedRows.length) continue;
-
     groups.push({
       groupName: groupName || `Grup ${idx + 1}`,
       teamCount: parsedRows.length,
@@ -535,15 +539,21 @@ function annotateCompetitionNoMatches(compData) {
       ...g,
       teamCount: Number.isFinite(g?.teamCount) ? g.teamCount : ((g?.teams || []).length || 0),
       teams: Array.isArray(g?.teams) ? g.teams : [],
-      statusMessage: NO_MATCHES_PLAYED_MESSAGE,
+      statusMessage: getEmptyGroupStatusMessage(g?.groupName),
     }));
+
+    const competitionStatusMessage = annotatedGroups.length > 0
+      ? (annotatedGroups.every(g => g.statusMessage === PLAYOFF_UNAVAILABLE_MESSAGE)
+        ? PLAYOFF_UNAVAILABLE_MESSAGE
+        : NO_MATCHES_PLAYED_MESSAGE)
+      : NO_MATCHES_PLAYED_MESSAGE;
 
     return {
       ...compData,
       groupCount: annotatedGroups.length,
       teamCount: 0,
       groups: annotatedGroups,
-      statusMessage: NO_MATCHES_PLAYED_MESSAGE,
+      statusMessage: competitionStatusMessage,
     };
   }
 
@@ -766,15 +776,24 @@ function buildCompetitionFromParsedGroups(comp, parsedGroups) {
     groupName: normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx),
     teamCount: g.teamCount || (g.teams || []).length,
     teams: g.teams || [],
-  })).filter(g => g.teamCount > 0);
+  }));
 
-  return {
+  const normalizedGroups = groupsOut.length > 0
+    ? groupsOut
+    : [{
+      groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
+      groupName: comp.competitionName,
+      teamCount: 0,
+      teams: [],
+    }];
+
+  return annotateCompetitionNoMatches({
     competitionId: comp.competitionId,
     competitionName: comp.competitionName,
-    groupCount: groupsOut.length,
-    teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
-    groups: groupsOut,
-  };
+    groupCount: normalizedGroups.length,
+    teamCount: normalizedGroups.reduce((acc, g) => acc + g.teamCount, 0),
+    groups: normalizedGroups,
+  });
 }
 
 function isBetterCompetitionData(candidate, baseline) {
@@ -1664,13 +1683,18 @@ async function scrapeCompetitionLive(page, comp) {
       console.log(
         `[fecapa-categories] ${comp.competitionId} classification unavailable in live DOM -> soft-fallback=snapshot`
       );
-      return {
+      return annotateCompetitionNoMatches({
         competitionId: comp.competitionId,
         competitionName: comp.competitionName,
-        groupCount: 0,
+        groupCount: 1,
         teamCount: 0,
-        groups: [],
-      };
+        groups: [{
+          groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
+          groupName: comp.competitionName,
+          teamCount: 0,
+          teams: [],
+        }],
+      });
     }
 
     console.log(
@@ -1771,11 +1795,10 @@ async function scrapeCompetitionLive(page, comp) {
     groupName: normalizeGroupNameForCompetition(comp.competitionName, g.groupName, idx),
     teamCount: g.teamCount,
     teams: g.teams,
-  })).filter(g => g.teamCount > 0);
+  }));
 
   const parsedGroupsFromLeagueContainers = (domLeagueBlocks || []).map((block, idx) => {
     const rows = parseClassificationSidgad(block.html || "");
-    if (!rows.length) return null;
     const normalizedBlockName = normalizeGroupNameForCompetition(comp.competitionName, block.groupName, idx);
     return {
       groupId: buildGroupId(comp.competitionId, normalizedBlockName, idx + 1),
@@ -1783,7 +1806,7 @@ async function scrapeCompetitionLive(page, comp) {
       teamCount: rows.length,
       teams: rows,
     };
-  }).filter(Boolean);
+  });
 
   const parsedGroups = parsedGroupsFromLeagueContainers.length > parsedGroupsFromHtml.length
     ? parsedGroupsFromLeagueContainers
@@ -1806,13 +1829,22 @@ async function scrapeCompetitionLive(page, comp) {
       teams: fallbackRows,
     }] : []);
 
-  return {
+  const normalizedGroupsOut = groupsOut.length > 0
+    ? groupsOut
+    : [{
+      groupId: buildGroupId(comp.competitionId, comp.competitionName, 1),
+      groupName: comp.competitionName,
+      teamCount: 0,
+      teams: [],
+    }];
+
+  return annotateCompetitionNoMatches({
     competitionId: comp.competitionId,
     competitionName: comp.competitionName,
-    groupCount: groupsOut.length,
-    teamCount: groupsOut.reduce((acc, g) => acc + g.teamCount, 0),
-    groups: groupsOut,
-  };
+    groupCount: normalizedGroupsOut.length,
+    teamCount: normalizedGroupsOut.reduce((acc, g) => acc + g.teamCount, 0),
+    groups: normalizedGroupsOut,
+  });
 }
 
 // ── Core function: obtenir dades de categories ───────────────

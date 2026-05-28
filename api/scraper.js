@@ -1022,6 +1022,56 @@ function normCompName(name) {
     .replace(/\b(2025|2026|25|26)\b/g, "").replace(/\s+/g, " ").trim();
 }
 
+function mapFecapaRowToClassification(row) {
+  return {
+    pos: row?.position ?? null,
+    teamId: row?.teamId ? String(row.teamId) : null,
+    team: row?.teamName || "",
+    clubId: row?.logoSrc ? String(row.logoSrc) : null,
+    pts: row?.points ?? null,
+    pj: row?.played ?? null,
+    pg: row?.won ?? null,
+    pe: row?.drawn ?? null,
+    pp: row?.lost ?? null,
+    gf: row?.goalsFor ?? null,
+    gc: row?.goalsAgainst ?? null,
+    gav: row?.goalDiff ?? null,
+    pen: row?.penalties ?? null,
+  };
+}
+
+async function loadFecapaGroupClassificationIndex() {
+  const fecapaFile = path.join(__dirname, "../public/fecapa-categories.json");
+  const raw = await fs.readFile(fecapaFile, "utf8");
+  const parsed = JSON.parse(raw);
+  const categories = parsed?.categories || {};
+  const out = {}; // normalized group name -> classification rows
+
+  for (const comps of Object.values(categories)) {
+    if (!Array.isArray(comps)) continue;
+    for (const comp of comps) {
+      const groups = Array.isArray(comp?.groups) ? comp.groups : [];
+      for (const group of groups) {
+        const groupName = String(group?.groupName || "").trim();
+        const key = normCompName(groupName);
+        if (!key) continue;
+
+        const rows = (Array.isArray(group?.teams) ? group.teams : [])
+          .map(mapFecapaRowToClassification)
+          .filter(r => r.team && String(r.team).trim().length > 0);
+
+        if (!rows.length) continue;
+
+        if (!out[key] || rows.length > out[key].length) {
+          out[key] = rows;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 async function mergeSidgadCompetitions(categories, clubIndex) {
   const compFile = path.join(__dirname, "../public/competicions-sidgad.json");
   let sidgadComps;
@@ -1532,13 +1582,13 @@ async function mergejokIntoSidgad(categories) {
 
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
-  console.log("🏒 FECAPA Scraper v5 — iniciant...\n");
+  console.log("🏒 jok.cat Scraper v5 — iniciant...\n");
   const t0 = Date.now();
   const previousData = await readPreviousData();
   const previousActes = previousData?.actes || {};
   const previousJugadors = previousData?.jugadors || {};
 
-  console.log("📋 Carregant llista de competicions...");
+  console.log("📋 Carregant llista de competicions de jok.cat...");
   let listHtml;
   try {
     listHtml = await fetchText(`${BASE}/competicions`);
@@ -1553,6 +1603,10 @@ async function main() {
 
   const allComps = parseCompetitionList(listHtml);
   console.log(`   Competicions trobades: ${allComps.length}`);
+  console.log("   Debug competicions carregades (jok.cat):");
+  allComps.forEach(comp => {
+    console.log(`      - [${comp.id}] ${comp.name}`);
+  });
 
   if (allComps.length === 0) {
     // Show raw HTML snippet around season section for debugging
@@ -1693,13 +1747,38 @@ async function main() {
   buildPlayerTeamStats(output.jugadors, output.actes, compIdToCat);
   await mergeSidgadData(output.jugadors);
 
+  let fecapaGroupClassIndex = {};
+  try {
+    fecapaGroupClassIndex = await loadFecapaGroupClassificationIndex();
+    console.log(`   📚 FECAPA fallback classificació: ${Object.keys(fecapaGroupClassIndex).length} grups indexats`);
+  } catch {
+    console.log("   ℹ️  fecapa-categories.json no disponible per fallback de classificació");
+  }
+
   // MODE JOK.CAT PUR:
   // mantenim l'estructura creada però no alterem categories/classificacions
   // amb fusions de competicions SIDGAD.
+  let fecapaFallbackApplied = 0;
   for (const comps of Object.values(output.categories)) {
     for (const comp of comps) {
-      comp.classificationSource = (comp.classification && comp.classification.length > 0) ? "jok" : "none";
+      const hasJokClass = Array.isArray(comp.classification) && comp.classification.length > 0;
+      if (hasJokClass) {
+        comp.classificationSource = "jok";
+        continue;
+      }
+
+      const fallback = fecapaGroupClassIndex[normCompName(comp.name || "")];
+      if (fallback && fallback.length > 0) {
+        comp.classification = fallback;
+        comp.classificationSource = "fecapa";
+        fecapaFallbackApplied += 1;
+      } else {
+        comp.classificationSource = "none";
+      }
     }
+  }
+  if (fecapaFallbackApplied > 0) {
+    console.log(`   🔁 FECAPA fallback aplicat a ${fecapaFallbackApplied} competicions jok.cat`);
   }
   const sidgadParentMap = {};
   const sidgadChildren = {};
