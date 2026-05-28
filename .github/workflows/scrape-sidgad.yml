@@ -1,14 +1,6 @@
 name: Scrape Sidgad Data
 
 on:
-  # Executa cada dia a les 5:00 UTC (9:00 CET) — antes que categories
-  schedule:
-    - cron: '0 5 * * *'
-  
-  # Executa cada diumenge a les 22:00 UTC (02:00 CET dilluns) — refresh complet
-  # schedule:
-  #   - cron: '0 22 * * 0'
-  
   # Permet execució manual des de Actions
   workflow_dispatch:
     inputs:
