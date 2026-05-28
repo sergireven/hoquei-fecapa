@@ -27,13 +27,13 @@ module.exports = async (req, res) => {
   try {
     const steps = [];
 
-    console.log("🏒 Pas 1/4: actualitzant data.json...");
-    runNodeStep("scraper.js", 290000);
-    steps.push("scraper.js");
-
-    console.log("🏟️ Pas 2/4: actualitzant fecapa-categories.json...");
+    console.log("🏟️ Pas 1/4: actualitzant fecapa-categories.json...");
     runNodeStep("scraper-fecapa-categories.js", 290000);
     steps.push("scraper-fecapa-categories.js");
+
+    console.log("🏒 Pas 2/4: actualitzant data.json...");
+    runNodeStep("scraper.js", 290000);
+    steps.push("scraper.js");
 
     console.log("🧭 Pas 3/4: construint classification-audit.json...");
     runNodeStep("build-classification-audit.js", 120000);

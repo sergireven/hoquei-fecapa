@@ -1022,6 +1022,25 @@ function normCompName(name) {
     .replace(/\b(2025|2026|25|26)\b/g, "").replace(/\s+/g, " ").trim();
 }
 
+function buildFallbackNameKeys(name) {
+  const base = normCompName(name || "");
+  const keys = new Set();
+  if (!base) return [];
+
+  const push = (v) => {
+    const n = normCompName(v || "");
+    if (n) keys.add(n);
+  };
+
+  push(base);
+  push(base.replace(/\bBARCELONA\b/g, "BCN"));
+  push(base.replace(/\bBCN\b/g, "BARCELONA"));
+  push(base.replace(/\bBARCELONA\b/g, ""));
+  push(base.replace(/\bBCN\b/g, ""));
+
+  return [...keys];
+}
+
 function mapFecapaRowToClassification(row) {
   return {
     pos: row?.position ?? null,
@@ -1053,8 +1072,8 @@ async function loadFecapaGroupClassificationIndex() {
       const groups = Array.isArray(comp?.groups) ? comp.groups : [];
       for (const group of groups) {
         const groupName = String(group?.groupName || "").trim();
-        const key = normCompName(groupName);
-        if (!key) continue;
+        const keys = buildFallbackNameKeys(groupName);
+        if (keys.length === 0) continue;
 
         const rows = (Array.isArray(group?.teams) ? group.teams : [])
           .map(mapFecapaRowToClassification)
@@ -1062,14 +1081,30 @@ async function loadFecapaGroupClassificationIndex() {
 
         if (!rows.length) continue;
 
-        if (!out[key] || rows.length > out[key].length) {
-          out[key] = rows;
+        for (const key of keys) {
+          if (!out[key] || rows.length > out[key].length) {
+            out[key] = rows;
+          }
         }
       }
     }
   }
 
   return out;
+}
+
+function findFecapaFallbackClassification(index, compName) {
+  const keys = buildFallbackNameKeys(compName || "");
+  for (const key of keys) {
+    const rows = index[key];
+    if (rows && rows.length > 0) return rows;
+  }
+  return null;
+}
+
+function isPrebenjamiCategory(catName) {
+  const n = normCompName(catName || "");
+  return /\bPREBENJAMI\b/.test(n);
 }
 
 async function mergeSidgadCompetitions(categories, clubIndex) {
@@ -1759,15 +1794,25 @@ async function main() {
   // mantenim l'estructura creada però no alterem categories/classificacions
   // amb fusions de competicions SIDGAD.
   let fecapaFallbackApplied = 0;
-  for (const comps of Object.values(output.categories)) {
+  let prebenjamiFecapaPreferred = 0;
+  for (const [catName, comps] of Object.entries(output.categories)) {
+    const preferFecapa = isPrebenjamiCategory(catName);
     for (const comp of comps) {
       const hasJokClass = Array.isArray(comp.classification) && comp.classification.length > 0;
+      const fallback = findFecapaFallbackClassification(fecapaGroupClassIndex, comp.name || "");
+
+      if (preferFecapa && fallback && fallback.length > 0) {
+        comp.classification = fallback;
+        comp.classificationSource = "fecapa";
+        prebenjamiFecapaPreferred += 1;
+        continue;
+      }
+
       if (hasJokClass) {
         comp.classificationSource = "jok";
         continue;
       }
 
-      const fallback = fecapaGroupClassIndex[normCompName(comp.name || "")];
       if (fallback && fallback.length > 0) {
         comp.classification = fallback;
         comp.classificationSource = "fecapa";
@@ -1776,6 +1821,9 @@ async function main() {
         comp.classificationSource = "none";
       }
     }
+  }
+  if (prebenjamiFecapaPreferred > 0) {
+    console.log(`   🔁 PREBENJAMI prioritzat amb FECAPA a ${prebenjamiFecapaPreferred} competicions`);
   }
   if (fecapaFallbackApplied > 0) {
     console.log(`   🔁 FECAPA fallback aplicat a ${fecapaFallbackApplied} competicions jok.cat`);
