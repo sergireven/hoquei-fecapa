@@ -4,6 +4,7 @@ const DATA_URL = "./data.json";
 const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
+const CLASSIFICATION_SOURCE_PILOTS_URL = "./classification-source-pilots.json";
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
@@ -209,8 +210,10 @@ async function loginWithEmail() {
     _saveSoftSession(profile);
     await loadFavsFromCloud();
     closeLoginModal();
-    // Rerenderitza la vista actual (detall o home)
-    if (detailComp) {
+    // Rerenderitza segons la pantalla visible; detailComp pot quedar en memòria
+    // tot i estar a Home, i això impedia refrescar el botó d'Admin/Login.
+    const detailVisible = $("screen-detail")?.style?.display === "flex";
+    if (detailVisible && detailComp) {
       await renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
     } else {
       renderHome();
@@ -400,6 +403,7 @@ function renderAdminTopNav(activeView) {
   return `<div style="display:flex;gap:8px;margin-bottom:12px">
     ${btn("users", "Usuaris")}
     ${btn("fecapa_cats", "Classificacions FECAPA")}
+    ${btn("source_pilots", "Pilots jok→fecapa")}
     ${btn("audit", "Auditoria FECAPA↔jok")}
   </div>`;
 }
@@ -478,6 +482,98 @@ async function renderAdminFecapaCategoriesPanel(body) {
       </details>`;
   } catch (err) {
     body.innerHTML = `${renderAdminTopNav("fecapa_cats")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant fecapa-categories.json: ${esc(err?.message || "desconegut")}</div>`;
+  }
+}
+
+async function getAdminClassificationSourcePilotsModel({ force = false } = {}) {
+  if (!force && classificationSourcePilotsDB) return classificationSourcePilotsDB;
+  const res = await fetch(`${CLASSIFICATION_SOURCE_PILOTS_URL}?t=${Date.now()}`);
+  if (!res.ok) {
+    throw new Error(`No s'ha pogut carregar ${CLASSIFICATION_SOURCE_PILOTS_URL} (${res.status})`);
+  }
+  classificationSourcePilotsDB = await res.json();
+  return classificationSourcePilotsDB;
+}
+
+async function renderAdminClassificationSourcePilotsPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("source_pilots")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant pilots...</div>`;
+  try {
+    const model = await getAdminClassificationSourcePilotsModel({ force: true });
+    let fecapaModel = null;
+    try {
+      fecapaModel = await getAdminFecapaCategoriesModel({ force: false });
+    } catch {
+      fecapaModel = null;
+    }
+
+    const pilots = Array.isArray(model?.pilots) ? model.pilots : [];
+    const uniqueJok = new Set(pilots.map(p => String(p?.jokCompId || "")).filter(Boolean)).size;
+    const uniqueFecapa = new Set(pilots.map(p => String(p?.fecapaCompetitionId || "")).filter(Boolean)).size;
+
+    const jokComps = Object.values(DB?.categories || {}).flat().filter(Boolean);
+    const jokById = new Map(jokComps.map(c => [String(c?.id || ""), c]));
+
+    const fecapaComps = Object.values(fecapaModel?.categories || fecapaCategoriesDB?.categories || {})
+      .flat()
+      .filter(Boolean);
+    const fecapaById = new Map(fecapaComps.map(c => [String(c?.competitionId || ""), c]));
+
+    const resolveFecapaGroup = pilot => {
+      const comp = fecapaById.get(String(pilot?.fecapaCompetitionId || ""));
+      if (!comp) return { comp: null, group: null };
+
+      const token = normalizeCompKey(pilot?.preferredGroupToken || "");
+      const groups = Array.isArray(comp?.groups) ? comp.groups : [];
+      if (!token) return { comp, group: null };
+
+      const group = groups.find(g => normalizeCompKey(g?.groupName || "").includes(token)) || null;
+      return { comp, group };
+    };
+
+    body.innerHTML = `
+      ${renderAdminTopNav("source_pilots")}
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Pilot mappings jok.cat → FECAPA</div>
+            <div style="font-size:12px;color:#64748b">${pilots.length} mappings · ${uniqueJok} jok IDs · ${uniqueFecapa} FECAPA competicions</div>
+          </div>
+          <button onclick="adminReloadClassificationSourcePilots()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
+        </div>
+      </div>
+      <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Mappings actius (${pilots.length})</summary>
+        <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
+          ${pilots.map(p => {
+            const jokComp = jokById.get(String(p?.jokCompId || "")) || null;
+            const { comp: fecapaComp, group: fecapaGroup } = resolveFecapaGroup(p);
+            const jokGroupName = jokComp?.name || "No trobat";
+            const fecapaCompName = fecapaComp?.competitionName || "No trobada";
+            const fecapaGroupName = fecapaGroup?.groupName || "No resolt";
+            const fecapaGroupId = fecapaGroup?.groupId ? ` (#${fecapaGroup.groupId})` : "";
+
+            return `<div style="border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;background:#f8fafc">
+              <div style="font-size:11px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">jok.cat</div>
+              <div style="font-size:12px;color:#1a2035;font-weight:700">ID ${esc(String(p?.jokCompId || "?"))}</div>
+              <div style="font-size:11px;color:#475569">Grup/Lliga: ${esc(jokGroupName)}</div>
+
+              <div style="height:1px;background:#e2e8f0;margin:6px 0"></div>
+
+              <div style="font-size:11px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">FECAPA</div>
+              <div style="font-size:12px;color:#1a2035;font-weight:700">Comp ${esc(String(p?.fecapaCompetitionId || "?"))}</div>
+              <div style="font-size:11px;color:#475569">Competició: ${esc(fecapaCompName)}</div>
+              <div style="font-size:11px;color:#475569">Grup: ${esc(fecapaGroupName)}${esc(fecapaGroupId)}</div>
+              <div style="font-size:11px;color:#64748b">Token: ${esc(String(p?.preferredGroupToken || ""))}</div>
+            </div>`;
+          }).join("") || `<div style="font-size:12px;color:#94a3b8">Sense mappings</div>`}
+        </div>
+      </details>
+      <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
+        <summary style="cursor:pointer;font-weight:700;color:#1a2035">Model de dades JSON (${esc(CLASSIFICATION_SOURCE_PILOTS_URL)})</summary>
+        <pre style="margin-top:10px;white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;font-size:11px;line-height:1.5">${esc(JSON.stringify(model, null, 2))}</pre>
+      </details>`;
+  } catch (err) {
+    body.innerHTML = `${renderAdminTopNav("source_pilots")}<div style="background:#fff;border-radius:12px;border:1.5px solid #fecaca;color:#b91c1c;padding:14px">Error carregant pilots: ${esc(err?.message || "desconegut")}</div>`;
   }
 }
 
@@ -948,6 +1044,10 @@ async function renderAdminPanel() {
     await renderAdminFecapaCategoriesPanel(body);
     return;
   }
+  if (adminPanelView === "source_pilots") {
+    await renderAdminClassificationSourcePilotsPanel(body);
+    return;
+  }
   if (adminPanelView === "audit") {
     await renderAdminAuditPanel(body);
     return;
@@ -1036,7 +1136,7 @@ window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 window.adminSetView = view => {
-  adminPanelView = ["fecapa_cats", "audit"].includes(view) ? view : "users";
+  adminPanelView = ["fecapa_cats", "source_pilots", "audit"].includes(view) ? view : "users";
   renderAdminPanel();
 };
 window.adminReloadBenjamiModel = () => {
@@ -1049,6 +1149,10 @@ window.adminReloadFecapaCategories = () => {
 };
 window.adminReloadAudit = () => {
   adminAuditCache = null;
+  renderAdminPanel();
+};
+window.adminReloadClassificationSourcePilots = () => {
+  classificationSourcePilotsDB = null;
   renderAdminPanel();
 };
 window.adminAuditSetSearch = value => {
@@ -1086,6 +1190,7 @@ window.adminClearAuditFeedback = () => {
 let DB      = null;
 let venuesDB = null;
 let fecapaCategoriesDB = null;
+let classificationSourcePilotsDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
 let allSearch     = "";
@@ -1547,8 +1652,26 @@ function normalizeCompKey(name) {
     .trim();
 }
 
+function is3x3Competition(compOrName) {
+  const raw = typeof compOrName === "string" ? compOrName : (compOrName?.name || "");
+  const n = normalizeCompKey(raw);
+  return /\b3\s*x\s*3\b/.test(n) || n.includes("3x3");
+}
+
+function isPrebenjamiCompetition(comp) {
+  if (!comp) return false;
+  const cat = normalizeCompKey(getCatForComp(comp) || "");
+  const name = normalizeCompKey(comp?.name || "");
+  return cat.includes("prebenjami") || name.includes("prebenjami") || /\bpb\b/.test(name);
+}
+
 function hasClassRows(rows) {
   return Array.isArray(rows) && rows.some(r => r && String(r.team || "").trim());
+}
+
+function getClassificationSourcePilots() {
+  const loaded = classificationSourcePilotsDB?.pilots;
+  return Array.isArray(loaded) && loaded.length ? loaded : CLASSIFICATION_SOURCE_PILOTS;
 }
 
 function buildSidgadClassificationIndex(raw) {
@@ -1639,16 +1762,19 @@ function applyClassificationSourceMerge() {
 
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
+      if (is3x3Competition(comp)) continue;
+
       const jokRows = Array.isArray(comp.classification) ? comp.classification : [];
+      const existingSource = String(comp.classificationSource || "").toLowerCase();
       if (hasClassRows(jokRows)) {
         comp.classification = jokRows;
-        comp.classificationSource = "jok";
+        comp.classificationSource = existingSource === "fecapa" ? "fecapa" : "jok";
       } else {
         comp.classification = [];
         comp.classificationSource = "none";
       }
 
-      const pilot = CLASSIFICATION_SOURCE_PILOTS.find(p => String(p.jokCompId) === String(comp.id));
+      const pilot = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(comp.id));
       if (!pilot) continue;
 
       const bestFecapaGroup = bestFecapaGroupForPilot(pilot, comp);
@@ -1667,6 +1793,15 @@ function applyClassificationSourceMerge() {
       };
     }
   }
+
+  // Regla UI: prebenjamí es mostra com a font FECAPA.
+  for (const comps of Object.values(DB.categories)) {
+    for (const comp of comps) {
+      if (is3x3Competition(comp)) continue;
+      if (!isPrebenjamiCompetition(comp)) continue;
+      comp.classificationSource = "fecapa";
+    }
+  }
 }
 
 function classifSourceBadgeHtml(comp) {
@@ -1676,6 +1811,17 @@ function classifSourceBadgeHtml(comp) {
   }
   if (src === "jok") {
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:#eefcf3;border:1px solid #bbf7d0;color:#166534;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700"><span>🌐</span><span>jok.cat</span></span>`;
+  }
+  return "";
+}
+
+function classifSourceIconHtml(comp) {
+  const src = String(comp?.classificationSource || "").toLowerCase();
+  if (src === "fecapa") {
+    return `<span title="Classificació FECAPA" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:#e8f2ff;border:1px solid #bfdbfe"><span style="width:14px;height:10px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span></span>`;
+  }
+  if (src === "jok") {
+    return `<span title="Classificació jok.cat" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:#eefcf3;border:1px solid #bbf7d0;font-size:13px;line-height:1">🌐</span>`;
   }
   return "";
 }
@@ -2383,6 +2529,7 @@ function buildClubFavCard(fav, clubMap) {
 
 function buildFavCard(fav) {
   const comp=findComp(fav.compId); if (!comp) return "";
+  if (is3x3Competition(comp)) return "";
   const cl=comp.classification||[], cal=comp.calendar||[];
   const myRow=cl.find(r=>teamMatchesLoose(r.team,fav.teamName));
   const myCal=cal.filter(m=>teamIn(m.home,fav.teamName)||teamIn(m.away,fav.teamName));
@@ -2572,6 +2719,7 @@ function buildClubMap() {
   const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
+      if (is3x3Competition(comp)) continue;
       for (const row of rowsForClubMap(comp)) {
         if (!row.team) continue;
         const teamName = decodeHtml(row.team);
@@ -3106,6 +3254,7 @@ function buildCompsHierarchy() {
   const seen = new Set();
   for (const comps of Object.values(DB.categories || {})) {
     for (const comp of comps) {
+      if (is3x3Competition(comp)) continue;
       if (!comp?.id || seen.has(comp.id)) continue;
       seen.add(comp.id);
       allComps.push(comp);
@@ -3219,6 +3368,44 @@ function renderAllComps(cursor) {
       <div style="height:3px;background:#f0f4f8"><div style="height:100%;background:linear-gradient(90deg,${color},${color}88);width:${comp.pctPlayed||0}%"></div></div>
     </div>`;
 
+  const summarizeSourcesFromComps = comps => {
+    const summary = { hasFecapa: false, hasJok: false };
+    for (const c of (comps || [])) {
+      const src = String(c?.classificationSource || "").toLowerCase();
+      if (src === "fecapa") summary.hasFecapa = true;
+      if (src === "jok") summary.hasJok = true;
+      if (summary.hasFecapa && summary.hasJok) break;
+    }
+    return summary;
+  };
+
+  const mergeSourceSummary = (a, b) => ({
+    hasFecapa: !!(a?.hasFecapa || b?.hasFecapa),
+    hasJok: !!(a?.hasJok || b?.hasJok),
+  });
+
+  const summarizeNodeSources = node => {
+    let summary = summarizeSourcesFromComps(filterComps(node?.comps || []));
+    for (const [, child] of (node?.groupsArr || [])) {
+      summary = mergeSourceSummary(summary, summarizeNodeSources(child));
+      if (summary.hasFecapa && summary.hasJok) break;
+    }
+    return summary;
+  };
+
+  const renderGroupSourceIcon = summary => {
+    if (summary?.hasFecapa && summary?.hasJok) {
+      return `<span title="Sources mixtes: FECAPA + jok.cat" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #dbe3f0;border-radius:999px;padding:2px 6px;font-size:10px;color:#64748b"><span style="width:12px;height:8px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span><span>+</span><span style="font-size:11px;line-height:1">🌐</span></span>`;
+    }
+    if (summary?.hasFecapa) {
+      return `<span title="Source: FECAPA" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#e8f2ff;border:1px solid #bfdbfe;border-radius:999px"><span style="width:12px;height:8px;display:inline-block;border-radius:2px;border:1px solid rgba(0,0,0,.12);background:repeating-linear-gradient(to bottom,#facc15 0,#facc15 2px,#dc2626 2px,#dc2626 4px)"></span></span>`;
+    }
+    if (summary?.hasJok) {
+      return `<span title="Source: jok.cat" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#eefcf3;border:1px solid #bbf7d0;border-radius:999px;font-size:11px;line-height:1">🌐</span>`;
+    }
+    return "";
+  };
+
   const isNodeOpen = (nodeKey, defaultOpen) => {
     if (Object.prototype.hasOwnProperty.call(allCompsOpenState, nodeKey)) return !!allCompsOpenState[nodeKey];
     return !!defaultOpen;
@@ -3330,12 +3517,16 @@ function renderAllComps(cursor) {
           const statsOpen4 = isNodeOpen(statsKey4, false);
           const fav4 = isLevelFav(key4);
           const comps4 = filterComps(g4.comps || []);
+          const sourceIcon4 = renderGroupSourceIcon(summarizeNodeSources(g4));
           if (!comps4.length && !statsOpen4) return "";
           return `
             <div style="margin-top:7px;padding-left:14px;border-left:2px dashed ${color}33">
               <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
                 <button onclick="toggleCompsNode('${esc(key4)}')" style="flex:1;min-width:0;text-align:left;background:#fff;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:11px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
-                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g4.label} <span style="font-size:10px;color:#94a3b8">(${comps4.length})</span></span>
+                  <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g4.label} <span style="font-size:10px;color:#94a3b8">(${comps4.length})</span></span>
+                    ${sourceIcon4}
+                  </span>
                   <span style="color:#94a3b8;flex-shrink:0">${open4 ? '▾' : '▸'}</span>
                 </button>
                 <button onclick="toggleLevelFavNode('${esc(key4)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','${esc(g4.key)}','${esc(g4.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label + ' › ' + g4.label)}','${esc(color)}','🏆')" style="background:${fav4?'#fef9c3':'#f0f4f8'};color:${fav4?'#a16207':'#6b7a99'};border:1.5px solid ${fav4?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav4?'★':'☆'}</button>
@@ -3347,13 +3538,17 @@ function renderAllComps(cursor) {
             </div>`;
         }).join("");
         const fav3 = isLevelFav(key3);
+        const sourceIcon3 = renderGroupSourceIcon(summarizeNodeSources(g3));
         const count3 = comps3.length + (g3.groupsArr||[]).reduce((a,[,x]) => a + filterComps(x.comps||[]).length, 0);
         if (!comps3.length && !level4 && !statsOpen3) return "";
         return `
           <div style="margin-top:8px;padding-left:18px;border-left:2px solid #e2e6ef">
             <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
               <button onclick="toggleCompsNode('${esc(key3)}')" style="flex:1;min-width:0;text-align:left;background:#f8fafc;border:1px solid #e2e6ef;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:12px;font-weight:700;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g3.label} <span style="font-size:10px;color:#94a3b8">(${count3})</span></span>
+                <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                  <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g3.label} <span style="font-size:10px;color:#94a3b8">(${count3})</span></span>
+                  ${sourceIcon3}
+                </span>
                 <span style="color:#94a3b8;flex-shrink:0">${open3 ? '▾' : '▸'}</span>
               </button>
               <button onclick="toggleLevelFavNode('${esc(key3)}','${esc(meta.key)}','${esc(g2.key)}','${esc(g3.key)}','','${esc(g3.label)}','${esc(meta.label + ' › ' + g2.label + ' › ' + g3.label)}','${esc(color)}','🥉')" style="background:${fav3?'#fef9c3':'#f0f4f8'};color:${fav3?'#a16207':'#6b7a99'};border:1.5px solid ${fav3?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;flex-shrink:0" title="Favorit de nivell">${fav3?'★':'☆'}</button>
@@ -3371,13 +3566,17 @@ function renderAllComps(cursor) {
       const fav2 = isLevelFav(key2);
       const statsKey2 = `stats:${key2}`;
       const statsOpen2 = isNodeOpen(statsKey2, false);
+      const sourceIcon2 = renderGroupSourceIcon(summarizeNodeSources(g2));
       const l2Count = level2LeafComps.length + (g2.groupsArr||[]).reduce((a,[,x])=>a+filterComps(x.comps||[]).length + (x.groupsArr||[]).reduce((aa,[,y])=>aa+filterComps(y.comps||[]).length,0),0);
       if (!level2LeafComps.length && !level3 && !statsOpen2) return "";
       return `
         <div style="margin-top:10px;padding-left:12px;border-left:3px solid ${color}33">
           <div style="display:flex;gap:4px;align-items:stretch;margin-bottom:6px">
             <button onclick="toggleCompsNode('${esc(key2)}')" style="flex:1;min-width:0;text-align:left;background:${color}14;border:1px solid ${color}33;border-radius:8px;padding:7px 9px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:${color};display:flex;align-items:center;justify-content:space-between;gap:6px">
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g2.label} <span style="font-size:10px;color:#6b7a99;font-weight:600">(${l2Count})</span></span>
+              <span style="display:flex;align-items:center;gap:6px;min-width:0">
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g2.label} <span style="font-size:10px;color:#6b7a99;font-weight:600">(${l2Count})</span></span>
+                ${sourceIcon2}
+              </span>
               <span style="color:${color};flex-shrink:0">${open2 ? '▾' : '▸'}</span>
             </button>
             <button onclick="toggleLevelFavNode('${esc(key2)}','${esc(meta.key)}','${esc(g2.key)}','','','${esc(g2.label)}','${esc(meta.label + ' › ' + g2.label)}','${esc(color)}','🥈')" style="background:${fav2?'#fef9c3':'#f0f4f8'};color:${fav2?'#a16207':'#6b7a99'};border:1.5px solid ${fav2?'#fcd34d':'#e2e6ef'};border-radius:8px;padding:7px 9px;cursor:pointer;font-size:14px;flex-shrink:0" title="Favorit de nivell">${fav2?'★':'☆'}</button>
@@ -3398,6 +3597,7 @@ function renderAllComps(cursor) {
     const statsKey1 = `stats:${meta.key}`;
     const fav1 = isLevelFav(key1);
     const statsOpen1 = isNodeOpen(statsKey1, false);
+    const sourceIcon1 = renderGroupSourceIcon(summarizeNodeSources(meta));
     const l2Keys1 = (meta.groupsArr||[]).map(([,g2])=>g2.key);
     if (!topLeafComps.length && !level2 && !statsOpen1) return "";
 
@@ -3410,6 +3610,7 @@ function renderAllComps(cursor) {
                 <span style="font-size:15px">${emoji}</span>
                 <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</span>
                 <span style="font-size:11px;font-weight:700;color:#94a3b8;background:#e8ecf4;border-radius:10px;padding:1px 7px">${computeCount(meta)}</span>
+                ${sourceIcon1}
               </span>
               <span style="color:#94a3b8">${open1 ? '▾' : '▸'}</span>
             </button>
@@ -3651,7 +3852,7 @@ function openDetail(compId,teamName,tab){
   const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
   const eqLabel = (detailComp.classification||[]).length; 
   const isAdmin = currentProfile?.role === "admin";
-  const pilotCfg = CLASSIFICATION_SOURCE_PILOTS.find(p => String(p.jokCompId) === String(detailComp.id));
+  const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
   const pilotMap = detailComp.classificationPilot || null;
   const mergeInfo = detailComp.detailMergeInfo || null;
   const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
@@ -4100,6 +4301,14 @@ async function init(){
       if (fecapaRes.ok) fecapaCategoriesDB = await fecapaRes.json();
     } catch {
       fecapaCategoriesDB = null;
+    }
+
+    // Load optional pilot mapping config for classification source merge.
+    try {
+      const pilotsRes = await fetch(CLASSIFICATION_SOURCE_PILOTS_URL + "?t=" + Date.now());
+      if (pilotsRes.ok) classificationSourcePilotsDB = await pilotsRes.json();
+    } catch {
+      classificationSourcePilotsDB = null;
     }
 
     // Load venues/coordinates
