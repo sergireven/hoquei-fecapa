@@ -499,9 +499,36 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
   body.innerHTML = `${renderAdminTopNav("source_pilots")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant pilots...</div>`;
   try {
     const model = await getAdminClassificationSourcePilotsModel({ force: true });
+    let fecapaModel = null;
+    try {
+      fecapaModel = await getAdminFecapaCategoriesModel({ force: false });
+    } catch {
+      fecapaModel = null;
+    }
+
     const pilots = Array.isArray(model?.pilots) ? model.pilots : [];
     const uniqueJok = new Set(pilots.map(p => String(p?.jokCompId || "")).filter(Boolean)).size;
     const uniqueFecapa = new Set(pilots.map(p => String(p?.fecapaCompetitionId || "")).filter(Boolean)).size;
+
+    const jokComps = Object.values(DB?.categories || {}).flat().filter(Boolean);
+    const jokById = new Map(jokComps.map(c => [String(c?.id || ""), c]));
+
+    const fecapaComps = Object.values(fecapaModel?.categories || fecapaCategoriesDB?.categories || {})
+      .flat()
+      .filter(Boolean);
+    const fecapaById = new Map(fecapaComps.map(c => [String(c?.competitionId || ""), c]));
+
+    const resolveFecapaGroup = pilot => {
+      const comp = fecapaById.get(String(pilot?.fecapaCompetitionId || ""));
+      if (!comp) return { comp: null, group: null };
+
+      const token = normalizeCompKey(pilot?.preferredGroupToken || "");
+      const groups = Array.isArray(comp?.groups) ? comp.groups : [];
+      if (!token) return { comp, group: null };
+
+      const group = groups.find(g => normalizeCompKey(g?.groupName || "").includes(token)) || null;
+      return { comp, group };
+    };
 
     body.innerHTML = `
       ${renderAdminTopNav("source_pilots")}
@@ -517,11 +544,28 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
       <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
         <summary style="cursor:pointer;font-weight:700;color:#1a2035">Mappings actius (${pilots.length})</summary>
         <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
-          ${pilots.map(p => `<div style="border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;background:#f8fafc">
-            <div style="font-size:12px;color:#1a2035;font-weight:700">jok ${esc(String(p?.jokCompId || "?"))}</div>
-            <div style="font-size:11px;color:#64748b">FECAPA comp ${esc(String(p?.fecapaCompetitionId || "?"))}</div>
-            <div style="font-size:11px;color:#64748b">token: ${esc(String(p?.preferredGroupToken || ""))}</div>
-          </div>`).join("") || `<div style="font-size:12px;color:#94a3b8">Sense mappings</div>`}
+          ${pilots.map(p => {
+            const jokComp = jokById.get(String(p?.jokCompId || "")) || null;
+            const { comp: fecapaComp, group: fecapaGroup } = resolveFecapaGroup(p);
+            const jokGroupName = jokComp?.name || "No trobat";
+            const fecapaCompName = fecapaComp?.competitionName || "No trobada";
+            const fecapaGroupName = fecapaGroup?.groupName || "No resolt";
+            const fecapaGroupId = fecapaGroup?.groupId ? ` (#${fecapaGroup.groupId})` : "";
+
+            return `<div style="border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;background:#f8fafc">
+              <div style="font-size:11px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">jok.cat</div>
+              <div style="font-size:12px;color:#1a2035;font-weight:700">ID ${esc(String(p?.jokCompId || "?"))}</div>
+              <div style="font-size:11px;color:#475569">Grup/Lliga: ${esc(jokGroupName)}</div>
+
+              <div style="height:1px;background:#e2e8f0;margin:6px 0"></div>
+
+              <div style="font-size:11px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">FECAPA</div>
+              <div style="font-size:12px;color:#1a2035;font-weight:700">Comp ${esc(String(p?.fecapaCompetitionId || "?"))}</div>
+              <div style="font-size:11px;color:#475569">Competició: ${esc(fecapaCompName)}</div>
+              <div style="font-size:11px;color:#475569">Grup: ${esc(fecapaGroupName)}${esc(fecapaGroupId)}</div>
+              <div style="font-size:11px;color:#64748b">Token: ${esc(String(p?.preferredGroupToken || ""))}</div>
+            </div>`;
+          }).join("") || `<div style="font-size:12px;color:#94a3b8">Sense mappings</div>`}
         </div>
       </details>
       <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px">
