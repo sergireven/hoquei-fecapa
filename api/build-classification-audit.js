@@ -225,6 +225,19 @@ function jaccardScore(aWords, bWords) {
   return union > 0 ? intersection / union : 0;
 }
 
+function normalizeCompetitionNameForExactMatch(name) {
+  return normalizeText(name)
+    .replace(/\b(2025|2026|25|26|20\d{2})\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasExactCompetitionNameMatch(a, b) {
+  const na = normalizeCompetitionNameForExactMatch(a);
+  const nb = normalizeCompetitionNameForExactMatch(b);
+  return Boolean(na && nb && na === nb);
+}
+
 function teamTokens(name) {
   if (isRestPlaceholderTeamName(name)) return [];
   return normalizeText(name)
@@ -737,6 +750,24 @@ async function main() {
           bestComp = bestQualified.comp;
         }
 
+        // Cas de classificacio buida a jok.cat: si el nom coincideix exactament,
+        // acceptem el mapping encara que no hi hagi evidència per equips.
+        if (!bestQualified && bestId && bestComp) {
+          const jokTeamCount = bestComp?.classification?.length || 0;
+          const semanticName = String(group.groupName || fecapaName || "");
+          if (jokTeamCount === 0 && hasExactCompetitionNameMatch(semanticName, bestComp.name || "")) {
+            bestQualified = {
+              id: bestId,
+              ratio: bestRatio,
+              score: bestScoreBreakdown.compositeScore,
+              scoreBreakdown: bestScoreBreakdown,
+              matchesInfo: bestMatchesInfo,
+              comp: bestComp,
+              nameOnly: true,
+            };
+          }
+        }
+
         const hasUsefulSuggestionSignal =
           bestMatchesInfo.matched > 0
           || bestScoreBreakdown.teamsScore >= Math.max(0.2, thresholds.minTeamScore * 0.5)
@@ -744,7 +775,7 @@ async function main() {
 
         let hasMappedJokcat = Boolean(bestQualified && bestId);
         let matchSource = hasMappedJokcat
-          ? (bestQualified?.crossCategoryRescue ? "auto_cross_category" : "auto")
+          ? (bestQualified?.crossCategoryRescue ? "auto_cross_category" : (bestQualified?.nameOnly ? "auto_name_only" : "auto"))
           : "none";
 
         if (manualFeedback?.manualJokcatGroupId) {

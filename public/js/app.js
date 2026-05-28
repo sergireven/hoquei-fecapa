@@ -2521,11 +2521,31 @@ function teamKeyFromRow(row) {
   return `name:${String(row?.team || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
 }
 
+function rowsForClubMap(comp) {
+  const classRows = (comp?.classification || []).filter(r => r && String(r.team || "").trim());
+  if (classRows.length) return classRows;
+
+  const teamRows = (comp?.teams || [])
+    .map(t => {
+      const teamId = t?.id || t?.teamId || null;
+      const teamName = normalizeJokClubDisplayName(t?.name || t?.teamName || "");
+      const clubId = teamId ? (comp?.teamToClub?.[String(teamId)] || null) : null;
+      return {
+        teamId,
+        team: teamName,
+        clubId,
+      };
+    })
+    .filter(r => String(r.team || "").trim() && !isDescansaTeamName(r.team));
+
+  return teamRows;
+}
+
 function buildClubMap() {
   const clubMap = new Map(); // normalizedName → { displayName, clubId, teams:[] }
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
-      for (const row of (comp.classification||[])) {
+      for (const row of rowsForClubMap(comp)) {
         if (!row.team) continue;
         const teamName = decodeHtml(row.team);
         const clubName = teamName.toLowerCase().replace(/\s+[a-e]$/,"").trim();
