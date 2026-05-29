@@ -9,36 +9,30 @@ const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
 const CLASSIFICATION_SOURCE_PILOTS = [
-  // ── PREBENJAMÍ PLATA BARCELONA (3949) ───────────────────────
   { jokCompId: "4191", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 1" },
   { jokCompId: "4192", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 2" },
   { jokCompId: "4193", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 3" },
   { jokCompId: "4194", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 4" },
   { jokCompId: "4195", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 5" },
   { jokCompId: "4196", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 6" },
-  // ── PREBENJAMÍ BRONZE TARRAGONA (3960) ──────────────────────
   { jokCompId: "4237", fecapaCompetitionId: "3960", preferredGroupToken: "BRONZE TARRAGONA" },
   { jokCompId: "4595", fecapaCompetitionId: "3960", preferredGroupToken: "GRUP A" },
   { jokCompId: "4598", fecapaCompetitionId: "3960", preferredGroupToken: "GRUP B" },
-  // ── PREBENJAMÍ OR BARCELONA 2ª FASE (4300) ──────────────────
   { jokCompId: "4301", fecapaCompetitionId: "4300", preferredGroupToken: "OR 1" },
   { jokCompId: "4302", fecapaCompetitionId: "4300", preferredGroupToken: "OR 2" },
   { jokCompId: "4303", fecapaCompetitionId: "4300", preferredGroupToken: "OR 3" },
-  // ── PREBENJAMÍ PLATA BARCELONA 2ª FASE (4304) ───────────────
   { jokCompId: "4305", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 1" },
   { jokCompId: "4311", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 2" },
   { jokCompId: "4307", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 3" },
   { jokCompId: "4308", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 4" },
   { jokCompId: "4309", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 5" },
   { jokCompId: "4310", fecapaCompetitionId: "4304", preferredGroupToken: "PLATA 6" },
-  // ── BENJAMÍ OR BARCELONA (3946) ──────────────────────────────
   { jokCompId: "4141", fecapaCompetitionId: "3946", preferredGroupToken: "OR 1" },
   { jokCompId: "4143", fecapaCompetitionId: "3946", preferredGroupToken: "OR 2" },
   { jokCompId: "4144", fecapaCompetitionId: "3946", preferredGroupToken: "OR 3" },
   { jokCompId: "4145", fecapaCompetitionId: "3946", preferredGroupToken: "OR 4" },
   { jokCompId: "4147", fecapaCompetitionId: "3946", preferredGroupToken: "OR 5" },
   { jokCompId: "4149", fecapaCompetitionId: "3946", preferredGroupToken: "OR 6" },
-  // ── BENJAMÍ PLATA BARCELONA (3947) ───────────────────────────
   { jokCompId: "4158", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 1" },
   { jokCompId: "4222", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 2" },
   { jokCompId: "4224", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 3" },
@@ -47,28 +41,57 @@ const CLASSIFICATION_SOURCE_PILOTS = [
   { jokCompId: "4227", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 6" },
   { jokCompId: "4228", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 7" },
   { jokCompId: "4229", fecapaCompetitionId: "3947", preferredGroupToken: "PLATA 8" },
-  // ── BENJAMÍ COPA BARCELONA 2ª FASE (4452) ────────────────────
   { jokCompId: "4475", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 1" },
   { jokCompId: "4476", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 2" },
   { jokCompId: "4477", fecapaCompetitionId: "4452", preferredGroupToken: "OR COPA BCN 3" },
   { jokCompId: "4478", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 4" },
   { jokCompId: "4479", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 5" },
   { jokCompId: "4480", fecapaCompetitionId: "4452", preferredGroupToken: "PLATA COPA BCN 6" },
-  // ── BENJAMÍ COPA FEDERACIÓ 2ª FASE (4459) ────────────────────
   { jokCompId: "4481", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 1" },
   { jokCompId: "4482", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 2" },
   { jokCompId: "4483", fecapaCompetitionId: "4459", preferredGroupToken: "COPA FCP 3" },
-  // ── BENJAMÍ RANKING 2ª FASE (4463) ───────────────────────────
   { jokCompId: "4484", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 1" },
   { jokCompId: "4485", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 2" },
   { jokCompId: "4486", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 3" },
   { jokCompId: "4487", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 4" },
   { jokCompId: "4488", fecapaCompetitionId: "4463", preferredGroupToken: "RANKING 5" },
-  // ── BENJAMÍ OR BARCELONA PREFERENT 2ª FASE (4469) ────────────
   { jokCompId: "4470", fecapaCompetitionId: "4469", preferredGroupToken: "OR P1" },
   { jokCompId: "4471", fecapaCompetitionId: "4469", preferredGroupToken: "OR P2" },
   { jokCompId: "4472", fecapaCompetitionId: "4469", preferredGroupToken: "OR P3" },
   { jokCompId: "4473", fecapaCompetitionId: "4469", preferredGroupToken: "OR P4" },
+  { jokCompId: "4104", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 1" },
+  { jokCompId: "4105", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 2" },
+  { jokCompId: "4106", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 3" },
+  { jokCompId: "4107", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 4" },
+  { jokCompId: "4108", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 5" },
+  { jokCompId: "4109", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 6" },
+  { jokCompId: "4110", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 7" },
+  { jokCompId: "4111", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 8" },
+  { jokCompId: "4112", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 9" },
+  { jokCompId: "4113", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 10" },
+  { jokCompId: "4339", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR CC1" },
+  { jokCompId: "4340", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR CC2" },
+  { jokCompId: "4341", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR CC3" },
+  { jokCompId: "4342", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR CC4" },
+  { jokCompId: "4343", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR RK 1" },
+  { jokCompId: "4344", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR RK 2" },
+  { jokCompId: "4345", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR RK 3" },
+  { jokCompId: "4412", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR P1" },
+  { jokCompId: "4413", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR P2" },
+  { jokCompId: "4414", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR P3" },
+  { jokCompId: "4415", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR P4" },
+  { jokCompId: "4621", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 17 AL 20" },
+  { jokCompId: "4622", fecapaCompetitionId: "3934", preferredGroupToken: "INFANTIL OR 21 AL 24" },
+  { jokCompId: "4083", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA 1" },
+  { jokCompId: "4084", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA 2" },
+  { jokCompId: "4085", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA 3" },
+  { jokCompId: "4086", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA 4" },
+  { jokCompId: "4357", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA CC1" },
+  { jokCompId: "4358", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA CC2" },
+  { jokCompId: "4359", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA CF1" },
+  { jokCompId: "4360", fecapaCompetitionId: "3931", preferredGroupToken: "JÚNIOR PLATA CF2" },
+  { jokCompId: "4088", fecapaCompetitionId: "3930", preferredGroupToken: "JÚNIOR OR 1" },
+  { jokCompId: "4074", fecapaCompetitionId: "3933", preferredGroupToken: "JUVENIL PLATA 1" },
 ];
 
 // ── Supabase auth ─────────────────────────────────────────────
@@ -76,8 +99,112 @@ const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 const SOFT_SESSION_KEY = "hoquei_user_v1";
+const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
+
+function loadUserLocationStore() {
+  try { return JSON.parse(localStorage.getItem(USER_LOCATION_KEY) || "{}"); }
+  catch { return {}; }
+}
+
+function saveUserLocationStore(store) {
+  localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(store || {}));
+}
+
+function getCurrentUserLocation() {
+  const userId = String(currentUser?.id || "");
+  if (!userId) return null;
+  const store = loadUserLocationStore();
+  const loc = store?.[userId] || null;
+  if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return null;
+  return loc;
+}
+
+function setCurrentUserLocation(location) {
+  const userId = String(currentUser?.id || "");
+  if (!userId || !location) return;
+  const store = loadUserLocationStore();
+  store[userId] = {
+    label: String(location.label || "").trim(),
+    lat: Number(location.lat),
+    lng: Number(location.lng),
+    updatedAt: new Date().toISOString(),
+  };
+  saveUserLocationStore(store);
+}
+
+async function geocodeUserArea(query) {
+  const q = String(query || "").trim();
+  if (!q) throw new Error("Indica una ciutat o barri");
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es,ad&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url, {
+    headers: { "Accept": "application/json" },
+  });
+  if (!res.ok) throw new Error(`No s'ha pogut geocodificar (${res.status})`);
+
+  const rows = await res.json();
+  if (!Array.isArray(rows) || !rows.length) throw new Error("No s'ha trobat cap ubicació");
+
+  const best = rows[0] || {};
+  const lat = Number(best.lat);
+  const lng = Number(best.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Resposta de geocodificació invàlida");
+
+  return {
+    label: q,
+    lat,
+    lng,
+  };
+}
+
+function haversineKm(fromLat, fromLng, toLat, toLng) {
+  const toRad = deg => (deg * Math.PI) / 180;
+  const dLat = toRad(toLat - fromLat);
+  const dLng = toRad(toLng - fromLng);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
+}
+
+function getVenueCoordinates(teamName) {
+  if (!venuesDB?.venues || !teamName) return null;
+  const venue = venuesDB.venues[teamName];
+  if (!venue) return null;
+  const rawLat = venue?.lat ?? venue?.coordinates?.lat;
+  const rawLng = venue?.lng ?? venue?.coordinates?.lng;
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function estimateTravelForMatch(match, myTeam) {
+  if (!currentUser?.id || !match || !myTeam) return null;
+  const played = match.played !== false && match.homeScore != null;
+  if (played) return null;
+  const isLocal = teamIn(match.home, myTeam);
+  if (isLocal) return null;
+
+  const userLoc = getCurrentUserLocation();
+  if (!userLoc) return null;
+
+  const venueCoords = getVenueCoordinates(match.home);
+  if (!venueCoords) return null;
+
+  const km = haversineKm(userLoc.lat, userLoc.lng, venueCoords.lat, venueCoords.lng);
+  if (!Number.isFinite(km)) return null;
+
+  const avgSpeedKmh = 35;
+  const minutes = Math.max(8, Math.round((km / avgSpeedKmh) * 60));
+  return {
+    km,
+    minutes,
+    originLabel: userLoc.label,
+  };
+}
 
 function _saveSoftSession(profile) {
   localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
@@ -238,6 +365,7 @@ window.sendMagicLink  = loginWithEmail; // alias
 // User menu modal
 function openUserModal() {
   const roleLabel = currentProfile?.role === "admin" ? "Administrador" : currentProfile?.role === "entrenador" ? "Entrenador" : "Usuari";
+  const userLoc = getCurrentUserLocation();
   const adminBtn  = currentProfile?.role === "admin"
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
     : "";
@@ -252,6 +380,16 @@ function openUserModal() {
         <div id="user-team-msg" style="margin-top:6px;font-size:12px;color:#64748b"></div>
       </div>`
     : "";
+  const locationSection = `<div style="margin-bottom:16px">
+      <div style="font-size:13px;color:#64748b;margin-bottom:6px">La teva zona (ciutat o barri)</div>
+      <div style="display:flex;gap:8px">
+        <input id="user-location-input" type="text" value="${esc(userLoc?.label || "")}" placeholder="Ex.: Gràcia, Barcelona"
+          style="flex:1;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none"/>
+        <button onclick="saveUserLocation()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer">Desar</button>
+      </div>
+      <div style="margin-top:5px;font-size:11px;color:#94a3b8">Només a nivell ciutat/barri. No guardis adreça exacta.</div>
+      <div id="user-location-msg" style="margin-top:6px;font-size:12px;color:#64748b">${userLoc ? `Actual: ${esc(userLoc.label)} · ${new Date(userLoc.updatedAt || Date.now()).toLocaleString("ca-ES")}` : ""}</div>
+    </div>`;
   $("user-modal-body").innerHTML = `
     <div style="padding:20px 18px 32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
@@ -264,6 +402,7 @@ function openUserModal() {
         <div style="margin-top:8px;font-size:12px;color:#64748b">Rol: <span style="font-weight:700;color:#1a2035">${roleLabel}</span></div>
       </div>
       ${teamSection}
+      ${locationSection}
       ${adminBtn}
       <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
     </div>`;
@@ -287,6 +426,35 @@ async function saveTeamName() {
     msg.style.color = "#16a34a"; msg.textContent = "✓ Desat";
   }
 }
+
+async function saveUserLocation() {
+  const input = $("user-location-input");
+  const msg = $("user-location-msg");
+  if (!currentUser?.id || !input || !msg) return;
+
+  const query = String(input.value || "").trim();
+  if (!query) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Introdueix una ciutat o barri.";
+    return;
+  }
+
+  msg.style.color = "#64748b";
+  msg.textContent = "Geocodificant...";
+
+  try {
+    const loc = await geocodeUserArea(query);
+    setCurrentUserLocation(loc);
+    msg.style.color = "#16a34a";
+    msg.textContent = `✓ Ubicació desada: ${loc.label}`;
+    const homeVisible = $("screen-home")?.style?.display === "flex";
+    if (homeVisible) renderHome();
+  } catch (err) {
+    msg.style.color = "#e5001c";
+    msg.textContent = `Error: ${err?.message || "No s'ha pogut desar"}`;
+  }
+}
+
 async function signOut() {
   await _sb?.auth.signOut();
   currentUser = null; currentProfile = null;
@@ -296,6 +464,7 @@ async function signOut() {
 }
 window.signOut         = signOut;
 window.saveTeamName    = saveTeamName;
+window.saveUserLocation = saveUserLocation;
 window.openLoginModal  = openLoginModal;
 window.closeLoginModal = closeLoginModal;
 window.openUserModal   = openUserModal;
@@ -309,7 +478,7 @@ let adminFecapaCategoriesCache = null;
 let adminEntityMappingCache = null;
 let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
-let adminMappingIssueFilters = { error: true, warning: false, outdated: false };
+let adminMappingIssueFilters = { error: true, warning: false, outdated: false, mapping_ok_fecapa_empty: true };
 let adminMappingIncidentExpandAll = null;
 
 const numOrNull = raw => {
@@ -829,6 +998,25 @@ function normalizeAuditSearchText(value) {
     .toLowerCase();
 }
 
+function normalizeAuditMappingName(value) {
+  return normalizeAuditSearchText(value)
+    .replace(/\(\d{4}\s*-\s*\d{2,4}\)/g, " ")
+    .replace(/\b\d{4}\s*-\s*\d{2,4}\b/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasSameNameMapping(entry, grp) {
+  const jokName = normalizeAuditMappingName(grp?.jokcatCompName || grp?.suggestedJokcatCompName || "");
+  if (!jokName) return false;
+  const candidates = [
+    normalizeAuditMappingName(entry?.competitionName || ""),
+    normalizeAuditMappingName(grp?.groupName || ""),
+  ].filter(Boolean);
+  return candidates.some(name => name === jokName || name.includes(jokName) || jokName.includes(name));
+}
+
 function auditGroupMatchesQuery(entry, grp, queryNorm) {
   if (!queryNorm) return true;
   const haystack = normalizeAuditSearchText([
@@ -1188,6 +1376,8 @@ async function renderAdminMappingHubPanel(body) {
       const hasFinal = Boolean(grp.jokcatCompId);
       const hasSuggested = Boolean(grp.suggestedJokcatCompId);
       const ratio = Number(grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio || 0);
+      const fecapaRows = Array.isArray(grp.fecapaClassification) ? grp.fecapaClassification.length : 0;
+      const mappingOkButFecapaEmpty = isFecapaGroup && !hasFinal && hasSuggested && fecapaRows === 0 && hasSameNameMapping(entry, grp);
 
       const issueTypes = [];
       let status = "ok";
@@ -1196,6 +1386,10 @@ async function renderAdminMappingHubPanel(body) {
         status = "error";
         issueTypes.push("error");
         reason = "Grup només detectat a jok.cat (sense grup FECAPA equivalent)";
+      } else if (mappingOkButFecapaEmpty) {
+        status = "ok";
+        issueTypes.push("mapping_ok_fecapa_empty");
+        reason = "Mapping OK però FECAPA buit (mateix nom)";
       } else if (!hasFinal && hasSuggested) {
         status = "error";
         issueTypes.push("error");
@@ -1234,7 +1428,7 @@ async function renderAdminMappingHubPanel(body) {
   const visibleIssueCounts = visibleGroups.reduce((acc, row) => {
     for (const key of row.issueTypes) acc[key] = (acc[key] || 0) + 1;
     return acc;
-  }, { error: 0, warning: 0, outdated: 0 });
+  }, { error: 0, warning: 0, outdated: 0, mapping_ok_fecapa_empty: 0 });
 
   const groupedByCategory = groups => {
     const map = new Map();
@@ -1262,6 +1456,7 @@ async function renderAdminMappingHubPanel(body) {
         <span style="font-size:10px;font-weight:800;color:${color};text-transform:uppercase">${status}</span>
         ${issueTypes.includes("warning") ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">warning</span>` : ""}
         ${issueTypes.includes("outdated") ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">JOK desactualitzat</span>` : ""}
+        ${issueTypes.includes("mapping_ok_fecapa_empty") ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Mapping OK · FECAPA buit</span>` : ""}
         <span style="font-size:12px;font-weight:700;color:#1a2035">${esc(entry.competitionName)}</span>
         <span style="font-size:11px;color:#475569">FECAPA: ${esc(grp.groupName || "—")}</span>
         <span style="font-size:11px;color:#475569">jok: ${esc(effectiveJokName)}</span>
@@ -1364,6 +1559,7 @@ async function renderAdminMappingHubPanel(body) {
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Errors</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#b91c1c">${visibleIssueCounts.error}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Warnings</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#92400e">${visibleIssueCounts.warning}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">JOK desactualitzat</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1d4ed8">${visibleIssueCounts.outdated}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Mapping OK · FECAPA buit</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${visibleIssueCounts.mapping_ok_fecapa_empty}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Correctes</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${okGroups.length}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Pilots</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${pilots.length}</div></div>
       </div>
@@ -1393,6 +1589,7 @@ async function renderAdminMappingHubPanel(body) {
             ["error", "Error", "#b91c1c"],
             ["warning", "Warning", "#92400e"],
             ["outdated", "JOK desactualitzat", "#1d4ed8"],
+            ["mapping_ok_fecapa_empty", "Mapping OK però FECAPA buit", "#166534"],
           ].map(([key, label, color]) => `<label style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;color:${color};cursor:pointer"><input type="checkbox" ${adminMappingIssueFilters[key] ? "checked" : ""} onchange="adminMappingToggleIssueFilter('${key}', this.checked)" style="accent-color:${color}" />${label}</label>`).join("")}
           <button onclick="adminMappingToggleIncidents(true)" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Descol·lapsar tot</button>
           <button onclick="adminMappingToggleIncidents(false)" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Col·lapsar tot</button>
@@ -2454,9 +2651,9 @@ function playerTableHtml(players, teamName, teamColor) {
 
 function getVenueLinks(teamName) {
   if (!venuesDB?.venues || !teamName) return "";
-  const venue = venuesDB.venues[teamName];
-  if (!venue?.coordinates) return "";
-  const { lat, lng } = venue.coordinates;
+  const coords = getVenueCoordinates(teamName);
+  if (!coords) return "";
+  const { lat, lng } = coords;
   if (!lat || !lng) return "";
   return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
     <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
@@ -2669,7 +2866,8 @@ function getLastAndNext(matches, teamName) {
 }
 
 // ── Match card ────────────────────────────────────────────────
-function matchCard(m, myTeam, compId) {
+function matchCard(m, myTeam, compId, options = {}) {
+  const { showTravel = false } = options || {};
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const isByeHome = isDescansaTeamName(m.home);
@@ -2706,8 +2904,9 @@ function matchCard(m, myTeam, compId) {
 
   // Afegir icona de ubicació si no és jugat i hi ha coordenades
   let venueIcon = "";
-  if (!played && !isByeHome && venuesDB?.venues?.[m.home]) {
-    const coords = venuesDB.venues[m.home];
+  const venueCoords = !played && !isByeHome ? getVenueCoordinates(m.home) : null;
+  if (venueCoords) {
+    const coords = venueCoords;
     if (coords.lat && coords.lng) {
       const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
       const mapsUrl = isApple
@@ -2717,6 +2916,11 @@ function matchCard(m, myTeam, compId) {
       venueIcon = `<div style="text-align:center;margin-top:6px"><a href="${isApple?mapsApp:mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;text-decoration:none;cursor:pointer">📍</a></div>`;
     }
   }
+
+  const travel = showTravel ? estimateTravelForMatch(m, myTeam) : null;
+  const travelHtml = travel
+    ? `<div style="margin-top:5px;font-size:10px;color:#0f766e;font-weight:700">🚗 ~${travel.minutes} min · ${travel.km.toFixed(1)} km</div>`
+    : "";
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const encHome = encodeURIComponent(String(m.home || ""));
@@ -2746,6 +2950,7 @@ function matchCard(m, myTeam, compId) {
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${m.jornada?`J${m.jornada} · `:""}${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          ${travelHtml}
           ${actaBadge}
           ${venueIcon}
         </div>
@@ -3033,7 +3238,7 @@ function buildFavCard(fav) {
       ${classifHtml}
       <div style="padding:9px 12px">
         ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName,fav.compId)}`:""}
-        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId,{ showTravel:true })}`:""}
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
