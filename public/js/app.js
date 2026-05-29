@@ -4566,6 +4566,13 @@ window.addFavFromPicker = function() {
 // ── DETAIL ────────────────────────────────────────────────────
 let detailComp=null, detailTeam=null, detailTab="classif";
 
+function getJokCompetitionUrl(comp) {
+  if (!comp?.id) return "https://jok.cat/";
+  const slug = String(comp?.slug || "").trim();
+  if (slug) return `https://jok.cat/competicio/${comp.id}/${slug}`;
+  return `https://jok.cat/competicio/${comp.id}`;
+}
+
 function openDetail(compId,teamName,tab){
   const rawComp = findComp(compId);
   detailComp = buildDetailCompView(rawComp);
@@ -4784,7 +4791,7 @@ function setupListeners(){
 async function renderDetailClassif(){
   const cl=detailComp.classification||[];
   const sourceBadge = classifSourceBadgeHtml(detailComp);
-  if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
+  if (!cl.length){ $("panel-classif").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Classificació no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
 
   const resolveTeamName = name => resolveCanonicalClassifTeamName(cl, name);
 
@@ -4906,7 +4913,7 @@ async function renderDetailClassif(){
 function renderDetailCalendar(){
   const all=detailComp.calendar||[];
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
-  if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="https://jok.cat/competicio/${detailComp.id}" target="_blank">jok.cat →</a></div>`; return; }
+  if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
   const names=[...new Set([...all.map(m=>m.home),...all.map(m=>m.away)].filter(Boolean))].sort();
   const chips=`<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
