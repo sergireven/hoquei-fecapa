@@ -304,6 +304,7 @@ let adminFecapaCategoriesCache = null;
 let adminEntityMappingCache = null;
 let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
+let adminMappingIssueFilters = { error: true, warning: false, outdated: false };
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -702,6 +703,46 @@ async function getAdminEntityMappingData({ force = false } = {}) {
   return data;
 }
 
+function isGoldenCatVisualName(value) {
+  const normalized = normalizeAuditSearchText(value);
+  return normalized.includes("goldencat") || normalized.includes("golden cat");
+}
+
+function inferAuditCategoryKey(entry, grp) {
+  const raw = String(entry?.category || "").toLowerCase();
+  const base = raw && raw !== "altres" ? raw : null;
+  if (base) return base;
+
+  const text = normalizeAuditSearchText([
+    entry?.competitionName,
+    grp?.groupName,
+    grp?.jokcatCompName,
+    grp?.suggestedJokcatCompName,
+  ].filter(Boolean).join(" "));
+
+  if (text.includes("prebenjami")) return "prebenjami";
+  if (text.includes("benjami")) return "benjami";
+  if (text.includes("alevi")) return "alevi";
+  if (text.includes("infantil")) return "infantil";
+  if (text.includes("juvenil")) return "juvenil";
+  if (text.includes("junior")) return "junior";
+  if (text.includes("veterans")) return "veterans";
+  if (text.includes("fem")) return "fem";
+  if (text.includes("primera catalana")) return "primera_catalana";
+  if (text.includes("segona catalana")) return "segona_catalana";
+  if (text.includes("tercera catalana")) return "tercera_catalana";
+  if (text.includes("nacional catalana")) return "nacional_catalana";
+  return raw || "altres";
+}
+
+window.adminMappingToggleIssueFilter = (filterKey, checked) => {
+  adminMappingIssueFilters = {
+    ...adminMappingIssueFilters,
+    [filterKey]: !!checked,
+  };
+  renderAdminPanel();
+};
+
 function renderAuditFreshnessTag(isFresh, isOutdated, reason) {
   if (isOutdated === true || isFresh === false) {
     const reasonText = reason === "team_pj_lag" || reason === "global_and_team_pj_lag"
@@ -1076,41 +1117,66 @@ async function renderAdminMappingHubPanel(body) {
   const allGroups = [];
   for (const entry of audit?.competitions || []) {
     (entry.groups || []).forEach((grp, idx) => {
+      if (isGoldenCatVisualName(entry?.competitionName) || isGoldenCatVisualName(grp?.groupName) || isGoldenCatVisualName(grp?.jokcatCompName) || isGoldenCatVisualName(grp?.suggestedJokcatCompName)) {
+        return;
+      }
+
       const isFecapaGroup = Boolean(grp.fecapaGroupId || grp.groupId);
       const hasFinal = Boolean(grp.jokcatCompId);
       const hasSuggested = Boolean(grp.suggestedJokcatCompId);
       const ratio = Number(grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio || 0);
 
+      const issueTypes = [];
       let status = "ok";
       let reason = "Mapeig correcte";
       if (!isFecapaGroup) {
         status = "error";
+        issueTypes.push("error");
         reason = "Grup només detectat a jok.cat (sense grup FECAPA equivalent)";
       } else if (!hasFinal && hasSuggested) {
         status = "error";
+        issueTypes.push("error");
         reason = `Sense matching definitiu. Suggerència automàtica (${ratio}% coincidència)`;
       } else if (!hasFinal) {
         status = "error";
+        issueTypes.push("error");
         reason = "Sense matching automàtic ni suggerència prou forta";
-      } else if (grp.jokcatOutdated) {
-        status = "warning";
-        reason = grp.freshnessReason === "team_pj_lag" || grp.freshnessReason === "global_and_team_pj_lag"
-          ? "Mapeig trobat però jok.cat està desactualitzat en PJ"
-          : "Mapeig trobat però jok.cat està desactualitzat en jornades";
+      } else {
+        if (ratio > 0 && ratio < 70) {
+          issueTypes.push("warning");
+          status = "warning";
+          reason = `Coincidència baixa (${ratio}%)`;
+        }
+        if (grp.jokcatOutdated) {
+          issueTypes.push("outdated");
+          status = status === "error" ? status : "warning";
+          reason = grp.freshnessReason === "team_pj_lag" || grp.freshnessReason === "global_and_team_pj_lag"
+            ? "JOK desactualitzat en PJ"
+            : "JOK desactualitzat en jornades";
+        }
+        if (issueTypes.length === 0) {
+          status = "ok";
+          reason = "Mapeig correcte";
+        }
       }
 
       const groupKey = grp.fecapaGroupId || grp.groupId || `${grp.groupName || "group"}_${idx}`;
-      allGroups.push({ entry, grp, idx, groupKey, status, reason, ratio });
+      allGroups.push({ entry, grp, idx, groupKey, status, reason, ratio, issueTypes, displayCategory: inferAuditCategoryKey(entry, grp) });
     });
   }
 
-  const issueGroups = allGroups.filter(x => x.status !== "ok");
-  const okGroups = allGroups.filter(x => x.status === "ok");
+  const visibleGroups = allGroups;
+  const issueGroups = visibleGroups.filter(x => x.issueTypes.some(t => adminMappingIssueFilters[t]));
+  const okGroups = visibleGroups.filter(x => x.status === "ok");
+  const visibleIssueCounts = visibleGroups.reduce((acc, row) => {
+    for (const key of row.issueTypes) acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, { error: 0, warning: 0, outdated: 0 });
 
   const groupedByCategory = groups => {
     const map = new Map();
     for (const row of groups) {
-      const k = row.entry?.category || "altres";
+      const k = row.displayCategory || inferAuditCategoryKey(row.entry, row.grp);
       if (!map.has(k)) map.set(k, []);
       map.get(k).push(row);
     }
@@ -1118,7 +1184,7 @@ async function renderAdminMappingHubPanel(body) {
   };
 
   const renderAuditRowCompact = (row, isOpenByDefault = false) => {
-    const { entry, grp, idx, reason, ratio, status } = row;
+    const { entry, grp, idx, reason, ratio, status, issueTypes } = row;
     const color = status === "error" ? "#b91c1c" : status === "warning" ? "#92400e" : "#166534";
     const bg = status === "error" ? "#fef2f2" : status === "warning" ? "#fffbeb" : "#f0fdf4";
     const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
@@ -1131,6 +1197,8 @@ async function renderAdminMappingHubPanel(body) {
     return `<details ${isOpenByDefault ? "open" : ""} style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;margin-bottom:8px">
       <summary style="cursor:pointer;list-style:none;padding:9px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:${bg}">
         <span style="font-size:10px;font-weight:800;color:${color};text-transform:uppercase">${status}</span>
+        ${issueTypes.includes("warning") ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">warning</span>` : ""}
+        ${issueTypes.includes("outdated") ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">JOK desactualitzat</span>` : ""}
         <span style="font-size:12px;font-weight:700;color:#1a2035">${esc(entry.competitionName)}</span>
         <span style="font-size:11px;color:#475569">FECAPA: ${esc(grp.groupName || "—")}</span>
         <span style="font-size:11px;color:#475569">jok: ${esc(effectiveJokName)}</span>
@@ -1163,7 +1231,8 @@ async function renderAdminMappingHubPanel(body) {
   const pilotByCategory = new Map();
   for (const p of pilots) {
     const jokComp = jokById.get(String(p?.jokCompId || "")) || null;
-    const catKey = jokComp?._categoryKey || "altres";
+    if (isGoldenCatVisualName(jokComp?.name || "")) continue;
+    const catKey = jokComp?._categoryKey || inferAuditCategoryKey({ competitionName: jokComp?.name || "" }, null) || "altres";
     if (!pilotByCategory.has(catKey)) pilotByCategory.set(catKey, []);
 
     const comp = fecapaById.get(String(p?.fecapaCompetitionId || "")) || null;
@@ -1223,8 +1292,10 @@ async function renderAdminMappingHubPanel(body) {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
-        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Grups FECAPA</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${Number(audit?.totalGroupsOk || 0)}</div></div>
-        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Errors/Pendents</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#b91c1c">${issueGroups.length}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Grups FECAPA</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${okGroups.length + issueGroups.length}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Errors</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#b91c1c">${visibleIssueCounts.error}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Warnings</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#92400e">${visibleIssueCounts.warning}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">JOK desactualitzat</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1d4ed8">${visibleIssueCounts.outdated}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Correctes</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${okGroups.length}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Pilots</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${pilots.length}</div></div>
       </div>
@@ -1249,6 +1320,13 @@ async function renderAdminMappingHubPanel(body) {
     <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
       <summary style="cursor:pointer;font-weight:800;color:#1a2035">1) Incidències de mapeig per grup (amb motiu) + revisió manual</summary>
       <div style="margin-top:10px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          ${[
+            ["error", "Error", "#b91c1c"],
+            ["warning", "Warning", "#92400e"],
+            ["outdated", "JOK desactualitzat", "#1d4ed8"],
+          ].map(([key, label, color]) => `<label style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;color:${color};cursor:pointer"><input type="checkbox" ${adminMappingIssueFilters[key] ? "checked" : ""} onchange="adminMappingToggleIssueFilter('${key}', this.checked)" style="accent-color:${color}" />${label}</label>`).join("")}
+        </div>
         <input type="text" value="${esc(adminAuditSearchQuery)}" oninput="adminAuditSetSearch(this.value)" placeholder="Filtra per competició, grup, ID o nom..." style="width:100%;padding:8px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:12px;font-family:inherit;outline:none;margin-bottom:8px" />
         ${(groupedByCategory(issueGroups)).map(([cat, rows]) => `<details open style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;color:#92400e">${esc(adminCategoryLabel(cat))} · ${rows.length} incidències</summary><div style="margin-top:8px">${rows.map((r, i) => renderAuditRowCompact(r, i < 2)).join("")}</div></details>`).join("") || `<div style="font-size:12px;color:#166534">No hi ha incidències amb el filtre actual.</div>`}
         <details style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-top:10px">
