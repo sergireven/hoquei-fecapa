@@ -134,6 +134,104 @@ function setCurrentUserLocation(location) {
   saveUserLocationStore(store);
 }
 
+function getProfileLocation(profile) {
+  if (!profile) return null;
+
+  const fromPacked = profile.user_location;
+  if (fromPacked && Number.isFinite(Number(fromPacked.lat)) && Number.isFinite(Number(fromPacked.lng))) {
+    return {
+      label: String(fromPacked.label || "").trim() || "Zona usuari",
+      lat: Number(fromPacked.lat),
+      lng: Number(fromPacked.lng),
+      updatedAt: fromPacked.updatedAt || null,
+    };
+  }
+
+  const label = String(profile.location_label || profile.user_location_label || "").trim();
+  const lat = Number(profile.location_lat ?? profile.user_location_lat);
+  const lng = Number(profile.location_lng ?? profile.user_location_lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return {
+    label: label || "Zona usuari",
+    lat,
+    lng,
+    updatedAt: profile.location_updated_at || profile.updated_at || null,
+  };
+}
+
+async function persistUserLocationToCloud(location) {
+  if (!_sb || !currentProfile?.id || !location) return false;
+
+  const packedLoc = {
+    label: String(location.label || "").trim(),
+    lat: Number(location.lat),
+    lng: Number(location.lng),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Preferred path: explicit RPC for own-profile safe update.
+  const rpc = await _sb.rpc("update_own_location", {
+    p_user_id: currentProfile.id,
+    p_location_label: packedLoc.label,
+    p_location_lat: packedLoc.lat,
+    p_location_lng: packedLoc.lng,
+  });
+  if (!rpc.error) {
+    currentProfile = {
+      ...currentProfile,
+      location_label: packedLoc.label,
+      location_lat: packedLoc.lat,
+      location_lng: packedLoc.lng,
+      user_location: packedLoc,
+    };
+    _saveSoftSession(currentProfile);
+    return true;
+  }
+
+  // Fallback 1: scalar columns on profiles.
+  const updateScalar = await _sb
+    .from("profiles")
+    .update({
+      location_label: packedLoc.label,
+      location_lat: packedLoc.lat,
+      location_lng: packedLoc.lng,
+    })
+    .eq("id", currentProfile.id);
+  if (!updateScalar.error) {
+    currentProfile = {
+      ...currentProfile,
+      location_label: packedLoc.label,
+      location_lat: packedLoc.lat,
+      location_lng: packedLoc.lng,
+      user_location: packedLoc,
+    };
+    _saveSoftSession(currentProfile);
+    return true;
+  }
+
+  // Fallback 2: packed JSON column.
+  const updateJson = await _sb
+    .from("profiles")
+    .update({ user_location: packedLoc })
+    .eq("id", currentProfile.id);
+  if (!updateJson.error) {
+    currentProfile = {
+      ...currentProfile,
+      user_location: packedLoc,
+    };
+    _saveSoftSession(currentProfile);
+    return true;
+  }
+
+  console.error("[location] cloud save failed", {
+    rpc: rpc.error?.message || null,
+    scalar: updateScalar.error?.message || null,
+    json: updateJson.error?.message || null,
+  });
+  return false;
+}
+
 async function geocodeUserArea(query) {
   const q = String(query || "").trim();
   if (!q) throw new Error("Indica una ciutat o barri");
@@ -239,6 +337,8 @@ async function _loadProfile(user) {
   const { data } = await _sb.from("profiles").select("*").eq("id", user.id).single();
   if (data) {
     currentProfile = data;
+    const profileLoc = getProfileLocation(data);
+    if (profileLoc) setCurrentUserLocation(profileLoc);
     _saveSoftSession(data);
     await loadFavsFromCloud();
   }
@@ -339,6 +439,8 @@ async function loginWithEmail() {
     const profile = profiles[0];
     currentProfile = profile;
     currentUser    = { email: profile.email, id: profile.id };
+    const profileLoc = getProfileLocation(profile);
+    if (profileLoc) setCurrentUserLocation(profileLoc);
     _saveSoftSession(profile);
     await loadFavsFromCloud();
     closeLoginModal();
@@ -445,8 +547,11 @@ async function saveUserLocation() {
   try {
     const loc = await geocodeUserArea(query);
     setCurrentUserLocation(loc);
-    msg.style.color = "#16a34a";
-    msg.textContent = `✓ Ubicació desada: ${loc.label}`;
+    const cloudSaved = await persistUserLocationToCloud(loc);
+    msg.style.color = cloudSaved ? "#16a34a" : "#92400e";
+    msg.textContent = cloudSaved
+      ? `✓ Ubicació desada a BBDD: ${loc.label}`
+      : `Ubicació desada localment: ${loc.label}. Falta persistència a BBDD (schema/RLS).`;
     const homeVisible = $("screen-home")?.style?.display === "flex";
     if (homeVisible) renderHome();
   } catch (err) {
