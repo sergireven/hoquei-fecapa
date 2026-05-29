@@ -103,6 +103,20 @@ const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
 
+const ROLE_OPTIONS = ["", "entrenador", "coordinador", "gestor_botiga", "admin"];
+const ROLE_LABELS = {
+  "": "—",
+  entrenador: "Entrenador",
+  coordinador: "Coordinador",
+  gestor_botiga: "Gestor de botiga",
+  admin: "Admin",
+};
+
+function getRoleLabel(role, fallback = "") {
+  const key = String(role || "").trim();
+  return ROLE_LABELS[key] || fallback;
+}
+
 function loadUserLocationStore() {
   try { return JSON.parse(localStorage.getItem(USER_LOCATION_KEY) || "{}"); }
   catch { return {}; }
@@ -388,10 +402,11 @@ async function _removeFavFromCloud(type, key) {
 
 function renderLoginButton() {
   if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
+  const roleBadge = getRoleLabel(currentProfile?.role, "");
   const loginBtn = currentUser
     ? `<button onclick="openUserModal()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
         <span style="background:#e5001c;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${(currentUser.email||"?")[0].toUpperCase()}</span>
-        ${currentProfile?.role==="admin"?"Admin":currentProfile?.role==="entrenador"?"Entrenador":""}
+        ${esc(roleBadge)}
        </button>`
     : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
   const adminBtn = currentProfile?.role === "admin"
@@ -466,7 +481,7 @@ window.sendMagicLink  = loginWithEmail; // alias
 
 // User menu modal
 function openUserModal() {
-  const roleLabel = currentProfile?.role === "admin" ? "Administrador" : currentProfile?.role === "entrenador" ? "Entrenador" : "Usuari";
+  const roleLabel = getRoleLabel(currentProfile?.role, "Usuari");
   const userLoc = getCurrentUserLocation();
   const adminBtn  = currentProfile?.role === "admin"
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
@@ -1786,14 +1801,13 @@ async function renderAdminPanel() {
   body.innerHTML = `${renderAdminTopNav("users")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
   const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
   if (error || !profiles) { body.innerHTML = `${renderAdminTopNav("users")}<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
-  const ROLES = ["","entrenador","admin"];
   const rows = profiles.map(p => `
     <tr style="border-bottom:1px solid #f0f4f8">
       <td style="padding:10px 8px;font-size:13px;color:#1a2035;font-weight:500;word-break:break-all">${esc(p.email)}</td>
       <td style="padding:10px 8px;text-align:center">
         <select onchange="updateUserRole('${esc(p.id)}',this.value)"
           style="border:1.5px solid #e2e6ef;border-radius:8px;padding:5px 8px;font-size:13px;font-family:inherit;cursor:pointer">
-          ${ROLES.map(r => `<option value="${r}" ${p.role===r?"selected":""}>${r||"—"}</option>`).join("")}
+          ${ROLE_OPTIONS.map(r => `<option value="${r}" ${p.role===r?"selected":""}>${esc(getRoleLabel(r, r))}</option>`).join("")}
         </select>
       </td>
       <td style="padding:10px 8px;font-size:12px;color:#64748b">${esc(p.team_name||"")}</td>
@@ -1812,6 +1826,8 @@ async function renderAdminPanel() {
           style="flex:1;border:1.5px solid #e2e6ef;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;cursor:pointer">
           <option value="">Sense rol</option>
           <option value="entrenador">Entrenador</option>
+          <option value="coordinador">Coordinador</option>
+          <option value="gestor_botiga">Gestor de botiga</option>
           <option value="admin">Admin</option>
         </select>
         <input id="admin-add-team" type="text" placeholder="Equip (entrenador)"
