@@ -309,7 +309,7 @@ let adminFecapaCategoriesCache = null;
 let adminEntityMappingCache = null;
 let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
-let adminMappingIssueFilters = { error: true, warning: false, outdated: false };
+let adminMappingIssueFilters = { error: true, warning: false, outdated: false, mapping_ok_fecapa_empty: true };
 let adminMappingIncidentExpandAll = null;
 
 const numOrNull = raw => {
@@ -829,6 +829,25 @@ function normalizeAuditSearchText(value) {
     .toLowerCase();
 }
 
+function normalizeAuditMappingName(value) {
+  return normalizeAuditSearchText(value)
+    .replace(/\(\d{4}\s*-\s*\d{2,4}\)/g, " ")
+    .replace(/\b\d{4}\s*-\s*\d{2,4}\b/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasSameNameMapping(entry, grp) {
+  const jokName = normalizeAuditMappingName(grp?.jokcatCompName || grp?.suggestedJokcatCompName || "");
+  if (!jokName) return false;
+  const candidates = [
+    normalizeAuditMappingName(entry?.competitionName || ""),
+    normalizeAuditMappingName(grp?.groupName || ""),
+  ].filter(Boolean);
+  return candidates.some(name => name === jokName || name.includes(jokName) || jokName.includes(name));
+}
+
 function auditGroupMatchesQuery(entry, grp, queryNorm) {
   if (!queryNorm) return true;
   const haystack = normalizeAuditSearchText([
@@ -1188,6 +1207,8 @@ async function renderAdminMappingHubPanel(body) {
       const hasFinal = Boolean(grp.jokcatCompId);
       const hasSuggested = Boolean(grp.suggestedJokcatCompId);
       const ratio = Number(grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio || 0);
+      const fecapaRows = Array.isArray(grp.fecapaClassification) ? grp.fecapaClassification.length : 0;
+      const mappingOkButFecapaEmpty = isFecapaGroup && !hasFinal && hasSuggested && fecapaRows === 0 && hasSameNameMapping(entry, grp);
 
       const issueTypes = [];
       let status = "ok";
@@ -1196,6 +1217,10 @@ async function renderAdminMappingHubPanel(body) {
         status = "error";
         issueTypes.push("error");
         reason = "Grup només detectat a jok.cat (sense grup FECAPA equivalent)";
+      } else if (mappingOkButFecapaEmpty) {
+        status = "ok";
+        issueTypes.push("mapping_ok_fecapa_empty");
+        reason = "Mapping OK però FECAPA buit (mateix nom)";
       } else if (!hasFinal && hasSuggested) {
         status = "error";
         issueTypes.push("error");
@@ -1234,7 +1259,7 @@ async function renderAdminMappingHubPanel(body) {
   const visibleIssueCounts = visibleGroups.reduce((acc, row) => {
     for (const key of row.issueTypes) acc[key] = (acc[key] || 0) + 1;
     return acc;
-  }, { error: 0, warning: 0, outdated: 0 });
+  }, { error: 0, warning: 0, outdated: 0, mapping_ok_fecapa_empty: 0 });
 
   const groupedByCategory = groups => {
     const map = new Map();
@@ -1262,6 +1287,7 @@ async function renderAdminMappingHubPanel(body) {
         <span style="font-size:10px;font-weight:800;color:${color};text-transform:uppercase">${status}</span>
         ${issueTypes.includes("warning") ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">warning</span>` : ""}
         ${issueTypes.includes("outdated") ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">JOK desactualitzat</span>` : ""}
+        ${issueTypes.includes("mapping_ok_fecapa_empty") ? `<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">Mapping OK · FECAPA buit</span>` : ""}
         <span style="font-size:12px;font-weight:700;color:#1a2035">${esc(entry.competitionName)}</span>
         <span style="font-size:11px;color:#475569">FECAPA: ${esc(grp.groupName || "—")}</span>
         <span style="font-size:11px;color:#475569">jok: ${esc(effectiveJokName)}</span>
@@ -1364,6 +1390,7 @@ async function renderAdminMappingHubPanel(body) {
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Errors</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#b91c1c">${visibleIssueCounts.error}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Warnings</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#92400e">${visibleIssueCounts.warning}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">JOK desactualitzat</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1d4ed8">${visibleIssueCounts.outdated}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Mapping OK · FECAPA buit</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${visibleIssueCounts.mapping_ok_fecapa_empty}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Correctes</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${okGroups.length}</div></div>
         <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Pilots</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${pilots.length}</div></div>
       </div>
@@ -1393,6 +1420,7 @@ async function renderAdminMappingHubPanel(body) {
             ["error", "Error", "#b91c1c"],
             ["warning", "Warning", "#92400e"],
             ["outdated", "JOK desactualitzat", "#1d4ed8"],
+            ["mapping_ok_fecapa_empty", "Mapping OK però FECAPA buit", "#166534"],
           ].map(([key, label, color]) => `<label style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;color:${color};cursor:pointer"><input type="checkbox" ${adminMappingIssueFilters[key] ? "checked" : ""} onchange="adminMappingToggleIssueFilter('${key}', this.checked)" style="accent-color:${color}" />${label}</label>`).join("")}
           <button onclick="adminMappingToggleIncidents(true)" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Descol·lapsar tot</button>
           <button onclick="adminMappingToggleIncidents(false)" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Col·lapsar tot</button>
