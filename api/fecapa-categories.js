@@ -122,8 +122,8 @@ function parseClassificationSidgad(html) {
     const teamShort = shortM ? shortM[1] : null;
     const teamName = rawTeam.replace(/\s+[A-Z0-9]{2,6}$/, "").trim() || rawTeam;
     const nums = cells.slice(teamIdx + 1).map(c => parseInt(c, 10)).filter(n => !Number.isNaN(n));
-    if (nums.length < 3) continue;
-
+    // In some competitions the table is present before any played match and all
+    // stat cells are '-' or empty. Keep the team row with null numeric stats.
     const [points = null, played = null, won = null, drawn = null, lost = null, goalsFor = null, goalsAgainst = null, goalDiff = null, penalties = null] = nums;
     const teamIdMatch = tr.match(/\/equip\/(\d+)\//);
 
@@ -559,10 +559,14 @@ function normalizeGroupNameForCompetition(competitionName, groupName, idx = 0) {
 function buildGroupId(competitionId, groupName, fallbackOrder) {
   const n = normalizeToken(groupName);
   const tierMatch = n.match(/\b(OR|PLATA|BRONZE|INICIACIO|PREFERENT|GOLD|SILVER)\b/);
+  const explicitGroupMatch = n.match(/\bGRUP\s+([A-Z0-9]{1,4})\b/);
+  const phaseSuffixMatch = n.match(/\b(?:OR|PLATA|BRONZE|INICIACIO|PREFERENT|GOLD|SILVER)\s+([A-Z0-9]{1,4})\b/);
   const numberMatches = [...n.matchAll(/\b(\d{1,2})\b/g)];
-  const lastNumber = numberMatches.length ? numberMatches[numberMatches.length - 1][1] : String(fallbackOrder || 1);
+  const suffix = explicitGroupMatch?.[1]
+    || phaseSuffixMatch?.[1]
+    || (numberMatches.length ? numberMatches[numberMatches.length - 1][1] : String(fallbackOrder || 1));
   const tier = tierMatch ? tierMatch[1] : "GRUP";
-  return `${competitionId}-${tier}-${lastNumber}`;
+  return `${competitionId}-${tier}-${suffix}`;
 }
 
 function annotateCompetitionNoMatches(compData) {
