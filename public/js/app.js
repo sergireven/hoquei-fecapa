@@ -298,9 +298,10 @@ window.closeUserModal  = closeUserModal;
 
 // Admin panel
 const ADMIN_BENJAMI_TARGET_COMP = "BENJAMÍ COPA BARCELONA 2ª FASE";
-let adminPanelView = "users";
+let adminPanelView = "mapping";
 let adminBenjamiModelCache = null;
 let adminFecapaCategoriesCache = null;
+let adminEntityMappingCache = null;
 let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
 
@@ -402,9 +403,7 @@ function renderAdminTopNav(activeView) {
   const btn = (view, label) => `<button onclick="adminSetView('${view}')" style="flex:1;background:${activeView === view ? "#1a2035" : "#f0f4f8"};border:1.5px solid ${activeView === view ? "#1a2035" : "#e2e6ef"};color:${activeView === view ? "#fff" : "#334155"};font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">${label}</button>`;
   return `<div style="display:flex;gap:8px;margin-bottom:12px">
     ${btn("users", "Usuaris")}
-    ${btn("fecapa_cats", "Classificacions FECAPA")}
-    ${btn("source_pilots", "Pilots jok→fecapa")}
-    ${btn("audit", "Auditoria FECAPA↔jok")}
+    ${btn("mapping", "Mapeig FECAPA↔jok")}
   </div>`;
 }
 
@@ -644,6 +643,7 @@ async function renderAdminBenjamiPanel(body) {
 function openAdminPanel() {
   ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
   $("screen-admin").style.display = "flex";
+  adminPanelView = "mapping";
   renderAdminPanel();
 }
 function closeAdminPanel() {
@@ -690,6 +690,15 @@ async function getAdminAuditData({ force = false } = {}) {
   if (!res.ok) throw new Error(`No s'ha pogut carregar classification-audit.json (${res.status})`);
   const data = await res.json();
   adminAuditCache = data;
+  return data;
+}
+
+async function getAdminEntityMappingData({ force = false } = {}) {
+  if (!force && adminEntityMappingCache) return adminEntityMappingCache;
+  const res = await fetch(`./entity-mapping.json?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`No s'ha pogut carregar entity-mapping.json (${res.status})`);
+  const data = await res.json();
+  adminEntityMappingCache = data;
   return data;
 }
 
@@ -1003,6 +1012,285 @@ async function renderAdminAuditPanel(body) {
   }
 }
 
+async function renderAdminMappingHubPanel(body) {
+  body.innerHTML = `${renderAdminTopNav("mapping")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant dades de mapeig...</div>`;
+
+  const [fecapaRes, pilotsRes, auditRes, mappingRes] = await Promise.allSettled([
+    getAdminFecapaCategoriesModel({ force: false }),
+    getAdminClassificationSourcePilotsModel({ force: false }),
+    getAdminAuditData({ force: false }),
+    getAdminEntityMappingData({ force: false }),
+  ]);
+
+  const warnings = [];
+  const fecapaModel = fecapaRes.status === "fulfilled" ? fecapaRes.value : null;
+  const pilotsModel = pilotsRes.status === "fulfilled" ? pilotsRes.value : { pilots: [] };
+  const audit = auditRes.status === "fulfilled" ? auditRes.value : null;
+  const entityMapping = mappingRes.status === "fulfilled" ? mappingRes.value : null;
+
+  if (fecapaRes.status === "rejected") warnings.push(`FECAPA categories: ${fecapaRes.reason?.message || "error"}`);
+  if (pilotsRes.status === "rejected") warnings.push(`Pilots: ${pilotsRes.reason?.message || "error"}`);
+  if (auditRes.status === "rejected") warnings.push(`Auditoria: ${auditRes.reason?.message || "error"}`);
+  if (mappingRes.status === "rejected") warnings.push(`Entity mapping: ${mappingRes.reason?.message || "error"}`);
+
+  const jokComps = [];
+  for (const [catKey, comps] of Object.entries(DB?.categories || {})) {
+    for (const comp of comps || []) jokComps.push({ ...comp, _categoryKey: catKey });
+  }
+  const jokById = new Map(jokComps.map(c => [String(c?.id || ""), c]));
+
+  const fecapaComps = Object.values(fecapaModel?.categories || {}).flat().filter(Boolean);
+  const fecapaById = new Map(fecapaComps.map(c => [String(c?.competitionId || ""), c]));
+
+  const jokTeamCount = new Set(jokComps.flatMap(c => (c.classification || []).map(r => normalizeCompKey(r?.team || "")).filter(Boolean))).size;
+  const fecapaTeamCount = fecapaComps.reduce((acc, c) => acc + Number(c?.teamCount || 0), 0);
+  const fecapaGroupCount = fecapaComps.reduce((acc, c) => acc + (Array.isArray(c?.groups) ? c.groups.length : 0), 0);
+  const jokGroupCount = audit ? Number(audit.totalGroupsOk || 0) + Number(audit.totalGroupsMissing || 0) : jokComps.length;
+  const jokPlayersCount = Object.keys(DB?.jugadors || {}).length;
+  const jokActesCount = Object.keys(DB?.actesIndex || {}).length;
+
+  const mappingRows = [
+    { label: "Competicions", jok: jokComps.length, fecapa: fecapaComps.length },
+    { label: "Grups", jok: jokGroupCount, fecapa: fecapaGroupCount },
+    { label: "Equips (aprox. únics)", jok: jokTeamCount, fecapa: fecapaTeamCount },
+    { label: "Jugadors", jok: jokPlayersCount, fecapa: "—" },
+    { label: "Actes", jok: jokActesCount, fecapa: "—" },
+  ];
+
+  if (entityMapping?.summary) {
+    const bySource = type => (entityMapping?.mappings?.[type] || []).reduce((acc, row) => {
+      const src = row?.source || "other";
+      acc[src] = (acc[src] || 0) + 1;
+      return acc;
+    }, {});
+    const cmp = bySource("competition");
+    const grp = bySource("group");
+    const team = bySource("team");
+    mappingRows.push(
+      { label: "IDs canònics competicions", jok: cmp.jok || 0, fecapa: cmp.fecapa || 0 },
+      { label: "IDs canònics grups", jok: grp.jok || 0, fecapa: grp.fecapa || 0 },
+      { label: "IDs canònics equips", jok: team.jok || 0, fecapa: team.fecapa || 0 }
+    );
+  }
+
+  const allGroups = [];
+  for (const entry of audit?.competitions || []) {
+    (entry.groups || []).forEach((grp, idx) => {
+      const isFecapaGroup = Boolean(grp.fecapaGroupId || grp.groupId);
+      const hasFinal = Boolean(grp.jokcatCompId);
+      const hasSuggested = Boolean(grp.suggestedJokcatCompId);
+      const ratio = Number(grp.jokcatMatchRatio || grp.suggestedJokcatMatchRatio || 0);
+
+      let status = "ok";
+      let reason = "Mapeig correcte";
+      if (!isFecapaGroup) {
+        status = "error";
+        reason = "Grup només detectat a jok.cat (sense grup FECAPA equivalent)";
+      } else if (!hasFinal && hasSuggested) {
+        status = "error";
+        reason = `Sense matching definitiu. Suggerència automàtica (${ratio}% coincidència)`;
+      } else if (!hasFinal) {
+        status = "error";
+        reason = "Sense matching automàtic ni suggerència prou forta";
+      } else if (grp.jokcatOutdated) {
+        status = "warning";
+        reason = grp.freshnessReason === "team_pj_lag" || grp.freshnessReason === "global_and_team_pj_lag"
+          ? "Mapeig trobat però jok.cat està desactualitzat en PJ"
+          : "Mapeig trobat però jok.cat està desactualitzat en jornades";
+      }
+
+      const groupKey = grp.fecapaGroupId || grp.groupId || `${grp.groupName || "group"}_${idx}`;
+      allGroups.push({ entry, grp, idx, groupKey, status, reason, ratio });
+    });
+  }
+
+  const issueGroups = allGroups.filter(x => x.status !== "ok");
+  const okGroups = allGroups.filter(x => x.status === "ok");
+
+  const groupedByCategory = groups => {
+    const map = new Map();
+    for (const row of groups) {
+      const k = row.entry?.category || "altres";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(row);
+    }
+    return [...map.entries()].sort((a, b) => adminCategoryLabel(a[0]).localeCompare(adminCategoryLabel(b[0])));
+  };
+
+  const renderAuditRowCompact = (row, isOpenByDefault = false) => {
+    const { entry, grp, idx, reason, ratio, status } = row;
+    const color = status === "error" ? "#b91c1c" : status === "warning" ? "#92400e" : "#166534";
+    const bg = status === "error" ? "#fef2f2" : status === "warning" ? "#fffbeb" : "#f0fdf4";
+    const effectiveJokId = grp.jokcatCompId || grp.suggestedJokcatCompId || "—";
+    const effectiveJokName = normalizeJokClubDisplayName(grp.jokcatCompName || grp.suggestedJokcatCompName || "—");
+    const domKey = auditDomKey(entry.competitionId, encodeURIComponent(row.groupKey));
+    const suggestion = grp.suggestedJokcatCompId
+      ? `<div style="font-size:11px;color:#475569;margin-bottom:8px">Suggerit: jok ID ${esc(String(grp.suggestedJokcatCompId))} · ${esc(normalizeJokClubDisplayName(grp.suggestedJokcatCompName || ""))} (${Number(grp.suggestedJokcatMatchRatio || 0)}%)</div>`
+      : "";
+
+    return `<details ${isOpenByDefault ? "open" : ""} style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;margin-bottom:8px">
+      <summary style="cursor:pointer;list-style:none;padding:9px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:${bg}">
+        <span style="font-size:10px;font-weight:800;color:${color};text-transform:uppercase">${status}</span>
+        <span style="font-size:12px;font-weight:700;color:#1a2035">${esc(entry.competitionName)}</span>
+        <span style="font-size:11px;color:#475569">FECAPA: ${esc(grp.groupName || "—")}</span>
+        <span style="font-size:11px;color:#475569">jok: ${esc(effectiveJokName)}</span>
+        <span style="font-size:11px;color:#64748b">% coincidència: ${ratio || 0}%</span>
+        <span style="font-size:11px;color:${color};font-weight:700">${esc(reason)}</span>
+      </summary>
+      <div style="padding:10px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:11px;color:#64748b">FECAPA ID grup: ${esc(String(grp.fecapaGroupId || grp.groupId || "—"))}</span>
+          <span style="font-size:11px;color:#64748b">jok ID: ${esc(String(effectiveJokId))}</span>
+          <span style="font-size:11px;color:#64748b">Càlcul: ${esc(grp.coincidenceCalc || grp.suggestedCoincidenceCalc || "matched/max(FECAPA,JOK)")}</span>
+        </div>
+        ${suggestion}
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:8px">
+          <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
+            <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">FECAPA</div>
+            ${renderAuditTable(grp.fecapaClassification || [], "fecapa")}
+          </div>
+          ${renderAuditFeedbackPanel(entry, grp, idx)}
+          <div style="border:1px solid #e2e6ef;border-radius:8px;overflow:auto">
+            <div style="padding:6px 8px;background:#f8fafc;border-bottom:1px solid #e2e6ef;font-size:11px;font-weight:700;color:#334155">jok.cat</div>
+            ${renderAuditTable(grp.jokcatClassification || grp.suggestedJokcatClassification || [], "jok")}
+          </div>
+        </div>
+      </div>
+    </details>`;
+  };
+
+  const pilots = Array.isArray(pilotsModel?.pilots) ? pilotsModel.pilots : [];
+  const pilotByCategory = new Map();
+  for (const p of pilots) {
+    const jokComp = jokById.get(String(p?.jokCompId || "")) || null;
+    const catKey = jokComp?._categoryKey || "altres";
+    if (!pilotByCategory.has(catKey)) pilotByCategory.set(catKey, []);
+
+    const comp = fecapaById.get(String(p?.fecapaCompetitionId || "")) || null;
+    const token = normalizeCompKey(p?.preferredGroupToken || "");
+    const group = (comp?.groups || []).find(g => normalizeCompKey(g?.groupName || "").includes(token)) || null;
+
+    pilotByCategory.get(catKey).push({
+      jokName: jokComp?.name || "No trobat",
+      jokId: p?.jokCompId || "",
+      fecapaCompName: comp?.competitionName || "No trobada",
+      fecapaCompId: p?.fecapaCompetitionId || "",
+      fecapaGroupName: group?.groupName || "No resolt",
+      fecapaGroupId: group?.groupId || "",
+      token: p?.preferredGroupToken || "",
+    });
+  }
+
+  const pilotCategoryBlocks = [...pilotByCategory.entries()]
+    .sort((a, b) => adminCategoryLabel(a[0]).localeCompare(adminCategoryLabel(b[0])))
+    .map(([catKey, rows]) => `<details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:8px 10px;margin-bottom:8px">
+      <summary style="cursor:pointer;font-weight:700;color:#1a2035">${esc(adminCategoryLabel(catKey))} · ${rows.length} mappings</summary>
+      <div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
+        ${rows.map(r => `<div style="border:1px solid #e2e6ef;border-radius:9px;padding:8px;background:#f8fafc">
+          <div style="font-size:11px;color:#0f766e;font-weight:800;text-transform:uppercase">jok.cat</div>
+          <div style="font-size:12px;color:#1a2035;font-weight:700">${esc(r.jokName)}</div>
+          <div style="font-size:11px;color:#64748b">ID ${esc(String(r.jokId))}</div>
+          <div style="height:1px;background:#e2e8f0;margin:6px 0"></div>
+          <div style="font-size:11px;color:#1d4ed8;font-weight:800;text-transform:uppercase">FECAPA</div>
+          <div style="font-size:12px;color:#1a2035;font-weight:700">${esc(r.fecapaCompName)}</div>
+          <div style="font-size:11px;color:#64748b">Comp ID ${esc(String(r.fecapaCompId))}</div>
+          <div style="font-size:11px;color:#475569">Grup: ${esc(r.fecapaGroupName)}${r.fecapaGroupId ? ` (#${esc(String(r.fecapaGroupId))})` : ""}</div>
+          <div style="font-size:11px;color:#64748b">Token: ${esc(String(r.token))}</div>
+        </div>`).join("")}
+      </div>
+    </details>`)
+    .join("");
+
+  const lowConfidence = issueGroups
+    .filter(g => !g.grp?.jokcatCompId)
+    .sort((a, b) => Number(a.ratio || 0) - Number(b.ratio || 0))
+    .slice(0, 10);
+
+  body.innerHTML = `
+    ${renderAdminTopNav("mapping")}
+    ${warnings.length ? `<div style="background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:12px">⚠️ Algunes fonts no s'han pogut carregar: ${esc(warnings.join(" · "))}</div>` : ""}
+
+    <section style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:12px 14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a2035">Hub únic de mapeig FECAPA ↔ jok.cat</div>
+          <div style="font-size:12px;color:#64748b">Flux recomanat: 1) incidències, 2) resum, 3) pilots, 4) regles, 5) prioritats.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="adminReloadMappingHub()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar tot</button>
+          <button onclick="adminExportAuditFeedback()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Exportar feedback</button>
+          <button onclick="adminClearAuditFeedback()" style="background:#f8fafc;border:1.5px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:8px 11px;border-radius:9px;cursor:pointer">Netejar feedback local</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Grups FECAPA</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${Number(audit?.totalGroupsOk || 0)}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Errors/Pendents</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#b91c1c">${issueGroups.length}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Correctes</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#166534">${okGroups.length}</div></div>
+        <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">Pilots</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#1a2035">${pilots.length}</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#64748b;background:#f8fafc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 9px">
+        Recomanació d'ús: revisa primer incidències obertes, aplica revisió manual/suggerència, i després valida pilots i regles.
+      </div>
+    </section>
+
+    <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:800;color:#1a2035">2) Resum de mapeig per source</summary>
+      <div style="margin-top:10px;overflow:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e6ef"><th style="padding:8px;text-align:left">Mètrica</th><th style="padding:8px;text-align:center">jok.cat</th><th style="padding:8px;text-align:center">FECAPA</th></tr></thead>
+          <tbody>
+            ${mappingRows.map(r => `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px;color:#334155">${esc(r.label)}</td><td style="padding:8px;text-align:center;font-weight:700;color:#0f766e">${esc(String(r.jok))}</td><td style="padding:8px;text-align:center;font-weight:700;color:#1d4ed8">${esc(String(r.fecapa))}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:8px">${entityMapping ? `Entity mapping generat: ${esc(entityMapping.generatedAt || "—")}` : "No hi ha entity-mapping.json disponible (executa npm run build:mapping)."}</div>
+    </details>
+
+    <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:800;color:#1a2035">1) Incidències de mapeig per grup (amb motiu) + revisió manual</summary>
+      <div style="margin-top:10px">
+        <input type="text" value="${esc(adminAuditSearchQuery)}" oninput="adminAuditSetSearch(this.value)" placeholder="Filtra per competició, grup, ID o nom..." style="width:100%;padding:8px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:12px;font-family:inherit;outline:none;margin-bottom:8px" />
+        ${(groupedByCategory(issueGroups)).map(([cat, rows]) => `<details open style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;color:#92400e">${esc(adminCategoryLabel(cat))} · ${rows.length} incidències</summary><div style="margin-top:8px">${rows.map((r, i) => renderAuditRowCompact(r, i < 2)).join("")}</div></details>`).join("") || `<div style="font-size:12px;color:#166534">No hi ha incidències amb el filtre actual.</div>`}
+        <details style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-top:10px">
+          <summary style="cursor:pointer;font-weight:700;color:#166534">Correctes (col·lapsat) · ${okGroups.length}</summary>
+          <div style="margin-top:8px">${(groupedByCategory(okGroups)).map(([cat, rows]) => `<details style="border:1px solid #e2e6ef;border-radius:9px;padding:6px;margin-bottom:7px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#166534">${esc(adminCategoryLabel(cat))} · ${rows.length}</summary><div style="margin-top:7px">${rows.slice(0, 30).map(r => renderAuditRowCompact(r, false)).join("")}${rows.length > 30 ? `<div style="font-size:11px;color:#94a3b8">Mostrant 30 de ${rows.length} grups correctes.</div>` : ""}</div></details>`).join("")}</div>
+        </details>
+      </div>
+    </details>
+
+    <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:800;color:#1a2035">3) Pilots (resum simple per categoria)</summary>
+      <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:10px">
+        ${[...pilotByCategory.entries()].sort((a, b) => adminCategoryLabel(a[0]).localeCompare(adminCategoryLabel(b[0]))).map(([cat, rows]) => `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">${esc(adminCategoryLabel(cat))}</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">${rows.length}</div></div>`).join("") || `<div style="font-size:12px;color:#94a3b8">Sense pilots carregats</div>`}
+      </div>
+      ${pilotCategoryBlocks || `<div style="font-size:12px;color:#94a3b8">Sense detall de pilots.</div>`}
+    </details>
+
+    <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:800;color:#1a2035">4) Regles de mapeig (lectura ràpida)</summary>
+      <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">
+        <div style="border:1px solid #e2e6ef;border-radius:10px;padding:9px;background:#f8fafc"><div style="font-size:11px;font-weight:800;color:#1a2035">Prioritat de font</div><div style="font-size:12px;color:#475569;margin-top:4px">Prebenjamí (no 3x3) es força a FECAPA. Per la resta, es conserva jok o FECAPA segons matching i regles de pilot.</div></div>
+        <div style="border:1px solid #e2e6ef;border-radius:10px;padding:9px;background:#f8fafc"><div style="font-size:11px;font-weight:800;color:#1a2035">Coincidència equips</div><div style="font-size:12px;color:#475569;margin-top:4px">El % de coincidència es calcula per solapament d'equips: matched/max(FECAPA,JOK). Serveix per suggerir mappings.</div></div>
+        <div style="border:1px solid #e2e6ef;border-radius:10px;padding:9px;background:#f8fafc"><div style="font-size:11px;font-weight:800;color:#1a2035">Pilots jok→FECAPA</div><div style="font-size:12px;color:#475569;margin-top:4px">Els pilots tenen prioritat per grups concrets via jokCompId + fecapaCompetitionId + token de grup.</div></div>
+        <div style="border:1px solid #e2e6ef;border-radius:10px;padding:9px;background:#f8fafc"><div style="font-size:11px;font-weight:800;color:#1a2035">Desactualització</div><div style="font-size:12px;color:#475569;margin-top:4px">Si jok.cat està desfasat en jornades o PJ, el mapping pot ser correcte però marcat com warning.</div></div>
+      </div>
+    </details>
+
+    <details style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:800;color:#1a2035">5) Ajuda de gestió: prioritats recomanades</summary>
+      <div style="margin-top:10px">
+        ${lowConfidence.length ? `<div style="font-size:12px;color:#64748b;margin-bottom:8px">Top incidències amb menys confiança (suggerides per revisar primer):</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:6px">
+            ${lowConfidence.map(item => `<div style="border:1px solid #e2e6ef;border-radius:9px;padding:7px;background:#f8fafc">
+              <div style="font-size:12px;font-weight:700;color:#1a2035">${esc(item.entry.competitionName)}</div>
+              <div style="font-size:11px;color:#475569">${esc(item.grp.groupName || "—")} · coincidència ${Number(item.ratio || 0)}% · motiu: ${esc(item.reason)}</div>
+            </div>`).join("")}
+          </div>` : `<div style="font-size:12px;color:#166534">No hi ha incidències de baixa confiança pendents.</div>`}
+      </div>
+    </details>
+  `;
+}
+
 window.auditToggleCorrect = domKey => {
   const a = $(`audit-correct-${domKey}`);
   const b = $(`audit-incorrect-${domKey}`);
@@ -1040,16 +1328,8 @@ window.auditSaveFeedback = (compId, encodedGroupKey, domKey) => {
 
 async function renderAdminPanel() {
   const body = $("admin-body");
-  if (adminPanelView === "fecapa_cats") {
-    await renderAdminFecapaCategoriesPanel(body);
-    return;
-  }
-  if (adminPanelView === "source_pilots") {
-    await renderAdminClassificationSourcePilotsPanel(body);
-    return;
-  }
-  if (adminPanelView === "audit") {
-    await renderAdminAuditPanel(body);
+  if (["mapping", "fecapa_cats", "source_pilots", "audit"].includes(adminPanelView)) {
+    await renderAdminMappingHubPanel(body);
     return;
   }
 
@@ -1136,7 +1416,7 @@ window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
 window.adminSetView = view => {
-  adminPanelView = ["fecapa_cats", "source_pilots", "audit"].includes(view) ? view : "users";
+  adminPanelView = ["mapping", "fecapa_cats", "source_pilots", "audit"].includes(view) ? "mapping" : "users";
   renderAdminPanel();
 };
 window.adminReloadBenjamiModel = () => {
@@ -1152,6 +1432,13 @@ window.adminReloadAudit = () => {
   renderAdminPanel();
 };
 window.adminReloadClassificationSourcePilots = () => {
+  classificationSourcePilotsDB = null;
+  renderAdminPanel();
+};
+window.adminReloadMappingHub = () => {
+  adminFecapaCategoriesCache = null;
+  adminAuditCache = null;
+  adminEntityMappingCache = null;
   classificationSourcePilotsDB = null;
   renderAdminPanel();
 };
