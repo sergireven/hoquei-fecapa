@@ -2382,28 +2382,44 @@ function applyClassificationSourceMerge() {
     const groups = Array.isArray(targetComp.groups) ? targetComp.groups : [];
     if (!groups.length) return null;
 
-    const preferredToken = normalizeCompKey(pilot.preferredGroupToken || "");
-    if (preferredToken) {
-      const preferred = groups.find(g => normalizeCompKey(g?.groupName || "").includes(preferredToken));
-      if (preferred) return preferred;
-    }
-
     const jokTeams = new Set((jokComp?.classification || [])
       .map(r => normalizeTeamName(r?.team || ""))
       .filter(Boolean));
 
-    let best = null;
-    let bestScore = -1;
-    for (const group of groups) {
-      const gTeams = (group.teams || [])
+    const scoreGroup = group => {
+      const gTeams = (group?.teams || [])
         .map(r => normalizeTeamName(r?.teamName || r?.team || ""))
         .filter(Boolean);
       const overlap = gTeams.filter(t => jokTeams.has(t)).length;
-      if (overlap > bestScore) {
-        bestScore = overlap;
-        best = group;
-      }
+      const hasRows = hasClassRows(normalizeFecapaClassificationRows(group?.teams || []));
+      return {
+        group,
+        overlap,
+        teamCount: gTeams.length,
+        hasRows,
+      };
+    };
+
+    const chooseBestGroup = candidates => {
+      if (!Array.isArray(candidates) || !candidates.length) return null;
+      const scored = candidates.map(scoreGroup);
+      scored.sort((a, b) => {
+        if (a.hasRows !== b.hasRows) return (b.hasRows ? 1 : 0) - (a.hasRows ? 1 : 0);
+        if (a.overlap !== b.overlap) return b.overlap - a.overlap;
+        if (a.teamCount !== b.teamCount) return b.teamCount - a.teamCount;
+        return 0;
+      });
+      return scored[0]?.group || null;
+    };
+
+    const preferredToken = normalizeCompKey(pilot.preferredGroupToken || "");
+    if (preferredToken) {
+      const tokenMatches = groups.filter(g => normalizeCompKey(g?.groupName || "").includes(preferredToken));
+      const preferred = chooseBestGroup(tokenMatches);
+      if (preferred) return preferred;
     }
+
+    const best = chooseBestGroup(groups);
     return best || groups[0] || null;
   };
 
@@ -2428,7 +2444,20 @@ function applyClassificationSourceMerge() {
       if (!bestFecapaGroup) continue;
 
       const fecapaRows = normalizeFecapaClassificationRows(bestFecapaGroup.teams || []);
-      comp.classification = hasClassRows(fecapaRows) ? fecapaRows : [];
+      // No forcem FECAPA si el grup resolt no té classificació: mantenim jok.cat.
+      if (!hasClassRows(fecapaRows)) {
+        comp.classificationPilot = {
+          jokCompId: String(comp.id),
+          fecapaCompetitionId: String(pilot.fecapaCompetitionId),
+          fecapaGroupId: String(bestFecapaGroup.groupId || ""),
+          fecapaGroupName: String(bestFecapaGroup.groupName || ""),
+          source: String(pilot.source || "config"),
+          fallback: "jok_no_fecapa_rows",
+        };
+        continue;
+      }
+
+      comp.classification = fecapaRows;
       comp.classificationSource = "fecapa";
       comp.classificationPilot = {
         jokCompId: String(comp.id),
