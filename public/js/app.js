@@ -76,8 +76,112 @@ const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 const SOFT_SESSION_KEY = "hoquei_user_v1";
+const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
+
+function loadUserLocationStore() {
+  try { return JSON.parse(localStorage.getItem(USER_LOCATION_KEY) || "{}"); }
+  catch { return {}; }
+}
+
+function saveUserLocationStore(store) {
+  localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(store || {}));
+}
+
+function getCurrentUserLocation() {
+  const userId = String(currentUser?.id || "");
+  if (!userId) return null;
+  const store = loadUserLocationStore();
+  const loc = store?.[userId] || null;
+  if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return null;
+  return loc;
+}
+
+function setCurrentUserLocation(location) {
+  const userId = String(currentUser?.id || "");
+  if (!userId || !location) return;
+  const store = loadUserLocationStore();
+  store[userId] = {
+    label: String(location.label || "").trim(),
+    lat: Number(location.lat),
+    lng: Number(location.lng),
+    updatedAt: new Date().toISOString(),
+  };
+  saveUserLocationStore(store);
+}
+
+async function geocodeUserArea(query) {
+  const q = String(query || "").trim();
+  if (!q) throw new Error("Indica una ciutat o barri");
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es,ad&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url, {
+    headers: { "Accept": "application/json" },
+  });
+  if (!res.ok) throw new Error(`No s'ha pogut geocodificar (${res.status})`);
+
+  const rows = await res.json();
+  if (!Array.isArray(rows) || !rows.length) throw new Error("No s'ha trobat cap ubicació");
+
+  const best = rows[0] || {};
+  const lat = Number(best.lat);
+  const lng = Number(best.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Resposta de geocodificació invàlida");
+
+  return {
+    label: q,
+    lat,
+    lng,
+  };
+}
+
+function haversineKm(fromLat, fromLng, toLat, toLng) {
+  const toRad = deg => (deg * Math.PI) / 180;
+  const dLat = toRad(toLat - fromLat);
+  const dLng = toRad(toLng - fromLng);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
+}
+
+function getVenueCoordinates(teamName) {
+  if (!venuesDB?.venues || !teamName) return null;
+  const venue = venuesDB.venues[teamName];
+  if (!venue) return null;
+  const rawLat = venue?.lat ?? venue?.coordinates?.lat;
+  const rawLng = venue?.lng ?? venue?.coordinates?.lng;
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function estimateTravelForMatch(match, myTeam) {
+  if (!currentUser?.id || !match || !myTeam) return null;
+  const played = match.played !== false && match.homeScore != null;
+  if (played) return null;
+  const isLocal = teamIn(match.home, myTeam);
+  if (isLocal) return null;
+
+  const userLoc = getCurrentUserLocation();
+  if (!userLoc) return null;
+
+  const venueCoords = getVenueCoordinates(match.home);
+  if (!venueCoords) return null;
+
+  const km = haversineKm(userLoc.lat, userLoc.lng, venueCoords.lat, venueCoords.lng);
+  if (!Number.isFinite(km)) return null;
+
+  const avgSpeedKmh = 35;
+  const minutes = Math.max(8, Math.round((km / avgSpeedKmh) * 60));
+  return {
+    km,
+    minutes,
+    originLabel: userLoc.label,
+  };
+}
 
 function _saveSoftSession(profile) {
   localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
@@ -238,6 +342,7 @@ window.sendMagicLink  = loginWithEmail; // alias
 // User menu modal
 function openUserModal() {
   const roleLabel = currentProfile?.role === "admin" ? "Administrador" : currentProfile?.role === "entrenador" ? "Entrenador" : "Usuari";
+  const userLoc = getCurrentUserLocation();
   const adminBtn  = currentProfile?.role === "admin"
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
     : "";
@@ -252,6 +357,16 @@ function openUserModal() {
         <div id="user-team-msg" style="margin-top:6px;font-size:12px;color:#64748b"></div>
       </div>`
     : "";
+  const locationSection = `<div style="margin-bottom:16px">
+      <div style="font-size:13px;color:#64748b;margin-bottom:6px">La teva zona (ciutat o barri)</div>
+      <div style="display:flex;gap:8px">
+        <input id="user-location-input" type="text" value="${esc(userLoc?.label || "")}" placeholder="Ex.: Gràcia, Barcelona"
+          style="flex:1;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none"/>
+        <button onclick="saveUserLocation()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer">Desar</button>
+      </div>
+      <div style="margin-top:5px;font-size:11px;color:#94a3b8">Només a nivell ciutat/barri. No guardis adreça exacta.</div>
+      <div id="user-location-msg" style="margin-top:6px;font-size:12px;color:#64748b">${userLoc ? `Actual: ${esc(userLoc.label)} · ${new Date(userLoc.updatedAt || Date.now()).toLocaleString("ca-ES")}` : ""}</div>
+    </div>`;
   $("user-modal-body").innerHTML = `
     <div style="padding:20px 18px 32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
@@ -264,6 +379,7 @@ function openUserModal() {
         <div style="margin-top:8px;font-size:12px;color:#64748b">Rol: <span style="font-weight:700;color:#1a2035">${roleLabel}</span></div>
       </div>
       ${teamSection}
+      ${locationSection}
       ${adminBtn}
       <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
     </div>`;
@@ -287,6 +403,35 @@ async function saveTeamName() {
     msg.style.color = "#16a34a"; msg.textContent = "✓ Desat";
   }
 }
+
+async function saveUserLocation() {
+  const input = $("user-location-input");
+  const msg = $("user-location-msg");
+  if (!currentUser?.id || !input || !msg) return;
+
+  const query = String(input.value || "").trim();
+  if (!query) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Introdueix una ciutat o barri.";
+    return;
+  }
+
+  msg.style.color = "#64748b";
+  msg.textContent = "Geocodificant...";
+
+  try {
+    const loc = await geocodeUserArea(query);
+    setCurrentUserLocation(loc);
+    msg.style.color = "#16a34a";
+    msg.textContent = `✓ Ubicació desada: ${loc.label}`;
+    const homeVisible = $("screen-home")?.style?.display === "flex";
+    if (homeVisible) renderHome();
+  } catch (err) {
+    msg.style.color = "#e5001c";
+    msg.textContent = `Error: ${err?.message || "No s'ha pogut desar"}`;
+  }
+}
+
 async function signOut() {
   await _sb?.auth.signOut();
   currentUser = null; currentProfile = null;
@@ -296,6 +441,7 @@ async function signOut() {
 }
 window.signOut         = signOut;
 window.saveTeamName    = saveTeamName;
+window.saveUserLocation = saveUserLocation;
 window.openLoginModal  = openLoginModal;
 window.closeLoginModal = closeLoginModal;
 window.openUserModal   = openUserModal;
@@ -2482,9 +2628,9 @@ function playerTableHtml(players, teamName, teamColor) {
 
 function getVenueLinks(teamName) {
   if (!venuesDB?.venues || !teamName) return "";
-  const venue = venuesDB.venues[teamName];
-  if (!venue?.coordinates) return "";
-  const { lat, lng } = venue.coordinates;
+  const coords = getVenueCoordinates(teamName);
+  if (!coords) return "";
+  const { lat, lng } = coords;
   if (!lat || !lng) return "";
   return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
     <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
@@ -2697,7 +2843,8 @@ function getLastAndNext(matches, teamName) {
 }
 
 // ── Match card ────────────────────────────────────────────────
-function matchCard(m, myTeam, compId) {
+function matchCard(m, myTeam, compId, options = {}) {
+  const { showTravel = false } = options || {};
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const isByeHome = isDescansaTeamName(m.home);
@@ -2734,8 +2881,9 @@ function matchCard(m, myTeam, compId) {
 
   // Afegir icona de ubicació si no és jugat i hi ha coordenades
   let venueIcon = "";
-  if (!played && !isByeHome && venuesDB?.venues?.[m.home]) {
-    const coords = venuesDB.venues[m.home];
+  const venueCoords = !played && !isByeHome ? getVenueCoordinates(m.home) : null;
+  if (venueCoords) {
+    const coords = venueCoords;
     if (coords.lat && coords.lng) {
       const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
       const mapsUrl = isApple
@@ -2745,6 +2893,11 @@ function matchCard(m, myTeam, compId) {
       venueIcon = `<div style="text-align:center;margin-top:6px"><a href="${isApple?mapsApp:mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#003da5;border:1px solid #e2e6ef;font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;text-decoration:none;cursor:pointer">📍</a></div>`;
     }
   }
+
+  const travel = showTravel ? estimateTravelForMatch(m, myTeam) : null;
+  const travelHtml = travel
+    ? `<div style="margin-top:5px;font-size:10px;color:#0f766e;font-weight:700">🚗 ~${travel.minutes} min · ${travel.km.toFixed(1)} km</div>`
+    : "";
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const encHome = encodeURIComponent(String(m.home || ""));
@@ -2774,6 +2927,7 @@ function matchCard(m, myTeam, compId) {
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${m.jornada?`J${m.jornada} · `:""}${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          ${travelHtml}
           ${actaBadge}
           ${venueIcon}
         </div>
@@ -3061,7 +3215,7 @@ function buildFavCard(fav) {
       ${classifHtml}
       <div style="padding:9px 12px">
         ${last?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Últim resultat</div>${matchCard(last,fav.teamName,fav.compId)}`:""}
-        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId)}`:""}
+        ${next?`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;${last?"margin-top:7px":""}">Proper partit</div>${matchCard(next,fav.teamName,fav.compId,{ showTravel:true })}`:""}
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
