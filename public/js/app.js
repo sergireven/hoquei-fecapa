@@ -167,7 +167,10 @@ function renderLoginButton() {
         ${currentProfile?.role==="admin"?"Admin":currentProfile?.role==="entrenador"?"Entrenador":""}
        </button>`
     : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
-  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+  const adminBtn = currentProfile?.role === "admin"
+    ? `<button onclick="openAdminPanel()" style="background:#f59e0b;border:none;color:#1a2035;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">⚙️ Panell Admin</button>`
+    : "";
+  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
 }
 
 // Login modal
