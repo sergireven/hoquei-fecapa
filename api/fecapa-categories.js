@@ -151,6 +151,13 @@ function parseClassificationSidgad(html) {
 function parseClassificationByGroupSidgad(html) {
   if (!html || html.length < 50) return [];
 
+  const seen = new Set();
+  const pushName = (rawName) => {
+    const name = normalizeText(rawName);
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    names.push(name);
+  };
   const groups = [];
   let idx = 0;
 
@@ -187,6 +194,34 @@ function parseClassificationByGroupSidgad(html) {
   }
 
   return groups;
+}
+
+function extractGroupNamesFromSidgadHtml(html) {
+  if (!html || html.length < 50) return [];
+
+  const names = [];
+  const seen = new Set();
+  const pushName = (rawName) => {
+    const name = normalizeText(rawName);
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    names.push(name);
+  };
+
+  const titleRe = /<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi;
+  let match;
+  while ((match = titleRe.exec(html)) !== null) {
+    pushName(match[1]);
+  }
+
+  if (names.length > 0) return names;
+
+  const headerRe = /<[^>]*(?:h1|h2|h3|h4|title|font-bold)[^>]*>([^<]*)<\/[^>]*>/gi;
+  while ((match = headerRe.exec(html)) !== null) {
+    pushName(match[1]);
+  }
+
+  return names;
 }
 
 function fetchText(url, redirectsLeft = 5) {
@@ -717,13 +752,30 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
   }
 
   if (!groups.length) {
-    const fallbackGroupName = normalizeGroupNameForCompetition(compMeta.competitionName, compMeta.competitionName, 0);
-    groups = [{
-      groupId: buildGroupId(compMeta.competitionId, fallbackGroupName, 1),
-      groupName: fallbackGroupName,
-      teamCount: 0,
-      teams: [],
-    }];
+    const hierarchyGroups = Array.isArray(compRaw?.hierarchy?.groups) ? compRaw.hierarchy.groups : [];
+    if (hierarchyGroups.length) {
+      groups = hierarchyGroups.map((g, idx) => {
+        const groupName = normalizeGroupNameForCompetition(
+          compMeta.competitionName,
+          String(g?.name || g?.idc || g?.key || "").trim() || compMeta.competitionName,
+          idx
+        );
+        return {
+          groupId: buildGroupId(compMeta.competitionId, groupName, idx + 1),
+          groupName,
+          teamCount: 0,
+          teams: [],
+        };
+      });
+    } else {
+      const fallbackGroupName = normalizeGroupNameForCompetition(compMeta.competitionName, compMeta.competitionName, 0);
+      groups = [{
+        groupId: buildGroupId(compMeta.competitionId, fallbackGroupName, 1),
+        groupName: fallbackGroupName,
+        teamCount: 0,
+        teams: [],
+      }];
+    }
   }
 
   return annotateCompetitionNoMatches({
@@ -919,6 +971,15 @@ async function scrapeCompetitionFromLeaguePage(comp) {
   const html = await fetchText(leagueUrl);
 
   let parsedGroups = parseClassificationByGroupSidgad(html);
+  if (!parsedGroups.length) {
+    const emptyGroupNames = extractGroupNamesFromSidgadHtml(html);
+    if (emptyGroupNames.length > 0) {
+      return buildCompetitionFromParsedGroups(
+        comp,
+        emptyGroupNames.map(groupName => ({ groupName, teamCount: 0, teams: [] }))
+      );
+    }
+  }
 
   // Some competitions (notably 4452) expose partial classification in /league HTML.
   // Recover full hierarchy by loading the classification endpoint with all filters.
