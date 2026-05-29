@@ -180,9 +180,11 @@ function openLoginModal() {
         <button onclick="closeLoginModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
       </div>
       <p style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5">Introdueix el teu e-mail per accedir.</p>
-      <input id="login-email-input" type="email" placeholder="el-teu@email.com" autocomplete="email"
-        style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
-      <button onclick="loginWithEmail()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Accedir</button>
+      <form onsubmit="event.preventDefault();loginWithEmail()">
+        <input id="login-email-input" type="email" placeholder="el-teu@email.com" autocomplete="email"
+          style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
+        <button type="submit" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Accedir</button>
+      </form>
       <div id="login-msg" style="margin-top:8px;text-align:center;font-size:13px;color:#64748b"></div>
     </div>`;
   $("login-modal-bd").style.display = "block";
@@ -305,6 +307,7 @@ let adminEntityMappingCache = null;
 let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
 let adminMappingIssueFilters = { error: true, warning: false, outdated: false };
+let adminMappingIncidentExpandAll = null;
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -495,6 +498,56 @@ async function getAdminClassificationSourcePilotsModel({ force = false } = {}) {
   return classificationSourcePilotsDB;
 }
 
+function pilotKey(pilot) {
+  return [
+    String(pilot?.jokCompId || "").trim(),
+    String(pilot?.fecapaCompetitionId || "").trim(),
+    normalizeCompKey(pilot?.preferredGroupToken || ""),
+  ].join("::");
+}
+
+function buildAuditDerivedPilots(audit) {
+  const derived = [];
+  const seen = new Set();
+
+  for (const entry of (audit?.competitions || [])) {
+    for (const grp of (entry?.groups || [])) {
+      if (!grp?.jokcatOutdated) continue;
+
+      const jokCompId = String(grp.jokcatCompId || grp.suggestedJokcatCompId || "").trim();
+      const fecapaCompetitionId = String(entry?.competitionId || entry?.fecapaCompetitionId || "").trim();
+      if (!jokCompId || !fecapaCompetitionId) continue;
+
+      const preferredGroupToken = String(grp.fecapaGroupName || grp.groupName || grp.fecapaGroupId || entry?.competitionName || "").trim();
+      const pilot = {
+        jokCompId,
+        fecapaCompetitionId,
+        preferredGroupToken,
+        source: "audit_outdated",
+      };
+
+      const key = pilotKey(pilot);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      derived.push(pilot);
+    }
+  }
+
+  return derived;
+}
+
+function mergePilotsWithPriority(primaryPilots, fallbackPilots) {
+  const out = [];
+  const seen = new Set();
+  for (const pilot of [...(primaryPilots || []), ...(fallbackPilots || [])]) {
+    const key = pilotKey(pilot);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(pilot);
+  }
+  return out;
+}
+
 async function renderAdminClassificationSourcePilotsPanel(body) {
   body.innerHTML = `${renderAdminTopNav("source_pilots")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant pilots...</div>`;
   try {
@@ -506,7 +559,8 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
       fecapaModel = null;
     }
 
-    const pilots = Array.isArray(model?.pilots) ? model.pilots : [];
+    const pilots = getClassificationSourcePilots();
+    const derivedPilotsCount = pilots.filter(p => p?.source === "audit_outdated").length;
     const uniqueJok = new Set(pilots.map(p => String(p?.jokCompId || "")).filter(Boolean)).size;
     const uniqueFecapa = new Set(pilots.map(p => String(p?.fecapaCompetitionId || "")).filter(Boolean)).size;
 
@@ -536,7 +590,7 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <div>
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Pilot mappings jok.cat → FECAPA</div>
-            <div style="font-size:12px;color:#64748b">${pilots.length} mappings · ${uniqueJok} jok IDs · ${uniqueFecapa} FECAPA competicions</div>
+            <div style="font-size:12px;color:#64748b">${pilots.length} mappings · ${derivedPilotsCount} derivats de JOK desactualitzat · ${uniqueJok} jok IDs · ${uniqueFecapa} FECAPA competicions</div>
           </div>
           <button onclick="adminReloadClassificationSourcePilots()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:9px;cursor:pointer">Recarregar</button>
         </div>
@@ -551,9 +605,15 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
             const fecapaCompName = fecapaComp?.competitionName || "No trobada";
             const fecapaGroupName = fecapaGroup?.groupName || "No resolt";
             const fecapaGroupId = fecapaGroup?.groupId ? ` (#${fecapaGroup.groupId})` : "";
+            const derivedTag = p?.source === "audit_outdated"
+              ? `<span style="font-size:10px;color:#1d4ed8;background:#dbeafe;border:1px solid #bfdbfe;border-radius:999px;padding:2px 6px;font-weight:700">audit · FECAPA-first</span>`
+              : "";
 
             return `<div style="border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;background:#f8fafc">
-              <div style="font-size:11px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">jok.cat</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px">
+                <div style="font-size:11px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em">jok.cat</div>
+                ${derivedTag}
+              </div>
               <div style="font-size:12px;color:#1a2035;font-weight:700">ID ${esc(String(p?.jokCompId || "?"))}</div>
               <div style="font-size:11px;color:#475569">Grup/Lliga: ${esc(jokGroupName)}</div>
 
@@ -1227,7 +1287,12 @@ async function renderAdminMappingHubPanel(body) {
     </details>`;
   };
 
-  const pilots = Array.isArray(pilotsModel?.pilots) ? pilotsModel.pilots : [];
+  const pilots = getClassificationSourcePilots();
+  const incidentRowOpenByDefault = row => {
+    if (adminMappingIncidentExpandAll === true) return true;
+    if (adminMappingIncidentExpandAll === false) return false;
+    return row.status === "error";
+  };
   const pilotByCategory = new Map();
   for (const p of pilots) {
     const jokComp = jokById.get(String(p?.jokCompId || "")) || null;
@@ -1320,15 +1385,17 @@ async function renderAdminMappingHubPanel(body) {
     <details open style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 12px;margin-bottom:12px">
       <summary style="cursor:pointer;font-weight:800;color:#1a2035">1) Incidències de mapeig per grup (amb motiu) + revisió manual</summary>
       <div style="margin-top:10px">
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center">
           ${[
             ["error", "Error", "#b91c1c"],
             ["warning", "Warning", "#92400e"],
             ["outdated", "JOK desactualitzat", "#1d4ed8"],
           ].map(([key, label, color]) => `<label style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;color:${color};cursor:pointer"><input type="checkbox" ${adminMappingIssueFilters[key] ? "checked" : ""} onchange="adminMappingToggleIssueFilter('${key}', this.checked)" style="accent-color:${color}" />${label}</label>`).join("")}
+          <button onclick="adminMappingToggleIncidents(true)" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Descol·lapsar tot</button>
+          <button onclick="adminMappingToggleIncidents(false)" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:6px 10px;border-radius:999px;cursor:pointer">Col·lapsar tot</button>
         </div>
         <input type="text" value="${esc(adminAuditSearchQuery)}" oninput="adminAuditSetSearch(this.value)" placeholder="Filtra per competició, grup, ID o nom..." style="width:100%;padding:8px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:12px;font-family:inherit;outline:none;margin-bottom:8px" />
-        ${(groupedByCategory(issueGroups)).map(([cat, rows]) => `<details open style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;color:#92400e">${esc(adminCategoryLabel(cat))} · ${rows.length} incidències</summary><div style="margin-top:8px">${rows.map((r, i) => renderAuditRowCompact(r, i < 2)).join("")}</div></details>`).join("") || `<div style="font-size:12px;color:#166534">No hi ha incidències amb el filtre actual.</div>`}
+        ${(groupedByCategory(issueGroups)).map(([cat, rows]) => `<details open style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;color:#92400e">${esc(adminCategoryLabel(cat))} · ${rows.length} incidències</summary><div style="margin-top:8px">${rows.map(r => renderAuditRowCompact(r, incidentRowOpenByDefault(r))).join("")}</div></details>`).join("") || `<div style="font-size:12px;color:#166534">No hi ha incidències amb el filtre actual.</div>`}
         <details style="border:1px solid #e2e6ef;border-radius:10px;padding:8px;margin-top:10px">
           <summary style="cursor:pointer;font-weight:700;color:#166534">Correctes (col·lapsat) · ${okGroups.length}</summary>
           <div style="margin-top:8px">${(groupedByCategory(okGroups)).map(([cat, rows]) => `<details style="border:1px solid #e2e6ef;border-radius:9px;padding:6px;margin-bottom:7px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#166534">${esc(adminCategoryLabel(cat))} · ${rows.length}</summary><div style="margin-top:7px">${rows.slice(0, 30).map(r => renderAuditRowCompact(r, false)).join("")}${rows.length > 30 ? `<div style="font-size:11px;color:#94a3b8">Mostrant 30 de ${rows.length} grups correctes.</div>` : ""}</div></details>`).join("")}</div>
@@ -1505,19 +1572,28 @@ window.adminReloadFecapaCategories = () => {
   adminFecapaCategoriesCache = null;
   renderAdminPanel();
 };
-window.adminReloadAudit = () => {
+window.adminReloadAudit = async () => {
   adminAuditCache = null;
+  try {
+    await getAdminAuditData({ force: true });
+  } catch {}
+  applyClassificationSourceMerge();
   renderAdminPanel();
 };
 window.adminReloadClassificationSourcePilots = () => {
   classificationSourcePilotsDB = null;
   renderAdminPanel();
 };
-window.adminReloadMappingHub = () => {
+window.adminReloadMappingHub = async () => {
   adminFecapaCategoriesCache = null;
   adminAuditCache = null;
   adminEntityMappingCache = null;
   classificationSourcePilotsDB = null;
+  adminMappingIncidentExpandAll = null;
+  try {
+    await getAdminAuditData({ force: true });
+  } catch {}
+  applyClassificationSourceMerge();
   renderAdminPanel();
 };
 window.adminAuditSetSearch = value => {
@@ -1549,6 +1625,10 @@ window.adminExportAuditFeedback = () => {
 window.adminClearAuditFeedback = () => {
   if (!confirm("Vols esborrar tot el feedback local d'auditoria?")) return;
   saveAuditFeedback({});
+  renderAdminPanel();
+};
+window.adminMappingToggleIncidents = shouldExpand => {
+  adminMappingIncidentExpandAll = !!shouldExpand;
   renderAdminPanel();
 };
 
@@ -2036,7 +2116,9 @@ function hasClassRows(rows) {
 
 function getClassificationSourcePilots() {
   const loaded = classificationSourcePilotsDB?.pilots;
-  return Array.isArray(loaded) && loaded.length ? loaded : CLASSIFICATION_SOURCE_PILOTS;
+  const basePilots = Array.isArray(loaded) && loaded.length ? loaded : CLASSIFICATION_SOURCE_PILOTS;
+  const derivedPilots = buildAuditDerivedPilots(adminAuditCache);
+  return mergePilotsWithPriority(derivedPilots, basePilots);
 }
 
 function buildSidgadClassificationIndex(raw) {
@@ -2097,7 +2179,7 @@ function applyClassificationSourceMerge() {
     const targetComp = allComps.find(c => String(c?.competitionId || "") === String(pilot.fecapaCompetitionId || ""));
     if (!targetComp) return null;
 
-    const groups = (targetComp.groups || []).filter(g => Array.isArray(g?.teams) && g.teams.length > 0);
+    const groups = Array.isArray(targetComp.groups) ? targetComp.groups : [];
     if (!groups.length) return null;
 
     const preferredToken = normalizeCompKey(pilot.preferredGroupToken || "");
@@ -2122,7 +2204,7 @@ function applyClassificationSourceMerge() {
         best = group;
       }
     }
-    return best;
+    return best || groups[0] || null;
   };
 
   for (const comps of Object.values(DB.categories)) {
@@ -2146,15 +2228,14 @@ function applyClassificationSourceMerge() {
       if (!bestFecapaGroup) continue;
 
       const fecapaRows = normalizeFecapaClassificationRows(bestFecapaGroup.teams || []);
-      if (!hasClassRows(fecapaRows)) continue;
-
-      comp.classification = fecapaRows;
+      comp.classification = hasClassRows(fecapaRows) ? fecapaRows : [];
       comp.classificationSource = "fecapa";
       comp.classificationPilot = {
         jokCompId: String(comp.id),
         fecapaCompetitionId: String(pilot.fecapaCompetitionId),
         fecapaGroupId: String(bestFecapaGroup.groupId || ""),
         fecapaGroupName: String(bestFecapaGroup.groupName || ""),
+        source: String(pilot.source || "config"),
       };
     }
   }
@@ -3233,6 +3314,48 @@ function getCatForComp(comp) {
 window.selectClub = function(key) {
   const entry = buildClubMap().get(key);
   if (entry) { selectedClub={key,...entry}; renderClubDashboard(); window.scrollTo(0,0); }
+};
+
+function findClubKeyByTeamName(teamName) {
+  const wanted = String(teamName || "").trim();
+  if (!wanted) return null;
+
+  const map = buildClubMap();
+  const strictWanted = normalizeTeamNameStrict(wanted);
+  for (const [key, club] of map.entries()) {
+    const teams = club?.teams || [];
+    const match = teams.some(t => {
+      const name = String(t?.teamName || "");
+      if (!name) return false;
+      return normalizeTeamNameStrict(name) === strictWanted || teamMatchesLoose(name, wanted);
+    });
+    if (match) return key;
+  }
+
+  const fallbackKey = wanted.toLowerCase().replace(/\s+[a-e]$/, "").trim();
+  return map.has(fallbackKey) ? fallbackKey : null;
+}
+
+window.openClubFromClassif = teamName => {
+  const key = findClubKeyByTeamName(teamName);
+  homeTab = "club";
+  selectedClub = null;
+  clubSearch = "";
+
+  ["screen-detail", "screen-picker", "screen-acta", "screen-admin"].forEach(id => {
+    const el = $(id);
+    if (el) el.style.display = "none";
+  });
+  $("screen-home").style.display = "flex";
+
+  if (key) {
+    selectClub(key);
+    return;
+  }
+
+  clubSearch = shortTeamDisplayName(teamName || "");
+  renderHome();
+  window.scrollTo(0, 0);
 };
 
 function renderClubDashboard() {
@@ -4498,6 +4621,21 @@ async function renderDetailClassif(){
     ${highlightCard('🔒', 'Porteries a Zero', mostShutouts?.[0], mostShutouts?.[1]?.shutouts || 0)}
   </div>`;
 
+  const setDetailTabView = tabKey => {
+    detailTab = tabKey;
+    document.querySelectorAll(".detail-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabKey));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${tabKey}`));
+  };
+
+  window.openJugadorsFromClassif = teamName => {
+    detailTeam = teamName || detailTeam;
+    setDetailTabView("jugadors");
+    renderDetailClassif().then(() => {
+      renderDetailCalendar();
+      renderDetailJugadors();
+    });
+  };
+
   $("panel-classif").innerHTML=`
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">${sourceBadge}</div>
     ${highlightsHtml}
@@ -4513,7 +4651,7 @@ async function renderDetailClassif(){
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px">${shieldImg(cid,22)}<span style="font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"}">${esc(normalizeJokClubDisplayName(r.team))}</span>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openJugadorsFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
@@ -4675,6 +4813,13 @@ async function init(){
       if (pilotsRes.ok) classificationSourcePilotsDB = await pilotsRes.json();
     } catch {
       classificationSourcePilotsDB = null;
+    }
+
+    try {
+      const auditRes = await fetch("./classification-audit.json?t=" + Date.now());
+      if (auditRes.ok) adminAuditCache = await auditRes.json();
+    } catch {
+      adminAuditCache = null;
     }
 
     // Load venues/coordinates
