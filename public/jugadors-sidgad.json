@@ -79687,6 +79687,142 @@
     "isGK": false,
     "fetchedAt": "2026-05-20T19:27:06.506Z"
   },
+  "10001672": {
+    "sidgadId": "10001672",
+    "name": "0 PROCTER ISLA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-31T15:53:35.930Z"
+  },
+  "10001675": {
+    "sidgadId": "10001675",
+    "name": "0 OBERRÖDER CLARA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-31T15:53:36.113Z"
+  },
+  "10001676": {
+    "sidgadId": "10001676",
+    "name": "0 MÜLLER FREYA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:36.276Z"
+  },
+  "10001677": {
+    "sidgadId": "10001677",
+    "name": "0 ESCHRICH LONIE",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:36.456Z"
+  },
+  "10001678": {
+    "sidgadId": "10001678",
+    "name": "0 FRANKE AMELIE",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:36.617Z"
+  },
+  "10001679": {
+    "sidgadId": "10001679",
+    "name": "0 PFAFF PAULA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:36.778Z"
+  },
+  "10001680": {
+    "sidgadId": "10001680",
+    "name": "0 SIMON KLARA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:36.941Z"
+  },
+  "10001681": {
+    "sidgadId": "10001681",
+    "name": "0 PINK JULIETTA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:37.101Z"
+  },
+  "10001685": {
+    "sidgadId": "10001685",
+    "name": "0 BOWDEN HARLIEE",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-05-31T15:53:37.262Z"
+  },
+  "10001686": {
+    "sidgadId": "10001686",
+    "name": "0 BRADSHAW LOIS",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:37.426Z"
+  },
+  "10001687": {
+    "sidgadId": "10001687",
+    "name": "0 HARDBISHER SOPHIE",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:37.588Z"
+  },
+  "10001688": {
+    "sidgadId": "10001688",
+    "name": "0 COLL ARLET",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:37.751Z"
+  },
+  "10001689": {
+    "sidgadId": "10001689",
+    "name": "0 VINYETS ANNA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:37.913Z"
+  },
+  "10001690": {
+    "sidgadId": "10001690",
+    "name": "0 MARTIN INGRID",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:38.082Z"
+  },
+  "10001691": {
+    "sidgadId": "10001691",
+    "name": "0 CANAL LIA",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:38.242Z"
+  },
+  "10001692": {
+    "sidgadId": "10001692",
+    "name": "0 EDWARDS ERIN",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:38.403Z"
+  },
+  "10001693": {
+    "sidgadId": "10001693",
+    "name": "0 MICKLETHWAIT LEAH",
+    "birthDate": "22/08/2025",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-05-31T15:53:38.563Z"
+  },
   "10001705": {
     "sidgadId": "10001705",
     "name": "FERNANDEZ OFFREDI JULIETA",
@@ -94404,6 +94540,20 @@
     "121862",
     "121865",
     "121868",
-    "121869"
+    "121869",
+    "141961",
+    "142017",
+    "142018",
+    "142071",
+    "112470",
+    "112471",
+    "112472",
+    "112473",
+    "112474",
+    "112475",
+    "112476",
+    "139465",
+    "139466",
+    "139467"
   ]
 }
