@@ -8,6 +8,7 @@ const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
 const TEMP_ID = "39"; // temporada 2025-26
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
+const DATA_FILE = path.join(__dirname, "../public/data.json");
 const CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
 const FECAPA_4452_REFERENCE_HTML = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
 const VALIDATION_COMP_4452_ID = "4452";
@@ -35,6 +36,22 @@ const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
 const NO_MATCHES_PLAYED_MESSAGE = "Sense partits disputats";
 const PLAYOFF_UNAVAILABLE_MESSAGE = "No disponible actualment";
+const POSTSEASON_PHASE_RE = /\b(play\s*-?\s*off|eliminat|copa|fase\s*final|final\s*a\s*4|final\s*four)\b/i;
+const ALLOW_INSECURE_TLS = process.env.FECAPA_ALLOW_INSECURE_TLS === "1"
+  || process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";
+
+function inferPhaseType(phaseName) {
+  const n = normName(phaseName || "");
+  if (/\bPLAY\s*OFF\b/.test(n)) return "playoff";
+  if (/\bELIMINAT/.test(n)) return "eliminatories";
+  if (/\bCOPA\b/.test(n)) return "copa";
+  if (/\bFASE\s*FINAL\b|\bFINAL\s*A\s*4\b|\bFINAL\s*FOUR\b/.test(n)) return "fase_final";
+  return "lliga";
+}
+
+function isPostSeasonPhaseName(phaseName) {
+  return POSTSEASON_PHASE_RE.test(String(phaseName || ""));
+}
 
 function getEmptyGroupStatusMessage(groupName) {
   const name = String(groupName || "").trim();
@@ -196,6 +213,93 @@ function parseClassificationByGroupSidgad(html) {
   return groups;
 }
 
+function parseScoreCell(text) {
+  const clean = normalizeText(text);
+  const m = clean.match(/^(\d{1,2})\s*[-:]\s*(\d{1,2})$/);
+  if (!m) return { homeScore: null, awayScore: null, played: false };
+  return {
+    homeScore: parseInt(m[1], 10),
+    awayScore: parseInt(m[2], 10),
+    played: true,
+  };
+}
+
+function parseMatchesFromCalendarTable(tableHtml) {
+  const rows = [];
+  const trMatches = String(tableHtml || "").match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+
+  for (const tr of trMatches) {
+    const rawCells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => normalizeText(m[1]));
+    if (rawCells.length < 3) continue;
+
+    const candidateTeams = rawCells.filter(c => /[A-ZÀ-ÿ]/i.test(c) && !/^\d+$/.test(c));
+    if (candidateTeams.length < 2) continue;
+
+    const home = candidateTeams[0] || "";
+    const away = candidateTeams[1] || "";
+    if (!home || !away || home === away) continue;
+
+    const dateCell = rawCells.find(c => /\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/.test(c)) || "";
+    const dateMatch = dateCell.match(/(\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?)/);
+    const timeMatch = dateCell.match(/(\d{1,2}:\d{2})/);
+
+    const jornadaCell = rawCells.find(c => /\bj(?:ornada)?\s*\d+\b/i.test(c)) || "";
+    const jornadaMatch = jornadaCell.match(/(\d{1,2})/);
+
+    const scoreCell = rawCells.find(c => /^\d{1,2}\s*[-:]\s*\d{1,2}$/.test(c)) || "";
+    const score = parseScoreCell(scoreCell);
+
+    rows.push({
+      jornada: jornadaMatch ? parseInt(jornadaMatch[1], 10) : null,
+      home,
+      away,
+      date: dateMatch ? dateMatch[1].replace(/\//g, "-") : "",
+      time: timeMatch ? timeMatch[1] : "",
+      homeScore: score.homeScore,
+      awayScore: score.awayScore,
+      played: score.played,
+      source: "fecapa",
+    });
+  }
+
+  return rows;
+}
+
+function parseCalendarByPhaseSidgad(html, competitionId) {
+  const out = [];
+  const blockRe = /<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>[\s\S]*?<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>([\s\S]*?)<\/table>/gi;
+  let match;
+  let idx = 0;
+
+  while ((match = blockRe.exec(String(html || ""))) !== null) {
+    const phaseName = normalizeText(match[1]) || `Fase ${idx + 1}`;
+    const matches = parseMatchesFromCalendarTable(`<table>${match[2]}</table>`);
+    out.push({
+      phaseId: `${competitionId || "comp"}-phase-${idx + 1}`,
+      phaseName,
+      phaseType: inferPhaseType(phaseName),
+      isPostSeason: isPostSeasonPhaseName(phaseName),
+      matchCount: matches.length,
+      matches,
+    });
+    idx += 1;
+  }
+
+  if (out.length > 0) return out;
+
+  const flatMatches = parseMatchesFromCalendarTable(String(html || ""));
+  if (!flatMatches.length) return [];
+
+  return [{
+    phaseId: `${competitionId || "comp"}-phase-1`,
+    phaseName: "Calendari",
+    phaseType: "lliga",
+    isPostSeason: false,
+    matchCount: flatMatches.length,
+    matches: flatMatches,
+  }];
+}
+
 function extractGroupNamesFromSidgadHtml(html) {
   if (!html || html.length < 50) return [];
 
@@ -228,6 +332,7 @@ function fetchText(url, redirectsLeft = 5) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith("https") ? https : http;
     const req = lib.get(url, {
+      ...(url.startsWith("https") && ALLOW_INSECURE_TLS ? { rejectUnauthorized: false } : {}),
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -295,6 +400,7 @@ function fetchFormText(url, formData) {
       port: u.port || (u.protocol === "https:" ? 443 : 80),
       path: `${u.pathname}${u.search}`,
       method: "POST",
+      ...(u.protocol === "https:" && ALLOW_INSECURE_TLS ? { rejectUnauthorized: false } : {}),
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -496,6 +602,29 @@ async function loadCategoriesFile() {
   return null;
 }
 
+async function loadDataFile() {
+  const candidates = [
+    DATA_FILE,
+    path.join(process.cwd(), "public/data.json"),
+    path.join(process.cwd(), "./public/data.json"),
+    "/var/task/public/data.json",
+  ];
+
+  for (const p of candidates) {
+    try {
+      const raw = await fs.readFile(p, "utf8");
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.categories) {
+        return parsed;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return null;
+}
+
 function buildPersistedCompetitionIndex(persisted) {
   const byId = {};
   const cats = persisted?.categories || {};
@@ -526,6 +655,45 @@ function selectTargetCompetitions(compIndex, targetCategories = TARGET_CATEGORIE
     });
   }
   return selected;
+}
+
+function selectPostSeasonCompetitionsFromData(dataFile, targetCategories = TARGET_CATEGORIES) {
+  const selected = [];
+  const categories = dataFile?.categories || {};
+
+  for (const [catName, comps] of Object.entries(categories)) {
+    const normalizedCat = normalizeCategory(catName);
+    if (!targetCategories.has(normalizedCat)) continue;
+
+    for (const comp of (Array.isArray(comps) ? comps : [])) {
+      const name = String(comp?.name || "").trim();
+      const compId = String(comp?.id || "").trim();
+      if (!name || !compId) continue;
+      if (!POSTSEASON_PHASE_RE.test(name)) continue;
+
+      selected.push({
+        competitionId: compId,
+        competitionName: name.replace(/\s*\(\d{4}-\d{2}\)\s*$/i, "").trim(),
+        category: inferBaseCategory(normalizedCat) || inferBaseCategory(name),
+      });
+    }
+  }
+
+  return selected;
+}
+
+function mergeCompetitionSelections(baseList, extraList) {
+  const out = [];
+  const seen = new Set();
+
+  for (const comp of [...(baseList || []), ...(extraList || [])]) {
+    const id = String(comp?.competitionId || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(comp);
+  }
+
+  return out;
 }
 
 function toNumberOrNull(v) {
@@ -782,12 +950,15 @@ function buildCompetitionFromSnapshot(compMeta, compRaw) {
     }
   }
 
+  const phases = [];
   return annotateCompetitionNoMatches({
     competitionId: compMeta.competitionId,
     competitionName: compMeta.competitionName,
     groupCount: groups.length,
     teamCount: groups.reduce((acc, g) => acc + g.teamCount, 0),
     groups,
+    competitionPhases: phases,
+    hasPostSeasonPhases: false,
   });
 }
 
@@ -849,7 +1020,57 @@ function buildCompetitionFromParsedGroups(comp, parsedGroups) {
     groupCount: normalizedGroups.length,
     teamCount: normalizedGroups.reduce((acc, g) => acc + g.teamCount, 0),
     groups: normalizedGroups,
+    competitionPhases: [],
+    hasPostSeasonPhases: false,
   });
+}
+
+function attachCompetitionPhases(compData, phases) {
+  const normalizedPhases = Array.isArray(phases) ? phases : [];
+  return {
+    ...compData,
+    competitionPhases: normalizedPhases,
+    hasPostSeasonPhases: normalizedPhases.some(p => p?.isPostSeason === true),
+  };
+}
+
+async function scrapeCompetitionPhasesLive(page, comp, previousHtml = "") {
+  const clickResult = await page.evaluate(() => {
+    const btn = document.getElementById("calendario_btn")
+      || [...document.querySelectorAll("a,button")].find(el => {
+        const txt = String(el.textContent || "").toUpperCase();
+        const file = String(el.getAttribute("file") || "").toUpperCase();
+        return txt.includes("CALENDARI") || txt.includes("RESULTATS") || file.includes("CAL_IDC_");
+      });
+
+    if (!btn) return { ok: false, reason: "missing-calendar-button" };
+
+    if (typeof btn.click === "function") btn.click();
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (typeof window.$j === "function") window.$j(btn).trigger("click");
+    return { ok: true };
+  });
+
+  if (!clickResult?.ok) return [];
+
+  await page.waitForFunction(
+    ({ previous }) => {
+      const el = document.getElementById("tab_modal_contenido_competicion");
+      if (!el) return false;
+      const html = el.innerHTML || "";
+      if (!html || html === previous) return false;
+      return /tabla_standard|div_titulo_fase_idc|jornada|resultat|calendari/i.test(html);
+    },
+    { timeout: 12000 },
+    { previous: previousHtml || "" }
+  ).catch(() => {});
+
+  const calendarHtml = await page.evaluate(() => {
+    const el = document.getElementById("tab_modal_contenido_competicion");
+    return el ? (el.innerHTML || "") : "";
+  });
+
+  return parseCalendarByPhaseSidgad(calendarHtml, comp.competitionId);
 }
 
 function isBetterCompetitionData(candidate, baseline) {
@@ -1012,6 +1233,8 @@ async function scrapeCompetitionFromLeaguePage(comp) {
         teamCount: flatRows.length,
         teams: flatRows,
       }],
+      competitionPhases: [],
+      hasPostSeasonPhases: false,
     };
   }
 
@@ -1748,7 +1971,8 @@ async function scrapeCompetitionLive(page, comp) {
       console.log(
         `[fecapa-categories] ${comp.competitionId} classification unavailable in live DOM -> soft-fallback=snapshot`
       );
-      return annotateCompetitionNoMatches({
+      const phasesOnFallback = await scrapeCompetitionPhasesLive(page, comp, beforeClickSnapshot);
+      return attachCompetitionPhases(annotateCompetitionNoMatches({
         competitionId: comp.competitionId,
         competitionName: comp.competitionName,
         groupCount: 1,
@@ -1759,7 +1983,7 @@ async function scrapeCompetitionLive(page, comp) {
           teamCount: 0,
           teams: [],
         }],
-      });
+      }), phasesOnFallback);
     }
 
     console.log(
@@ -1903,13 +2127,14 @@ async function scrapeCompetitionLive(page, comp) {
       teams: [],
     }];
 
-  return annotateCompetitionNoMatches({
+  const parsedPhases = await scrapeCompetitionPhasesLive(page, comp, containerHtml);
+  return attachCompetitionPhases(annotateCompetitionNoMatches({
     competitionId: comp.competitionId,
     competitionName: comp.competitionName,
     groupCount: normalizedGroupsOut.length,
     teamCount: normalizedGroupsOut.reduce((acc, g) => acc + g.teamCount, 0),
     groups: normalizedGroupsOut,
-  });
+  }), parsedPhases);
 }
 
 // ── Core function: obtenir dades de categories ───────────────
@@ -1941,7 +2166,11 @@ async function getCategoriesData(options = {}) {
     const effectiveCategories = Array.isArray(categoriesFilter) && categoriesFilter.length > 0
       ? new Set(categoriesFilter.map(c => normalizeCategory(c)))
       : TARGET_CATEGORIES;
-    const selected = selectTargetCompetitions(compIndex, effectiveCategories);
+    const selectedFromCompIndex = selectTargetCompetitions(compIndex, effectiveCategories);
+    const dataFile = await loadDataFile();
+    const selectedPostSeason = selectPostSeasonCompetitionsFromData(dataFile, effectiveCategories);
+    const selected = mergeCompetitionSelections(selectedFromCompIndex, selectedPostSeason)
+      .filter(c => !!c?.category);
 
     const categories = {
       nacional_catalana: [],
