@@ -3094,7 +3094,26 @@ function unresolvedCalendarMatchesCount(comp) {
   ).length;
 }
 
-function buildDetailCompView(baseComp) {
+function teamMatchesCalendarExact(a, b) {
+  const ka = normalizeTeamNameStrict(a || "");
+  const kb = normalizeTeamNameStrict(b || "");
+  return !!ka && !!kb && ka === kb;
+}
+
+function competitionHasCalendarTeam(comp, teamName) {
+  if (!comp || !teamName) return false;
+  const regular = (comp.calendar || []).some(m =>
+    teamMatchesCalendarExact(m?.home, teamName) || teamMatchesCalendarExact(m?.away, teamName)
+  );
+  if (regular) return true;
+  return (comp.postSeasonPhases || []).some(phase =>
+    (phase?.matches || []).some(m =>
+      teamMatchesCalendarExact(m?.home, teamName) || teamMatchesCalendarExact(m?.away, teamName)
+    )
+  );
+}
+
+function buildDetailCompView(baseComp, preferredTeamName = null) {
   if (!baseComp || !DB?.categories) return baseComp;
 
   const catKey = getCatForComp(baseComp);
@@ -3127,7 +3146,12 @@ function buildDetailCompView(baseComp) {
   };
 
   const bestClassComp = siblings.reduce((best, c) => classScore(c) > classScore(best) ? c : best, siblings[0]);
-  const bestCalendarComp = siblings.reduce((best, c) => calScore(c) > calScore(best) ? c : best, siblings[0]);
+  const calendarCandidates = preferredTeamName
+    ? siblings.filter(c => competitionHasCalendarTeam(c, preferredTeamName))
+    : siblings;
+  const scopedCalendarCandidates = calendarCandidates.length ? calendarCandidates : siblings;
+  const bestCalendarComp = scopedCalendarCandidates.reduce((best, c) => calScore(c) > calScore(best) ? c : best, scopedCalendarCandidates[0]);
+  const phaseSourceComps = preferredTeamName ? [bestCalendarComp] : siblings;
 
   const merged = {
     ...baseComp,
@@ -3135,7 +3159,7 @@ function buildDetailCompView(baseComp) {
     calendar: Array.isArray(bestCalendarComp?.calendar)
       ? bestCalendarComp.calendar.map(m => ({ ...m, compId: String(bestCalendarComp.id || baseComp.id || "") }))
       : [],
-    postSeasonPhases: normalizePostSeasonPhases(mergePostSeasonPhasesFromCompetitions(siblings)),
+    postSeasonPhases: normalizePostSeasonPhases(mergePostSeasonPhasesFromCompetitions(phaseSourceComps)),
     pctPlayed: Math.max(...siblings.map(c => Number(c?.pctPlayed || 0))),
     detailMergeInfo: {
       merged: String(bestClassComp?.id || "") !== String(baseComp.id || "") || String(bestCalendarComp?.id || "") !== String(baseComp.id || ""),
@@ -4856,7 +4880,7 @@ function getJokCompetitionUrl(comp) {
 
 function openDetail(compId,teamName,tab){
   const rawComp = findComp(compId);
-  detailComp = buildDetailCompView(rawComp);
+  detailComp = buildDetailCompView(rawComp, teamName || null);
   detailTeam=teamName||null; detailTab=tab||"classif";
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
@@ -5211,16 +5235,16 @@ function renderDetailCalendar(){
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
       <button onclick="setCalTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tots</button>
-      ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setCalTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
+      ${names.map(t=>{const act=teamMatchesCalendarExact(t,detailTeam),cid=getClubId(t);return`<button onclick="setCalTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
     </div>
   </div>`;
 
-  const matches=detailTeam?all.filter(m=>teamIn(m.home,detailTeam)||teamIn(m.away,detailTeam)):all;
+  const matches=detailTeam?all.filter(m=>teamMatchesCalendarExact(m.home,detailTeam)||teamMatchesCalendarExact(m.away,detailTeam)):all;
   const phaseBlocks = phases
     .map(p => ({
       ...p,
       matches: detailTeam
-        ? (p.matches || []).filter(m => teamIn(m.home, detailTeam) || teamIn(m.away, detailTeam))
+        ? (p.matches || []).filter(m => teamMatchesCalendarExact(m.home, detailTeam) || teamMatchesCalendarExact(m.away, detailTeam))
         : (p.matches || []),
     }))
     .filter(p => (p.matches || []).length > 0 || p?.isPostSeason === true);
