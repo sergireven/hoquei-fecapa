@@ -5373,7 +5373,7 @@ function getTeamCompetitionCandidates(comp, teamName, teamId = null) {
     if (out.some(c => teamMatchesCalendarExact(m?.away, c))) pushUnique(m?.away);
   }
 
-  if (!out.length && teamName) {
+  if (!wantedId && !out.length && teamName) {
     for (const t of (comp.teams || [])) {
       const n = t?.name || t?.teamName || "";
       if (teamMatchesCalendarExact(n, teamName)) pushUnique(n);
@@ -5443,7 +5443,20 @@ function buildTeamSeasonCompetitions(teamName, teamId = null) {
     }
   }
 
-  return rows
+  const deduped = new Map();
+  for (const row of rows) {
+    const key = row.compId || `${normalizeCompKey(row.compName)}::${normalizeCompKey(row.category)}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, row);
+      continue;
+    }
+    const prev = deduped.get(key);
+    const prevScore = (prev.matchCount * 10) + prev.playedCount + prev.phaseFutureCount;
+    const nextScore = (row.matchCount * 10) + row.playedCount + row.phaseFutureCount;
+    if (nextScore > prevScore) deduped.set(key, row);
+  }
+
+  return [...deduped.values()]
     .sort((a, b) => {
       const seasonA = (a.compName.match(/\(([^)]+)\)\s*$/) || ["", ""]).pop();
       const seasonB = (b.compName.match(/\(([^)]+)\)\s*$/) || ["", ""]).pop();
