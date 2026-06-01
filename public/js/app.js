@@ -2563,16 +2563,10 @@ function applyClassificationSourceMerge() {
       ? allFecapaComps.filter(c => String(c?.competitionId || "") === String(pilot.fecapaCompetitionId || ""))
       : [];
     const byName = allFecapaComps.filter(c => normalizeCompKey(c?.competitionName || "") === normalizeCompKey(jokComp?.name || ""));
-    const jokBase = cleanBaseName(jokComp?.name || "");
-    const byBasePostSeason = allFecapaComps.filter(c => {
-      const name = String(c?.competitionName || "");
-      if (!POSTSEASON_RE.test(name)) return false;
-      return cleanBaseName(name) === jokBase;
-    });
 
     const seen = new Set();
     const out = [];
-    for (const c of [...byId, ...byName, ...byBasePostSeason]) {
+    for (const c of [...byId, ...byName]) {
       const key = String(c?.competitionId || "");
       if (!key || seen.has(key)) continue;
       seen.add(key);
@@ -3028,66 +3022,6 @@ function phaseTypeLabel(phaseType) {
   return "Fase";
 }
 
-function inferPhaseTypeFromName(name) {
-  const n = normalizeCompKey(name || "");
-  if (/\bplay\s*off\b/.test(n)) return "playoff";
-  if (/\beliminat/.test(n)) return "eliminatories";
-  if (/\bcopa\b/.test(n)) return "copa";
-  return "fase_final";
-}
-
-function isPostSeasonCompetitionName(name) {
-  return /(play\s*-?\s*off|eliminat|copa|fase\s*final|final\s*a\s*4|final\s*four|2\s*ª?\s*fase)/i.test(String(name || ""));
-}
-
-function normalizePostSeasonBaseName(name) {
-  return normalizeCompKey(String(name || "")
-    .replace(/\bplay\s*-?\s*off\b/ig, " ")
-    .replace(/\beliminat(?:ories|oria)?\b/ig, " ")
-    .replace(/\bcopa\b/ig, " ")
-    .replace(/\bfase\s*final\b/ig, " ")
-    .replace(/\bfinal\s*a\s*4\b|\bfinal\s*four\b/ig, " ")
-    .replace(/\b2\s*ª?\s*fase\b/ig, " ")
-  );
-}
-
-function normalizedCompetitionTeamKey(name) {
-  return normalizeTeamName(normalizeJokClubDisplayName(name || ""));
-}
-
-function buildPostSeasonPhasesFromRelatedComps(baseComp, catComps) {
-  const base = normalizePostSeasonBaseName(baseComp?.name || "");
-  const baseTeamKeys = new Set((baseComp?.classification || [])
-    .map(r => normalizedCompetitionTeamKey(r?.team || r?.teamName || ""))
-    .filter(Boolean));
-
-  const related = (catComps || []).filter(c => {
-    if (String(c?.id || "") === String(baseComp?.id || "")) return false;
-    if (!isPostSeasonCompetitionName(c?.name || "")) return false;
-    return normalizePostSeasonBaseName(c?.name || "") === base;
-  });
-
-  return normalizePostSeasonPhases(related.map(c => ({
-    phaseId: `related-${String(c?.id || "")}`,
-    phaseName: String(c?.name || "").replace(/\s*\(\d{4}-\d{2}\)\s*$/i, "").trim(),
-    phaseType: inferPhaseTypeFromName(c?.name || ""),
-    isPostSeason: true,
-    matches: (c?.calendar || [])
-      .filter(m => {
-        // Guardrail: never import foreign teams from loosely related competitions.
-        if (!baseTeamKeys.size) return false;
-        const homeKey = normalizedCompetitionTeamKey(m?.home || "");
-        const awayKey = normalizedCompetitionTeamKey(m?.away || "");
-        if (!homeKey || !awayKey) return false;
-        return baseTeamKeys.has(homeKey) && baseTeamKeys.has(awayKey);
-      })
-      .map(m => ({
-        ...m,
-        source: m?.source || "jok",
-      })),
-  })));
-}
-
 function normalizePostSeasonPhases(phases) {
   const out = [];
   const seenPhase = new Set();
@@ -3165,18 +3099,13 @@ function buildDetailCompView(baseComp) {
 
   const catKey = getCatForComp(baseComp);
   const nameKey = normalizeCompKey(baseComp.name || "");
-  const categoryComps = DB.categories?.[catKey] || [];
   const siblings = (DB.categories?.[catKey] || [])
     .filter(c => normalizeCompKey(c?.name || "") === nameKey);
-  const relatedPostSeasonPhases = buildPostSeasonPhasesFromRelatedComps(baseComp, categoryComps);
 
   if (siblings.length <= 1) {
     return {
       ...baseComp,
-      postSeasonPhases: normalizePostSeasonPhases([
-        ...(baseComp?.postSeasonPhases || []),
-        ...relatedPostSeasonPhases,
-      ]),
+      postSeasonPhases: normalizePostSeasonPhases(baseComp?.postSeasonPhases || []),
       detailMergeInfo: {
         merged: false,
         baseCompId: String(baseComp.id || ""),
@@ -3206,10 +3135,7 @@ function buildDetailCompView(baseComp) {
     calendar: Array.isArray(bestCalendarComp?.calendar)
       ? bestCalendarComp.calendar.map(m => ({ ...m, compId: String(bestCalendarComp.id || baseComp.id || "") }))
       : [],
-    postSeasonPhases: normalizePostSeasonPhases([
-      ...mergePostSeasonPhasesFromCompetitions(siblings),
-      ...relatedPostSeasonPhases,
-    ]),
+    postSeasonPhases: normalizePostSeasonPhases(mergePostSeasonPhasesFromCompetitions(siblings)),
     pctPlayed: Math.max(...siblings.map(c => Number(c?.pctPlayed || 0))),
     detailMergeInfo: {
       merged: String(bestClassComp?.id || "") !== String(baseComp.id || "") || String(bestCalendarComp?.id || "") !== String(baseComp.id || ""),
