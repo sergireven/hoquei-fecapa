@@ -2544,6 +2544,32 @@ function applyClassificationSourceMerge() {
     return best || groups[0] || null;
   };
 
+  const allFecapaComps = Object.values(fecapaCategoriesDB?.categories || {})
+    .flat()
+    .filter(Boolean);
+
+  const collectFecapaCandidatesForComp = (jokComp, pilot) => {
+    const byId = pilot
+      ? allFecapaComps.filter(c => String(c?.competitionId || "") === String(pilot.fecapaCompetitionId || ""))
+      : [];
+    const byName = allFecapaComps.filter(c => normalizeCompKey(c?.competitionName || "") === normalizeCompKey(jokComp?.name || ""));
+
+    const seen = new Set();
+    const out = [];
+    for (const c of [...byId, ...byName]) {
+      const key = String(c?.competitionId || "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+    return out;
+  };
+
+  const normalizeFecapaPhasesFromComp = fecapaComp => {
+    const raw = Array.isArray(fecapaComp?.competitionPhases) ? fecapaComp.competitionPhases : [];
+    return normalizePostSeasonPhases(raw);
+  };
+
   for (const comps of Object.values(DB.categories)) {
     for (const comp of comps) {
       if (is3x3Competition(comp)) continue;
@@ -2559,6 +2585,20 @@ function applyClassificationSourceMerge() {
       }
 
       const pilot = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(comp.id));
+
+      const fecapaCandidates = collectFecapaCandidatesForComp(comp, pilot);
+      const mergedPhases = normalizePostSeasonPhases(
+        fecapaCandidates.flatMap(c => normalizeFecapaPhasesFromComp(c))
+      );
+
+      comp.postSeasonPhases = mergedPhases;
+      comp.hasPostSeasonPhases = mergedPhases.some(p => p?.isPostSeason === true);
+
+      const phaseMatches = mergedPhases.flatMap(p => p.matches || []);
+      if ((!Array.isArray(comp.calendar) || !comp.calendar.length) && phaseMatches.length) {
+        comp.calendar = phaseMatches.map(m => ({ ...m, compId: String(comp.id || "") }));
+      }
+
       if (!pilot) continue;
 
       const bestFecapaGroup = bestFecapaGroupForPilot(pilot, comp);
@@ -2925,6 +2965,76 @@ function isDescansaTeamName(teamName) {
   return n === "descansa" || n === "descans" || n.startsWith("descansa ");
 }
 
+function phaseTypeLabel(phaseType) {
+  const t = String(phaseType || "").toLowerCase();
+  if (t === "playoff") return "Playoff";
+  if (t === "eliminatories") return "Eliminatòries";
+  if (t === "copa") return "Copa";
+  if (t === "fase_final") return "Fase final";
+  return "Fase";
+}
+
+function normalizePostSeasonPhases(phases) {
+  const out = [];
+  const seenPhase = new Set();
+
+  for (const phase of (phases || [])) {
+    if (!phase || typeof phase !== "object") continue;
+    const phaseName = String(phase.phaseName || phase.groupName || "").trim() || "Fase";
+    const phaseType = String(phase.phaseType || "lliga").trim() || "lliga";
+    const phaseKey = `${normalizeCompKey(phaseName)}::${phaseType}`;
+    if (!phaseKey || seenPhase.has(phaseKey)) continue;
+    seenPhase.add(phaseKey);
+
+    const matches = [];
+    const seenMatch = new Set();
+    for (const m of (phase.matches || [])) {
+      const home = normalizeJokClubDisplayName(m?.home || "");
+      const away = normalizeJokClubDisplayName(m?.away || "");
+      if (!home || !away) continue;
+      const key = [
+        normalizeCompKey(home),
+        normalizeCompKey(away),
+        String(m?.date || ""),
+        String(m?.time || ""),
+        String(m?.jornada || ""),
+        String(m?.homeScore ?? ""),
+        String(m?.awayScore ?? ""),
+      ].join("|");
+      if (seenMatch.has(key)) continue;
+      seenMatch.add(key);
+      matches.push({
+        jornada: m?.jornada ?? null,
+        home,
+        away,
+        date: String(m?.date || ""),
+        time: String(m?.time || ""),
+        homeScore: m?.homeScore ?? null,
+        awayScore: m?.awayScore ?? null,
+        played: m?.played !== false && m?.homeScore != null,
+        source: String(m?.source || "fecapa"),
+        phaseName,
+        phaseType,
+      });
+    }
+
+    out.push({
+      phaseId: String(phase.phaseId || phaseKey),
+      phaseName,
+      phaseType,
+      isPostSeason: phase.isPostSeason === true || ["playoff", "eliminatories", "copa", "fase_final"].includes(phaseType),
+      matchCount: matches.length,
+      matches,
+    });
+  }
+
+  return out;
+}
+
+function mergePostSeasonPhasesFromCompetitions(comps) {
+  return normalizePostSeasonPhases((comps || []).flatMap(c => c?.postSeasonPhases || []));
+}
+
 function scoredCalendarMatchesCount(comp) {
   return (comp?.calendar || []).filter(m => m?.homeScore != null && m?.awayScore != null).length;
 }
@@ -2947,6 +3057,7 @@ function buildDetailCompView(baseComp) {
   if (siblings.length <= 1) {
     return {
       ...baseComp,
+      postSeasonPhases: normalizePostSeasonPhases(baseComp?.postSeasonPhases || []),
       detailMergeInfo: {
         merged: false,
         baseCompId: String(baseComp.id || ""),
@@ -2976,6 +3087,7 @@ function buildDetailCompView(baseComp) {
     calendar: Array.isArray(bestCalendarComp?.calendar)
       ? bestCalendarComp.calendar.map(m => ({ ...m, compId: String(bestCalendarComp.id || baseComp.id || "") }))
       : [],
+    postSeasonPhases: mergePostSeasonPhasesFromCompetitions(siblings),
     pctPlayed: Math.max(...siblings.map(c => Number(c?.pctPlayed || 0))),
     detailMergeInfo: {
       merged: String(bestClassComp?.id || "") !== String(baseComp.id || "") || String(bestCalendarComp?.id || "") !== String(baseComp.id || ""),
@@ -4705,6 +4817,7 @@ function openDetail(compId,teamName,tab){
   const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
   const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
   const eqLabel = (detailComp.classification||[]).length; 
+  const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
   const isAdmin = currentProfile?.role === "admin";
   const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
   const pilotMap = detailComp.classificationPilot || null;
@@ -4717,6 +4830,7 @@ function openDetail(compId,teamName,tab){
   $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
     <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
+    ${phaseCount ? `<span style="font-weight:700;color:#3730a3">${phaseCount} fase${phaseCount!==1?"s":""} final${phaseCount!==1?"s":""}</span>` : ""}
     ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
   </div>${adminMeta}`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
@@ -5033,9 +5147,18 @@ async function renderDetailClassif(){
 
 function renderDetailCalendar(){
   const all=detailComp.calendar||[];
+  const phases = normalizePostSeasonPhases(detailComp.postSeasonPhases || []);
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
-  if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
-  const names=[...new Set([...all.map(m=>m.home),...all.map(m=>m.away)].filter(Boolean))].sort();
+  const hasAnyPhaseMatches = phases.some(p => (p?.matches || []).length > 0);
+  if (!all.length && !hasAnyPhaseMatches){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
+
+  const allNames = [
+    ...all.map(m=>m.home),
+    ...all.map(m=>m.away),
+    ...phases.flatMap(p => (p.matches || []).flatMap(m => [m.home, m.away])),
+  ];
+  const names=[...new Set(allNames.filter(Boolean))].sort();
+
   const chips=`<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
@@ -5043,7 +5166,17 @@ function renderDetailCalendar(){
       ${names.map(t=>{const act=teamIn(t,detailTeam),cid=getClubId(t);return`<button onclick="setCalTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
     </div>
   </div>`;
+
   const matches=detailTeam?all.filter(m=>teamIn(m.home,detailTeam)||teamIn(m.away,detailTeam)):all;
+  const phaseBlocks = phases
+    .map(p => ({
+      ...p,
+      matches: detailTeam
+        ? (p.matches || []).filter(m => teamIn(m.home, detailTeam) || teamIn(m.away, detailTeam))
+        : (p.matches || []),
+    }))
+    .filter(p => (p.matches || []).length > 0);
+
   const byJ={};
   matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
   const sortedJornades=Object.entries(byJ).sort((a,b)=>{
@@ -5051,11 +5184,30 @@ function renderDetailCalendar(){
     const numA=getNum(a), numB=getNum(b);
     return numA===-1||numB===-1?0:numB-numA;
   });
-  $("panel-calendar").innerHTML=chips+sortedJornades.map(([j,ms])=>`
-    <div style="margin-bottom:10px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-      ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
-    </div>`).join("");
+
+  const phaseHtml = phaseBlocks.length
+    ? `<div style="margin-bottom:14px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Fases Finals</div>
+        ${phaseBlocks.map(phase => `
+          <div style="margin-bottom:10px;background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 10px 6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:800;color:#1a2035">${esc(phase.phaseName || "Fase")}</div>
+              <span style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:uppercase">${esc(phaseTypeLabel(phase.phaseType))}</span>
+            </div>
+            ${(phase.matches || []).map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
+          </div>`).join("")}
+      </div>`
+    : "";
+
+  const regularHtml = sortedJornades.length
+    ? `${phaseBlocks.length ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 0">Lliga Regular</div>` : ""}${sortedJornades.map(([j,ms])=>`
+      <div style="margin-bottom:10px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
+        ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
+      </div>`).join("")}`
+    : (phaseBlocks.length ? "" : `<div style="text-align:center;padding:20px;color:#94a3b8">No hi ha partits per aquest filtre.</div>`);
+
+  $("panel-calendar").innerHTML=chips+phaseHtml+regularHtml;
 }
 window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); };
 
