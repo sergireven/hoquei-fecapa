@@ -3113,7 +3113,44 @@ function competitionHasCalendarTeam(comp, teamName) {
   );
 }
 
-function buildDetailCompView(baseComp, preferredTeamName = null) {
+function competitionHasClassificationTeamId(comp, teamId) {
+  if (!comp || !teamId) return false;
+  const wanted = String(teamId);
+  return (comp.classification || []).some(r => String(r?.teamId || "") === wanted);
+}
+
+function resolveSelectedTeam(comp, teamName, teamIdHint = null) {
+  const rows = comp?.classification || [];
+  const hint = String(teamIdHint || "").trim();
+  if (hint) {
+    const byId = rows.find(r => String(r?.teamId || "") === hint);
+    if (byId) {
+      return {
+        teamName: byId.team || teamName || null,
+        teamId: String(byId.teamId || hint),
+      };
+    }
+  }
+
+  const wanted = String(teamName || "").trim();
+  if (!wanted) return { teamName: null, teamId: hint || null };
+
+  const exactRows = rows.filter(r => teamMatchesCalendarExact(r?.team, wanted));
+  if (exactRows.length === 1) {
+    return {
+      teamName: exactRows[0].team || wanted,
+      teamId: exactRows[0].teamId ? String(exactRows[0].teamId) : null,
+    };
+  }
+
+  const best = findBestClassifRow(rows, wanted);
+  return {
+    teamName: best?.team || wanted,
+    teamId: best?.teamId ? String(best.teamId) : (hint || null),
+  };
+}
+
+function buildDetailCompView(baseComp, preferredTeamName = null, preferredTeamId = null) {
   if (!baseComp || !DB?.categories) return baseComp;
 
   const catKey = getCatForComp(baseComp);
@@ -3145,10 +3182,28 @@ function buildDetailCompView(baseComp, preferredTeamName = null) {
     return (scored * 10) + (c?.calendar?.length || 0) + Number(c?.pctPlayed || 0) - (unresolved * 2);
   };
 
-  const bestClassComp = siblings.reduce((best, c) => classScore(c) > classScore(best) ? c : best, siblings[0]);
-  const calendarCandidates = preferredTeamName
-    ? siblings.filter(c => competitionHasCalendarTeam(c, preferredTeamName))
-    : siblings;
+  const baseHasTeamByName = preferredTeamName ? competitionHasCalendarTeam(baseComp, preferredTeamName) : false;
+
+  let classCandidates = siblings;
+  if (preferredTeamId) {
+    const byId = siblings.filter(c => competitionHasClassificationTeamId(c, preferredTeamId));
+    if (byId.length) classCandidates = byId;
+  } else if (preferredTeamName && baseHasTeamByName) {
+    // If identity is name-only, keep the classif anchored to the clicked competition.
+    classCandidates = [baseComp];
+  }
+  const bestClassComp = classCandidates.reduce((best, c) => classScore(c) > classScore(best) ? c : best, classCandidates[0]);
+
+  let calendarCandidates = siblings;
+  if (preferredTeamId) {
+    const byTeamId = siblings.filter(c => competitionHasClassificationTeamId(c, preferredTeamId));
+    if (byTeamId.length) calendarCandidates = byTeamId;
+    else if (preferredTeamName) calendarCandidates = siblings.filter(c => competitionHasCalendarTeam(c, preferredTeamName));
+  } else if (preferredTeamName) {
+    // Name-only selection is ambiguous across sibling groups; prefer the clicked competition.
+    if (baseHasTeamByName) calendarCandidates = [baseComp];
+    else calendarCandidates = siblings.filter(c => competitionHasCalendarTeam(c, preferredTeamName));
+  }
   const scopedCalendarCandidates = calendarCandidates.length ? calendarCandidates : siblings;
   const bestCalendarComp = scopedCalendarCandidates.reduce((best, c) => calScore(c) > calScore(best) ? c : best, scopedCalendarCandidates[0]);
   const phaseSourceComps = preferredTeamName ? [bestCalendarComp] : siblings;
@@ -4869,7 +4924,7 @@ window.addFavFromPicker = function() {
 };
 
 // ── DETAIL ────────────────────────────────────────────────────
-let detailComp=null, detailTeam=null, detailTab="classif";
+let detailComp=null, detailTeam=null, detailTeamId=null, detailTab="classif";
 
 function getJokCompetitionUrl(comp) {
   if (!comp?.id) return "https://jok.cat/";
@@ -4878,10 +4933,14 @@ function getJokCompetitionUrl(comp) {
   return `https://jok.cat/competicio/${comp.id}`;
 }
 
-function openDetail(compId,teamName,tab){
+function openDetail(compId,teamName,tab,teamId=null){
   const rawComp = findComp(compId);
-  detailComp = buildDetailCompView(rawComp, teamName || null);
-  detailTeam=teamName||null; detailTab=tab||"classif";
+  const selected = resolveSelectedTeam(rawComp, teamName || null, teamId || null);
+  detailComp = buildDetailCompView(rawComp, selected.teamName, selected.teamId);
+  const mergedSelected = resolveSelectedTeam(detailComp, selected.teamName, selected.teamId);
+  detailTeam = mergedSelected.teamName || null;
+  detailTeamId = mergedSelected.teamId || null;
+  detailTab=tab||"classif";
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
@@ -5180,8 +5239,19 @@ async function renderDetailClassif(){
     if (tabKey === "competicions") renderDetailCompeticions();
   };
 
-  window.openJugadorsFromClassif = teamName => {
-    detailTeam = teamName || detailTeam;
+  const setDetailSelection = (teamName, teamId = null) => {
+    if (!teamName) {
+      detailTeam = null;
+      detailTeamId = null;
+      return;
+    }
+    const next = resolveSelectedTeam(detailComp, teamName, teamId || detailTeamId || null);
+    detailTeam = next.teamName || teamName;
+    detailTeamId = next.teamId || null;
+  };
+
+  window.openJugadorsFromClassif = (teamName, teamId = null) => {
+    setDetailSelection(teamName || detailTeam, teamId);
     setDetailTabView("jugadors");
     renderDetailClassif().then(() => {
       renderDetailCalendar();
@@ -5190,8 +5260,8 @@ async function renderDetailClassif(){
     });
   };
 
-  window.openCompeticionsFromClassif = teamName => {
-    detailTeam = teamName || detailTeam;
+  window.openCompeticionsFromClassif = (teamName, teamId = null) => {
+    setDetailSelection(teamName || detailTeam, teamId);
     setDetailTabView("competicions");
     renderDetailClassif().then(() => {
       renderDetailCalendar();
@@ -5209,13 +5279,13 @@ async function renderDetailClassif(){
           ${["#","Equip","PJ","G","E","Pe","GF","GC","Avg","Pts"].map((h,i)=>`<th style="padding:8px ${i<2?6:4}px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===8?"#64748b":i===9?"#e5001c":"#94a3b8"};text-transform:uppercase;text-align:${i===1?"left":"center"};border-bottom:1px solid #e2e6ef">${h}</th>`).join("")}
         </tr></thead>
         <tbody>${cl.map(r=>{
-          const mine=teamMatchesCalendarExact(r.team,detailTeam), cid=rowClubId(r), pc=posColor(r.pos);
+          const mine=detailTeamId ? String(r.teamId || "") === String(detailTeamId) : teamMatchesCalendarExact(r.team,detailTeam), cid=rowClubId(r), pc=posColor(r.pos);
           const avg = calcGoalAverage(r.gf, r.gc);
           const avgColor = goalAverageColor(avg);
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openCompeticionsFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure competicions d'aquest equip">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openCompeticionsFromClassif('${esc(r.team)}','${esc(String(r.teamId||""))}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure competicions d'aquest equip">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
@@ -5423,8 +5493,18 @@ function renderDetailCompeticions() {
   panel.innerHTML = chips + title + cards;
 }
 
-window.setCalTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions(); };
-window.setCompeticionsTeam=t=>{ detailTeam=t; renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions(); };
+window.setCalTeam=t=>{
+  const next = resolveSelectedTeam(detailComp, t, null);
+  detailTeam = next.teamName;
+  detailTeamId = next.teamId;
+  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions();
+};
+window.setCompeticionsTeam=t=>{
+  const next = resolveSelectedTeam(detailComp, t, null);
+  detailTeam = next.teamName;
+  detailTeamId = next.teamId;
+  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions();
+};
 
 function getCatSlugForComp(comp) {
   const toSlug = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
@@ -5518,7 +5598,9 @@ async function renderDetailJugadors(){
 }
 
 function setJugadorsTeam(team) {
-  detailTeam = team;
+  const next = resolveSelectedTeam(detailComp, team, null);
+  detailTeam = next.teamName;
+  detailTeamId = next.teamId;
   renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions(); });
 }
 
