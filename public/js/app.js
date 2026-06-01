@@ -5302,15 +5302,12 @@ async function renderDetailClassif(){
 
 function renderDetailCalendar(){
   const all=detailComp.calendar||[];
-  const phases = normalizePostSeasonPhases(detailComp.postSeasonPhases || []);
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
-  const hasAnyPhaseMatches = phases.some(p => (p?.matches || []).length > 0);
-  if (!all.length && !hasAnyPhaseMatches){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
+  if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
 
   const allNames = [
     ...all.map(m=>m.home),
     ...all.map(m=>m.away),
-    ...phases.flatMap(p => (p.matches || []).flatMap(m => [m.home, m.away])),
   ];
   const names=[...new Set(allNames.filter(Boolean))].sort();
 
@@ -5323,14 +5320,6 @@ function renderDetailCalendar(){
   </div>`;
 
   const matches=detailTeam?all.filter(m=>teamMatchesCalendarExact(m.home,detailTeam)||teamMatchesCalendarExact(m.away,detailTeam)):all;
-  const phaseBlocks = phases
-    .map(p => ({
-      ...p,
-      matches: detailTeam
-        ? (p.matches || []).filter(m => teamMatchesCalendarExact(m.home, detailTeam) || teamMatchesCalendarExact(m.away, detailTeam))
-        : (p.matches || []),
-    }))
-    .filter(p => (p.matches || []).length > 0 || p?.isPostSeason === true);
 
   const byJ={};
   matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
@@ -5340,35 +5329,19 @@ function renderDetailCalendar(){
     return numA===-1||numB===-1?0:numB-numA;
   });
 
-  const phaseHtml = phaseBlocks.length
-    ? `<div style="margin-bottom:14px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Fases Finals</div>
-        ${phaseBlocks.map(phase => `
-          <div style="margin-bottom:10px;background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px 10px 6px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-              <div style="font-size:12px;font-weight:800;color:#1a2035">${esc(phase.phaseName || "Fase")}</div>
-              <span style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:uppercase">${esc(phaseTypeLabel(phase.phaseType))}</span>
-            </div>
-            ${(phase.matches || []).length
-              ? (phase.matches || []).map(m=>matchCard(m,detailTeam,detailComp.id)).join("")
-              : `<div style="font-size:12px;color:#64748b;padding:4px 2px 8px">No disponible actualment</div>`}
-          </div>`).join("")}
-      </div>`
-    : "";
-
   const regularHtml = sortedJornades.length
-    ? `${phaseBlocks.length ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#1a2035;text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 0">Lliga Regular</div>` : ""}${sortedJornades.map(([j,ms])=>`
+    ? `${sortedJornades.map(([j,ms])=>`
       <div style="margin-bottom:10px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
         ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
       </div>`).join("")}`
-    : (phaseBlocks.length ? "" : `<div style="text-align:center;padding:20px;color:#94a3b8">No hi ha partits per aquest filtre.</div>`);
+    : `<div style="text-align:center;padding:20px;color:#94a3b8">No hi ha partits per aquest filtre.</div>`;
 
-  $("panel-calendar").innerHTML=chips+phaseHtml+regularHtml;
+  $("panel-calendar").innerHTML=chips+regularHtml;
 }
 
-function getTeamCompetitionCandidates(comp, teamName) {
-  if (!comp || !teamName) return [];
+function getTeamCompetitionCandidates(comp, teamName, teamId = null) {
+  if (!comp || (!teamName && !teamId)) return [];
   const out = [];
   const seen = new Set();
   const pushUnique = n => {
@@ -5380,51 +5353,92 @@ function getTeamCompetitionCandidates(comp, teamName) {
     out.push(name);
   };
 
-  const classifRow = findBestClassifRow(comp.classification || [], teamName);
+  const classRows = comp.classification || [];
+  const wantedId = String(teamId || "").trim();
+  const classifRow = wantedId
+    ? classRows.find(r => String(r?.teamId || "") === wantedId)
+    : findBestClassifRow(classRows, teamName);
   if (classifRow?.team) pushUnique(classifRow.team);
 
-  for (const m of (comp.calendar || [])) {
-    if (teamMatchesCalendarExact(m?.home, teamName)) pushUnique(m?.home);
-    if (teamMatchesCalendarExact(m?.away, teamName)) pushUnique(m?.away);
+  if (wantedId) {
+    for (const t of (comp.teams || [])) {
+      const tid = String(t?.id || t?.teamId || "").trim();
+      if (!tid || tid !== wantedId) continue;
+      pushUnique(t?.name || t?.teamName || "");
+    }
   }
 
-  for (const t of (comp.teams || [])) {
-    const n = t?.name || t?.teamName || "";
-    if (teamMatchesCalendarExact(n, teamName)) pushUnique(n);
+  for (const m of (comp.calendar || [])) {
+    if (out.some(c => teamMatchesCalendarExact(m?.home, c))) pushUnique(m?.home);
+    if (out.some(c => teamMatchesCalendarExact(m?.away, c))) pushUnique(m?.away);
+  }
+
+  if (!out.length && teamName) {
+    for (const t of (comp.teams || [])) {
+      const n = t?.name || t?.teamName || "";
+      if (teamMatchesCalendarExact(n, teamName)) pushUnique(n);
+    }
+
+    for (const m of (comp.calendar || [])) {
+      if (teamMatchesCalendarExact(m?.home, teamName)) pushUnique(m?.home);
+      if (teamMatchesCalendarExact(m?.away, teamName)) pushUnique(m?.away);
+    }
   }
 
   return out;
 }
 
-function buildTeamSeasonCompetitions(teamName) {
+function buildUpcomingPhaseMatchesForTeam(comp, teamCandidates) {
+  const candidates = (teamCandidates || []).filter(Boolean);
+  if (!candidates.length) return [];
+
+  const allPhaseMatches = normalizePostSeasonPhases(comp?.postSeasonPhases || [])
+    .flatMap(p => (p.matches || []).map(m => ({ ...m, _phaseName: p.phaseName || "Fase" })));
+
+  return allPhaseMatches
+    .filter(m => candidates.some(c => teamMatchesCalendarExact(m?.home, c) || teamMatchesCalendarExact(m?.away, c)))
+    .filter(m => m?.homeScore == null || m?.awayScore == null)
+    .sort((a, b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
+}
+
+function buildTeamSeasonCompetitions(teamName, teamId = null) {
   const target = String(teamName || "").trim();
-  if (!target || !DB?.categories) return [];
+  const targetId = String(teamId || "").trim() || null;
+  if ((!target && !targetId) || !DB?.categories) return [];
 
   const rows = [];
   for (const [category, comps] of Object.entries(DB.categories || {})) {
     for (const comp of (comps || [])) {
       if (!comp || is3x3Competition(comp)) continue;
-      const candidates = getTeamCompetitionCandidates(comp, target);
+      const candidates = getTeamCompetitionCandidates(comp, target, targetId);
       if (!candidates.length) continue;
 
       const regular = (comp.calendar || []).filter(m =>
         candidates.some(c => teamMatchesCalendarExact(m?.home, c) || teamMatchesCalendarExact(m?.away, c))
       );
+      const phaseFuture = buildUpcomingPhaseMatchesForTeam(comp, candidates);
+      if (!regular.length && !phaseFuture.length) continue;
+
       const played = regular.filter(m => m?.homeScore != null && m?.awayScore != null);
       const future = regular
         .filter(m => m?.homeScore == null || m?.awayScore == null)
         .sort((a, b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
+      const nextPhase = phaseFuture[0] || null;
 
       rows.push({
         compId: String(comp.id || ""),
         compName: String(comp.name || ""),
         category,
+        preferredTeamId: targetId,
         pctPlayed: Number(comp.pctPlayed || 0),
         candidateTeamNames: candidates,
         preferredTeamName: candidates[0] || target,
         matchCount: regular.length,
         playedCount: played.length,
         nextDate: future[0]?.date || "",
+        phaseFutureCount: phaseFuture.length,
+        nextPhaseDate: nextPhase?.date || "",
+        nextPhaseName: nextPhase?._phaseName || "",
       });
     }
   }
@@ -5463,7 +5477,7 @@ function renderDetailCompeticions() {
     return;
   }
 
-  const comps = buildTeamSeasonCompetitions(detailTeam);
+  const comps = buildTeamSeasonCompetitions(detailTeam, detailTeamId);
   const title = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#1a2035">${esc(normalizeJokClubDisplayName(detailTeam))}</span><span style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:uppercase">${comps.length} competicions</span></div>`;
 
   if (!comps.length) {
@@ -5485,8 +5499,9 @@ function renderDetailCompeticions() {
         <span>Jugats: <b style="color:#1a2035">${c.playedCount}</b></span>
         <span>Progrés: <b style="color:#1a2035">${Math.round(c.pctPlayed)}%</b></span>
         ${c.nextDate ? `<span>Proper: <b style="color:#1a2035">${esc(c.nextDate)}</b></span>` : ""}
+        ${c.phaseFutureCount ? `<span>Fases futures: <b style="color:#1a2035">${c.phaseFutureCount}</b>${c.nextPhaseDate ? ` · ${esc(c.nextPhaseDate)}` : ""}${c.nextPhaseName ? ` (${esc(c.nextPhaseName)})` : ""}</span>` : ""}
       </div>
-      <button onclick="openDetail('${esc(c.compId)}','${esc(c.preferredTeamName)}','classif')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
+      <button onclick="openDetail('${esc(c.compId)}','${esc(c.preferredTeamName)}','classif','${esc(String(c.preferredTeamId||""))}')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
     </div>`;
   }).join("");
 
