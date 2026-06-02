@@ -3468,6 +3468,34 @@ function isPlaceholderTeamName(teamName) {
   return n === "per definir" || n === "tbd" || n === "pendent";
 }
 
+function isCalendarFilterNoiseName(teamName) {
+  const raw = String(teamName || "").trim();
+  if (!raw) return true;
+  if (isDescansaTeamName(raw) || isPlaceholderTeamName(raw)) return true;
+
+  const n = normalizeCompKey(raw);
+  if (!n) return true;
+  if (/^jornada\s*\d+\b/.test(n) || /^j\s*\d+\b/.test(n)) return true;
+  if (/(^|\b)(pavello|pabello|pavellon|pabellon|pavilion|seu)(\b|$)/.test(n)) return true;
+  if (/^(vuitens|quarts|semifinals?|semis?|final)\b/.test(n)) return true;
+  return false;
+}
+
+function getDetailCalendarSourceMatches(comp) {
+  if (!comp) return [];
+  const allCalendar = comp.calendar || [];
+  const pilotPhaseMatches = isFinalsPilotComp(comp)
+    ? normalizePostSeasonPhases(comp.postSeasonPhases || []).flatMap(phase =>
+        (phase?.matches || []).map(m => ({
+          ...m,
+          phaseName: m?.phaseName || phase.phaseName,
+          phaseType: m?.phaseType || phase.phaseType,
+        }))
+      )
+    : [];
+  return pilotPhaseMatches.length ? pilotPhaseMatches : allCalendar;
+}
+
 function getTiePhaseKey(phaseName, phaseType) {
   const n = normalizeCompKey(phaseName || phaseType || "fase");
   if (!n) return "fase";
@@ -6090,17 +6118,7 @@ async function renderDetailClassif(){
 }
 
 function renderDetailCalendar(){
-  const allCalendar = detailComp.calendar || [];
-  const pilotPhaseMatches = isFinalsPilotComp(detailComp)
-    ? normalizePostSeasonPhases(detailComp.postSeasonPhases || []).flatMap(phase =>
-        (phase?.matches || []).map(m => ({
-          ...m,
-          phaseName: m?.phaseName || phase.phaseName,
-          phaseType: m?.phaseType || phase.phaseType,
-        }))
-      )
-    : [];
-  const all = pilotPhaseMatches.length ? pilotPhaseMatches : allCalendar;
+  const all = getDetailCalendarSourceMatches(detailComp);
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
   if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
 
@@ -6109,8 +6127,7 @@ function renderDetailCalendar(){
     ...all.map(m=>m.away),
   ];
   const names=[...new Set(allNames.filter(Boolean)
-    .filter(t => !isDescansaTeamName(t))
-    .filter(t => !isPlaceholderTeamName(t)))].sort();
+    .filter(t => !isCalendarFilterNoiseName(t)))].sort();
 
   const chips=`<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6230,14 +6247,14 @@ function getCatSlugForComp(comp) {
 
 async function renderDetailJugadors(){
   const catSlug = getCatSlugForComp(detailComp);
+  const calendarMatches = getDetailCalendarSourceMatches(detailComp);
 
   // Noms d'equip del calendari per als filtres
   const calNames = [...new Set([
-    ...(detailComp.calendar||[]).map(m=>m.home),
-    ...(detailComp.calendar||[]).map(m=>m.away)
+    ...calendarMatches.map(m=>m.home),
+    ...calendarMatches.map(m=>m.away)
   ].filter(Boolean)
-    .filter(t => !isDescansaTeamName(t))
-    .filter(t => !isPlaceholderTeamName(t)))].sort();
+    .filter(t => !isCalendarFilterNoiseName(t)))].sort();
 
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6252,7 +6269,7 @@ async function renderDetailJugadors(){
   const actes = await loadCatActes(catSlug);
   const compIdStr = String(detailComp.id);
   const calendarActaIds = new Set(
-    (detailComp.calendar || []).map(m => String(m?.actaId || "").trim()).filter(Boolean)
+    calendarMatches.map(m => String(m?.actaId || "").trim()).filter(Boolean)
   );
   const extraActesBySlug = {};
   if (calendarActaIds.size && DB?.actesIndex) {
@@ -6301,8 +6318,8 @@ async function renderDetailJugadors(){
     }
 
     const visibleTeamSet = new Set(
-      (detailComp.calendar || [])
-        .filter(m => !isPlaceholderTeamName(m?.home) && !isPlaceholderTeamName(m?.away))
+      calendarMatches
+        .filter(m => !isCalendarFilterNoiseName(m?.home) && !isCalendarFilterNoiseName(m?.away))
         .filter(m => !detailTeam || teamMatchesCalendarExact(m?.home, detailTeam) || teamMatchesCalendarExact(m?.away, detailTeam))
         .flatMap(m => [m?.home, m?.away])
         .filter(Boolean)
