@@ -6,7 +6,7 @@ const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
 const CLASSIFICATION_SOURCE_PILOTS_URL = "./classification-source-pilots.json";
 const FINALS_PILOT_API_URL = "/api/finals-pilot";
-const FINALS_PILOT_COMP_IDS = new Set(["4709"]);
+const FINALS_PILOT_COMP_IDS = new Set(["4709", "4452", "3935"]);
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
@@ -3476,8 +3476,37 @@ function isCalendarFilterNoiseName(teamName) {
   const n = normalizeCompKey(raw);
   if (!n) return true;
   if (/^jornada\s*\d+\b/.test(n) || /^j\s*\d+\b/.test(n)) return true;
-  if (/(^|\b)(pavello|pabello|pavellon|pabellon|pavilion|seu)(\b|$)/.test(n)) return true;
-  if (/^(vuitens|quarts|semifinals?|semis?|final)\b/.test(n)) return true;
+  if (/^(vuitens|quarts|semifinals?|semis?|final|eliminatories\s+previes)\b/.test(n)) return true;
+  if (/(^|\b)(pavello|pabello|pavellon|pabellon|pavilion|seu|pista|cem|poliesportiu|municipal|palau|complex|zona\s+esportiva|camp\s+municipal)(\b|$)/.test(n)) return true;
+  if (/^[a-z]{1,3}\s+\d+$/.test(n)) return true;
+  return false;
+}
+
+function isLikelyCompetitionTeamName(teamName, comp = null) {
+  const raw = String(teamName || "").trim();
+  if (!raw || isCalendarFilterNoiseName(raw)) return false;
+
+  const classifTeams = (comp?.classification || []).map(r => String(r?.team || "").trim()).filter(Boolean);
+  const rosterTeams = (comp?.teams || []).map(t => String(t?.teamName || t?.name || "").trim()).filter(Boolean);
+  const knownTeams = [...new Set([...classifTeams, ...rosterTeams])];
+
+  if (knownTeams.length) {
+    return knownTeams.some(t => teamMatchesCalendarExact(raw, t));
+  }
+
+  return !!getClubId(raw);
+}
+
+function getCalendarFilterableTeamNames(matches, comp = null) {
+  return [...new Set([
+    ...(matches || []).map(m => m?.home),
+    ...(matches || []).map(m => m?.away),
+  ])]
+    .map(t => String(t || "").trim())
+    .filter(Boolean)
+    .filter(t => isLikelyCompetitionTeamName(t, comp))
+    .sort();
+}
   return false;
 }
 
@@ -6118,16 +6147,12 @@ async function renderDetailClassif(){
 }
 
 function renderDetailCalendar(){
-  const all = getDetailCalendarSourceMatches(detailComp);
+  const all = getDetailCalendarSourceMatches(detailComp)
+    .filter(m => m?.placeholder === true || (isLikelyCompetitionTeamName(m?.home, detailComp) && isLikelyCompetitionTeamName(m?.away, detailComp)));
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
   if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
 
-  const allNames = [
-    ...all.map(m=>m.home),
-    ...all.map(m=>m.away),
-  ];
-  const names=[...new Set(allNames.filter(Boolean)
-    .filter(t => !isCalendarFilterNoiseName(t)))].sort();
+  const names = getCalendarFilterableTeamNames(all, detailComp);
 
   const chips=`<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6247,14 +6272,11 @@ function getCatSlugForComp(comp) {
 
 async function renderDetailJugadors(){
   const catSlug = getCatSlugForComp(detailComp);
-  const calendarMatches = getDetailCalendarSourceMatches(detailComp);
+  const calendarMatches = getDetailCalendarSourceMatches(detailComp)
+    .filter(m => m?.placeholder === true || (isLikelyCompetitionTeamName(m?.home, detailComp) && isLikelyCompetitionTeamName(m?.away, detailComp)));
 
   // Noms d'equip del calendari per als filtres
-  const calNames = [...new Set([
-    ...calendarMatches.map(m=>m.home),
-    ...calendarMatches.map(m=>m.away)
-  ].filter(Boolean)
-    .filter(t => !isCalendarFilterNoiseName(t)))].sort();
+  const calNames = getCalendarFilterableTeamNames(calendarMatches, detailComp);
 
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
