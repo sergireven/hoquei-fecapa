@@ -3247,6 +3247,8 @@ function normalizePostSeasonPhases(phases) {
         awayScore: m?.awayScore ?? null,
         played: m?.played !== false && m?.homeScore != null,
         source: String(m?.source || "fecapa"),
+        actaId: m?.actaId ? String(m.actaId) : null,
+        actaUrl: m?.actaUrl ? String(m.actaUrl) : null,
         phaseName,
         phaseType,
         venue: String(m?.venue || "").trim(),
@@ -3608,6 +3610,15 @@ function matchCard(m, myTeam, compId, options = {}) {
   const venueHtml = venueLabel
     ? `<div style="margin-top:4px;font-size:10px;color:#64748b;font-weight:600;line-height:1.25">🏟 ${esc(venueLabel)}</div>`
     : "";
+  const sourceRaw = String(m?.source || "").toLowerCase();
+  const sourceLabel = sourceRaw.includes("jok") && sourceRaw.includes("fecapa")
+    ? "jok+fecapa"
+    : (sourceRaw.includes("jok") ? "jok.cat" : (sourceRaw.includes("fecapa") ? "fecapa" : ""));
+  const sourceBg = sourceLabel === "jok.cat" ? "#eef2ff" : sourceLabel === "fecapa" ? "#ecfeff" : "#f8fafc";
+  const sourceColor = sourceLabel === "jok.cat" ? "#3730a3" : sourceLabel === "fecapa" ? "#0e7490" : "#475569";
+  const sourceHtml = sourceLabel
+    ? `<div style="margin-top:4px"><span style="display:inline-flex;align-items:center;background:${sourceBg};color:${sourceColor};border:1px solid #e2e8f0;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:700">${esc(sourceLabel)}</span></div>`
+    : "";
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const encHome = encodeURIComponent(String(m.home || ""));
@@ -3662,6 +3673,7 @@ function matchCard(m, myTeam, compId, options = {}) {
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${m.jornada?`J${m.jornada} · `:""}${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          ${sourceHtml}
           ${venueHtml}
           ${travelHtml}
           ${actaBadge}
@@ -4285,6 +4297,22 @@ window.openClubFromClassif = teamName => {
 
 function renderClubDashboard() {
   const club = selectedClub;
+
+  // Hydrate pilot calendars for this club in background so status/next matches are accurate.
+  const pilotComps = [...new Set((club?.teams || []).map(t => String(t?.compId || "")).filter(Boolean))]
+    .map(id => findComp(id))
+    .filter(c => isFinalsPilotComp(c));
+  if (pilotComps.length) {
+    Promise.all(pilotComps.map(c => ensurePilotFinalsDataForComp(c)))
+      .then(changed => {
+        if (changed.some(Boolean)) {
+          applyCompetitionActivityHeuristics();
+          if (selectedClub?.key === club?.key) renderClubDashboard();
+        }
+      })
+      .catch(() => {});
+  }
+
   const catOrder = ["Prebenjamí","Benjamí","Aleví","Infantil","Juvenil","Júnior","1ª Catalana","2ª Catalana","3ª Catalana","Nacional Catalana","Veterans","Altres","Fem"];
 
   // Sort teams by category order
@@ -4295,12 +4323,20 @@ function renderClubDashboard() {
 
   const teamCards = sorted.map(t=>{
     const comp=findComp(t.compId); if (!comp) return "";
-    if (allOnlyActive && !isActive(comp)) return "";
+    const cl=comp.classification||[], cal=comp.calendar||[];
+    const teamCalendar = cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
+    const hasPendingTeamMatch = teamCalendar.some(m =>
+      !isPlaceholderTeamName(m?.home) &&
+      !isPlaceholderTeamName(m?.away) &&
+      !isDescansaTeamName(m?.home) &&
+      !isDescansaTeamName(m?.away) &&
+      (m?.homeScore == null || m?.awayScore == null)
+    );
+    if (allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
     const playedPct = getCompPlayedPct(comp);
-    const statusFlag = playedPct >= 100
+    const statusFlag = (!hasPendingTeamMatch && playedPct >= 100)
       ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf3;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">✅ Acabada</span>`
       : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">🟠 En curs</span>`;
-    const cl=comp.classification||[], cal=comp.calendar||[];
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
     const myCal=cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
     const {last, next} = getLastAndNext(cal, t.teamName);
@@ -5559,6 +5595,9 @@ function mergePilotCalendarMatches(baseMatches, extraMatches) {
       homeScore: m?.homeScore ?? null,
       awayScore: m?.awayScore ?? null,
       played: m?.played !== false && m?.homeScore != null && m?.awayScore != null,
+      compId: String(m?.compId || ""),
+      actaId: m?.actaId ? String(m.actaId) : null,
+      actaUrl: m?.actaUrl ? String(m.actaUrl) : null,
     };
     const key = buildPilotMatchKey(mergedMatch);
     if (seen.has(key)) continue;
@@ -5594,13 +5633,22 @@ async function ensurePilotFinalsDataForComp(comp) {
         return false;
       }
 
-      const phaseMatches = phases.flatMap(p => (p?.matches || []).map(m => ({ ...m, phaseName: p.phaseName, phaseType: p.phaseType })));
+      const phaseMatches = phases.flatMap(p => (p?.matches || []).map(m => ({
+        ...m,
+        phaseName: p.phaseName,
+        phaseType: p.phaseType,
+        compId: String(compId),
+      })));
       const mergedPhases = normalizePostSeasonPhases([...(comp.postSeasonPhases || []), ...phases]);
       const mergedCalendar = mergePilotCalendarMatches(comp.calendar || [], phaseMatches);
 
       comp.postSeasonPhases = mergedPhases;
       comp.hasPostSeasonPhases = mergedPhases.some(p => p?.isPostSeason === true);
       comp.calendar = mergedCalendar;
+      const playable = mergedCalendar.filter(m => m?.placeholder !== true && !isDescansaTeamName(m?.home || "") && !isDescansaTeamName(m?.away || ""));
+      const played = playable.filter(m => m?.homeScore != null && m?.awayScore != null).length;
+      comp.pctPlayed = playable.length ? Math.round((played * 100) / playable.length) : 0;
+      comp.pctPlayedEffective = comp.pctPlayed;
       comp.finalsPilotMeta = {
         loadedAt: new Date().toISOString(),
         source: "api/finals-pilot",
@@ -6196,6 +6244,14 @@ async function renderDetailJugadors(){
   const calendarActaIds = new Set(
     (detailComp.calendar || []).map(m => String(m?.actaId || "").trim()).filter(Boolean)
   );
+  const extraActesBySlug = {};
+  if (calendarActaIds.size && DB?.actesIndex) {
+    const extraSlugs = [...new Set([...calendarActaIds].map(id => DB.actesIndex[id]).filter(Boolean).filter(s => s !== catSlug))];
+    for (const slug of extraSlugs) {
+      extraActesBySlug[slug] = await loadCatActes(slug);
+    }
+  }
+  const allActesBuckets = [actes, ...Object.values(extraActesBySlug)];
 
   const fmtName = p => p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
   const calcAge = bd => {
@@ -6208,25 +6264,32 @@ async function renderDetailJugadors(){
 
   // Agrega estadístiques per jugador des de les actes d'aquesta competició
   const statsMap = {};
-  for (const acta of Object.values(actes)) {
-    const actaIdStr = String(acta?.actaId || acta?.id || "").trim();
-    const inComp = String(acta?.compId || "") === compIdStr;
-    const inCalendar = !!(actaIdStr && calendarActaIds.has(actaIdStr));
-    if (!inComp && !inCalendar) continue;
-    if (!acta.playerStats) continue;
-    const add = (player, team) => {
-      if (!player.jugadorId) return;
-      if (detailTeam && !teamMatchesCalendarExact(team, detailTeam)) return;
-      const s = statsMap[player.jugadorId] ||= { name: player.name, team, g:0, b:0, v:0, partits:0 };
-      s.g += player.g||0; s.b += player.b||0; s.v += player.v||0; s.partits++;
-    };
-    for (const p of acta.playerStats.homePlayers||[]) add(p, acta.home);
-    for (const p of acta.playerStats.awayPlayers||[]) add(p, acta.away);
+  for (const bucket of allActesBuckets) {
+    for (const acta of Object.values(bucket || {})) {
+      const actaIdStr = String(acta?.actaId || acta?.id || "").trim();
+      const inComp = String(acta?.compId || "") === compIdStr;
+      const inCalendar = !!(actaIdStr && calendarActaIds.has(actaIdStr));
+      if (!inComp && !inCalendar) continue;
+      if (!acta.playerStats) continue;
+      const add = (player, team) => {
+        if (!player.jugadorId) return;
+        if (detailTeam && !teamMatchesCalendarExact(team, detailTeam)) return;
+        const s = statsMap[player.jugadorId] ||= { name: player.name, team, g:0, b:0, v:0, partits:0 };
+        s.g += player.g||0; s.b += player.b||0; s.v += player.v||0; s.partits++;
+      };
+      for (const p of acta.playerStats.homePlayers||[]) add(p, acta.home);
+      for (const p of acta.playerStats.awayPlayers||[]) add(p, acta.away);
+    }
   }
 
   const ids = Object.keys(statsMap).sort((a,b) => statsMap[b].g - statsMap[a].g);
 
   if (!ids.length) {
+    if (!detailTeam) {
+      $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Selecciona un equip per veure jugadors.</div>`;
+      return;
+    }
+
     const visibleTeamSet = new Set(
       (detailComp.calendar || [])
         .filter(m => !isPlaceholderTeamName(m?.home) && !isPlaceholderTeamName(m?.away))
