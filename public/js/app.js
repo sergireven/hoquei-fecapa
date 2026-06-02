@@ -6270,11 +6270,14 @@ function getCatSlugForComp(comp) {
 
 async function renderDetailJugadors(){
   const catSlug = getCatSlugForComp(detailComp);
-  const calendarMatches = getDetailCalendarSourceMatches(detailComp)
+  // Source matches (used for acta IDs and visibleTeamSet) - no name filtering
+  const calendarMatches = getDetailCalendarSourceMatches(detailComp);
+  // Filtered matches used only to generate chip names (noise removed)
+  const chipMatches = calendarMatches
     .filter(m => m?.placeholder === true || (isLikelyCompetitionTeamName(m?.home, detailComp) && isLikelyCompetitionTeamName(m?.away, detailComp)));
 
   // Noms d'equip del calendari per als filtres
-  const calNames = getCalendarFilterableTeamNames(calendarMatches, detailComp);
+  const calNames = getCalendarFilterableTeamNames(chipMatches, detailComp);
 
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6337,11 +6340,24 @@ async function renderDetailJugadors(){
       return;
     }
 
+    // Build the set of calendar team-name variants for the selected team only.
+    // When detailTeam is set, only include the specific side (home/away) that matches
+    // detailTeam so that opponent names don't contaminate the player lookup.
     const visibleTeamSet = new Set(
       calendarMatches
-        .filter(m => !isCalendarFilterNoiseName(m?.home) && !isCalendarFilterNoiseName(m?.away))
-        .filter(m => !detailTeam || teamMatchesCalendarExact(m?.home, detailTeam) || teamMatchesCalendarExact(m?.away, detailTeam))
-        .flatMap(m => [m?.home, m?.away])
+        .flatMap(m => {
+          const home = m?.home, away = m?.away;
+          if (!home && !away) return [];
+          if (!detailTeam) {
+            // No team filter: include all non-noise names
+            return [home, away].filter(t => t && !isCalendarFilterNoiseName(t));
+          }
+          // Only include the side(s) that match detailTeam
+          const names = [];
+          if (home && teamMatchesCalendarExact(home, detailTeam)) names.push(home);
+          if (away && teamMatchesCalendarExact(away, detailTeam)) names.push(away);
+          return names;
+        })
         .filter(Boolean)
     );
 
