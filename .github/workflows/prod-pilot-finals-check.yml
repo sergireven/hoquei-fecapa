@@ -47,7 +47,16 @@ jobs:
           set -euo pipefail
           URL="${PROD_BASE_URL}/api/finals-pilot?jokCompId=${JOK_COMP_ID}&slug=${JOK_SLUG}"
           echo "Checking ${URL}"
-          curl --fail --show-error --silent "${URL}" | tee pilot-response.json
+          curl --location --fail --show-error --silent \
+            -H "Accept: application/json" \
+            "${URL}" | tee pilot-response.json
+
+          # Guard rail: avoid JSON parse errors on HTML/text redirects.
+          if ! head -c 1 pilot-response.json | grep -q '[{[]'; then
+            echo "Pilot endpoint did not return JSON. First bytes:" >&2
+            head -c 200 pilot-response.json >&2 || true
+            exit 1
+          fi
 
       - name: Validate pilot response
         env:
