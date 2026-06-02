@@ -4137,6 +4137,10 @@ function renderClubDashboard() {
   const teamCards = sorted.map(t=>{
     const comp=findComp(t.compId); if (!comp) return "";
     if (allOnlyActive && !isActive(comp)) return "";
+    const playedPct = getCompPlayedPct(comp);
+    const finishedFlag = playedPct >= 100
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf3;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">✅ Acabada</span>`
+      : "";
     const cl=comp.classification||[], cal=comp.calendar||[];
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
     const myCal=cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
@@ -4153,6 +4157,7 @@ function renderClubDashboard() {
             <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
+          ${finishedFlag}
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
         </div>
         <div style="padding:7px 10px">
