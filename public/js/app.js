@@ -3980,7 +3980,7 @@ function renderClubDashboard() {
         <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f2f8">
           <span style="font-size:14px">${catEmoji}</span>
           <div style="flex:1;min-width:0">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${decodeHtml(t.teamName)}</div>
+            <button onclick="openTeamProfileFromClub('${esc(t.compId)}','${esc(t.teamName)}','${esc(String(t.teamId||""))}','${esc(t.category||"")}','${esc(club.key||"")}')" style="background:none;border:none;padding:0;margin:0;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#003da5;cursor:pointer;text-align:left;max-width:100%">${decodeHtml(t.teamName)}</button>
             <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
@@ -4040,6 +4040,272 @@ function renderClubDashboard() {
     </div>
     ${teamCards||`<p style="text-align:center;padding:32px;color:#94a3b8">Cap equip actiu</p>`}`;
 }
+
+function formatSeasonLabel(rawSeason) {
+  const s = String(rawSeason || "").trim();
+  if (!s) return String(DB?.season || "").replace("-", "/");
+  const m = s.match(/(20\d{2})[-/](\d{2,4})/);
+  if (!m) return s;
+  return `${m[1]}/${String(m[2]).slice(-2)}`;
+}
+
+function seasonFromComp(comp) {
+  const fromName = String(comp?.name || "").match(/\(([^)]+)\)\s*$/)?.[1] || "";
+  return formatSeasonLabel(fromName || DB?.season || "");
+}
+
+function extractSquadLetter(teamName) {
+  const m = String(teamName || "").trim().match(/\s([A-Z])$/i);
+  return m ? m[1].toUpperCase() : "";
+}
+
+function hashString32(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36).toUpperCase();
+}
+
+function buildStrongTeamIdentity(input) {
+  const clubName = normalizeJokClubDisplayName(input?.clubName || "");
+  const baseTeamName = normalizeJokClubDisplayName(getTeamBase(input?.teamName || ""));
+  const category = String(input?.category || "Altres").trim();
+  const letter = String(input?.letter || "").trim().toUpperCase();
+  const season = formatSeasonLabel(input?.season || DB?.season || "");
+
+  const seed = [
+    normalizeCompKey(clubName),
+    normalizeCompKey(baseTeamName),
+    normalizeCompKey(category),
+    letter,
+    normalizeCompKey(season),
+  ].join("|");
+
+  return {
+    strongId: `TEAM-${hashString32(seed)}`,
+    displayName: `${baseTeamName}${category ? ` ${category}` : ""}${letter ? ` ${letter}` : ""} ${season}`.trim(),
+    clubName,
+    baseTeamName,
+    category,
+    letter,
+    season,
+  };
+}
+
+function resolveClubTeamContext(compId, teamName, teamId = null) {
+  const map = buildClubMap();
+  const wantedCompId = String(compId || "");
+  const wantedTeamId = String(teamId || "").trim();
+
+  for (const [clubKey, club] of map.entries()) {
+    for (const t of (club?.teams || [])) {
+      if (String(t?.compId || "") !== wantedCompId) continue;
+      const idMatch = wantedTeamId && String(t?.teamId || "") === wantedTeamId;
+      const nameMatch = teamMatchesCalendarExact(t?.teamName || "", teamName || "");
+      if (!idMatch && !nameMatch) continue;
+      return {
+        clubKey,
+        clubName: club?.displayName || "",
+        teamName: t?.teamName || teamName || "",
+        teamId: t?.teamId || teamId || null,
+        category: t?.category || getCatForComp(findComp(compId)) || "Altres",
+      };
+    }
+  }
+
+  return {
+    clubKey: null,
+    clubName: normalizeJokClubDisplayName(getTeamBase(teamName || "")),
+    teamName: teamName || "",
+    teamId: teamId || null,
+    category: getCatForComp(findComp(compId)) || "Altres",
+  };
+}
+
+function gatherTeamProfileCompetitions(profile) {
+  const out = [];
+  const seen = new Set();
+
+  for (const [category, comps] of Object.entries(DB?.categories || {})) {
+    for (const comp of (comps || [])) {
+      if (!comp || is3x3Competition(comp)) continue;
+      const season = seasonFromComp(comp);
+      if (season !== profile.season) continue;
+
+      const candidates = getTeamCompetitionCandidates(comp, profile.teamName, null);
+      const matched = candidates.filter(name => {
+        const id = buildStrongTeamIdentity({
+          clubName: profile.clubName,
+          teamName: name,
+          category,
+          letter: extractSquadLetter(name),
+          season,
+        }).strongId;
+        return id === profile.strongId;
+      });
+      if (!matched.length) continue;
+
+      const key = String(comp.id || "");
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const teamRow = (comp.classification || []).find(r => matched.some(n => teamMatchesCalendarExact(r?.team || "", n))) || null;
+      const regular = (comp.calendar || []).filter(m => matched.some(n => teamMatchesCalendarExact(m?.home || "", n) || teamMatchesCalendarExact(m?.away || "", n)));
+      const played = regular.filter(m => m?.homeScore != null && m?.awayScore != null);
+      const future = regular.filter(m => m?.homeScore == null || m?.awayScore == null).sort((a,b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
+      const phaseFuture = buildUpcomingPhaseMatchesForTeam(comp, matched);
+
+      out.push({
+        comp,
+        category,
+        matched,
+        teamRow,
+        matchCount: regular.length,
+        playedCount: played.length,
+        nextDate: future[0]?.date || "",
+        phaseFutureCount: phaseFuture.length,
+      });
+    }
+  }
+
+  return out.sort((a,b) => {
+    if (b.playedCount !== a.playedCount) return b.playedCount - a.playedCount;
+    if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+    return String(a.comp?.name || "").localeCompare(String(b.comp?.name || ""));
+  });
+}
+
+async function buildTeamProfilePlayersRows(compEntries) {
+  const map = {};
+  for (const entry of compEntries) {
+    const comp = entry.comp;
+    const catSlug = getCatSlugForComp(comp);
+    const actes = await loadCatActes(catSlug);
+    const compId = String(comp?.id || "");
+
+    for (const acta of Object.values(actes || {})) {
+      if (String(acta?.compId || "") !== compId) continue;
+      if (!acta?.playerStats) continue;
+      const homeIsTeam = entry.matched.some(n => teamMatchesCalendarExact(acta?.home || "", n));
+      const awayIsTeam = entry.matched.some(n => teamMatchesCalendarExact(acta?.away || "", n));
+      if (!homeIsTeam && !awayIsTeam) continue;
+
+      const add = p => {
+        if (!p?.jugadorId) return;
+        const id = String(p.jugadorId);
+        const cur = map[id] ||= { name: p.name || "?", g: 0, b: 0, v: 0, partits: 0 };
+        cur.g += Number(p.g || 0);
+        cur.b += Number(p.b || 0);
+        cur.v += Number(p.v || 0);
+        cur.partits += 1;
+      };
+
+      if (homeIsTeam) for (const p of (acta.playerStats.homePlayers || [])) add(p);
+      if (awayIsTeam) for (const p of (acta.playerStats.awayPlayers || [])) add(p);
+    }
+  }
+
+  return Object.entries(map)
+    .sort((a,b) => b[1].g - a[1].g)
+    .map(([id, s]) => ({ id, ...s }));
+}
+
+async function renderTeamProfile() {
+  const body = $("team-body");
+  if (!body || !teamProfile) return;
+  body.innerHTML = `<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">Carregant dades de l'equip...</div>`;
+
+  const comps = gatherTeamProfileCompetitions(teamProfile);
+  const totals = comps.reduce((acc, e) => {
+    acc.gf += Number(e.teamRow?.gf || 0);
+    acc.gc += Number(e.teamRow?.gc || 0);
+    acc.pg += Number(e.teamRow?.pg || 0);
+    acc.pe += Number(e.teamRow?.pe || 0);
+    acc.pp += Number(e.teamRow?.pp || 0);
+    return acc;
+  }, { gf:0, gc:0, pg:0, pe:0, pp:0 });
+
+  const players = await buildTeamProfilePlayersRows(comps);
+
+  const stat = (value, label, color = "#1a2035") => `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px;text-align:center"><div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${color}">${value}</div><div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700">${label}</div></div>`;
+  const compCards = comps.map(e => {
+    const comp = e.comp;
+    const cleanName = String(comp?.name || "").replace(/\s*\(([^)]+)\)\s*$/, "").trim();
+    return `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:800;color:#1a2035">${esc(cleanName)}</div>
+        <span style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">${esc(e.category)}</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#64748b;margin-bottom:8px">
+        <span>Partits: <b style="color:#1a2035">${e.matchCount}</b></span>
+        <span>Jugats: <b style="color:#1a2035">${e.playedCount}</b></span>
+        ${e.nextDate ? `<span>Proper: <b style="color:#1a2035">${esc(e.nextDate)}</b></span>` : ""}
+        ${e.phaseFutureCount ? `<span>Fases futures: <b style="color:#1a2035">${e.phaseFutureCount}</b></span>` : ""}
+      </div>
+      <button onclick="openDetail('${esc(comp.id)}','${esc(e.matched[0] || teamProfile.teamName)}','classif','${esc(String(teamProfile.teamId||""))}')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
+    </div>`;
+  }).join("");
+
+  const playerRows = players.length
+    ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:2px solid #e2e6ef"><th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">Gols</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">Blaves</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th></tr></thead><tbody>${players.map(p => `<tr style="border-bottom:1px solid #f0f4f8"><td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(String(p.name || "?"))}</td><td style="padding:7px 8px;text-align:center;font-size:13px;font-weight:700;color:#1a2035">${p.g}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#2563eb">${p.b}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#64748b">${p.partits}</td></tr>`).join("")}</tbody></table></div>`
+    : `<div style="text-align:center;padding:16px;color:#94a3b8">Jugadors no disponibles.</div>`;
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px">
+      ${stat(comps.length, "Competicions")}
+      ${stat(totals.gf, "Gols Fets", "#e5001c")}
+      ${stat(totals.gc, "Gols Encaixats", "#64748b")}
+      ${stat(totals.pg, "Victòries", "#16a34a")}
+      ${stat(totals.pe, "Empats", "#d97706")}
+      ${stat(totals.pp, "Derrotes", "#dc2626")}
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#475569"><span style="font-weight:700;color:#1a2035">TeamID:</span> ${esc(teamProfile.strongId)} · ${esc(teamProfile.displayName)}</div>
+    <div style="margin-bottom:12px">${compCards || `<div style="text-align:center;padding:16px;color:#94a3b8">No s'han trobat competicions per aquest equip aquesta temporada.</div>`}</div>
+    <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px">${playerRows}</div>`;
+}
+
+function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, clubKeyHint = null, source = "home") {
+  const ctx = resolveClubTeamContext(compId, teamName, teamId);
+  const comp = findComp(compId);
+  const season = seasonFromComp(comp);
+  const category = categoryHint || ctx.category || getCatForComp(comp) || "Altres";
+  const letter = extractSquadLetter(ctx.teamName || teamName || "");
+  const identity = buildStrongTeamIdentity({
+    clubName: ctx.clubName,
+    teamName: ctx.teamName || teamName,
+    category,
+    letter,
+    season,
+  });
+
+  teamProfile = {
+    ...identity,
+    compId: String(compId || ""),
+    teamName: ctx.teamName || teamName || "",
+    teamId: ctx.teamId || teamId || null,
+    category,
+    clubKey: clubKeyHint || ctx.clubKey || null,
+  };
+  teamProfileReturnScreen = source;
+
+  ["screen-home","screen-detail","screen-picker","screen-acta","screen-admin"].forEach(id => { const el=$(id); if (el) el.style.display="none"; });
+  $("screen-team").style.display = "flex";
+  $("team-header-title").textContent = teamProfile.displayName;
+  $("team-header-meta").innerHTML = `${esc(teamProfile.clubName)} · ${esc(teamProfile.category)} · ${esc(teamProfile.season)}`;
+  renderTeamProfile();
+  window.scrollTo(0,0);
+}
+
+window.openTeamProfileFromClub = (compId, teamName, teamId = null, category = null, clubKey = null) => {
+  openTeamProfile(compId, teamName, teamId, category, clubKey, "home");
+};
+
+window.openTeamProfileFromClassif = (teamName, teamId = null) => {
+  if (!detailComp?.id) return;
+  openTeamProfile(detailComp.id, teamName, teamId, getCatForComp(detailComp), null, "detail");
+};
 
 // ── ALL COMPS ─────────────────────────────────────────────────
 function normalizeCompName(name) {
@@ -4925,6 +5191,8 @@ window.addFavFromPicker = function() {
 
 // ── DETAIL ────────────────────────────────────────────────────
 let detailComp=null, detailTeam=null, detailTeamId=null, detailTab="classif";
+let teamProfile = null;
+let teamProfileReturnScreen = "home";
 
 function getJokCompetitionUrl(comp) {
   if (!comp?.id) return "https://jok.cat/";
@@ -4966,7 +5234,7 @@ function openDetail(compId,teamName,tab,teamId=null){
   </div>${adminMeta}`;
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions(); });
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
   window.scrollTo(0,0);
 }
 window.openDetail=openDetail;
@@ -5133,6 +5401,16 @@ window.closePlayerModal = closePlayerModal;
 function setupListeners(){
   const bb=$("back-btn");
   if(bb) bb.addEventListener("click",()=>{ $("screen-detail").style.display="none"; renderHome(); });
+  const tb=$("team-back-btn");
+  if (tb) tb.addEventListener("click",()=>{
+    $("screen-team").style.display="none";
+    if (teamProfileReturnScreen === "detail" && detailComp) {
+      $("screen-detail").style.display = "flex";
+    } else {
+      renderHome();
+    }
+    window.scrollTo(0,0);
+  });
   const ab=$("acta-back-btn");
   if(ab) ab.addEventListener("click",()=>{
     $("screen-acta").style.display="none";
@@ -5150,7 +5428,6 @@ function setupListeners(){
       detailTab=tab.dataset.tab;
       document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t===tab));
       document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-      if (detailTab === "competicions") renderDetailCompeticions();
     });
   });
 }
@@ -5236,7 +5513,6 @@ async function renderDetailClassif(){
     detailTab = tabKey;
     document.querySelectorAll(".detail-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabKey));
     document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${tabKey}`));
-    if (tabKey === "competicions") renderDetailCompeticions();
   };
 
   const setDetailSelection = (teamName, teamId = null) => {
@@ -5256,17 +5532,6 @@ async function renderDetailClassif(){
     renderDetailClassif().then(() => {
       renderDetailCalendar();
       renderDetailJugadors();
-      renderDetailCompeticions();
-    });
-  };
-
-  window.openCompeticionsFromClassif = (teamName, teamId = null) => {
-    setDetailSelection(teamName || detailTeam, teamId);
-    setDetailTabView("competicions");
-    renderDetailClassif().then(() => {
-      renderDetailCalendar();
-      renderDetailJugadors();
-      renderDetailCompeticions();
     });
   };
 
@@ -5285,7 +5550,7 @@ async function renderDetailClassif(){
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openCompeticionsFromClassif('${esc(r.team)}','${esc(String(r.teamId||""))}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure competicions d'aquest equip">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openTeamProfileFromClassif('${esc(r.team)}','${esc(String(r.teamId||""))}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure fitxa global de l'equip">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
@@ -5401,137 +5666,11 @@ function buildUpcomingPhaseMatchesForTeam(comp, teamCandidates) {
     .sort((a, b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
 }
 
-function buildTeamSeasonCompetitions(teamName, teamId = null) {
-  const target = String(teamName || "").trim();
-  const targetId = String(teamId || "").trim() || null;
-  if ((!target && !targetId) || !DB?.categories) return [];
-
-  const rows = [];
-  for (const [category, comps] of Object.entries(DB.categories || {})) {
-    for (const comp of (comps || [])) {
-      if (!comp || is3x3Competition(comp)) continue;
-      const candidates = getTeamCompetitionCandidates(comp, target, targetId);
-      if (!candidates.length) continue;
-
-      const regular = (comp.calendar || []).filter(m =>
-        candidates.some(c => teamMatchesCalendarExact(m?.home, c) || teamMatchesCalendarExact(m?.away, c))
-      );
-      const phaseFuture = buildUpcomingPhaseMatchesForTeam(comp, candidates);
-      if (!regular.length && !phaseFuture.length) continue;
-
-      const played = regular.filter(m => m?.homeScore != null && m?.awayScore != null);
-      const future = regular
-        .filter(m => m?.homeScore == null || m?.awayScore == null)
-        .sort((a, b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
-      const nextPhase = phaseFuture[0] || null;
-
-      rows.push({
-        compId: String(comp.id || ""),
-        compName: String(comp.name || ""),
-        category,
-        preferredTeamId: targetId,
-        pctPlayed: Number(comp.pctPlayed || 0),
-        candidateTeamNames: candidates,
-        preferredTeamName: candidates[0] || target,
-        matchCount: regular.length,
-        playedCount: played.length,
-        nextDate: future[0]?.date || "",
-        phaseFutureCount: phaseFuture.length,
-        nextPhaseDate: nextPhase?.date || "",
-        nextPhaseName: nextPhase?._phaseName || "",
-      });
-    }
-  }
-
-  const deduped = new Map();
-  for (const row of rows) {
-    const key = row.compId || `${normalizeCompKey(row.compName)}::${normalizeCompKey(row.category)}`;
-    if (!deduped.has(key)) {
-      deduped.set(key, row);
-      continue;
-    }
-    const prev = deduped.get(key);
-    const prevScore = (prev.matchCount * 10) + prev.playedCount + prev.phaseFutureCount;
-    const nextScore = (row.matchCount * 10) + row.playedCount + row.phaseFutureCount;
-    if (nextScore > prevScore) deduped.set(key, row);
-  }
-
-  return [...deduped.values()]
-    .sort((a, b) => {
-      const seasonA = (a.compName.match(/\(([^)]+)\)\s*$/) || ["", ""]).pop();
-      const seasonB = (b.compName.match(/\(([^)]+)\)\s*$/) || ["", ""]).pop();
-      if (seasonA !== seasonB) return seasonB.localeCompare(seasonA);
-      if (b.playedCount !== a.playedCount) return b.playedCount - a.playedCount;
-      if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
-      if (b.pctPlayed !== a.pctPlayed) return b.pctPlayed - a.pctPlayed;
-      return a.compName.localeCompare(b.compName);
-    });
-}
-
-function renderDetailCompeticions() {
-  const panel = $("panel-competicions");
-  if (!panel) return;
-
-  const teams = [...new Set([
-    ...(detailComp?.classification || []).map(r => r?.team),
-    ...(detailComp?.calendar || []).flatMap(m => [m?.home, m?.away]),
-  ].filter(Boolean))].sort();
-
-  const chips = teams.length ? `<div style="margin-bottom:10px">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Equip</div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
-      <button onclick="setCompeticionsTeam(null)" style="background:${!detailTeam?"#1a2035":"#f0f4f8"};border:1.5px solid ${!detailTeam?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 11px;font-size:12px;font-weight:600;color:${!detailTeam?"#fff":"#334155"};cursor:pointer">Tria equip</button>
-      ${teams.map(t=>{const act=teamMatchesCalendarExact(t,detailTeam),cid=getClubId(t);return`<button onclick="setCompeticionsTeam('${esc(t)}')" style="display:inline-flex;align-items:center;gap:4px;background:${act?"#1a2035":"#f0f4f8"};border:1.5px solid ${act?"#1a2035":"#e2e6ef"};border-radius:16px;padding:4px 10px 4px 5px;font-size:12px;font-weight:600;color:${act?"#fff":"#334155"};cursor:pointer">${shieldImg(cid,16)} ${esc(shortTeamDisplayName(t))}</button>`;}).join("")}
-    </div>
-  </div>` : "";
-
-  if (!detailTeam) {
-    panel.innerHTML = chips + `<div style="text-align:center;padding:24px;color:#94a3b8">Fes clic al nom d'un equip a Classificació per veure totes les seves competicions.</div>`;
-    return;
-  }
-
-  const comps = buildTeamSeasonCompetitions(detailTeam, detailTeamId);
-  const title = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#1a2035">${esc(normalizeJokClubDisplayName(detailTeam))}</span><span style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:uppercase">${comps.length} competicions</span></div>`;
-
-  if (!comps.length) {
-    panel.innerHTML = chips + title + `<div style="text-align:center;padding:20px;color:#94a3b8">No s'han trobat competicions per aquest equip.</div>`;
-    return;
-  }
-
-  const cards = comps.map(c => {
-    const season = (c.compName.match(/\(([^)]+)\)\s*$/) || ["", ""]).pop() || "Temporada";
-    const cleanName = c.compName.replace(/\s*\(([^)]+)\)\s*$/, "").trim();
-    return `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,20,60,.05)">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:800;color:#1a2035">${esc(cleanName)}</div>
-        <span style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">${esc(season)}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#64748b;margin-bottom:8px">
-        <span style="font-weight:700;color:#334155">${esc(c.category)}</span>
-        <span>Partits: <b style="color:#1a2035">${c.matchCount}</b></span>
-        <span>Jugats: <b style="color:#1a2035">${c.playedCount}</b></span>
-        <span>Progrés: <b style="color:#1a2035">${Math.round(c.pctPlayed)}%</b></span>
-        ${c.nextDate ? `<span>Proper: <b style="color:#1a2035">${esc(c.nextDate)}</b></span>` : ""}
-        ${c.phaseFutureCount ? `<span>Fases futures: <b style="color:#1a2035">${c.phaseFutureCount}</b>${c.nextPhaseDate ? ` · ${esc(c.nextPhaseDate)}` : ""}${c.nextPhaseName ? ` (${esc(c.nextPhaseName)})` : ""}</span>` : ""}
-      </div>
-      <button onclick="openDetail('${esc(c.compId)}','${esc(c.preferredTeamName)}','classif','${esc(String(c.preferredTeamId||""))}')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
-    </div>`;
-  }).join("");
-
-  panel.innerHTML = chips + title + cards;
-}
-
 window.setCalTeam=t=>{
   const next = resolveSelectedTeam(detailComp, t, null);
   detailTeam = next.teamName;
   detailTeamId = next.teamId;
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions();
-};
-window.setCompeticionsTeam=t=>{
-  const next = resolveSelectedTeam(detailComp, t, null);
-  detailTeam = next.teamName;
-  detailTeamId = next.teamId;
-  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions();
+  renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
 };
 
 function getCatSlugForComp(comp) {
@@ -5629,7 +5768,7 @@ function setJugadorsTeam(team) {
   const next = resolveSelectedTeam(detailComp, team, null);
   detailTeam = next.teamName;
   detailTeamId = next.teamId;
-  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); renderDetailCompeticions(); });
+  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
 }
 
 // ── Init ──────────────────────────────────────────────────────

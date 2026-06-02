@@ -25,7 +25,7 @@
     .spinner{width:34px;height:34px;border:3px solid #f0f4f8;border-top-color:#e5001c;border-radius:50%;animation:spin .7s linear infinite}
 
     /* Screens */
-    #screen-home,#screen-picker,#screen-detail,#screen-acta{display:none;flex-direction:column;min-height:100vh}
+    #screen-home,#screen-picker,#screen-detail,#screen-acta,#screen-team{display:none;flex-direction:column;min-height:100vh}
 
     /* Home header */
     .home-header{background:#fff;border-bottom:1px solid #e2e6ef;padding:11px 16px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,20,60,.06)}
@@ -126,7 +126,6 @@
       <div class="detail-tabs">
         <button class="detail-tab active" data-tab="classif">Classificació</button>
         <button class="detail-tab" data-tab="calendar">Calendari</button>
-        <button class="detail-tab" data-tab="competicions">Competicions</button>
         <button class="detail-tab" data-tab="jugadors">Jugadors</button>
       </div>
     </div>
@@ -134,9 +133,20 @@
   <div class="detail-body">
     <div id="panel-classif" class="panel active"></div>
     <div id="panel-calendar" class="panel"></div>
-    <div id="panel-competicions" class="panel"></div>
     <div id="panel-jugadors" class="panel"></div>
   </div>
+</div>
+
+<!-- TEAM PROFILE -->
+<div id="screen-team" style="display:none">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="team-back-btn">← Enrere</button></div>
+      <div id="team-header-title" style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,22px);font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.1;margin-bottom:3px"></div>
+      <div id="team-header-meta" style="font-size:11px;color:rgba(255,255,255,.7);padding-bottom:12px"></div>
+    </div>
+  </div>
+  <div id="team-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 12px 32px;flex:1;overflow-y:auto"></div>
 </div>
 
 <!-- ACTA DETAIL -->
@@ -186,6 +196,6 @@
   <div id="admin-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
 </div>
 
-<script src="js/app.js?v=20260601e"></script>
+<script src="js/app.js?v=20260602a"></script>
 </body>
 </html>
