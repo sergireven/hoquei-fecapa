@@ -2686,6 +2686,8 @@ function applyClassificationSourceMerge() {
       comp.classificationSource = "fecapa";
     }
   }
+
+  applyCompetitionActivityHeuristics();
 }
 
 function classifSourceBadgeHtml(comp) {
@@ -3006,7 +3008,136 @@ function openActaDetail(acta) {
 
 const posColor = p => p===1?"#d97706":p===2?"#64748b":p===3?"#b45309":"#6b7a99";
 const teamIn = teamMatchesLoose;
-const isActive = comp => (comp.pctPlayed||0) < 100;
+
+function getCompPlayedPct(comp) {
+  const effective = Number(comp?.pctPlayedEffective);
+  if (Number.isFinite(effective)) return Math.max(0, Math.min(100, Math.round(effective)));
+  const raw = Number(comp?.pctPlayed);
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(100, Math.round(raw)));
+  return 0;
+}
+
+const isActive = comp => getCompPlayedPct(comp) < 100;
+
+function parseCalendarDateToTimestamp(dateInput, compName = "") {
+  if (!dateInput) return null;
+  const raw = String(dateInput).trim();
+  if (!raw) return null;
+
+  const yyyyMmDd = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (yyyyMmDd) {
+    const y = parseInt(yyyyMmDd[1], 10);
+    const m = parseInt(yyyyMmDd[2], 10);
+    const d = parseInt(yyyyMmDd[3], 10);
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const ddMmYyyy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (ddMmYyyy) {
+    const d = parseInt(ddMmYyyy[1], 10);
+    const m = parseInt(ddMmYyyy[2], 10);
+    const y = parseInt(ddMmYyyy[3], 10);
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const ddMm = raw.match(/^(\d{1,2})[\/-](\d{1,2})$/);
+  if (ddMm) {
+    const d = parseInt(ddMm[1], 10);
+    const m = parseInt(ddMm[2], 10);
+    const seasonStart = extractSeasonStartYear(compName);
+    const y = m >= 8 ? seasonStart : seasonStart + 1;
+    return Date.UTC(y, m - 1, d);
+  }
+
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getInactiveTeamsForCompetition(comp) {
+  const cal = Array.isArray(comp?.calendar) ? comp.calendar : [];
+  if (!cal.length) return new Set();
+
+  const nowTs = Date.now();
+  const stats = new Map();
+  const classRows = Array.isArray(comp?.classification) ? comp.classification : [];
+  const classMap = new Map(classRows
+    .filter(r => String(r?.team || "").trim())
+    .map(r => [normalizeTeamName(r.team), Number(r?.pj ?? 0)]));
+
+  const touch = (teamName, isPlayed, isPastPending) => {
+    if (!teamName || isDescansaTeamName(teamName)) return;
+    const key = normalizeTeamName(teamName);
+    if (!key) return;
+    const cur = stats.get(key) || { played: 0, pendingPast: 0, pendingFuture: 0 };
+    if (isPlayed) cur.played += 1;
+    else if (isPastPending) cur.pendingPast += 1;
+    else cur.pendingFuture += 1;
+    stats.set(key, cur);
+  };
+
+  for (const m of cal) {
+    const played = m?.homeScore != null && m?.awayScore != null;
+    const ts = parseCalendarDateToTimestamp(m?.date || "", comp?.name || "");
+    const isPastPending = !played && ts != null && ts < nowTs;
+    touch(m?.home || "", played, isPastPending);
+    touch(m?.away || "", played, isPastPending);
+  }
+
+  const inactive = new Set();
+  for (const [teamKey, s] of stats.entries()) {
+    const pj = classMap.get(teamKey);
+    const absentInClassif = pj == null;
+    const zeroClassifGames = pj === 0;
+    const zeroPlayed = s.played === 0;
+    const stalePendingOnly = s.pendingPast >= 3;
+
+    if ((absentInClassif || zeroClassifGames) && zeroPlayed && stalePendingOnly) {
+      inactive.add(teamKey);
+    }
+  }
+
+  return inactive;
+}
+
+function applyCompetitionActivityHeuristics() {
+  if (!DB?.categories) return;
+
+  for (const comps of Object.values(DB.categories || {})) {
+    for (const comp of (comps || [])) {
+      if (!comp || is3x3Competition(comp)) continue;
+      const cal = Array.isArray(comp.calendar) ? comp.calendar : [];
+
+      const rawPct = Number(comp?.pctPlayed);
+      comp.pctPlayedRaw = Number.isFinite(rawPct) ? rawPct : null;
+      comp.inactiveTeamsDetected = [];
+
+      if (!cal.length) {
+        comp.pctPlayedEffective = Number.isFinite(rawPct) ? rawPct : 0;
+        continue;
+      }
+
+      const inactive = getInactiveTeamsForCompetition(comp);
+      comp.inactiveTeamsDetected = [...inactive];
+
+      const relevant = cal.filter(m => {
+        const homeKey = normalizeTeamName(m?.home || "");
+        const awayKey = normalizeTeamName(m?.away || "");
+        const touchesInactive = inactive.has(homeKey) || inactive.has(awayKey);
+        const played = m?.homeScore != null && m?.awayScore != null;
+        return played || !touchesInactive;
+      });
+
+      const playedRelevant = relevant.filter(m => m?.homeScore != null && m?.awayScore != null).length;
+      const totalRelevant = relevant.length;
+      const pctEffective = totalRelevant > 0
+        ? Math.round((playedRelevant * 100) / totalRelevant)
+        : (Number.isFinite(rawPct) ? rawPct : 0);
+
+      comp.pctPlayedEffective = Math.max(0, Math.min(100, pctEffective));
+      comp.pctPlayed = comp.pctPlayedEffective;
+    }
+  }
+}
 
 function isDescansaTeamName(teamName) {
   const n = normalizeCompKey(teamName || "");
@@ -3215,7 +3346,7 @@ function buildDetailCompView(baseComp, preferredTeamName = null, preferredTeamId
       ? bestCalendarComp.calendar.map(m => ({ ...m, compId: String(bestCalendarComp.id || baseComp.id || "") }))
       : [],
     postSeasonPhases: normalizePostSeasonPhases(mergePostSeasonPhasesFromCompetitions(phaseSourceComps)),
-    pctPlayed: Math.max(...siblings.map(c => Number(c?.pctPlayed || 0))),
+    pctPlayed: Math.max(...siblings.map(c => Number(getCompPlayedPct(c) || 0))),
     detailMergeInfo: {
       merged: String(bestClassComp?.id || "") !== String(baseComp.id || "") || String(bestCalendarComp?.id || "") !== String(baseComp.id || ""),
       baseCompId: String(baseComp.id || ""),
@@ -5213,8 +5344,9 @@ function openDetail(compId,teamName,tab,teamId=null){
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
   const sourceBadge = classifSourceBadgeHtml(detailComp);
-  const status = (detailComp.pctPlayed == null || detailComp.pctPlayed === 0) ? "No començada" : (detailComp.pctPlayed >= 100 ? "Finalitzada" : "En curs");
-  const statusColor = detailComp.pctPlayed >= 100 ? "#6b7a99" : (detailComp.pctPlayed == 0 ? "#94a3b8" : "#e5001c");
+  const playedPct = getCompPlayedPct(detailComp);
+  const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
+  const statusColor = playedPct >= 100 ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
   const eqLabel = (detailComp.classification||[]).length; 
   const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
   const isAdmin = currentProfile?.role === "admin";
@@ -5228,7 +5360,7 @@ function openDetail(compId,teamName,tab,teamId=null){
   </div>` : "";
   $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
-    <span style="color:${statusColor};font-weight:700">${status} · ${detailComp.pctPlayed??"?"}%</span>
+    <span style="color:${statusColor};font-weight:700">${status} · ${playedPct}%</span>
     ${phaseCount ? `<span style="font-weight:700;color:#3730a3">${phaseCount} fase${phaseCount!==1?"s":""} final${phaseCount!==1?"s":""}</span>` : ""}
     ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
   </div>${adminMeta}`;
