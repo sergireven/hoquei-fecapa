@@ -6340,11 +6340,24 @@ async function renderDetailJugadors(){
       return;
     }
 
+    // Build the set of calendar team-name variants for the selected team only.
+    // When detailTeam is set, only include the specific side (home/away) that matches
+    // detailTeam so that opponent names don't contaminate the player lookup.
     const visibleTeamSet = new Set(
       calendarMatches
-        .filter(m => !isCalendarFilterNoiseName(m?.home) && !isCalendarFilterNoiseName(m?.away))
-        .filter(m => !detailTeam || teamMatchesCalendarExact(m?.home, detailTeam) || teamMatchesCalendarExact(m?.away, detailTeam))
-        .flatMap(m => [m?.home, m?.away])
+        .flatMap(m => {
+          const home = m?.home, away = m?.away;
+          if (!home && !away) return [];
+          if (!detailTeam) {
+            // No team filter: include all non-noise names
+            return [home, away].filter(t => t && !isCalendarFilterNoiseName(t));
+          }
+          // Only include the side(s) that match detailTeam
+          const names = [];
+          if (home && teamMatchesCalendarExact(home, detailTeam)) names.push(home);
+          if (away && teamMatchesCalendarExact(away, detailTeam)) names.push(away);
+          return names;
+        })
         .filter(Boolean)
     );
 
