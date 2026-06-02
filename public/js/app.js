@@ -6270,11 +6270,14 @@ function getCatSlugForComp(comp) {
 
 async function renderDetailJugadors(){
   const catSlug = getCatSlugForComp(detailComp);
-  const calendarMatches = getDetailCalendarSourceMatches(detailComp)
+  // Source matches (used for acta IDs and visibleTeamSet) - no name filtering
+  const calendarMatches = getDetailCalendarSourceMatches(detailComp);
+  // Filtered matches used only to generate chip names (noise removed)
+  const chipMatches = calendarMatches
     .filter(m => m?.placeholder === true || (isLikelyCompetitionTeamName(m?.home, detailComp) && isLikelyCompetitionTeamName(m?.away, detailComp)));
 
   // Noms d'equip del calendari per als filtres
-  const calNames = getCalendarFilterableTeamNames(calendarMatches, detailComp);
+  const calNames = getCalendarFilterableTeamNames(chipMatches, detailComp);
 
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
