@@ -2102,6 +2102,9 @@ function shortTeamDisplayName(name) {
 function normalizeTeamKeyForMatching(name) {
   return normalizeTeamName(shortTeamDisplayName(name || ""))
     .replace(/\bhoquei\b/g, "")
+    .replace(/\bphc\b/g, "")
+    .replace(/\bhc\b/g, "")
+    .replace(/\bch\b/g, "")
     .replace(/\bclub\b/g, "")
     .replace(/\bpati\b/g, "")
     .replace(/\bcp\b/g, "")
