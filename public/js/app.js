@@ -3507,8 +3507,6 @@ function getCalendarFilterableTeamNames(matches, comp = null) {
     .filter(t => isLikelyCompetitionTeamName(t, comp))
     .sort();
 }
-  return false;
-}
 
 function getDetailCalendarSourceMatches(comp) {
   if (!comp) return [];
