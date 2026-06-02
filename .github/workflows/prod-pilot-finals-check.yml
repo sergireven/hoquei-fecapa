@@ -1,0 +1,82 @@
+name: Prod Pilot Finals Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      strict_data:
+        description: "Fail if pilot returns 0 matches"
+        required: false
+        type: boolean
+        default: false
+      prod_base_url:
+        description: "Production base URL"
+        required: false
+        default: "https://hoquei-fecapa.vercel.app"
+      jok_comp_id:
+        description: "jok competition id"
+        required: false
+        default: "4709"
+      jok_slug:
+        description: "jok competition slug"
+        required: false
+        default: "alevi-copa-catalana-plata-fase-final-2025-26"
+
+jobs:
+  prod-pilot-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Validate inputs
+        env:
+          PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PROD_BASE_URL:-}" ]; then
+            echo "Missing prod_base_url input"
+            exit 1
+          fi
+          echo "Using PROD_BASE_URL=${PROD_BASE_URL}"
+
+      - name: Query pilot endpoint in production
+        env:
+          PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
+          JOK_COMP_ID: ${{ github.event.inputs.jok_comp_id }}
+          JOK_SLUG: ${{ github.event.inputs.jok_slug }}
+        run: |
+          set -euo pipefail
+          URL="${PROD_BASE_URL}/api/finals-pilot?jokCompId=${JOK_COMP_ID}&slug=${JOK_SLUG}"
+          echo "Checking ${URL}"
+          curl --fail --show-error --silent "${URL}" | tee pilot-response.json
+
+      - name: Validate pilot response
+        env:
+          STRICT_DATA: ${{ github.event.inputs.strict_data }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require("fs");
+          const data = JSON.parse(fs.readFileSync("pilot-response.json", "utf8"));
+
+          if (!data || data.ok !== true) {
+            console.error("Pilot endpoint did not return ok=true", data);
+            process.exit(1);
+          }
+
+          const phases = Array.isArray(data.phases) ? data.phases : [];
+          const matchCount = Number(data.matchCount || 0);
+          const jokCount = Number(data?.sources?.jok?.matchCount || 0);
+          const fecapaCount = Number(data?.sources?.fecapa?.matchCount || 0);
+          const strict = String(process.env.STRICT_DATA || "false") === "true";
+
+          console.log("Summary:");
+          console.log("- phases:", phases.length);
+          console.log("- matchCount:", matchCount);
+          console.log("- jok matches:", jokCount, "error:", data?.sources?.jok?.error || "none");
+          console.log("- fecapa matches:", fecapaCount, "error:", data?.sources?.fecapa?.error || "none");
+
+          if (strict && matchCount <= 0) {
+            console.error("strict_data=true and matchCount is 0");
+            process.exit(1);
+          }
+          NODE

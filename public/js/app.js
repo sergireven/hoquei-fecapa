@@ -5,8 +5,12 @@ const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
 const CLASSIFICATION_SOURCE_PILOTS_URL = "./classification-source-pilots.json";
+const FINALS_PILOT_API_URL = "/api/finals-pilot";
+const FINALS_PILOT_COMP_IDS = new Set(["4709"]);
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
+
+const finalsPilotLoadState = new Map();
 
 const CLASSIFICATION_SOURCE_PILOTS = [
   { jokCompId: "4191", fecapaCompetitionId: "3949", preferredGroupToken: "PLATA 1" },
@@ -3445,9 +3449,91 @@ function getLastAndNext(matches, teamName) {
   };
 }
 
+function parseMatchKickoffTimestamp(match, compName = "") {
+  const base = parseMatchTimestamp(match?.date || "", compName || "");
+  const time = String(match?.time || "").trim();
+  const tm = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (!tm) return base;
+  const hh = Math.max(0, Math.min(23, parseInt(tm[1], 10)));
+  const mm = Math.max(0, Math.min(59, parseInt(tm[2], 10)));
+  return base + ((hh * 60 + mm) * 60 * 1000);
+}
+
+function buildTwoLegEliminationContext(matches, compName = "") {
+  const ctxByMatch = new WeakMap();
+  const groups = new Map();
+  const phaseNameRe = /(eliminat|play\s*-?\s*off|fase\s*final|final\s*a\s*4|final\s*four|copa)/i;
+
+  for (const m of (matches || [])) {
+    if (!m || !m.home || !m.away) continue;
+    if (isDescansaTeamName(m.home) || isDescansaTeamName(m.away)) continue;
+
+    const phaseType = String(m?.phaseType || "").toLowerCase();
+    const phaseName = String(m?.phaseName || m?._phaseName || "");
+    const isElim = ["eliminatories", "playoff", "fase_final", "copa"].includes(phaseType)
+      || phaseNameRe.test(phaseName);
+    if (!isElim) continue;
+
+    const homeKey = normalizeCompKey(m.home || "");
+    const awayKey = normalizeCompKey(m.away || "");
+    if (!homeKey || !awayKey || homeKey === awayKey) continue;
+
+    const pairKey = [homeKey, awayKey].sort().join("|");
+    const phaseKey = normalizeCompKey(phaseName || phaseType || "fase") || "fase";
+    const key = `${phaseKey}::${pairKey}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(m);
+  }
+
+  for (const tieMatches of groups.values()) {
+    if (!Array.isArray(tieMatches) || tieMatches.length < 2) continue;
+
+    tieMatches.sort((a, b) => parseMatchKickoffTimestamp(a, compName) - parseMatchKickoffTimestamp(b, compName));
+    const first = tieMatches[0];
+    const second = tieMatches[1];
+    if (!first || !second) continue;
+
+    const secondPlayed = second?.homeScore != null && second?.awayScore != null;
+    const firstPlayed = first?.homeScore != null && first?.awayScore != null;
+
+    let qualifiedTeam = null;
+    let aggregateText = "";
+    if (firstPlayed && secondPlayed) {
+      const totals = new Map();
+      const add = (team, goals) => {
+        const key = normalizeCompKey(team || "");
+        if (!key) return;
+        const current = totals.get(key) || 0;
+        totals.set(key, current + (Number(goals) || 0));
+      };
+
+      add(first.home, first.homeScore);
+      add(first.away, first.awayScore);
+      add(second.home, second.homeScore);
+      add(second.away, second.awayScore);
+
+      const secondHomeKey = normalizeCompKey(second.home || "");
+      const secondAwayKey = normalizeCompKey(second.away || "");
+      const gh = totals.get(secondHomeKey) || 0;
+      const ga = totals.get(secondAwayKey) || 0;
+      aggregateText = `${second.home} ${gh} - ${ga} ${second.away}`;
+      if (gh !== ga) qualifiedTeam = gh > ga ? second.home : second.away;
+    }
+
+    ctxByMatch.set(second, {
+      isSecondLeg: true,
+      firstLeg: first,
+      aggregateText,
+      qualifiedTeam,
+    });
+  }
+
+  return ctxByMatch;
+}
+
 // ── Match card ────────────────────────────────────────────────
 function matchCard(m, myTeam, compId, options = {}) {
-  const { showTravel = false } = options || {};
+  const { showTravel = false, eliminationCtx = null } = options || {};
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const isByeHome = isDescansaTeamName(m.home);
@@ -3515,6 +3601,28 @@ function matchCard(m, myTeam, compId, options = {}) {
     ? `<button onclick="event.stopPropagation(); openRivalAnalysis(decodeURIComponent('${encAway}'), decodeURIComponent('${encComp}'), decodeURIComponent('${encMine}'))" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px" title="Anàlisi ${m.away}">🔍</button>`
     : "";
 
+  const isQualifiedHome = !!(eliminationCtx?.qualifiedTeam && teamMatchesCalendarExact(eliminationCtx.qualifiedTeam, m.home));
+  const isQualifiedAway = !!(eliminationCtx?.qualifiedTeam && teamMatchesCalendarExact(eliminationCtx.qualifiedTeam, m.away));
+  const homeQualifiedBadge = isQualifiedHome
+    ? `<span style="display:inline-flex;align-items:center;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap">✅ Classificat</span>`
+    : "";
+  const awayQualifiedBadge = isQualifiedAway
+    ? `<span style="display:inline-flex;align-items:center;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap">✅ Classificat</span>`
+    : "";
+
+  const firstLeg = eliminationCtx?.firstLeg || null;
+  const firstLegPlayed = firstLeg && firstLeg.homeScore != null && firstLeg.awayScore != null;
+  const firstLegSummary = firstLeg
+    ? `${normalizeJokClubDisplayName(firstLeg.home)} ${firstLegPlayed ? `${firstLeg.homeScore} - ${firstLeg.awayScore}` : "vs"} ${normalizeJokClubDisplayName(firstLeg.away)}`
+    : "";
+  const eliminationDetail = eliminationCtx?.isSecondLeg
+    ? `<div style="margin-top:7px;padding:6px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Partit d'anada</div>
+        <div style="font-size:12px;color:#334155;margin-top:2px">${esc(firstLegSummary)}</div>
+        ${eliminationCtx.aggregateText ? `<div style="font-size:11px;color:#0f172a;font-weight:700;margin-top:3px">Global: ${esc(eliminationCtx.aggregateText)}</div>` : ""}
+      </div>`
+    : "";
+
   const clickAttrs = hasActa
     ? `onclick="openActa('${esc(acta.actaId||"")}','${esc(acta.actaUrl||acta.url||"")}')" style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px;cursor:pointer;box-shadow:0 1px 4px rgba(0,30,80,.06)"`
     : `style="background:#fff;border:1.5px solid ${border};border-left:4px solid ${border};border-radius:10px;padding:9px 11px;margin-bottom:5px"`;
@@ -3523,7 +3631,10 @@ function matchCard(m, myTeam, compId, options = {}) {
     <div ${clickAttrs}>
       <div style="display:flex;align-items:center;gap:6px">
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0">
-          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.home))}</span>
+          <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;min-width:0;flex-wrap:wrap">
+            ${homeQualifiedBadge}
+            <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riH?800:500};color:${riH?"#003da5":"#334155"};text-align:right;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.home))}</span>
+          </div>
           ${homeAnalysisIcon}
           ${isByeHome ? "" : shieldImg(cidH,22)}
         </div>
@@ -3537,9 +3648,13 @@ function matchCard(m, myTeam, compId, options = {}) {
         <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:5px;min-width:0">
           ${isByeAway ? "" : shieldImg(cidA,22)}
           ${awayAnalysisIcon}
-          <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
+          <div style="display:flex;align-items:center;gap:4px;justify-content:flex-start;min-width:0;flex-wrap:wrap">
+            <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
+            ${awayQualifiedBadge}
+          </div>
         </div>
       </div>
+      ${eliminationDetail}
       ${badge}
     </div>`;
 }
@@ -5390,11 +5505,169 @@ let detailComp=null, detailTeam=null, detailTeamId=null, detailTab="classif";
 let teamProfile = null;
 let teamProfileReturnScreen = "home";
 
+function isFinalsPilotComp(comp) {
+  const id = String(comp?.id || "").trim();
+  return !!id && FINALS_PILOT_COMP_IDS.has(id);
+}
+
+function buildPilotMatchKey(m) {
+  const home = normalizeCompKey(m?.home || "");
+  const away = normalizeCompKey(m?.away || "");
+  const date = String(m?.date || "").trim();
+  const time = String(m?.time || "").trim();
+  const hs = String(m?.homeScore ?? "");
+  const as = String(m?.awayScore ?? "");
+  const phase = normalizeCompKey(m?.phaseName || "");
+  return [home, away, date, time, hs, as, phase].join("|");
+}
+
+function mergePilotCalendarMatches(baseMatches, extraMatches) {
+  const out = [];
+  const seen = new Set();
+  for (const m of ([...(baseMatches || []), ...(extraMatches || [])])) {
+    const home = normalizeJokClubDisplayName(m?.home || "");
+    const away = normalizeJokClubDisplayName(m?.away || "");
+    if (!home || !away) continue;
+    const mergedMatch = {
+      ...m,
+      home,
+      away,
+      date: String(m?.date || ""),
+      time: String(m?.time || ""),
+      homeScore: m?.homeScore ?? null,
+      awayScore: m?.awayScore ?? null,
+      played: m?.played !== false && m?.homeScore != null && m?.awayScore != null,
+    };
+    const key = buildPilotMatchKey(mergedMatch);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(mergedMatch);
+  }
+  return out;
+}
+
+async function ensurePilotFinalsDataForComp(comp) {
+  if (!isFinalsPilotComp(comp)) return false;
+  if (typeof fetch !== "function") return false;
+
+  const compId = String(comp?.id || "");
+  if (!compId) return false;
+
+  const loaded = finalsPilotLoadState.get(compId);
+  if (loaded?.status === "done") return false;
+  if (loaded?.status === "loading" && loaded.promise) return loaded.promise;
+
+  const run = (async () => {
+    try {
+      const slug = String(comp?.slug || "").trim();
+      const qs = new URLSearchParams({ jokCompId: compId });
+      if (slug) qs.set("slug", slug);
+
+      const res = await fetch(`${FINALS_PILOT_API_URL}?${qs.toString()}`);
+      if (!res.ok) throw new Error(`pilot-http-${res.status}`);
+      const payload = await res.json();
+      const phases = normalizePostSeasonPhases(payload?.phases || []);
+      if (!phases.length) {
+        finalsPilotLoadState.set(compId, { status: "done", loadedAt: Date.now(), empty: true });
+        return false;
+      }
+
+      const phaseMatches = phases.flatMap(p => (p?.matches || []).map(m => ({ ...m, phaseName: p.phaseName, phaseType: p.phaseType })));
+      const mergedPhases = normalizePostSeasonPhases([...(comp.postSeasonPhases || []), ...phases]);
+      const mergedCalendar = mergePilotCalendarMatches(comp.calendar || [], phaseMatches);
+
+      comp.postSeasonPhases = mergedPhases;
+      comp.hasPostSeasonPhases = mergedPhases.some(p => p?.isPostSeason === true);
+      comp.calendar = mergedCalendar;
+      comp.finalsPilotMeta = {
+        loadedAt: new Date().toISOString(),
+        source: "api/finals-pilot",
+        payloadSources: payload?.sources || null,
+        matchCount: phaseMatches.length,
+      };
+
+      finalsPilotLoadState.set(compId, { status: "done", loadedAt: Date.now(), empty: false });
+      return true;
+    } catch (err) {
+      console.warn("[pilot-finals] load failed", compId, err?.message || err);
+      finalsPilotLoadState.set(compId, { status: "done", loadedAt: Date.now(), error: err?.message || String(err) });
+      return false;
+    }
+  })();
+
+  finalsPilotLoadState.set(compId, { status: "loading", promise: run });
+  return run;
+}
+
 function getJokCompetitionUrl(comp) {
   if (!comp?.id) return "https://jok.cat/";
   const slug = String(comp?.slug || "").trim();
   if (slug) return `https://jok.cat/competicio/${comp.id}/${slug}`;
   return `https://jok.cat/competicio/${comp.id}`;
+}
+
+function renderDetailHeaderMeta() {
+  if (!detailComp) return;
+  $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
+  const sourceBadge = classifSourceBadgeHtml(detailComp);
+  const playedPct = getCompPlayedPct(detailComp);
+  const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
+  const statusColor = playedPct >= 100 ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
+  const eqLabel = (detailComp.classification||[]).length;
+  const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
+  const isAdmin = currentProfile?.role === "admin";
+  const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
+  const pilotMap = detailComp.classificationPilot || null;
+  const mergeInfo = detailComp.detailMergeInfo || null;
+  const pilotMeta = detailComp.finalsPilotMeta || null;
+  const pilotSources = pilotMeta?.payloadSources || null;
+  const pilotState = finalsPilotLoadState.get(String(detailComp.id || "")) || null;
+
+  let pilotInfo = "";
+  if (pilotMeta) {
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> ${esc(String(pilotMeta.matchCount || 0))} partits · font API</div>`;
+  } else if (pilotState?.status === "loading") {
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> carregant dades live…</div>`;
+  } else if (pilotState?.status === "done" && pilotState?.empty) {
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> cap partit nou (fallback local)</div>`;
+  } else if (pilotState?.status === "done" && pilotState?.error) {
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> fallback local · ${esc(String(pilotState.error))}</div>`;
+  }
+
+  const pilotSourcesInfo = pilotSources ? `<div><span style="font-weight:700;color:#1a2035">Fonts pilot:</span> jok ${esc(String(pilotSources?.jok?.matchCount ?? 0))} · fecapa ${esc(String(pilotSources?.fecapa?.matchCount ?? 0))}</div>` : "";
+  const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
+    <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
+    <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>
+    ${mergeInfo && mergeInfo.merged ? `<div><span style="font-weight:700;color:#1a2035">Vista fusionada:</span> classif de ${esc(mergeInfo.classificationFromCompId || "?")} · calendari de ${esc(mergeInfo.calendarFromCompId || "?")} · candidats: ${esc((mergeInfo.sameNameCompIds || []).join(", "))}</div>` : ""}
+    ${pilotInfo}
+    ${pilotSourcesInfo}
+  </div>` : "";
+  $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
+    <span style="color:${statusColor};font-weight:700">${status} · ${playedPct}%</span>
+    ${phaseCount ? `<span style="font-weight:700;color:#3730a3">${phaseCount} fase${phaseCount!==1?"s":""} final${phaseCount!==1?"s":""}</span>` : ""}
+    ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
+  </div>${adminMeta}`;
+}
+
+async function ensurePilotFinalsForCurrentDetail(rawComp) {
+  if (!rawComp || !detailComp) return;
+  if (String(rawComp.id || "") !== String(detailComp.id || "")) return;
+
+  const loadPromise = ensurePilotFinalsDataForComp(rawComp);
+  renderDetailHeaderMeta();
+  const changed = await loadPromise;
+  if (!changed) return;
+
+  if (!detailComp || String(rawComp.id || "") !== String(detailComp.id || "")) return;
+  const selected = resolveSelectedTeam(rawComp, detailTeam || null, detailTeamId || null);
+  detailComp = buildDetailCompView(rawComp, selected.teamName, selected.teamId);
+  const mergedSelected = resolveSelectedTeam(detailComp, selected.teamName, selected.teamId);
+  detailTeam = mergedSelected.teamName || detailTeam;
+  detailTeamId = mergedSelected.teamId || detailTeamId;
+
+  renderDetailHeaderMeta();
+  renderDetailCalendar();
 }
 
 function openDetail(compId,teamName,tab,teamId=null){
@@ -5407,31 +5680,11 @@ function openDetail(compId,teamName,tab,teamId=null){
   detailTab=tab||"classif";
   if (!detailComp) return;
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
-  $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
-  const sourceBadge = classifSourceBadgeHtml(detailComp);
-  const playedPct = getCompPlayedPct(detailComp);
-  const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
-  const statusColor = playedPct >= 100 ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
-  const eqLabel = (detailComp.classification||[]).length; 
-  const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
-  const isAdmin = currentProfile?.role === "admin";
-  const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
-  const pilotMap = detailComp.classificationPilot || null;
-  const mergeInfo = detailComp.detailMergeInfo || null;
-  const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
-    <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
-    <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>
-    ${mergeInfo && mergeInfo.merged ? `<div><span style="font-weight:700;color:#1a2035">Vista fusionada:</span> classif de ${esc(mergeInfo.classificationFromCompId || "?")} · calendari de ${esc(mergeInfo.calendarFromCompId || "?")} · candidats: ${esc((mergeInfo.sameNameCompIds || []).join(", "))}</div>` : ""}
-  </div>` : "";
-  $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
-    <span style="color:${statusColor};font-weight:700">${status} · ${playedPct}%</span>
-    ${phaseCount ? `<span style="font-weight:700;color:#3730a3">${phaseCount} fase${phaseCount!==1?"s":""} final${phaseCount!==1?"s":""}</span>` : ""}
-    ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
-  </div>${adminMeta}`;
+  renderDetailHeaderMeta();
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
   renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
+  void ensurePilotFinalsForCurrentDetail(rawComp);
   window.scrollTo(0,0);
 }
 window.openDetail=openDetail;
@@ -5782,6 +6035,7 @@ function renderDetailCalendar(){
   </div>`;
 
   const matches=detailTeam?all.filter(m=>teamMatchesCalendarExact(m.home,detailTeam)||teamMatchesCalendarExact(m.away,detailTeam)):all;
+  const eliminationCtxByMatch = buildTwoLegEliminationContext(matches, detailComp?.name || "");
 
   const byJ={};
   matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
@@ -5795,7 +6049,7 @@ function renderDetailCalendar(){
     ? `${sortedJornades.map(([j,ms])=>`
       <div style="margin-bottom:10px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-        ${ms.map(m=>matchCard(m,detailTeam,detailComp.id)).join("")}
+        ${ms.map(m=>matchCard(m,detailTeam,detailComp.id,{ eliminationCtx: eliminationCtxByMatch.get(m) || null })).join("")}
       </div>`).join("")}`
     : `<div style="text-align:center;padding:20px;color:#94a3b8">No hi ha partits per aquest filtre.</div>`;
 

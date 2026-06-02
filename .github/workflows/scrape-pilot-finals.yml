@@ -1,0 +1,76 @@
+name: Scrape Pilot Finals
+
+on:
+  workflow_dispatch:
+    inputs:
+      jok_comp_id:
+        description: "jok competition id"
+        required: false
+        default: "4709"
+      jok_slug:
+        description: "jok competition slug"
+        required: false
+        default: "alevi-copa-catalana-plata-fase-final-2025-26"
+      strict_data:
+        description: "Fail if no matches are found"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  scrape-pilot-finals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Scrape pilot finals (FECAPA + JOK)
+        run: |
+          set -euo pipefail
+          STRICT=""
+          if [ "${{ github.event.inputs.strict_data }}" = "true" ]; then
+            STRICT="--strict"
+          fi
+          node api/scrape-pilot-finals.js \
+            --jok-comp-id "${{ github.event.inputs.jok_comp_id }}" \
+            --slug "${{ github.event.inputs.jok_slug }}" \
+            --output "public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json" \
+            ${STRICT}
+
+      - name: Check for changes
+        id: git_status
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "status=dirty" >> $GITHUB_OUTPUT
+            git diff --name-only
+          fi
+
+      - name: Commit and push snapshot
+        if: steps.git_status.outputs.status == 'dirty'
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json
+          git commit -m "chore: update pilot finals snapshot (${{ github.event.inputs.jok_comp_id }}) [automated]"
+          git push
+
+      - name: Notify if no changes
+        if: steps.git_status.outputs.status == 'clean'
+        run: echo "✓ No changes to commit"
