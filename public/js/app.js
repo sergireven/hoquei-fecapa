@@ -2083,6 +2083,16 @@ function normalizeJokClubDisplayName(name) {
     .trim();
 }
 
+function formatPlayerDisplayName(rawName) {
+  if (!rawName) return "?";
+  return String(rawName)
+    .normalize("NFC")
+    .toLocaleLowerCase("ca")
+    .replace(/(^|[\s'’\-])(\p{L})/gu, (m, sep, letter) => `${sep}${letter.toLocaleUpperCase("ca")}`)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function shortTeamDisplayName(name) {
   return normalizeJokClubDisplayName(name)
     .replace(/^(Club Hoquei |CH |Cp |Club Patí )/gi, "")
@@ -3549,7 +3559,7 @@ window.setHomeTab = t => { homeTab=t; renderHome(); };
 function renderJugadorsTab(refreshOnly = false) {
   const body = $("home-body");
   const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-  const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const fmtName = p => p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
   const calcAge = bd => {
     if (!bd) return null;
     const p=bd.split(/[\/\-]/), dob=p[0].length===4?new Date(`${p[0]}-${p[1]}-${p[2]}`):new Date(`${p[2]}-${p[1]}-${p[0]}`);
@@ -3697,7 +3707,7 @@ function buildLevelFavCard(fav) {
 function buildPlayerFavCard(jid) {
   const p = DB?.jugadors?.[jid];
   if (!p) return "";
-  const name = p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const name = p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
   const team = normalizePlayerTeamStatsForDisplay(p)?.[0];
   const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : "";
   return `
@@ -5419,7 +5429,7 @@ async function openPlayerModal(jid, fallbackName) {
   await enrichPlayerOnDemand(jid);
   const player = DB?.jugadors?.[jid];
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
-  const name   = (slug ? slug.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : null)
+  const name   = (slug ? formatPlayerDisplayName(slug) : null)
                || fallbackName
                || "Jugador";
 
@@ -5877,7 +5887,7 @@ async function renderDetailJugadors(){
   const actes = await loadCatActes(catSlug);
   const compIdStr = String(detailComp.id);
 
-  const fmtName = p => p.slug ? decodeURIComponent(p.slug.replace(/\+/g," ")).replace(/\b\w/g,c=>c.toUpperCase()) : "?";
+  const fmtName = p => p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
   const calcAge = bd => {
     if (!bd) return null;
     const pts=bd.split(/[\/\-]/), dob=pts[0].length===4?new Date(`${pts[0]}-${pts[1]}-${pts[2]}`):new Date(`${pts[2]}-${pts[1]}-${pts[0]}`);
@@ -5911,7 +5921,7 @@ async function renderDetailJugadors(){
   const tableRows = ids.map(jid => {
     const s = statsMap[jid];
     const p = DB.jugadors?.[jid];
-    const name = p?.slug ? fmtName(p) : (s.name||"?").replace(/\b\w/g,c=>c.toUpperCase());
+    const name = p?.slug ? fmtName(p) : formatPlayerDisplayName(s.name || "?");
     const age  = calcAge(p?.birthDate);
     const gk   = p?.isGK ? " 🥅" : "";
     return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
