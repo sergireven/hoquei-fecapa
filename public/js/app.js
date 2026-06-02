@@ -3059,16 +3059,20 @@ function getInactiveTeamsForCompetition(comp) {
 
   const nowTs = Date.now();
   const stats = new Map();
+  const toBaseKey = name => normalizeTeamName(getTeamBase(name || ""));
   const classRows = Array.isArray(comp?.classification) ? comp.classification : [];
   const classMap = new Map(classRows
     .filter(r => String(r?.team || "").trim())
     .map(r => [normalizeTeamName(r.team), Number(r?.pj ?? 0)]));
+  const classBaseSet = new Set(classRows
+    .map(r => toBaseKey(r?.team || ""))
+    .filter(Boolean));
 
   const touch = (teamName, isPlayed, isPastPending) => {
     if (!teamName || isDescansaTeamName(teamName)) return;
     const key = normalizeTeamName(teamName);
     if (!key) return;
-    const cur = stats.get(key) || { played: 0, pendingPast: 0, pendingFuture: 0 };
+    const cur = stats.get(key) || { played: 0, pendingPast: 0, pendingFuture: 0, baseKey: toBaseKey(teamName) };
     if (isPlayed) cur.played += 1;
     else if (isPastPending) cur.pendingPast += 1;
     else cur.pendingFuture += 1;
@@ -3083,6 +3087,11 @@ function getInactiveTeamsForCompetition(comp) {
     touch(m?.away || "", played, isPastPending);
   }
 
+  const activeBaseKeys = new Set([...stats.values()]
+    .filter(s => s.played > 0 && classBaseSet.has(s.baseKey))
+    .map(s => s.baseKey)
+    .filter(Boolean));
+
   const inactive = new Set();
   for (const [teamKey, s] of stats.entries()) {
     const pj = classMap.get(teamKey);
@@ -3090,13 +3099,32 @@ function getInactiveTeamsForCompetition(comp) {
     const zeroClassifGames = pj === 0;
     const zeroPlayed = s.played === 0;
     const stalePendingOnly = s.pendingPast >= 3;
+    const duplicatedAliasWithActiveBase = activeBaseKeys.has(s.baseKey) && !classMap.has(teamKey);
 
-    if ((absentInClassif || zeroClassifGames) && zeroPlayed && stalePendingOnly) {
+    if ((absentInClassif || zeroClassifGames || duplicatedAliasWithActiveBase) && zeroPlayed && stalePendingOnly) {
       inactive.add(teamKey);
     }
   }
 
   return inactive;
+}
+
+function buildPlayedCalendarPairKeys(comp) {
+  const out = new Set();
+  const cal = Array.isArray(comp?.calendar) ? comp.calendar : [];
+  const toBaseKey = name => normalizeTeamName(getTeamBase(name || ""));
+
+  for (const m of cal) {
+    if (m?.homeScore == null || m?.awayScore == null) continue;
+    const homeBase = toBaseKey(m?.home || "");
+    const awayBase = toBaseKey(m?.away || "");
+    if (!homeBase || !awayBase) continue;
+    const pair = [homeBase, awayBase].sort().join("|");
+    const date = String(m?.date || "").trim();
+    out.add(`${date}|${pair}`);
+  }
+
+  return out;
 }
 
 function applyCompetitionActivityHeuristics() {
@@ -3118,12 +3146,22 @@ function applyCompetitionActivityHeuristics() {
 
       const inactive = getInactiveTeamsForCompetition(comp);
       comp.inactiveTeamsDetected = [...inactive];
+      const playedPairKeys = buildPlayedCalendarPairKeys(comp);
 
       const relevant = cal.filter(m => {
         const homeKey = normalizeTeamName(m?.home || "");
         const awayKey = normalizeTeamName(m?.away || "");
         const touchesInactive = inactive.has(homeKey) || inactive.has(awayKey);
         const played = m?.homeScore != null && m?.awayScore != null;
+        if (!played) {
+          const homeBase = normalizeTeamName(getTeamBase(m?.home || ""));
+          const awayBase = normalizeTeamName(getTeamBase(m?.away || ""));
+          const pair = [homeBase, awayBase].sort().join("|");
+          const date = String(m?.date || "").trim();
+          if (date && homeBase && awayBase && playedPairKeys.has(`${date}|${pair}`)) {
+            return false;
+          }
+        }
         return played || !touchesInactive;
       });
 
