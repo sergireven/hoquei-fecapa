@@ -11,6 +11,18 @@ const PILOT_COMPETITIONS = {
       { bucket: "final", phaseName: "FINAL", slots: 1, venue: "PAVELLÓ MUNICIPAL RODA DE TER" },
     ],
   },
+  "4452": {
+    defaultPhaseName: "FASE FINAL",
+    fecapaCompetitionId: "4452",
+    fecapaGroupName: "COPA BARCELONA",
+    phaseTemplates: [],
+  },
+  "3935": {
+    defaultPhaseName: "FASE FINAL",
+    fecapaCompetitionId: "3935",
+    fecapaGroupName: "FASE FINAL",
+    phaseTemplates: [],
+  },
 };
 
 function decodeHtmlEntities(text) {
