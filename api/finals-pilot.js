@@ -186,7 +186,7 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     const merged = [...jokMatches, ...fecapaMatches];
     const phases = groupMatchesIntoPhases(merged);
 
-    return res.status(200).json({
+    return {
       ok: true,
       pilot: true,
       jokCompId: compId,
