@@ -3279,7 +3279,16 @@ function unresolvedCalendarMatchesCount(comp) {
 function teamMatchesCalendarExact(a, b) {
   const ka = normalizeTeamNameStrict(a || "");
   const kb = normalizeTeamNameStrict(b || "");
-  return !!ka && !!kb && ka === kb;
+  if (!!ka && !!kb && ka === kb) return true;
+
+  const sa = extractTeamSuffix(a);
+  const sb = extractTeamSuffix(b);
+  if ((sa && !sb) || (!sa && sb)) return false;
+  if (sa && sb && sa !== sb) return false;
+
+  const ma = normalizeTeamKeyForMatching(a || "");
+  const mb = normalizeTeamKeyForMatching(b || "");
+  return !!ma && !!mb && ma === mb;
 }
 
 function competitionHasCalendarTeam(comp, teamName) {
