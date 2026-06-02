@@ -2,6 +2,14 @@ const PILOT_COMPETITIONS = {
   "4709": {
     slug: "alevi-copa-catalana-plata-fase-final-2025-26",
     defaultPhaseName: "FASE FINAL",
+    fecapaCompetitionId: "3937",
+    fecapaGroupName: "ALEVÍ COPA CATALANA PLATA FASE FINAL",
+    phaseTemplates: [
+      { bucket: "vuitens", phaseName: "VUITENS DE FINAL", slots: 8, venue: "PAVELLÓ MUNICIPAL D ESPORTS DE SALT" },
+      { bucket: "quarts", phaseName: "QUARTS DE FINAL", slots: 4, venue: "PAVELLÓ MUNICIPAL D ESPORTS DE SALT" },
+      { bucket: "semifinals", phaseName: "SEMIFINALS", slots: 2, venue: "PAVELLÓ MUNICIPAL RODA DE TER" },
+      { bucket: "final", phaseName: "FINAL", slots: 1, venue: "PAVELLÓ MUNICIPAL RODA DE TER" },
+    ],
   },
 };
 
@@ -30,6 +38,82 @@ function normalizeTeamName(text) {
   return decodeUrlToken(text).replace(/\s+/g, " ").trim();
 }
 
+function normalizeCompToken(text) {
+  return decodeHtmlEntities(String(text || ""))
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectPhaseBucket(phaseName) {
+  const n = normalizeCompToken(phaseName);
+  if (!n) return "other";
+  if (/VUITENS\s+DE\s+FINAL/.test(n)) return "vuitens";
+  if (/QUARTS?\s+DE\s+FINAL/.test(n)) return "quarts";
+  if (/SEMIFINALS?/.test(n)) return "semifinals";
+  if (/\bFINAL\b/.test(n) && !/SEMIFINAL/.test(n) && !/QUART/.test(n) && !/VUITENS/.test(n)) return "final";
+  if (/ELIMINATORIES\s+PREVIES\s+ANADA/.test(n)) return "elim_prev_anada";
+  if (/ELIMINATORIES\s+PREVIES\s+TORNADA/.test(n)) return "elim_prev_tornada";
+  return "other";
+}
+
+function extractVenueFromBlock(block, fallbackVenue = "") {
+  const txt = String(block || "");
+  const m = txt.match(/(PAVELL[ÓO][^<\n]{4,200})/i);
+  if (m) return normalizeTeamName(m[1]);
+  return String(fallbackVenue || "").trim();
+}
+
+function detectPhaseNameFromBlock(block, fallbackPhaseName) {
+  const txt = String(block || "");
+  const fromLink = txt.match(/href="\/competicio\/\d+\/[^\"]+\/([^\"]+)"/i);
+  const linked = normalizeTeamName(fromLink?.[1] || "");
+  if (linked) return linked;
+
+  const fromText = txt.match(/(VUITENS\s+DE\s+FINAL|QUARTS?\s+DE\s+FINAL|SEMIFINALS?|ELIMINAT[ÒO]RIES\s+PR[ÈE]VIES\s+ANADA|ELIMINAT[ÒO]RIES\s+PR[ÈE]VIES\s+TORNADA|\bFINAL\b)/i);
+  if (fromText) return normalizeTeamName(fromText[1]);
+
+  return fallbackPhaseName;
+}
+
+function buildMatchKey(m) {
+  return [
+    normalizeCompToken(m?.phaseName || ""),
+    normalizeCompToken(m?.home || ""),
+    normalizeCompToken(m?.away || ""),
+    String(m?.date || ""),
+    String(m?.time || ""),
+  ].join("|");
+}
+
+function mergeMatches(matches) {
+  const byKey = new Map();
+  for (const m of (matches || [])) {
+    const key = buildMatchKey(m);
+    if (!key.replace(/\|/g, "")) continue;
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...m });
+      continue;
+    }
+    const prev = byKey.get(key);
+    byKey.set(key, {
+      ...prev,
+      ...m,
+      home: m?.home || prev.home,
+      away: m?.away || prev.away,
+      date: m?.date || prev.date,
+      time: m?.time || prev.time,
+      venue: m?.venue || prev.venue,
+      homeScore: m?.homeScore != null ? m.homeScore : prev.homeScore,
+      awayScore: m?.awayScore != null ? m.awayScore : prev.awayScore,
+      source: prev.source === m.source ? prev.source : `${prev.source}+${m.source}`,
+      placeholder: prev.placeholder === true && m.placeholder === true,
+    });
+  }
+  return [...byKey.values()];
+}
+
 function parseJokMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL") {
   const chunks = String(html || "").split('<div class="mb-2 shadow-md shadow-neutral-700 mt-2">');
   if (chunks.length <= 1) return [];
@@ -40,8 +124,7 @@ function parseJokMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL") {
   for (let i = 1; i < chunks.length; i += 1) {
     const block = chunks[i];
 
-    const phasePath = block.match(/href="\/competicio\/\d+\/[^\"]+\/([^\"]+)"/i);
-    const phaseName = normalizeTeamName(phasePath?.[1] || "") || fallbackPhaseName;
+    const phaseName = detectPhaseNameFromBlock(block, fallbackPhaseName);
 
     const actaMatch = block.match(/href="\/acta\/(\d+)\//i);
     const teamLinks = [...block.matchAll(/href="\/equip\/(\d+)\/[^\"]*">([^<]+)<\/a>/gi)];
@@ -60,6 +143,7 @@ function parseJokMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL") {
     const scoreMatch = block.match(/>\s*(\d{1,2})\s*-\s*(\d{1,2})\s*</);
     const homeScore = scoreMatch ? Number(scoreMatch[1]) : null;
     const awayScore = scoreMatch ? Number(scoreMatch[2]) : null;
+    const venue = extractVenueFromBlock(block, "");
 
     const key = [
       phaseName.toUpperCase(),
@@ -88,16 +172,67 @@ function parseJokMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL") {
       phaseName,
       phaseType: "eliminatories",
       actaId: actaMatch ? String(actaMatch[1]) : null,
+      venue,
+      phaseBucket: detectPhaseBucket(phaseName),
+      placeholder: false,
     });
   }
 
   return matches;
 }
 
-function parseFecapaMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL") {
+function parseFecapaMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL", cfg = null) {
   const text = String(html || "");
   if (!text || /Sorry, you don't have permission/i.test(text)) return [];
-  return parseJokMatchesFromHtml(text, fallbackPhaseName).map(m => ({ ...m, source: "fecapa_live" }));
+  const fallbackVenueByBucket = new Map((cfg?.phaseTemplates || []).map(t => [String(t.bucket || ""), String(t.venue || "")]));
+  return parseJokMatchesFromHtml(text, fallbackPhaseName).map(m => {
+    const bucket = detectPhaseBucket(m.phaseName);
+    return {
+      ...m,
+      source: "fecapa_live",
+      phaseBucket: bucket,
+      venue: m.venue || fallbackVenueByBucket.get(bucket) || "",
+    };
+  });
+}
+
+function addPhasePlaceholders(matches, cfg) {
+  const templates = cfg?.phaseTemplates || [];
+  if (!templates.length) return matches || [];
+
+  const out = [...(matches || [])];
+  for (const tpl of templates) {
+    const bucket = String(tpl.bucket || "");
+    const phaseName = String(tpl.phaseName || "FASE FINAL");
+    const venue = String(tpl.venue || "");
+    const slots = Math.max(0, Number(tpl.slots || 0));
+    if (!bucket || !slots) continue;
+
+    const existing = out.filter(m => detectPhaseBucket(m?.phaseName || "") === bucket);
+    const missing = Math.max(0, slots - existing.length);
+    for (let i = 0; i < missing; i += 1) {
+      out.push({
+        jornada: null,
+        home: "Per definir",
+        away: "Per definir",
+        homeId: null,
+        awayId: null,
+        date: "",
+        time: "",
+        homeScore: null,
+        awayScore: null,
+        played: false,
+        source: "fecapa_placeholder",
+        phaseName,
+        phaseType: "eliminatories",
+        actaId: null,
+        venue,
+        phaseBucket: bucket,
+        placeholder: true,
+      });
+    }
+  }
+  return out;
 }
 
 function groupMatchesIntoPhases(matches) {
@@ -152,30 +287,40 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
   try {
     const effectiveSlug = String(slug || cfg.slug || "").trim();
     const fallbackPhaseName = cfg.defaultPhaseName || "FASE FINAL";
+    const fecapaCompId = String(cfg.fecapaCompetitionId || compId).trim();
     const jokUrl = effectiveSlug
       ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
       : `https://jok.cat/competicio/${encodeURIComponent(compId)}`;
-    const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(compId)}_1.php`;
+    const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(fecapaCompId)}_1.php`;
 
     let jokMatches = [];
     let fecapaMatches = [];
     const sources = {
       jok: { enabled: true, url: jokUrl, matchCount: 0, error: null },
-      fecapa: { enabled: true, url: fecapaUrl, matchCount: 0, error: null },
+      fecapa: {
+        enabled: true,
+        url: fecapaUrl,
+        competitionId: fecapaCompId,
+        groupName: cfg.fecapaGroupName || null,
+        matchCount: 0,
+        error: null,
+      },
     };
 
     try {
       const jokHtml = await fetchText(jokUrl, { referer: "https://jok.cat/" });
       jokMatches = parseJokMatchesFromHtml(jokHtml, fallbackPhaseName);
       sources.jok.matchCount = jokMatches.length;
+      sources.jok.phaseNames = [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))];
     } catch (err) {
       sources.jok.error = err.message || "jok-fetch-failed";
     }
 
     try {
       const fecapaHtml = await fetchText(fecapaUrl, { referer: "https://www.hoqueipatins.fecapa.cat/" });
-      fecapaMatches = parseFecapaMatchesFromHtml(fecapaHtml, fallbackPhaseName);
+      fecapaMatches = parseFecapaMatchesFromHtml(fecapaHtml, fallbackPhaseName, cfg);
       sources.fecapa.matchCount = fecapaMatches.length;
+      sources.fecapa.phaseNames = [...new Set(fecapaMatches.map(m => m.phaseName).filter(Boolean))];
       if (!fecapaMatches.length && /permission|blocked/i.test(fecapaHtml)) {
         sources.fecapa.error = "fecapa-blocked";
       }
@@ -183,16 +328,18 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
       sources.fecapa.error = err.message || "fecapa-fetch-failed";
     }
 
-    const merged = [...jokMatches, ...fecapaMatches];
+    const mergedBase = mergeMatches([...jokMatches, ...fecapaMatches]);
+    const merged = addPhasePlaceholders(mergedBase, cfg);
     const phases = groupMatchesIntoPhases(merged);
 
-    return res.status(200).json({
+    return {
       ok: true,
       pilot: true,
       jokCompId: compId,
       fetchedAt: new Date().toISOString(),
       phases,
       matchCount: merged.length,
+      placeholdersCount: merged.filter(m => m.placeholder === true).length,
       sources,
     };
   } catch (err) {

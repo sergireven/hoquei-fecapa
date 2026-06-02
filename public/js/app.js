@@ -3249,6 +3249,8 @@ function normalizePostSeasonPhases(phases) {
         source: String(m?.source || "fecapa"),
         phaseName,
         phaseType,
+        venue: String(m?.venue || "").trim(),
+        placeholder: m?.placeholder === true,
       });
     }
 
@@ -3466,6 +3468,7 @@ function buildTwoLegEliminationContext(matches, compName = "") {
 
   for (const m of (matches || [])) {
     if (!m || !m.home || !m.away) continue;
+    if (m?.placeholder === true) continue;
     if (isDescansaTeamName(m.home) || isDescansaTeamName(m.away)) continue;
 
     const phaseType = String(m?.phaseType || "").toLowerCase();
@@ -3587,6 +3590,10 @@ function matchCard(m, myTeam, compId, options = {}) {
   const travelHtml = travel
     ? `<div style="margin-top:5px;font-size:10px;color:#0f766e;font-weight:700">🚗 ~${travel.minutes} min · ${travel.km.toFixed(1)} km</div>`
     : "";
+  const venueLabel = String(m?.venue || "").trim();
+  const venueHtml = venueLabel
+    ? `<div style="margin-top:4px;font-size:10px;color:#64748b;font-weight:600;line-height:1.25">🏟 ${esc(venueLabel)}</div>`
+    : "";
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const encHome = encodeURIComponent(String(m.home || ""));
@@ -3641,6 +3648,7 @@ function matchCard(m, myTeam, compId, options = {}) {
         <div style="flex-shrink:0;text-align:center;min-width:68px">
           ${score}
           <div style="font-size:10px;color:#94a3b8;margin-top:2px;white-space:nowrap">${m.jornada?`J${m.jornada} · `:""}${esc(m.date||"")}${!played&&m.time?` · ${esc(m.time)}`:""}</div>
+          ${venueHtml}
           ${travelHtml}
           ${actaBadge}
           ${venueIcon}

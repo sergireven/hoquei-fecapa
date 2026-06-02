@@ -52,6 +52,28 @@ jobs:
             --output "public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json" \
             ${STRICT}
 
+      - name: Print snapshot summary
+        run: |
+          set -euo pipefail
+          FILE="public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json"
+          node - <<'NODE'
+          const fs = require("fs");
+          const file = process.env.FILE;
+          const data = JSON.parse(fs.readFileSync(file, "utf8"));
+          console.log("[workflow] file:", file);
+          console.log("[workflow] ok:", data.ok);
+          console.log("[workflow] matchCount:", data.matchCount, "placeholders:", data.placeholdersCount || 0);
+          console.log("[workflow] jok:", data?.sources?.jok?.matchCount || 0, "error:", data?.sources?.jok?.error || "none");
+          console.log("[workflow] fecapa:", data?.sources?.fecapa?.matchCount || 0, "error:", data?.sources?.fecapa?.error || "none");
+          for (const p of (data.phases || [])) {
+            const total = (p.matches || []).length;
+            const ph = (p.matches || []).filter(m => m?.placeholder === true).length;
+            console.log(`[workflow] phase ${p.phaseName}: total=${total} placeholders=${ph}`);
+          }
+          NODE
+        env:
+          FILE: public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json
+
       - name: Check for changes
         id: git_status
         run: |
