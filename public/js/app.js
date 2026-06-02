@@ -6090,7 +6090,17 @@ async function renderDetailClassif(){
 }
 
 function renderDetailCalendar(){
-  const all=detailComp.calendar||[];
+  const allCalendar = detailComp.calendar || [];
+  const pilotPhaseMatches = isFinalsPilotComp(detailComp)
+    ? normalizePostSeasonPhases(detailComp.postSeasonPhases || []).flatMap(phase =>
+        (phase?.matches || []).map(m => ({
+          ...m,
+          phaseName: m?.phaseName || phase.phaseName,
+          phaseType: m?.phaseType || phase.phaseType,
+        }))
+      )
+    : [];
+  const all = pilotPhaseMatches.length ? pilotPhaseMatches : allCalendar;
   console.log("renderDetailCalendar - detailComp.id:", detailComp.id);
   if (!all.length){ $("panel-calendar").innerHTML=`<div style="text-align:center;padding:32px;color:#94a3b8">Calendari no disponible.<br/><a href="${esc(getJokCompetitionUrl(detailComp))}" target="_blank">jok.cat →</a></div>`; return; }
 
