@@ -1721,6 +1721,31 @@ async function main() {
             scrapedAt: new Date().toISOString(),
           };
         });
+
+        // Also register actes discovered on the page but not matched to a
+        // calendar entry (e.g. copa/elimination rounds not shown as "Jornada N")
+        const calendarActaSet = new Set(
+          data.calendar.filter(m => m.actaId).map(m => String(m.actaId))
+        );
+        for (const link of (data.actesDiscovered || [])) {
+          const id = String(link.actaId);
+          if (calendarActaSet.has(id)) continue; // already registered via calendar
+          const prev = previousActes[id] || {};
+          actes[id] = {
+            ...prev,
+            actaId: id,
+            id,
+            type: "acta",
+            actaSlug: link.actaSlug || prev.actaSlug || prev.slug || "",
+            slug: link.actaSlug || prev.slug || prev.actaSlug || "",
+            actaUrl: link.actaUrl || prev.actaUrl || prev.url || "",
+            url: link.actaUrl || prev.url || prev.actaUrl || "",
+            compId: data.id,
+            compName: data.name,
+            scrapedAt: new Date().toISOString(),
+          };
+        }
+
         done++;
       } else {
         errors++;
