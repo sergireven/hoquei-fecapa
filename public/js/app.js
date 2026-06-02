@@ -3461,6 +3461,20 @@ function parseMatchKickoffTimestamp(match, compName = "") {
   return base + ((hh * 60 + mm) * 60 * 1000);
 }
 
+function isPlaceholderTeamName(teamName) {
+  const n = normalizeCompKey(teamName || "");
+  return n === "per definir" || n === "tbd" || n === "pendent";
+}
+
+function getTiePhaseKey(phaseName, phaseType) {
+  const n = normalizeCompKey(phaseName || phaseType || "fase");
+  if (!n) return "fase";
+  if (n.includes("eliminatories previes anada") || n.includes("eliminatories previes tornada")) {
+    return "eliminatories previes";
+  }
+  return n;
+}
+
 function buildTwoLegEliminationContext(matches, compName = "") {
   const ctxByMatch = new WeakMap();
   const groups = new Map();
@@ -3482,7 +3496,7 @@ function buildTwoLegEliminationContext(matches, compName = "") {
     if (!homeKey || !awayKey || homeKey === awayKey) continue;
 
     const pairKey = [homeKey, awayKey].sort().join("|");
-    const phaseKey = normalizeCompKey(phaseName || phaseType || "fase") || "fase";
+    const phaseKey = getTiePhaseKey(phaseName, phaseType);
     const key = `${phaseKey}::${pairKey}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(m);
@@ -5621,7 +5635,11 @@ function renderDetailHeaderMeta() {
   const playedPct = getCompPlayedPct(detailComp);
   const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
   const statusColor = playedPct >= 100 ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
-  const eqLabel = (detailComp.classification||[]).length;
+  const classifCount = (detailComp.classification||[]).length;
+  const fallbackTeams = classifCount ? [] : [...new Set((detailComp.calendar || []).flatMap(m => [m?.home, m?.away]))]
+    .filter(Boolean)
+    .filter(t => !isDescansaTeamName(t) && !isPlaceholderTeamName(t));
+  const eqLabel = classifCount || fallbackTeams.length;
   const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
   const isAdmin = currentProfile?.role === "admin";
   const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
@@ -6032,7 +6050,9 @@ function renderDetailCalendar(){
     ...all.map(m=>m.home),
     ...all.map(m=>m.away),
   ];
-  const names=[...new Set(allNames.filter(Boolean))].sort();
+  const names=[...new Set(allNames.filter(Boolean)
+    .filter(t => !isDescansaTeamName(t))
+    .filter(t => !isPlaceholderTeamName(t)))].sort();
 
   const chips=`<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6042,11 +6062,22 @@ function renderDetailCalendar(){
     </div>
   </div>`;
 
-  const matches=detailTeam?all.filter(m=>teamMatchesCalendarExact(m.home,detailTeam)||teamMatchesCalendarExact(m.away,detailTeam)):all;
+  const matches=detailTeam
+    ? all.filter(m =>
+      m?.placeholder === true
+      || teamMatchesCalendarExact(m.home,detailTeam)
+      || teamMatchesCalendarExact(m.away,detailTeam)
+    )
+    : all;
   const eliminationCtxByMatch = buildTwoLegEliminationContext(matches, detailComp?.name || "");
 
   const byJ={};
-  matches.forEach(m=>{const k=m.jornada?`Jornada ${m.jornada}`:(m.date||"?");(byJ[k]||(byJ[k]=[])).push(m);});
+  matches.forEach(m=>{
+    const k = m.jornada
+      ? `Jornada ${m.jornada}`
+      : (m.date || m.phaseName || "?");
+    (byJ[k]||(byJ[k]=[])).push(m);
+  });
   const sortedJornades=Object.entries(byJ).sort((a,b)=>{
     const getNum=k=>{const m=k[0].match(/Jornada (\d+)/);return m?parseInt(m[1]):-1;};
     const numA=getNum(a), numB=getNum(b);
@@ -6146,7 +6177,9 @@ async function renderDetailJugadors(){
   const calNames = [...new Set([
     ...(detailComp.calendar||[]).map(m=>m.home),
     ...(detailComp.calendar||[]).map(m=>m.away)
-  ].filter(Boolean))].sort();
+  ].filter(Boolean)
+    .filter(t => !isDescansaTeamName(t))
+    .filter(t => !isPlaceholderTeamName(t)))].sort();
 
   const chips = calNames.length ? `<div style="margin-bottom:10px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Filtrar per equip</div>
@@ -6160,6 +6193,9 @@ async function renderDetailJugadors(){
 
   const actes = await loadCatActes(catSlug);
   const compIdStr = String(detailComp.id);
+  const calendarActaIds = new Set(
+    (detailComp.calendar || []).map(m => String(m?.actaId || "").trim()).filter(Boolean)
+  );
 
   const fmtName = p => p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
   const calcAge = bd => {
@@ -6173,7 +6209,10 @@ async function renderDetailJugadors(){
   // Agrega estadístiques per jugador des de les actes d'aquesta competició
   const statsMap = {};
   for (const acta of Object.values(actes)) {
-    if (String(acta.compId) !== compIdStr) continue;
+    const actaIdStr = String(acta?.actaId || acta?.id || "").trim();
+    const inComp = String(acta?.compId || "") === compIdStr;
+    const inCalendar = !!(actaIdStr && calendarActaIds.has(actaIdStr));
+    if (!inComp && !inCalendar) continue;
     if (!acta.playerStats) continue;
     const add = (player, team) => {
       if (!player.jugadorId) return;
@@ -6188,7 +6227,62 @@ async function renderDetailJugadors(){
   const ids = Object.keys(statsMap).sort((a,b) => statsMap[b].g - statsMap[a].g);
 
   if (!ids.length) {
-    $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div>`;
+    const visibleTeamSet = new Set(
+      (detailComp.calendar || [])
+        .filter(m => !isPlaceholderTeamName(m?.home) && !isPlaceholderTeamName(m?.away))
+        .filter(m => !detailTeam || teamMatchesCalendarExact(m?.home, detailTeam) || teamMatchesCalendarExact(m?.away, detailTeam))
+        .flatMap(m => [m?.home, m?.away])
+        .filter(Boolean)
+    );
+
+    const fallbackRows = [];
+    for (const [jid, p] of Object.entries(DB?.jugadors || {})) {
+      const playerTeams = new Set([
+        String(p?.registeredTeam || "").trim(),
+        ...((p?.teamStats || []).map(t => String(t?.team || "").trim())),
+      ].filter(Boolean));
+
+      const inVisibleTeams = [...playerTeams].some(pt =>
+        [...visibleTeamSet].some(vt => teamMatchesLoose(pt, vt) || teamMatchesCalendarExact(pt, vt))
+      );
+      if (!inVisibleTeams) continue;
+      fallbackRows.push({ jid, p });
+    }
+
+    if (!fallbackRows.length) {
+      $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div>`;
+      return;
+    }
+
+    const list = fallbackRows.slice(0, 120).map(({ jid, p }) => {
+      const name = p?.slug ? fmtName(p) : formatPlayerDisplayName(p?.name || "Jugador");
+      const age  = calcAge(p?.birthDate);
+      const team = normalizeJokClubDisplayName(String(p?.registeredTeam || p?.teamStats?.[0]?.team || "—"));
+      const gk   = p?.isGK ? " 🥅" : "";
+      return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
+        <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(name)}${gk}</td>
+        <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
+        <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(team || '—')}</td>
+        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
+        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
+        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
+      </tr>`;
+    }).join("");
+
+    $("panel-jugadors").innerHTML = chips + `<div style="overflow-x:auto">
+      <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Jugadors (fallback per equips)</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Edat</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Equip</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">⚽</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">🟦</th>
+          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th>
+        </tr></thead>
+        <tbody>${list}</tbody>
+      </table>
+    </div>`;
     return;
   }
 
