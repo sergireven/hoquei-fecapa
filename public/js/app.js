@@ -3613,10 +3613,12 @@ function matchCard(m, myTeam, compId, options = {}) {
   const sourceRaw = String(m?.source || "").toLowerCase();
   const sourceLabel = sourceRaw.includes("jok") && sourceRaw.includes("fecapa")
     ? "jok+fecapa"
-    : (sourceRaw.includes("jok") ? "jok.cat" : (sourceRaw.includes("fecapa") ? "fecapa" : "pilot"));
+    : (sourceRaw.includes("jok") ? "jok.cat" : (sourceRaw.includes("fecapa") ? "fecapa" : ""));
   const sourceBg = sourceLabel === "jok.cat" ? "#eef2ff" : sourceLabel === "fecapa" ? "#ecfeff" : "#f8fafc";
   const sourceColor = sourceLabel === "jok.cat" ? "#3730a3" : sourceLabel === "fecapa" ? "#0e7490" : "#475569";
-  const sourceHtml = `<div style="margin-top:4px"><span style="display:inline-flex;align-items:center;background:${sourceBg};color:${sourceColor};border:1px solid #e2e8f0;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:700">${esc(sourceLabel)}</span></div>`;
+  const sourceHtml = sourceLabel
+    ? `<div style="margin-top:4px"><span style="display:inline-flex;align-items:center;background:${sourceBg};color:${sourceColor};border:1px solid #e2e8f0;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:700">${esc(sourceLabel)}</span></div>`
+    : "";
 
   // Icones d'anàlisi (mostrar per a tots els usuaris)
   const encHome = encodeURIComponent(String(m.home || ""));
@@ -4323,7 +4325,13 @@ function renderClubDashboard() {
     const comp=findComp(t.compId); if (!comp) return "";
     const cl=comp.classification||[], cal=comp.calendar||[];
     const teamCalendar = cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
-    const hasPendingTeamMatch = teamCalendar.some(m => m?.homeScore == null || m?.awayScore == null);
+    const hasPendingTeamMatch = teamCalendar.some(m =>
+      !isPlaceholderTeamName(m?.home) &&
+      !isPlaceholderTeamName(m?.away) &&
+      !isDescansaTeamName(m?.home) &&
+      !isDescansaTeamName(m?.away) &&
+      (m?.homeScore == null || m?.awayScore == null)
+    );
     if (allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
     const playedPct = getCompPlayedPct(comp);
     const statusFlag = (!hasPendingTeamMatch && playedPct >= 100)
