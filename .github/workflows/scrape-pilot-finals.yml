@@ -4,13 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       jok_comp_id:
-        description: "jok competition id"
+        description: "JOK competition ID (leave empty to scrape ALL competitions in PILOT_COMPETITIONS)"
         required: false
-        default: "4709"
-      jok_slug:
-        description: "jok competition slug"
-        required: false
-        default: "alevi-copa-catalana-plata-fase-final-2025-26"
+        default: ""
       strict_data:
         description: "Fail if no matches are found"
         required: false
@@ -46,33 +42,12 @@ jobs:
           if [ "${{ github.event.inputs.strict_data }}" = "true" ]; then
             STRICT="--strict"
           fi
-          node api/scrape-pilot-finals.js \
-            --jok-comp-id "${{ github.event.inputs.jok_comp_id }}" \
-            --slug "${{ github.event.inputs.jok_slug }}" \
-            --output "public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json" \
-            ${STRICT}
-
-      - name: Print snapshot summary
-        run: |
-          set -euo pipefail
-          FILE="public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json"
-          node - <<'NODE'
-          const fs = require("fs");
-          const file = process.env.FILE;
-          const data = JSON.parse(fs.readFileSync(file, "utf8"));
-          console.log("[workflow] file:", file);
-          console.log("[workflow] ok:", data.ok);
-          console.log("[workflow] matchCount:", data.matchCount, "placeholders:", data.placeholdersCount || 0);
-          console.log("[workflow] jok:", data?.sources?.jok?.matchCount || 0, "error:", data?.sources?.jok?.error || "none");
-          console.log("[workflow] fecapa:", data?.sources?.fecapa?.matchCount || 0, "error:", data?.sources?.fecapa?.error || "none");
-          for (const p of (data.phases || [])) {
-            const total = (p.matches || []).length;
-            const ph = (p.matches || []).filter(m => m?.placeholder === true).length;
-            console.log(`[workflow] phase ${p.phaseName}: total=${total} placeholders=${ph}`);
-          }
-          NODE
-        env:
-          FILE: public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json
+          COMP_ID="${{ github.event.inputs.jok_comp_id }}"
+          COMP_ARG=""
+          if [ -n "$COMP_ID" ]; then
+            COMP_ARG="--jok-comp-id $COMP_ID"
+          fi
+          node api/scrape-pilot-finals.js $COMP_ARG ${STRICT}
 
       - name: Check for changes
         id: git_status
@@ -89,8 +64,10 @@ jobs:
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add public/pilot-finals-${{ github.event.inputs.jok_comp_id }}.json
-          git commit -m "chore: update pilot finals snapshot (${{ github.event.inputs.jok_comp_id }}) [automated]"
+          git add public/pilot-finals-*.json
+          COMP_ID="${{ github.event.inputs.jok_comp_id }}"
+          MSG="chore: update pilot finals snapshots${COMP_ID:+ ($COMP_ID)} [automated]"
+          git commit -m "$MSG"
           git push
 
       - name: Notify if no changes

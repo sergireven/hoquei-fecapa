@@ -382,4 +382,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.getPilotFinalsData = getPilotFinalsData;
+module.exports.getPilotFinalsData = getPilotFinalsData;module.exports.PILOT_COMPETITIONS = PILOT_COMPETITIONS;
