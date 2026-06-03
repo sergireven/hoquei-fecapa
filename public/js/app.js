@@ -3526,16 +3526,19 @@ function getDetailCalendarSourceMatches(comp) {
 function getTiePhaseKey(phaseName, phaseType) {
   const n = normalizeCompKey(phaseName || phaseType || "fase");
   if (!n) return "fase";
-  if (n.includes("eliminatories previes anada") || n.includes("eliminatories previes tornada")) {
-    return "eliminatories previes";
-  }
-  return n;
+  // Normalize leg-specific wording so anada/tornada (or ida/vuelta) share one tie key.
+  return n
+    .replace(/\bpartit\s+d\b/g, " ")
+    .replace(/\b(anada|tornada|ida|vuelta)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "fase";
 }
 
 function buildTwoLegEliminationContext(matches, compName = "") {
   const ctxByMatch = new WeakMap();
   const groups = new Map();
   const phaseNameRe = /(eliminat|play\s*-?\s*off|fase\s*final|final\s*a\s*4|final\s*four|copa)/i;
+  const twoLegHintRe = /(anada|tornada|ida|vuelta)/i;
 
   for (const m of (matches || [])) {
     if (!m || !m.home || !m.away) continue;
@@ -3545,7 +3548,8 @@ function buildTwoLegEliminationContext(matches, compName = "") {
     const phaseType = String(m?.phaseType || "").toLowerCase();
     const phaseName = String(m?.phaseName || m?._phaseName || "");
     const isElim = ["eliminatories", "playoff", "fase_final", "copa"].includes(phaseType)
-      || phaseNameRe.test(phaseName);
+      || phaseNameRe.test(phaseName)
+      || twoLegHintRe.test(phaseName);
     if (!isElim) continue;
 
     const homeKey = normalizeCompKey(m.home || "");
