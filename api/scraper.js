@@ -70,7 +70,7 @@ function parseCompetitionList(html) {
 
   // Find all competition links (works with both relative and absolute URLs)
   // <a href="https://jok.cat/competicio/4301/slug" ...> or <a href="/competicio/4301/slug">
-  const linkRe = /href="[^"]*\/competicio\/(\d+)\/([^"?#\s]+)"[^>]*>\s*([^<\n]+?)\s*</gi;
+  const linkRe = /href="[^"]*\/competicio\/(\d+)\/([^"?#\s]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = linkRe.exec(block)) !== null) {
     const id   = m[1];
@@ -82,6 +82,23 @@ function parseCompetitionList(html) {
   }
 
   return comps;
+}
+
+function extractCompetitionLinksFromHtml(html) {
+  const out = [];
+  const seen = new Set();
+  const text = String(html || "");
+  const linkRe = /href="[^\"]*\/competicio\/(\d+)\/([^\"?#\s]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = linkRe.exec(text)) !== null) {
+    const id = String(m[1] || "").trim();
+    const slug = String(m[2] || "").trim();
+    if (!id || !slug || seen.has(id)) continue;
+    seen.add(id);
+    const name = strip(m[3] || "");
+    out.push({ id, slug, name: name || slug });
+  }
+  return out;
 }
 
 // ── Parse classification from competition page HTML ───────────
@@ -962,6 +979,8 @@ async function scrapeCompetition(comp) {
 
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
+  const discoveredCompetitions = extractCompetitionLinksFromHtml(html)
+    .filter(c => String(c.id) !== String(comp.id));
 
   // NOTE: Team page scraping (scorers/cards) disabled for speed
   // Re-enable manually when needed
@@ -984,6 +1003,7 @@ async function scrapeCompetition(comp) {
     teamScorers,
     pctPlayed,
     actesDiscovered: actaLinks,
+    discoveredCompetitions,
   };
 }
 
@@ -1730,7 +1750,8 @@ async function main() {
   }
 
   // All comps from the 2025-26 block are already current season
-  const current = allComps;
+  const current = [...allComps];
+  const queuedCompIds = new Set(current.map(c => String(c.id)));
   console.log(`   Processant ${current.length} competicions...\n`);
 
   const categories = {
@@ -1818,6 +1839,19 @@ async function main() {
             compName: data.name,
             scrapedAt: new Date().toISOString(),
           };
+        }
+
+        for (const linkedComp of (data.discoveredCompetitions || [])) {
+          const linkedId = String(linkedComp.id || "").trim();
+          const linkedSlug = String(linkedComp.slug || "").trim();
+          if (!linkedId || !linkedSlug || queuedCompIds.has(linkedId)) continue;
+          queuedCompIds.add(linkedId);
+          current.push({
+            id: linkedId,
+            slug: linkedSlug,
+            name: String(linkedComp.name || linkedSlug).trim(),
+          });
+          console.log(`   ➕ Descoberta competició relacionada: [${linkedId}] ${linkedComp.name || linkedSlug}`);
         }
 
         done++;
