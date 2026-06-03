@@ -1,7 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 
-const { getPilotFinalsData } = require("./finals-pilot");
 const { getPilotFinalsData, PILOT_COMPETITIONS } = require("./finals-pilot");
 
 function getArg(name, fallback = "") {
