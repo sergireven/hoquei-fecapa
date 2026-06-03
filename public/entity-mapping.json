@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-06-03T07:30:53.703Z",
+  "generatedAt": "2026-06-03T10:36:39.845Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 529,
-    "groups": 1296,
-    "teams": 6217,
-    "clubs": 522,
+    "groups": 1295,
+    "teams": 6267,
+    "clubs": 523,
     "players": 9662,
     "actes": 18691
   },
@@ -6797,10 +6797,18 @@
         "groupName": "MAIN_GROUP"
       },
       {
-        "canonicalId": "grp_aeaaf416f436",
+        "canonicalId": "grp_51f8e75bddd1",
         "competitionCanonicalId": "cmp_228cd19e9fee",
         "source": "fecapa",
         "sourceId": "3923-GRUP-1",
+        "sourceName": "PLAYOFF NACIONAL CATALANA MASCULINA",
+        "groupName": "PLAYOFF NACIONAL CATALANA MASCULINA"
+      },
+      {
+        "canonicalId": "grp_aeaaf416f436",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "source": "fecapa",
+        "sourceId": "3923-GRUP-2",
         "sourceName": "NACIONAL CATALANA MASCULINA",
         "groupName": "NACIONAL CATALANA MASCULINA"
       },
@@ -6941,28 +6949,20 @@
         "groupName": "3ª CATALANA GRUP F"
       },
       {
-        "canonicalId": "grp_701309786fe1",
-        "competitionCanonicalId": "cmp_4907e7f675c1",
-        "source": "fecapa",
-        "sourceId": "3924-GRUP-1",
-        "sourceName": "PLAYOFF NACIONAL CATALANA FEMENINA",
-        "groupName": "PLAYOFF NACIONAL CATALANA FEMENINA"
-      },
-      {
-        "canonicalId": "grp_667cb04f8174",
-        "competitionCanonicalId": "cmp_4907e7f675c1",
-        "source": "fecapa",
-        "sourceId": "3924-GRUP-2",
-        "sourceName": "PLAYOUT NACIONAL CATALANA FEMENINA",
-        "groupName": "PLAYOUT NACIONAL CATALANA FEMENINA"
-      },
-      {
         "canonicalId": "grp_cb3ef940d76f",
         "competitionCanonicalId": "cmp_4907e7f675c1",
         "source": "fecapa",
-        "sourceId": "3924-GRUP-3",
+        "sourceId": "3924-GRUP-1",
         "sourceName": "NACIONAL CATALANA FEMENINA",
         "groupName": "NACIONAL CATALANA FEMENINA"
+      },
+      {
+        "canonicalId": "grp_99689b4f9875",
+        "competitionCanonicalId": "cmp_a5e047924721",
+        "source": "fecapa",
+        "sourceId": "3926-GRUP-1",
+        "sourceName": "ELIMINATÒRIES ASCENS A NACIONAL CATALANA FEM",
+        "groupName": "ELIMINATÒRIES ASCENS A NACIONAL CATALANA FEM"
       },
       {
         "canonicalId": "grp_5063e9ab93f6",
@@ -6979,6 +6979,14 @@
         "sourceId": "3926-GRUP-B",
         "sourceName": "1ª CATALANA FEMENINA GRUP B",
         "groupName": "1ª CATALANA FEMENINA GRUP B"
+      },
+      {
+        "canonicalId": "grp_b622b22f2f9f",
+        "competitionCanonicalId": "cmp_13c0d811d26d",
+        "source": "fecapa",
+        "sourceId": "3928-GRUP-1",
+        "sourceName": "ELIMINATÒRIES ASCENS A 1CAT FEM",
+        "groupName": "ELIMINATÒRIES ASCENS A 1CAT FEM"
       },
       {
         "canonicalId": "grp_ecbc41aa4c80",
@@ -10645,12 +10653,12 @@
         "groupName": "BCN PB-INICIACIÓ 2"
       },
       {
-        "canonicalId": "grp_7557cf0ba028",
+        "canonicalId": "grp_777dbe0fb48c",
         "competitionCanonicalId": "cmp_8b123c333366",
         "source": "fecapa",
-        "sourceId": "4316-GRUP-0",
-        "sourceName": "0",
-        "groupName": "0"
+        "sourceId": "4316-GRUP-3",
+        "sourceName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA",
+        "groupName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA"
       },
       {
         "canonicalId": "grp_d5fdcc326635",
@@ -11051,22 +11059,6 @@
         "sourceId": "4029-GRUP-3",
         "sourceName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA",
         "groupName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA"
-      },
-      {
-        "canonicalId": "grp_60004b338392",
-        "competitionCanonicalId": "cmp_0304d8686619",
-        "source": "fecapa",
-        "sourceId": "4452-OR-1",
-        "sourceName": "BENJAMÍ OR ELIMINATÒRIA ANADA I TORNADA COPA BCN",
-        "groupName": "BENJAMÍ OR ELIMINATÒRIA ANADA I TORNADA COPA BCN"
-      },
-      {
-        "canonicalId": "grp_7c0b39a4f11f",
-        "competitionCanonicalId": "cmp_0304d8686619",
-        "source": "fecapa",
-        "sourceId": "4452-GRUP-2",
-        "sourceName": "BENJAMÍ PL ELIMINATÒRIA ANADA I TORNADA COPA BCN",
-        "groupName": "BENJAMÍ PL ELIMINATÒRIA ANADA I TORNADA COPA BCN"
       },
       {
         "canonicalId": "grp_a222894fdee5",
@@ -17975,14 +17967,6 @@
         "competitionCanonicalId": "cmp_40359fc08cbb"
       },
       {
-        "canonicalId": "team_362302a7ce5c",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": "9490",
-        "sourceName": "CH CALDES RECAM LÀSER A",
-        "competitionCanonicalId": "cmp_40359fc08cbb"
-      },
-      {
         "canonicalId": "team_f488f7773d6c",
         "clubCanonicalId": "club_4f330387958b",
         "source": "jok",
@@ -18004,6 +17988,14 @@
         "source": "jok",
         "sourceId": "9189",
         "sourceName": "BARÇA",
+        "competitionCanonicalId": "cmp_40359fc08cbb"
+      },
+      {
+        "canonicalId": "team_362302a7ce5c",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "jok",
+        "sourceId": "9490",
+        "sourceName": "CH CALDES RECAM LÀSER A",
         "competitionCanonicalId": "cmp_40359fc08cbb"
       },
       {
@@ -18103,14 +18095,6 @@
         "competitionCanonicalId": "cmp_140b644668c3"
       },
       {
-        "canonicalId": "team_8fb551ba2239",
-        "clubCanonicalId": "club_590233631c8d",
-        "source": "jok",
-        "sourceId": "9169",
-        "sourceName": "CP VILAFRANCA AKO",
-        "competitionCanonicalId": "cmp_140b644668c3"
-      },
-      {
         "canonicalId": "team_d57df4848aab",
         "clubCanonicalId": "club_f84156c4f197",
         "source": "jok",
@@ -18132,6 +18116,14 @@
         "source": "jok",
         "sourceId": "9731",
         "sourceName": "CLUB HOQUEI VILA SECA",
+        "competitionCanonicalId": "cmp_140b644668c3"
+      },
+      {
+        "canonicalId": "team_8fb551ba2239",
+        "clubCanonicalId": "club_590233631c8d",
+        "source": "jok",
+        "sourceId": "9169",
+        "sourceName": "CP VILAFRANCA AKO",
         "competitionCanonicalId": "cmp_140b644668c3"
       },
       {
@@ -23207,6 +23199,22 @@
         "competitionCanonicalId": "cmp_896aaa86d879"
       },
       {
+        "canonicalId": "team_3e3db0a30c7f",
+        "clubCanonicalId": "club_1dbd402b3d33",
+        "source": "jok",
+        "sourceId": "9196",
+        "sourceName": "CH LLORET CAFES CORNELLA",
+        "competitionCanonicalId": "cmp_896aaa86d879"
+      },
+      {
+        "canonicalId": "team_a855017d42b4",
+        "clubCanonicalId": "club_8fd40ae52095",
+        "source": "jok",
+        "sourceId": "9917",
+        "sourceName": "CP MANRESA",
+        "competitionCanonicalId": "cmp_896aaa86d879"
+      },
+      {
         "canonicalId": "team_fc2eebbad56e",
         "clubCanonicalId": "club_1f82480a6f0a",
         "source": "jok",
@@ -23228,22 +23236,6 @@
         "source": "jok",
         "sourceId": "10289",
         "sourceName": "HOQUEI CLUB RIPOLL",
-        "competitionCanonicalId": "cmp_896aaa86d879"
-      },
-      {
-        "canonicalId": "team_3e3db0a30c7f",
-        "clubCanonicalId": "club_1dbd402b3d33",
-        "source": "jok",
-        "sourceId": "9196",
-        "sourceName": "CH LLORET CAFES CORNELLA",
-        "competitionCanonicalId": "cmp_896aaa86d879"
-      },
-      {
-        "canonicalId": "team_a855017d42b4",
-        "clubCanonicalId": "club_8fd40ae52095",
-        "source": "jok",
-        "sourceId": "9917",
-        "sourceName": "CP MANRESA",
         "competitionCanonicalId": "cmp_896aaa86d879"
       },
       {
@@ -28327,14 +28319,6 @@
         "competitionCanonicalId": "cmp_5558c8ea7d5e"
       },
       {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "jok",
-        "sourceId": "9535",
-        "sourceName": "CP CONGRÉS LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_5558c8ea7d5e"
-      },
-      {
         "canonicalId": "team_82adae74bd0a",
         "clubCanonicalId": "club_2bc44caffb82",
         "source": "jok",
@@ -28348,6 +28332,14 @@
         "source": "jok",
         "sourceId": "9881",
         "sourceName": "MOLLET HC A",
+        "competitionCanonicalId": "cmp_5558c8ea7d5e"
+      },
+      {
+        "canonicalId": "team_d046b4c45d9f",
+        "clubCanonicalId": "club_e98f8216c953",
+        "source": "jok",
+        "sourceId": "9535",
+        "sourceName": "CP CONGRÉS LA SAGRERA ES MOU A",
         "competitionCanonicalId": "cmp_5558c8ea7d5e"
       },
       {
@@ -28383,11 +28375,11 @@
         "competitionCanonicalId": "cmp_2d8b03f5094e"
       },
       {
-        "canonicalId": "team_990abec99f25",
-        "clubCanonicalId": "club_d1587372a824",
+        "canonicalId": "team_1fe3e8d2904a",
+        "clubCanonicalId": "club_7cca336f085f",
         "source": "jok",
-        "sourceId": "10318",
-        "sourceName": "CP CORBERA A",
+        "sourceId": "9430",
+        "sourceName": "GENERALI HC PALAU C",
         "competitionCanonicalId": "cmp_8b27f3817499"
       },
       {
@@ -28399,6 +28391,14 @@
         "competitionCanonicalId": "cmp_8b27f3817499"
       },
       {
+        "canonicalId": "team_990abec99f25",
+        "clubCanonicalId": "club_d1587372a824",
+        "source": "jok",
+        "sourceId": "10318",
+        "sourceName": "CP CORBERA A",
+        "competitionCanonicalId": "cmp_8b27f3817499"
+      },
+      {
         "canonicalId": "team_ac9f110dd30a",
         "clubCanonicalId": "club_90339fc82d07",
         "source": "jok",
@@ -28407,19 +28407,11 @@
         "competitionCanonicalId": "cmp_8b27f3817499"
       },
       {
-        "canonicalId": "team_1fe3e8d2904a",
-        "clubCanonicalId": "club_7cca336f085f",
+        "canonicalId": "team_d0badc08083f",
+        "clubCanonicalId": "club_f11fcfa16b25",
         "source": "jok",
-        "sourceId": "9430",
-        "sourceName": "GENERALI HC PALAU C",
-        "competitionCanonicalId": "cmp_8b27f3817499"
-      },
-      {
-        "canonicalId": "team_0ca4564dab21",
-        "clubCanonicalId": "club_e5c8f497af18",
-        "source": "jok",
-        "sourceId": "9091",
-        "sourceName": "CLUB PATI CUBELLES A",
+        "sourceId": "10078",
+        "sourceName": "CHP SANT FELIU A",
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
@@ -28447,11 +28439,11 @@
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
-        "canonicalId": "team_d0badc08083f",
-        "clubCanonicalId": "club_f11fcfa16b25",
+        "canonicalId": "team_0ca4564dab21",
+        "clubCanonicalId": "club_e5c8f497af18",
         "source": "jok",
-        "sourceId": "10078",
-        "sourceName": "CHP SANT FELIU A",
+        "sourceId": "9091",
+        "sourceName": "CLUB PATI CUBELLES A",
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
@@ -35663,11 +35655,11 @@
         "competitionCanonicalId": "cmp_19460b552930"
       },
       {
-        "canonicalId": "team_dc3046c00dec",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "canonicalId": "team_d60394d9d3ec",
+        "clubCanonicalId": "club_f008445dfa79",
         "source": "jok",
-        "sourceId": "9783",
-        "sourceName": "CE ARENYS DE MUNT A",
+        "sourceId": "9750",
+        "sourceName": "INNOAESTHETICS HC SANT JUST A",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -35700,14 +35692,6 @@
         "source": "jok",
         "sourceId": "9147",
         "sourceName": "CHP MCDONALD'S  AMPOSTA A",
-        "competitionCanonicalId": "cmp_f9b0e34d00a4"
-      },
-      {
-        "canonicalId": "team_d60394d9d3ec",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "jok",
-        "sourceId": "9750",
-        "sourceName": "INNOAESTHETICS HC SANT JUST A",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -35751,11 +35735,11 @@
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
-        "canonicalId": "team_d57df4848aab",
-        "clubCanonicalId": "club_f84156c4f197",
+        "canonicalId": "team_dc3046c00dec",
+        "clubCanonicalId": "club_7b6bb0c4ff81",
         "source": "jok",
-        "sourceId": "8950",
-        "sourceName": "GEIEG",
+        "sourceId": "9783",
+        "sourceName": "CE ARENYS DE MUNT A",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -35764,6 +35748,14 @@
         "source": "jok",
         "sourceId": "10042",
         "sourceName": "IGUALADA HC A",
+        "competitionCanonicalId": "cmp_f9b0e34d00a4"
+      },
+      {
+        "canonicalId": "team_d57df4848aab",
+        "clubCanonicalId": "club_f84156c4f197",
+        "source": "jok",
+        "sourceId": "8950",
+        "sourceName": "GEIEG",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -39047,11 +39039,11 @@
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
-        "canonicalId": "team_5f700da6758e",
-        "clubCanonicalId": "club_c4412f535fd3",
+        "canonicalId": "team_7f04d57a3c64",
+        "clubCanonicalId": "club_efc73ec43f2d",
         "source": "jok",
-        "sourceId": "10132",
-        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "sourceId": "9552",
+        "sourceName": "SANT JOSEP SANT SADURNI",
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
@@ -39063,51 +39055,27 @@
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
-        "canonicalId": "team_33d81fcf0b51",
-        "clubCanonicalId": "club_189dbed74134",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB SENTMENAT",
-        "competitionCanonicalId": "cmp_3854b1071cf7"
-      },
-      {
-        "canonicalId": "team_622c233b056a",
-        "clubCanonicalId": "club_4f330387958b",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TORDERA",
-        "competitionCanonicalId": "cmp_3854b1071cf7"
-      },
-      {
-        "canonicalId": "team_f6be0b867e14",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT G",
-        "competitionCanonicalId": "cmp_3854b1071cf7"
-      },
-      {
-        "canonicalId": "team_908995e9ef2b",
-        "clubCanonicalId": "club_0f290d442971",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA C",
-        "competitionCanonicalId": "cmp_3854b1071cf7"
-      },
-      {
-        "canonicalId": "team_7f04d57a3c64",
-        "clubCanonicalId": "club_efc73ec43f2d",
-        "source": "jok",
-        "sourceId": "9552",
-        "sourceName": "SANT JOSEP SANT SADURNI",
-        "competitionCanonicalId": "cmp_3854b1071cf7"
-      },
-      {
         "canonicalId": "team_c100231d79f9",
         "clubCanonicalId": "club_e2a869c04690",
         "source": "jok",
         "sourceId": "10390",
         "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_5f700da6758e",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "jok",
+        "sourceId": "10132",
+        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "jok",
+        "sourceId": "9455",
+        "sourceName": "CE NOIA FREIXENET",
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
@@ -39119,11 +39087,11 @@
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
-        "canonicalId": "team_47434763c9a2",
-        "clubCanonicalId": "club_8b0b74c5676c",
+        "canonicalId": "team_285bc702486e",
+        "clubCanonicalId": "club_d33bbed2f7ec",
         "source": "jok",
-        "sourceId": "9455",
-        "sourceName": "CE NOIA FREIXENET",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI A",
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
@@ -39143,67 +39111,19 @@
         "competitionCanonicalId": "cmp_3854b1071cf7"
       },
       {
-        "canonicalId": "team_7f04d57a3c64",
-        "clubCanonicalId": "club_efc73ec43f2d",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "SANT JOSEP SANT SADURNI",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_c100231d79f9",
-        "clubCanonicalId": "club_e2a869c04690",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_47434763c9a2",
-        "clubCanonicalId": "club_8b0b74c5676c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_04f731293052",
-        "clubCanonicalId": "club_bc34700106f1",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP VILAFRANCA BYACCUOR",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_5ddf3b39a311",
-        "clubCanonicalId": "club_d33bbed2f7ec",
-        "source": "jok",
-        "sourceId": "9635",
-        "sourceName": "CPI SANT IGNASI",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_95b4ea0c9474",
-        "clubCanonicalId": "club_69be4a547919",
-        "source": "jok",
-        "sourceId": "9076",
-        "sourceName": "JOIERIA MONER CP SANT RAMON C",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
-        "canonicalId": "team_7313eac1984b",
-        "clubCanonicalId": "club_f11fcfa16b25",
-        "source": "jok",
-        "sourceId": "10067",
-        "sourceName": "CHP SANT FELIU",
-        "competitionCanonicalId": "cmp_db2c6ce4e54f"
-      },
-      {
         "canonicalId": "team_33d81fcf0b51",
         "clubCanonicalId": "club_189dbed74134",
         "source": "jok",
         "sourceId": "8973",
         "sourceName": "HOQUEI CLUB SENTMENAT",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_f6be0b867e14",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "jok",
+        "sourceId": "10372",
+        "sourceName": "OXIGEN PHC SANT CUGAT G",
         "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
@@ -39215,11 +39135,11 @@
         "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
-        "canonicalId": "team_f6be0b867e14",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "canonicalId": "team_95b4ea0c9474",
+        "clubCanonicalId": "club_69be4a547919",
         "source": "jok",
-        "sourceId": "10372",
-        "sourceName": "OXIGEN PHC SANT CUGAT G",
+        "sourceId": "9076",
+        "sourceName": "JOIERIA MONER CP SANT RAMON C",
         "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
@@ -39239,6 +39159,14 @@
         "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
+        "canonicalId": "team_7313eac1984b",
+        "clubCanonicalId": "club_f11fcfa16b25",
+        "source": "jok",
+        "sourceId": "10067",
+        "sourceName": "CHP SANT FELIU",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
         "canonicalId": "team_998e9d5731a9",
         "clubCanonicalId": "club_d33bbed2f7ec",
         "source": "jok",
@@ -39252,6 +39180,14 @@
         "source": "jok",
         "sourceId": "10916",
         "sourceName": "CPI SANT IGNASI C",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_5ddf3b39a311",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "jok",
+        "sourceId": "9635",
+        "sourceName": "CPI SANT IGNASI",
         "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
@@ -40383,6 +40319,38 @@
         "competitionCanonicalId": "cmp_0190928d8035"
       },
       {
+        "canonicalId": "team_7f04d57a3c64",
+        "clubCanonicalId": "club_efc73ec43f2d",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "SANT JOSEP SANT SADURNI",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_c100231d79f9",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_04f731293052",
+        "clubCanonicalId": "club_bc34700106f1",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA BYACCUOR",
+        "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
         "canonicalId": "team_33d81fcf0b51",
         "clubCanonicalId": "club_189dbed74134",
         "source": "jok",
@@ -40421,6 +40389,62 @@
         "sourceId": "9355",
         "sourceName": "CERDANYOLA CLUB D'HOQUEI",
         "competitionCanonicalId": "cmp_3854b1071cf7"
+      },
+      {
+        "canonicalId": "team_33d81fcf0b51",
+        "clubCanonicalId": "club_189dbed74134",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB SENTMENAT",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_f6be0b867e14",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT G",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_4198059b18e4",
+        "clubCanonicalId": "club_d27f2c66bdff",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CH ARENYS DE MAR",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_622c233b056a",
+        "clubCanonicalId": "club_4f330387958b",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TORDERA",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_908995e9ef2b",
+        "clubCanonicalId": "club_0f290d442971",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA C",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_998e9d5731a9",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI B",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
+      },
+      {
+        "canonicalId": "team_4d199809c627",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI C",
+        "competitionCanonicalId": "cmp_db2c6ce4e54f"
       },
       {
         "canonicalId": "team_7f04d57a3c64",
@@ -44215,150 +44239,6 @@
         "competitionCanonicalId": "cmp_2c494f410f42"
       },
       {
-        "canonicalId": "team_397ce3fc1b46",
-        "clubCanonicalId": "club_a3497563bad5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI MOLLERUSSA",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_47434763c9a2",
-        "clubCanonicalId": "club_8b0b74c5676c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_7a811ffe97fe",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_bcbcd60d8218",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_38e7c1a8e711",
-        "clubCanonicalId": "club_9046a384b9a5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB RIPOLL",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_f9a8518299bf",
-        "clubCanonicalId": "club_c2ee5045d5f0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP BELL-LLOC",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_adffe44c3f86",
-        "clubCanonicalId": "club_1c5bccf08ef9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CADÍ CADÍ",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_5ac3dad4108d",
-        "clubCanonicalId": "club_56d012fe8780",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "BARÇA",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_445035dbed6c",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_056c13b0680b",
-        "clubCanonicalId": "club_14cddb039370",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_c100231d79f9",
-        "clubCanonicalId": "club_e2a869c04690",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_0cfc755586c6",
-        "clubCanonicalId": "club_60deb82038fd",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ VOLTREGÀ - MASIES",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_2dea0850e927",
-        "clubCanonicalId": "club_ea04dedcddff",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TARADELL",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_917e1fb531d5",
-        "clubCanonicalId": "club_e9fc4c99a938",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_7313eac1984b",
-        "clubCanonicalId": "club_f11fcfa16b25",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
-        "canonicalId": "team_a402ce1df29c",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "groupCanonicalId": "grp_aeaaf416f436"
-      },
-      {
         "canonicalId": "team_997410e0e988",
         "clubCanonicalId": "club_b96f5bafa01e",
         "source": "fecapa",
@@ -45932,6 +45812,150 @@
         "sourceName": "CLUB PATI BREDA B",
         "competitionCanonicalId": "cmp_54b4c1bca5ce",
         "groupCanonicalId": "grp_9a934b6caa44"
+      },
+      {
+        "canonicalId": "team_39046a5bef99",
+        "clubCanonicalId": "club_dec96fc71830",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH MATARÓ",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_22bf836cddde",
+        "clubCanonicalId": "club_f0a5477309e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_ee7d84202c7c",
+        "clubCanonicalId": "club_71db361eaba3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GIRONA CLUB HOQUEI",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_144de5f34168",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LÀSER",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_e09a04d22a02",
+        "clubCanonicalId": "club_e642ca614dd8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ORKLA BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_04f731293052",
+        "clubCanonicalId": "club_bc34700106f1",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA BYACCUOR",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_cbcf6b58d484",
+        "clubCanonicalId": "club_50fffcb1292c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ VOLTREGÀ",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_8e73a44093e4",
+        "clubCanonicalId": "club_5843c9672b21",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA FEMENÍ GRUPO GUZMÁN",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_445035dbed6c",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_54871ce7ffe9",
+        "clubCanonicalId": "club_d35aad2505c1",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILA-SANA",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_284e0af37691",
+        "clubCanonicalId": "club_04cdabb3b071",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA LA DAURADA",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_9d09834e3cb8",
+        "clubCanonicalId": "club_01988934cfac",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MARTINELIA MANLLEU",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_3e8efb2a5a3b",
+        "clubCanonicalId": "club_748dcaedf46a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "PATÍ VIC",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_42f64413a301",
+        "clubCanonicalId": "club_f39b6c045836",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "REUS DEPORTIU",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
+      },
+      {
+        "canonicalId": "team_ea5c05d4f290",
+        "clubCanonicalId": "club_e0d1f496a4e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HIPOTECA GIRONA CH SANT JORDI",
+        "competitionCanonicalId": "cmp_4907e7f675c1",
+        "groupCanonicalId": "grp_cb3ef940d76f"
       },
       {
         "canonicalId": "team_22bf836cddde",
@@ -59101,6 +59125,312 @@
         "groupCanonicalId": "grp_f22836233bd6"
       },
       {
+        "canonicalId": "team_a04e6c323464",
+        "clubCanonicalId": "club_3618894dd9d3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI RIPOLLET D",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_7f04d57a3c64",
+        "clubCanonicalId": "club_efc73ec43f2d",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "SANT JOSEP SANT SADURNI",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_144de5f34168",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_c100231d79f9",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_5f700da6758e",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_04f731293052",
+        "clubCanonicalId": "club_bc34700106f1",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA BYACCUOR",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_285bc702486e",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI A",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_209396fe83d4"
+      },
+      {
+        "canonicalId": "team_33d81fcf0b51",
+        "clubCanonicalId": "club_189dbed74134",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB SENTMENAT",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_f6be0b867e14",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT G",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_4198059b18e4",
+        "clubCanonicalId": "club_d27f2c66bdff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH ARENYS DE MAR",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_95b4ea0c9474",
+        "clubCanonicalId": "club_69be4a547919",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "JOIERIA MONER CP SANT RAMON C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_622c233b056a",
+        "clubCanonicalId": "club_4f330387958b",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TORDERA",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_908995e9ef2b",
+        "clubCanonicalId": "club_0f290d442971",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_7313eac1984b",
+        "clubCanonicalId": "club_f11fcfa16b25",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_998e9d5731a9",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI B",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_4d199809c627",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_7e68826c44f6"
+      },
+      {
+        "canonicalId": "team_4d199809c627",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_285bc702486e",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI A",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_33d81fcf0b51",
+        "clubCanonicalId": "club_189dbed74134",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB SENTMENAT",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_998e9d5731a9",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI B",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_5f700da6758e",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_622c233b056a",
+        "clubCanonicalId": "club_4f330387958b",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TORDERA",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_144de5f34168",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_c100231d79f9",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_7f04d57a3c64",
+        "clubCanonicalId": "club_efc73ec43f2d",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "SANT JOSEP SANT SADURNI",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_908995e9ef2b",
+        "clubCanonicalId": "club_0f290d442971",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_f6be0b867e14",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT G",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_4198059b18e4",
+        "clubCanonicalId": "club_d27f2c66bdff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH ARENYS DE MAR",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_7313eac1984b",
+        "clubCanonicalId": "club_f11fcfa16b25",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_a04e6c323464",
+        "clubCanonicalId": "club_3618894dd9d3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI RIPOLLET D",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_95b4ea0c9474",
+        "clubCanonicalId": "club_69be4a547919",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "JOIERIA MONER CP SANT RAMON C",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
+        "canonicalId": "team_04f731293052",
+        "clubCanonicalId": "club_bc34700106f1",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA BYACCUOR",
+        "competitionCanonicalId": "cmp_8b123c333366",
+        "groupCanonicalId": "grp_777dbe0fb48c"
+      },
+      {
         "canonicalId": "team_215b158e48d1",
         "clubCanonicalId": "club_6ad7d2e99cf8",
         "source": "fecapa",
@@ -62170,6 +62500,420 @@
         "groupCanonicalId": "grp_5fca2fbefa29"
       },
       {
+        "canonicalId": "team_e6b1db04ef9e",
+        "clubCanonicalId": "club_477a7c1271c2",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP RIUDEBITLLES A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_b520ab234cb0",
+        "clubCanonicalId": "club_590233631c8d",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA AKO B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_66ee6f7b8c8b",
+        "clubCanonicalId": "club_f0f323c328f7",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MOLLET HC A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_3cf6742f91fe",
+        "clubCanonicalId": "club_5ad7dc6d156d",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "UNIÓ ESPORTIVA LA GARRIGA",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_a8a0f32ee220",
+        "clubCanonicalId": "club_f94715eaf59a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "RIBES CP",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_890f65a69b08",
+        "clubCanonicalId": "club_f0a5477309e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_b6f543453cfd",
+        "clubCanonicalId": "club_4ed40fda811a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_6d011ae83b9d",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LÀSER B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_a222894fdee5"
+      },
+      {
+        "canonicalId": "team_2102046881d4",
+        "clubCanonicalId": "club_69be4a547919",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "JOIERIA MONER CP SANT RAMON A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_43da1a48a979",
+        "clubCanonicalId": "club_26654629610e",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "JESUS MARIA I JOSEP B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_ac9f110dd30a",
+        "clubCanonicalId": "club_90339fc82d07",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "UNIÓ ESPORTIVA D'HORTA A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_93aef3becdc7",
+        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE ARENYS DE MUNT B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_693b71920771",
+        "clubCanonicalId": "club_511f7367f45f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP MONTESQUIU A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_2a7d37fb65e4",
+        "clubCanonicalId": "club_e98f8216c953",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU D",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_93d2d1101b59",
+        "clubCanonicalId": "club_f008445dfa79",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "INNOAESTHETICS HC SANT JUST B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_1540570772d7"
+      },
+      {
+        "canonicalId": "team_67cdfd5aa478",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_41117b22eb18",
+        "clubCanonicalId": "club_590233631c8d",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA AKO A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_285bc702486e",
+        "clubCanonicalId": "club_d33bbed2f7ec",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CPI SANT IGNASI A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_c19afe9d729f",
+        "clubCanonicalId": "club_34680237e3a0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "UEH BARBERÀ A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_1283eb697e48",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_61983ca0464b",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_52f3873460fc",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ROTOTANK BIGUES I RIELLS A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2f0c8dc053c8"
+      },
+      {
+        "canonicalId": "team_9cca5cd7c22a",
+        "clubCanonicalId": "club_a47a9b235044",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ MASQUEFA A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_1bacff73571d",
+        "clubCanonicalId": "club_c3f09e470074",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "SE LA SALLE BONANOVA A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_d6a8511cb828",
+        "clubCanonicalId": "club_32b191e87fc9",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP FOLGUEROLES A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_0daed93cd40b",
+        "clubCanonicalId": "club_3618894dd9d3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI RIPOLLET B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_2a272fe61179",
+        "clubCanonicalId": "club_3618894dd9d3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI RIPOLLET C",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_6f939e0f971f",
+        "clubCanonicalId": "club_0ab78f1db089",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI NAVARCLES A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_face9bea9248",
+        "clubCanonicalId": "club_f0f323c328f7",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MOLLET HC B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_7769dd8b0aae",
+        "clubCanonicalId": "club_dec96fc71830",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH MATARÓ B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_2e8c02c79fef"
+      },
+      {
+        "canonicalId": "team_9a99be745974",
+        "clubCanonicalId": "club_f1c45ec173c5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI VILASSAR A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_919f983d47f7",
+        "clubCanonicalId": "club_477a7c1271c2",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP RIUDEBITLLES B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_0939c2639ee8",
+        "clubCanonicalId": "club_8fd40ae52095",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP MANRESA A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_b55419026bbd",
+        "clubCanonicalId": "club_01988934cfac",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MARTINELIA MANLLEU B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_30b3251142ba",
+        "clubCanonicalId": "club_50fffcb1292c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ VOLTREGÀ D",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_7a8eda1c5c16",
+        "clubCanonicalId": "club_f2b0cbf9a074",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "FUTBOL CLUB MARTINENC",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_a04e6c323464",
+        "clubCanonicalId": "club_3618894dd9d3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI RIPOLLET D",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_e623e2cdb9a9",
+        "clubCanonicalId": "club_f8e8dcaa685a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI PRAT A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_5271a38a6c62"
+      },
+      {
+        "canonicalId": "team_d0c9d5ab4f6e",
+        "clubCanonicalId": "club_d9fd2df778f2",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CLARET A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_5799ded55dad",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_1e507204f321",
+        "clubCanonicalId": "club_f0a5477309e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI C",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_b6c9dd364c14",
+        "clubCanonicalId": "club_0f290d442971",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_168f16b652e7",
+        "clubCanonicalId": "club_03fc77632c44",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP RODA A",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_fbb269a29c59",
+        "clubCanonicalId": "club_d9fd2df778f2",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CLARET B",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_9cd9c119e530",
+        "clubCanonicalId": "club_f008445dfa79",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "INNOAESTHETICS HC SANT JUST C",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
+        "canonicalId": "team_00a348a07b43",
+        "clubCanonicalId": "club_22fce501b176",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI PATINS TONA",
+        "competitionCanonicalId": "cmp_0304d8686619",
+        "groupCanonicalId": "grp_8c0e4aeddbd9"
+      },
+      {
         "canonicalId": "team_ccba4d30ab32",
         "clubCanonicalId": "club_e98f8216c953",
         "source": "fecapa",
@@ -62384,312 +63128,6 @@
         "sourceName": "CLUB HOQUEI ARENYS DE MAR",
         "competitionCanonicalId": "cmp_1d0828cbad8c",
         "groupCanonicalId": "grp_d1b35afe8204"
-      },
-      {
-        "canonicalId": "team_630aca59f39c",
-        "clubCanonicalId": "club_e5c8f497af18",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI CUBELLES C",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_312bacf951b6",
-        "clubCanonicalId": "club_351ff1d79450",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP MARTORELL",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_d5a9792cc65d",
-        "clubCanonicalId": "club_f97dae5930a5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CPI LA SAGRERA C",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_5275ff2fd77b",
-        "clubCanonicalId": "club_d1826990b725",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "PATÍ VIC B B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_1469f2fc9c58",
-        "clubCanonicalId": "club_34680237e3a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "UEH BARBERÀ B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_e76b40b2a768",
-        "clubCanonicalId": "club_ecbe09dacfa0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SUBUR SITGES",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_0d69530ab79d",
-        "clubCanonicalId": "club_9d096d9bda8e",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHCASTELLET B B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_cf8d0472b37d"
-      },
-      {
-        "canonicalId": "team_e5fb7ec31db4",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT D",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_e47e6789ae26",
-        "clubCanonicalId": "club_1f82480a6f0a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ CENTELLES A",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_d075fd2f9119",
-        "clubCanonicalId": "club_ea04dedcddff",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TARADELL B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_622c233b056a",
-        "clubCanonicalId": "club_4f330387958b",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TORDERA",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_96fe3f9e3312",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU F",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_9f5e2a36af53",
-        "clubCanonicalId": "club_03fc77632c44",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP RODA B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_54ae65bedeed",
-        "clubCanonicalId": "club_4a7f68e9e0c9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT C C",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_42dad2548933"
-      },
-      {
-        "canonicalId": "team_baca867c0db9",
-        "clubCanonicalId": "club_de46a8ef9cfe",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HC MONTBUI",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_528d4e08a354",
-        "clubCanonicalId": "club_95dd4a05a629",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "SFERIC",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_998e9d5731a9",
-        "clubCanonicalId": "club_d33bbed2f7ec",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CPI SANT IGNASI B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_17ca8b42aee1",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MOLLET HC C",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_05a0e2fa983b",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT E",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_d58c7496ba36",
-        "clubCanonicalId": "club_ceab89861180",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU B B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_8197a35145cb",
-        "clubCanonicalId": "club_f8e8dcaa685a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PRAT B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_2308eced4185"
-      },
-      {
-        "canonicalId": "team_5f82534ce953",
-        "clubCanonicalId": "club_d1587372a824",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CORBERA B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_ea9f31c69c09",
-        "clubCanonicalId": "club_26654629610e",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "JESUS MARIA I JOSEP G",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_09f4b7a3ac6f",
-        "clubCanonicalId": "club_32b191e87fc9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP FOLGUEROLES B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_bf0cf2f4bb38",
-        "clubCanonicalId": "club_e5c8f497af18",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI CUBELLES B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_2522a2f98444",
-        "clubCanonicalId": "club_bb8eb812dc39",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE CORNELLÀ",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_c7522e82256d",
-        "clubCanonicalId": "club_1f82480a6f0a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ CENTELLES B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_5f5dd78fa1d3",
-        "clubCanonicalId": "club_8fd40ae52095",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP MANRESA B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_aeeb8bd93a33"
-      },
-      {
-        "canonicalId": "team_6fe4ecd25758",
-        "clubCanonicalId": "club_c3f09e470074",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "SE LA SALLE BONANOVA B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
-      },
-      {
-        "canonicalId": "team_6f449fb69a55",
-        "clubCanonicalId": "club_69829089785e",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP MASQUEFA C",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
-      },
-      {
-        "canonicalId": "team_380908f25150",
-        "clubCanonicalId": "club_511f7367f45f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP MONTESQUIU B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
-      },
-      {
-        "canonicalId": "team_b16778a795b6",
-        "clubCanonicalId": "club_be43827ca624",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CPI LA SAGRERA D D",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
-      },
-      {
-        "canonicalId": "team_4ec7a4168cf0",
-        "clubCanonicalId": "club_e2daab7e757f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI NAVARCLES B B",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
-      },
-      {
-        "canonicalId": "team_8767dcad4d5b",
-        "clubCanonicalId": "club_a7f1f5f0feca",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HC SANT JUST D",
-        "competitionCanonicalId": "cmp_becd69f4edab",
-        "groupCanonicalId": "grp_fced113d9fb6"
       },
       {
         "canonicalId": "team_990abec99f25",
@@ -67080,12 +67518,6 @@
         "sourceName": "BARCA"
       },
       {
-        "canonicalId": "club_590233631c8d",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP VILAFRANCA AKO"
-      },
-      {
         "canonicalId": "club_f84156c4f197",
         "source": "jok",
         "sourceId": null,
@@ -67102,6 +67534,12 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CLUB HOQUEI VILA SECA"
+      },
+      {
+        "canonicalId": "club_590233631c8d",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP VILAFRANCA AKO"
       },
       {
         "canonicalId": "club_01bf9d2b799f",
@@ -67446,6 +67884,12 @@
         "sourceName": "CH SANT JORDI DESVALLS"
       },
       {
+        "canonicalId": "club_8fd40ae52095",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP MANRESA"
+      },
+      {
         "canonicalId": "club_36a04c58dc55",
         "source": "jok",
         "sourceId": null,
@@ -67456,12 +67900,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "HOQUEI CLUB RIPOLL"
-      },
-      {
-        "canonicalId": "club_8fd40ae52095",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP MANRESA"
       },
       {
         "canonicalId": "club_0f37c72357e7",
@@ -68292,102 +68730,6 @@
         "sourceName": "CATALUNYA"
       },
       {
-        "canonicalId": "club_a3497563bad5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI MOLLERUSSA"
-      },
-      {
-        "canonicalId": "club_8b0b74c5676c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET"
-      },
-      {
-        "canonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR"
-      },
-      {
-        "canonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LASER"
-      },
-      {
-        "canonicalId": "club_9046a384b9a5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB RIPOLL"
-      },
-      {
-        "canonicalId": "club_c2ee5045d5f0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP BELL LLOC"
-      },
-      {
-        "canonicalId": "club_1c5bccf08ef9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CADI CADI"
-      },
-      {
-        "canonicalId": "club_56d012fe8780",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "BARCA"
-      },
-      {
-        "canonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT"
-      },
-      {
-        "canonicalId": "club_14cddb039370",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA"
-      },
-      {
-        "canonicalId": "club_e2a869c04690",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC"
-      },
-      {
-        "canonicalId": "club_60deb82038fd",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI VOLTREGA MASIES"
-      },
-      {
-        "canonicalId": "club_ea04dedcddff",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TARADELL"
-      },
-      {
-        "canonicalId": "club_e9fc4c99a938",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL"
-      },
-      {
-        "canonicalId": "club_f11fcfa16b25",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU"
-      },
-      {
-        "canonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI"
-      },
-      {
         "canonicalId": "club_b96f5bafa01e",
         "source": "fecapa",
         "sourceId": null,
@@ -68428,6 +68770,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "ANDORRA HOQUEI CLUB"
+      },
+      {
+        "canonicalId": "club_0071e1ba9826",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LASER"
       },
       {
         "canonicalId": "club_1e7e3d9fe69c",
@@ -68476,6 +68824,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB PATI MALGRAT GRUP ESCOBAR"
+      },
+      {
+        "canonicalId": "club_4ed40fda811a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI"
       },
       {
         "canonicalId": "club_71db361eaba3",
@@ -68574,6 +68928,18 @@
         "sourceName": "INNOAESTHETICS HC SANT JUST"
       },
       {
+        "canonicalId": "club_14cddb039370",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA"
+      },
+      {
+        "canonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC"
+      },
+      {
         "canonicalId": "club_f0a5477309e4",
         "source": "fecapa",
         "sourceId": null,
@@ -68604,16 +68970,34 @@
         "sourceName": "CEH OLIMPIC REUS"
       },
       {
+        "canonicalId": "club_b0d61ab464a0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB CASTELLAR"
+      },
+      {
         "canonicalId": "club_ecbe09dacfa0",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CP SUBUR SITGES"
       },
       {
+        "canonicalId": "club_a3497563bad5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI MOLLERUSSA"
+      },
+      {
         "canonicalId": "club_4d4ff902d46c",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "HC VALLS INTEC ENGINYERIA"
+      },
+      {
+        "canonicalId": "club_e9fc4c99a938",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE VENDRELL"
       },
       {
         "canonicalId": "club_559c2ea035a0",
@@ -68626,6 +69010,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CE TORRELAVIT FONT PACKAGING"
+      },
+      {
+        "canonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT"
       },
       {
         "canonicalId": "club_f0f323c328f7",
@@ -68650,6 +69040,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB PATI MASQUEFA"
+      },
+      {
+        "canonicalId": "club_c2ee5045d5f0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP BELL LLOC"
       },
       {
         "canonicalId": "club_0f290d442971",
@@ -68712,6 +69108,12 @@
         "sourceName": "HOQUEI FIGUERES"
       },
       {
+        "canonicalId": "club_ea04dedcddff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TARADELL"
+      },
+      {
         "canonicalId": "club_1f82480a6f0a",
         "source": "fecapa",
         "sourceId": null,
@@ -68740,6 +69142,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CH SANT JORDI DESVALLS"
+      },
+      {
+        "canonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET"
       },
       {
         "canonicalId": "club_9d8488e244a2",
@@ -68812,6 +69220,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "FUTBOL CLUB MARTINENC"
+      },
+      {
+        "canonicalId": "club_f11fcfa16b25",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU"
       },
       {
         "canonicalId": "club_c4412f535fd3",
@@ -68904,6 +69318,12 @@
         "sourceName": "CLUB HOQUEI NAVARCLES"
       },
       {
+        "canonicalId": "club_1c5bccf08ef9",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CADI CADI"
+      },
+      {
         "canonicalId": "club_f8e8dcaa685a",
         "source": "fecapa",
         "sourceId": null,
@@ -68934,10 +69354,28 @@
         "sourceName": "CP BLANES"
       },
       {
-        "canonicalId": "club_7ab1e615374b",
+        "canonicalId": "club_bc34700106f1",
         "source": "fecapa",
         "sourceId": null,
-        "sourceName": "SHUM SELVAFIL"
+        "sourceName": "CP VILAFRANCA BYACCUOR"
+      },
+      {
+        "canonicalId": "club_5843c9672b21",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA FEMENI GRUPO GUZMAN"
+      },
+      {
+        "canonicalId": "club_d35aad2505c1",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILA SANA"
+      },
+      {
+        "canonicalId": "club_04cdabb3b071",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA LA DAURADA"
       },
       {
         "canonicalId": "club_f39b6c045836",
@@ -68946,10 +69384,16 @@
         "sourceName": "REUS DEPORTIU"
       },
       {
-        "canonicalId": "club_d35aad2505c1",
+        "canonicalId": "club_e0d1f496a4e4",
         "source": "fecapa",
         "sourceId": null,
-        "sourceName": "CP VILA SANA"
+        "sourceName": "HIPOTECA GIRONA CH SANT JORDI"
+      },
+      {
+        "canonicalId": "club_7ab1e615374b",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "SHUM SELVAFIL"
       },
       {
         "canonicalId": "club_2b0c17be7def",
@@ -68970,16 +69414,16 @@
         "sourceName": "CHCASTELLET"
       },
       {
+        "canonicalId": "club_9046a384b9a5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB RIPOLL"
+      },
+      {
         "canonicalId": "club_1dbd402b3d33",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CH LLORET CAFES CORNELLA"
-      },
-      {
-        "canonicalId": "club_bc34700106f1",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILAFRANCA BYACCUOR"
       },
       {
         "canonicalId": "club_d43800d01a54",
@@ -69082,6 +69526,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "SHUM FRIT RAVICH"
+      },
+      {
+        "canonicalId": "club_56d012fe8780",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "BARCA"
       },
       {
         "canonicalId": "club_7c827bba09ae",
@@ -69210,6 +69660,12 @@
         "sourceName": "DESCANSA"
       },
       {
+        "canonicalId": "club_d27f2c66bdff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH ARENYS DE MAR"
+      },
+      {
         "canonicalId": "club_511f7367f45f",
         "source": "fecapa",
         "sourceId": null,
@@ -69298,18 +69754,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CPI LA SAGRERA D"
-      },
-      {
-        "canonicalId": "club_69829089785e",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP MASQUEFA"
-      },
-      {
-        "canonicalId": "club_a7f1f5f0feca",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HC SANT JUST"
       },
       {
         "canonicalId": "club_27eaa0b88df7",
@@ -159131,7 +159575,7 @@
         "canonicalId": "acta_ba48710aaa1d",
         "source": "jok",
         "sourceId": "114709",
-        "sourceName": "Laumont Hoquei Tàrrega vs Hc Montbui",
+        "sourceName": "Hc Montbui vs Laumont Hoquei Tàrrega",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 17"
       },
@@ -159195,7 +159639,7 @@
         "canonicalId": "acta_4ae55de9a0f9",
         "source": "jok",
         "sourceId": "114717",
-        "sourceName": "Laumont Hoquei Tàrrega vs Joi Moner Cp Sant Ramon A",
+        "sourceName": "Joi Moner Cp Sant Ramon A vs Laumont Hoquei Tàrrega",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 18"
       },
@@ -159315,7 +159759,7 @@
         "canonicalId": "acta_8ed4a75e72b5",
         "source": "jok",
         "sourceId": "114734",
-        "sourceName": "Igualada Hc A vs Laumont Hoquei Tàrrega",
+        "sourceName": "Laumont Hoquei Tàrrega vs Igualada Hc A",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 20"
       },
@@ -193339,7 +193783,7 @@
         "canonicalId": "acta_30cd897fab36",
         "source": "jok",
         "sourceId": "121003",
-        "sourceName": "Cerdanyola Club D'hoquei vs Martinelia Manlleu",
+        "sourceName": "Cerdanyola Club Dhoquei vs Martinelia Manlleu",
         "compSourceId": "4124",
         "compName": "FEM 19 6"
       },
@@ -193435,7 +193879,7 @@
         "canonicalId": "acta_3e52726201b4",
         "source": "jok",
         "sourceId": "121015",
-        "sourceName": "Generali Hc Palau vs Martinelia Manlleu",
+        "sourceName": "Martinelia Manlleu vs Generali Hc Palau",
         "compSourceId": "4124",
         "compName": "FEM 19 9"
       },
