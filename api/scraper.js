@@ -53,6 +53,77 @@ const strip = s => s
   .replace(/&nbsp;/g," ").replace(/&#\d+;/g,"").replace(/&[a-z]+;/g,"")
   .replace(/\s+/g," ").trim();
 
+function decodeHtmlEntities(text) {
+  return String(text || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
+}
+
+function decodeUrlToken(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  try {
+    return decodeHtmlEntities(decodeURIComponent(raw.replace(/\+/g, "%20"))).trim();
+  } catch {
+    return decodeHtmlEntities(raw.replace(/\+/g, " ")).trim();
+  }
+}
+
+function normalizeTeamName(text) {
+  return decodeUrlToken(text).replace(/\s+/g, " ").trim();
+}
+
+function normalizeCompToken(text) {
+  return decodeHtmlEntities(String(text || ""))
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectPhaseBucket(phaseName) {
+  const n = normalizeCompToken(phaseName);
+  if (!n) return "other";
+  if (/VUITENS\s+DE\s+FINAL/.test(n)) return "vuitens";
+  if (/QUARTS?\s+DE\s+FINAL/.test(n)) return "quarts";
+  if (/SEMIFINALS?/.test(n)) return "semifinals";
+  if (/\bFINAL\b/.test(n) && !/SEMIFINAL/.test(n) && !/QUART/.test(n) && !/VUITENS/.test(n)) return "final";
+  if (/ELIMINAT[OÒ]RIES\s+PR[EEÈ]VIES\s+ANADA/.test(n)) return "elim_prev_anada";
+  if (/ELIMINAT[OÒ]RIES\s+PR[EEÈ]VIES\s+TORNADA/.test(n)) return "elim_prev_tornada";
+  return "other";
+}
+
+function extractVenueFromBlock(block, fallbackVenue = "") {
+  const txt = String(block || "");
+  const m = txt.match(/(PAVELL[OÓ][^<\n]{4,200})/i);
+  if (m) return normalizeTeamName(m[1]);
+  return String(fallbackVenue || "").trim();
+}
+
+function detectPhaseNameFromBlock(block, fallbackPhaseName) {
+  const txt = String(block || "");
+  const fromLink = txt.match(/href="\/competicio\/\d+\/[^\"]+\/([^\"]+)"/i);
+  const linked = normalizeTeamName(fromLink?.[1] || "");
+  if (linked) return linked;
+
+  const fromText = txt.match(/(VUITENS\s+DE\s+FINAL|QUARTS?\s+DE\s+FINAL|SEMIFINALS?|ELIMINAT[ÒO]RIES\s+PR[ÈE]VIES\s+ANADA|ELIMINAT[ÒO]RIES\s+PR[ÈE]VIES\s+TORNADA|\bFINAL\b)/i);
+  if (fromText) return normalizeTeamName(fromText[1]);
+
+  return String(fallbackPhaseName || "FASE FINAL");
+}
+
+function cleanCompetitionPhaseName(name, fallback = "FASE FINAL") {
+  const cleaned = String(name || "")
+    .replace(/\(\d{4}-\d{2}\)\s*$/g, "")
+    .trim();
+  return cleaned || fallback;
+}
+
 // ── Parse competition list from HTML ─────────────────────────
 // Structure: <div class="season-section" data-season="2025-26">
 //   <div class="category-section" data-category="Prebenjami">
@@ -264,7 +335,7 @@ function parseCalendar(html) {
   return matches;
 }
 
-function parseEliminationCalendar(html) {
+function parseEliminationCalendar(html, fallbackPhaseName = "FASE FINAL") {
   const text = String(html || "");
   const chunks = text.split('<div class="mb-2 shadow-md shadow-neutral-700 mt-2">');
   if (chunks.length <= 1) return [];
@@ -274,12 +345,13 @@ function parseEliminationCalendar(html) {
 
   for (let i = 1; i < chunks.length; i += 1) {
     const block = chunks[i];
+    const phaseName = detectPhaseNameFromBlock(block, fallbackPhaseName);
 
     const teamLinks = [...block.matchAll(/href="\/equip\/(\d+)\/[^\"]*">([^<]+)<\/a>/gi)];
     if (teamLinks.length < 2) continue;
 
-    const home = strip(teamLinks[0][2]);
-    const away = strip(teamLinks[1][2]);
+    const home = normalizeTeamName(teamLinks[0][2]);
+    const away = normalizeTeamName(teamLinks[1][2]);
     if (!home || !away || home === away) continue;
 
     const dateTime = block.match(/>\s*(\d{2})-(\d{2})\s+(\d{2}:\d{2})\s*</);
@@ -289,8 +361,9 @@ function parseEliminationCalendar(html) {
     const scoreMatch = block.match(/>\s*(\d{1,2})\s*-\s*(\d{1,2})\s*</);
     const homeScore = scoreMatch ? Number(scoreMatch[1]) : null;
     const awayScore = scoreMatch ? Number(scoreMatch[2]) : null;
+    const venue = extractVenueFromBlock(block, "");
 
-    const key = `${home}|${away}|${date}|${time}|${homeScore ?? ""}|${awayScore ?? ""}`;
+    const key = `${phaseName}|${home}|${away}|${date}|${time}|${homeScore ?? ""}|${awayScore ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
 
@@ -303,6 +376,12 @@ function parseEliminationCalendar(html) {
       homeScore,
       awayScore,
       played: homeScore != null && awayScore != null,
+      source: "jok_live",
+      phaseName,
+      phaseType: "eliminatories",
+      phaseBucket: detectPhaseBucket(phaseName),
+      venue,
+      placeholder: false,
     });
   }
 
@@ -313,6 +392,7 @@ function mergeCalendarMatches(primary, extra) {
   const byKey = new Map();
   for (const m of [...(primary || []), ...(extra || [])]) {
     const key = [
+      String(m?.phaseName || ""),
       String(m?.jornada ?? ""),
       String(m?.home || "").toUpperCase(),
       String(m?.away || "").toUpperCase(),
@@ -328,6 +408,11 @@ function mergeCalendarMatches(primary, extra) {
     byKey.set(key, {
       ...prev,
       ...m,
+      phaseName: m?.phaseName || prev.phaseName,
+      phaseType: m?.phaseType || prev.phaseType,
+      phaseBucket: m?.phaseBucket || prev.phaseBucket,
+      source: m?.source || prev.source,
+      venue: m?.venue || prev.venue,
       homeScore: m?.homeScore != null ? m.homeScore : prev.homeScore,
       awayScore: m?.awayScore != null ? m.awayScore : prev.awayScore,
       played: (m?.homeScore != null && m?.awayScore != null) || prev.played === true,
@@ -972,7 +1057,8 @@ async function scrapeCompetition(comp) {
 
   const classification = parseClassification(html);
   const rawCalendar    = parseCalendar(html);
-  const elimCalendar   = parseEliminationCalendar(html);
+  const fallbackPhaseName = cleanCompetitionPhaseName(comp?.name || "", "FASE FINAL");
+  const elimCalendar   = parseEliminationCalendar(html, fallbackPhaseName);
   const mergedCalendar = mergeCalendarMatches(rawCalendar, elimCalendar);
   const actaLinks      = extractActaLinks(html);
   const calendar       = attachActesToMatches(mergedCalendar, actaLinks);
