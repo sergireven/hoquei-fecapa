@@ -766,10 +766,11 @@ async function main() {
             let grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
             let source = "puppeteer";
 
-            // Fallback: si Puppeteer retorna pocs grups, intenta HTTP directe al portal
-            if (grouped.groups.length <= 2) {
+            // Fallback HTTP directe: només quan Puppeteer no ha trobat cap grup.
+            // Això evita soroll en competicions vàlides d'1-2 grups.
+            if (grouped.groups.length === 0 && typeof fetchLeaguePageDirect === "function") {
               try {
-                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar ${grouped.groups.length} grups)...`);
+                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar 0 grups)...`);
                 const directHtml = await fetchLeaguePageDirect(compId);
                 if (directHtml && directHtml.length > 1000) {
                   const directGrouped = parseClassificationByGroupSidgad(directHtml, uniqueIdcs);
