@@ -1,6 +1,8 @@
 // FECAPA app.js v8
 const SHIELD   = "https://sidgad.cloud/fecapa/images//logos_clubes/";
 const DATA_URL = "./data.json";
+const SEASON_MANIFEST_URL = "./season-archive/manifest.json";
+const SELECTED_SEASON_KEY = "hoquei_selected_season_v1";
 const VENUES_URL = "./venues.json";
 const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
@@ -1963,6 +1965,10 @@ let fecapaCategoriesDB = null;
 let classificationSourcePilotsDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
+let seasonCatalog = [{ key: "current", label: "Actual", dataUrl: DATA_URL }];
+let activeSeasonKey = "current";
+const seasonDataCache = new Map();
+const globalJugadorsIndex = new Map();
 let allSearch     = "";
 let allFilterCat  = "ALL";
 let allOnlyActive = true;  // hide 100% finished comps by default
@@ -1987,16 +1993,40 @@ function toggleFav(compId, teamName, compName, category) {
 }
 
 const PLAYER_FAV_KEY = "hoquei_player_favs_v1";
+const PLAYER_FAV_META_KEY = "hoquei_player_fav_meta_v1";
 let playerFavs = [];
 try { playerFavs = JSON.parse(localStorage.getItem(PLAYER_FAV_KEY)||"[]"); } catch {}
+let playerFavMeta = {};
+try { playerFavMeta = JSON.parse(localStorage.getItem(PLAYER_FAV_META_KEY)||"{}"); } catch {}
 const savePlayerFavs  = () => localStorage.setItem(PLAYER_FAV_KEY, JSON.stringify(playerFavs));
+const savePlayerFavMeta = () => localStorage.setItem(PLAYER_FAV_META_KEY, JSON.stringify(playerFavMeta));
 const isPlayerFav     = jid => playerFavs.includes(jid);
+
+function rememberPlayerFavMeta(jid, explicitName = null) {
+  const key = String(jid || "").trim();
+  if (!key) return;
+  const p = getPlayerById(key);
+  const slug = p?.slug ? decodeURIComponent(String(p.slug).replace(/\+/g, " ")) : "";
+  const name = explicitName || (slug ? formatPlayerDisplayName(slug) : "") || playerFavMeta?.[key]?.name || `Jugador ${key}`;
+  const team = normalizePlayerTeamStatsForDisplay(p)?.[0] || null;
+  playerFavMeta[key] = {
+    name,
+    team: team?.team || playerFavMeta?.[key]?.team || "",
+    cat: team?.cat || playerFavMeta?.[key]?.cat || "",
+    updatedAt: new Date().toISOString(),
+  };
+  savePlayerFavMeta();
+}
+
 function togglePlayerFav(jid) {
   if (isPlayerFav(jid)) {
     playerFavs = playerFavs.filter(id=>id!==jid);
+    delete playerFavMeta[String(jid)];
+    savePlayerFavMeta();
     _removeFavFromCloud("player", jid);
   } else {
     playerFavs.push(jid);
+    rememberPlayerFavMeta(jid);
     _syncFavToCloud("player", jid, null);
   }
   savePlayerFavs();
@@ -2077,6 +2107,145 @@ let jugadorComposing = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/'/g,"&#39;");
 const decodeHtml = s => String(s||"").replace(/&#039;/g,"'").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"');
+
+function getSeasonLabelFromData(data, fallback = "Temporada") {
+  const seasonRaw = data?.season;
+  if (typeof seasonRaw === "string" && seasonRaw.trim()) return seasonRaw.trim();
+  if (Array.isArray(seasonRaw) && seasonRaw.length) return String(seasonRaw[0] || fallback).trim() || fallback;
+  return fallback;
+}
+
+async function fetchJsonFile(url) {
+  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} carregant ${url}`);
+  return res.json();
+}
+
+function mergePlayerSources(a = [], b = []) {
+  const merged = [];
+  const seen = new Set();
+  for (const src of [...a, ...b]) {
+    const key = `${src?.type || ""}::${src?.id || ""}`;
+    if (!src || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(src);
+  }
+  return merged;
+}
+
+function mergePlayerRecord(base, incoming) {
+  if (!base) return incoming;
+  if (!incoming) return base;
+  const out = { ...base, ...incoming };
+
+  const baseCareer = Array.isArray(base.careerStats) ? base.careerStats : [];
+  const inCareer = Array.isArray(incoming.careerStats) ? incoming.careerStats : [];
+  out.careerStats = inCareer.length >= baseCareer.length ? inCareer : baseCareer;
+
+  const baseTeamStats = Array.isArray(base.teamStats) ? base.teamStats : [];
+  const inTeamStats = Array.isArray(incoming.teamStats) ? incoming.teamStats : [];
+  out.teamStats = inTeamStats.length >= baseTeamStats.length ? inTeamStats : baseTeamStats;
+
+  out.sources = mergePlayerSources(base.sources, incoming.sources);
+  return out;
+}
+
+function rebuildGlobalJugadorsIndex() {
+  globalJugadorsIndex.clear();
+  for (const data of seasonDataCache.values()) {
+    const jugadors = data?.jugadors || {};
+    for (const [jid, player] of Object.entries(jugadors)) {
+      const prev = globalJugadorsIndex.get(jid);
+      globalJugadorsIndex.set(jid, mergePlayerRecord(prev, player));
+    }
+  }
+}
+
+function getPlayerById(jid) {
+  const key = String(jid || "").trim();
+  if (!key) return null;
+  return globalJugadorsIndex.get(key) || DB?.jugadors?.[key] || null;
+}
+
+function getAllPlayersEntries() {
+  if (!globalJugadorsIndex.size && DB?.jugadors) {
+    return Object.entries(DB.jugadors);
+  }
+  return Array.from(globalJugadorsIndex.entries());
+}
+
+function saveSelectedSeasonKey(key) {
+  try { localStorage.setItem(SELECTED_SEASON_KEY, String(key || "current")); } catch {}
+}
+
+function loadSelectedSeasonKey() {
+  try { return localStorage.getItem(SELECTED_SEASON_KEY) || "current"; } catch { return "current"; }
+}
+
+function getActiveSeasonLabel() {
+  const item = seasonCatalog.find(s => s.key === activeSeasonKey) || seasonCatalog[0] || null;
+  return item?.label || getSeasonLabelFromData(DB, "Temporada");
+}
+
+async function loadSeasonCatalog() {
+  let manifest = null;
+  try {
+    manifest = await fetchJsonFile(SEASON_MANIFEST_URL);
+  } catch {
+    manifest = null;
+  }
+
+  const fromManifest = Array.isArray(manifest?.seasons) ? manifest.seasons : [];
+  const normalized = fromManifest
+    .map((s, idx) => ({
+      key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
+      label: String(s?.label || s?.season || `Arxiu ${idx + 1}`).trim(),
+      dataUrl: String(s?.dataUrl || "").trim(),
+    }))
+    .filter(s => s.key && s.dataUrl);
+
+  seasonCatalog = [{
+    key: "current",
+    label: getSeasonLabelFromData(DB, "Actual"),
+    dataUrl: DATA_URL,
+  }, ...normalized.filter(s => s.key !== "current")];
+
+  const preferred = loadSelectedSeasonKey();
+  activeSeasonKey = seasonCatalog.some(s => s.key === preferred) ? preferred : "current";
+}
+
+async function switchActiveSeason(nextKey) {
+  const target = seasonCatalog.find(s => s.key === nextKey);
+  if (!target) return;
+  if (activeSeasonKey === nextKey) return;
+
+  if (!seasonDataCache.has(nextKey)) {
+    const data = await fetchJsonFile(target.dataUrl);
+    if (!data?.categories) throw new Error(`Dataset invàlid per ${target.label}`);
+    seasonDataCache.set(nextKey, data);
+    rebuildGlobalJugadorsIndex();
+  }
+
+  DB = seasonDataCache.get(nextKey);
+  activeSeasonKey = nextKey;
+  saveSelectedSeasonKey(nextKey);
+  applyClassificationSourceMerge();
+  runIdentityRegressionChecks();
+  detailComp = null;
+  detailTeam = null;
+  detailTeamId = null;
+  homeTab = "favs";
+  renderHome();
+}
+
+window.onSeasonSelectChange = async (value) => {
+  try {
+    await switchActiveSeason(String(value || "current"));
+  } catch (err) {
+    console.error("season-switch error", err);
+    alert(`No s'ha pogut canviar de temporada: ${err?.message || "error desconegut"}`);
+  }
+};
 
 function normalizeJokClubDisplayName(name) {
   return String(name || "")
@@ -2310,7 +2479,7 @@ async function buildPlayerTeamStatsFromSources(player, jid) {
 }
 
 async function enrichPlayerOnDemand(jid) {
-  const player = DB?.jugadors?.[jid];
+  const player = getPlayerById(jid);
   if (!player) return;
   if (Array.isArray(player.careerStats) && player.careerStats.length) return;
   try {
@@ -3757,10 +3926,20 @@ function renderHome() {
   $("screen-detail").style.display = "none";
   $("screen-picker").style.display = "none";
   $("screen-home").style.display   = "flex";
+  const seasonOptions = seasonCatalog.map(s =>
+    `<option value="${esc(s.key)}" ${s.key === activeSeasonKey ? "selected" : ""}>${esc(s.label)}</option>`
+  ).join("");
   $("home-header").innerHTML = `
     <div style="max-width:720px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900"><img src="Designer_2.png" style="height:28px;vertical-align:middle;margin-right:6px;object-fit:contain"/><span style="color:#e5001c">okCat360</span></div>
       ${renderLoginButton()}
+    </div>
+    <div style="max-width:720px;margin:0 auto;display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Temporada</div>
+      <select onchange="onSeasonSelectChange(this.value)" style="flex:1;max-width:280px;background:#fff;border:1.5px solid #e2e6ef;border-radius:9px;padding:7px 10px;font-size:12px;color:#1a2035;font-weight:600;cursor:pointer">
+        ${seasonOptions}
+      </select>
+      <div style="font-size:11px;color:#94a3b8;white-space:nowrap">${esc(getActiveSeasonLabel())}</div>
     </div>
     <div style="max-width:720px;margin:0 auto;display:flex;gap:3px">
       <button onclick="setHomeTab('favs')" style="flex:1;background:${homeTab==='favs'?"#1a2035":"#f0f4f8"};color:${homeTab==='favs'?"#fff":"#6b7a99"};border:1.5px solid ${homeTab==='favs'?"#1a2035":"#e2e6ef"};border-radius:9px;padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer">⭐ Meus${(favs.length+clubFavs.length+playerFavs.length+levelFavs.length)?` (${favs.length+clubFavs.length+playerFavs.length+levelFavs.length})`:""}</button>
@@ -3816,13 +3995,38 @@ function renderJugadorsTab(refreshOnly = false) {
     </div>`;
   };
 
+  const playerMissingRow = (jid, meta, dndType = null) => {
+    const name = meta?.name || `Jugador ${jid}`;
+    const dragAttrs = dndType === "player"
+      ? `draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')"`
+      : "";
+    const dragHandle = dndType === "player"
+      ? `<div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none;flex-shrink:0">⋮⋮</div>`
+      : "";
+    return `<div ${dragAttrs} style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8">
+      ${dragHandle}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">No visible en aquesta temporada</div>
+      </div>
+      <button onclick="event.stopPropagation();togglePlayerFavAndRender('${esc(jid)}')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px 2px;flex-shrink:0;line-height:1;color:#f59e0b">★</button>
+    </div>`;
+  };
+
   const qRaw = jugadorSearch || "";
   const q = qRaw.trim();
   let listHtml = "";
 
   // Jugadors seguits
   if (playerFavs.length) {
-    const rows = playerFavs.map(jid=>({jid,p:DB.jugadors[jid]})).filter(x=>x.p).map(x=>playerRow(x.jid,x.p,"player")).join("");
+    const rows = playerFavs.map(jid => {
+      const p = getPlayerById(jid);
+      if (p) {
+        rememberPlayerFavMeta(jid);
+        return playerRow(jid, p, "player");
+      }
+      return playerMissingRow(jid, playerFavMeta?.[String(jid)] || null, "player");
+    }).join("");
     if (rows) listHtml += `
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px">⭐ Seguits</div>
       <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,30,80,.07);margin-bottom:16px">${rows}</div>`;
@@ -3831,7 +4035,7 @@ function renderJugadorsTab(refreshOnly = false) {
   // Resultats de cerca
   if (q.length >= 2) {
     const qn = norm(q);
-    const results = Object.entries(DB.jugadors||{})
+    const results = getAllPlayersEntries()
       .filter(([jid,p]) => !isPlayerFav(jid) && norm(fmtName(p)).includes(qn))
       .sort(([,a],[,b]) => {
         const na=norm(fmtName(a)), nb=norm(fmtName(b));
@@ -3925,11 +4129,14 @@ function buildLevelFavCard(fav) {
 }
 
 function buildPlayerFavCard(jid) {
-  const p = DB?.jugadors?.[jid];
-  if (!p) return "";
-  const name = p.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : "?";
-  const team = normalizePlayerTeamStatsForDisplay(p)?.[0];
-  const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : "";
+  const p = getPlayerById(jid);
+  if (p) rememberPlayerFavMeta(jid);
+  const meta = playerFavMeta?.[String(jid)] || null;
+  const name = p?.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : (meta?.name || `Jugador ${jid}`);
+  const team = normalizePlayerTeamStatsForDisplay(p)?.[0] || (meta ? { team: meta.team, cat: meta.cat } : null);
+  const catLabel = team?.cat ? (CAT_LABELS[team.cat] || team.cat) : "";
+  const seasonNote = p ? "" : `<div style="font-size:10px;color:#94a3b8;margin-top:3px">No disponible en aquesta temporada</div>`;
+  const ctaLabel = p ? "👤 Veure fitxa" : "👤 Veure resum";
   return `
     <div draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')" style="background:#fff;border:1.5px solid #e2e6ef;border-top:4px solid #1a5dc7;border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,30,80,.07)">
       <div style="display:flex;align-items:center;gap:10px;padding:11px 13px">
@@ -3938,11 +4145,12 @@ function buildPlayerFavCard(jid) {
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
           <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(team?.team || "")}${catLabel ? ` · ${esc(catLabel)}` : ""}</div>
+          ${seasonNote}
         </div>
         <button onclick="removePlayerFavHome('${esc(jid)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
-        <button onclick="openPlayerModal('${esc(jid)}','${esc(name)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">👤 Veure fitxa</button>
+        <button onclick="openPlayerModal('${esc(jid)}','${esc(name)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">${ctaLabel}</button>
       </div>
     </div>`;
 }
@@ -5825,7 +6033,7 @@ window.openDetail=openDetail;
 // ── Fitxa de jugador (bottom sheet) ──────────────────────────
 async function openPlayerModal(jid, fallbackName) {
   await enrichPlayerOnDemand(jid);
-  const player = DB?.jugadors?.[jid];
+  const player = getPlayerById(jid);
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
   const name   = (slug ? formatPlayerDisplayName(slug) : null)
                || fallbackName
@@ -6462,6 +6670,18 @@ async function init(){
     if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
     DB=JSON.parse(await res.text());
     if (!DB.categories) throw new Error("data.json incomplet");
+
+    seasonDataCache.set("current", DB);
+    rebuildGlobalJugadorsIndex();
+    await loadSeasonCatalog();
+
+    if (activeSeasonKey !== "current") {
+      try {
+        await switchActiveSeason(activeSeasonKey);
+      } catch {
+        activeSeasonKey = "current";
+      }
+    }
 
     // Load FECAPA categories used for per-league classification source pilots.
     try {

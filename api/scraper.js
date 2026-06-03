@@ -10,10 +10,18 @@ const http  = require("http");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
+const TARGET_SEASON = String(process.env.JOK_SEASON || "2025-26").trim();
+const OUTPUT_DATA_FILE = process.env.JOK_OUTPUT_FILE
+  ? path.resolve(process.cwd(), process.env.JOK_OUTPUT_FILE)
+  : DATA_FILE;
+const OUTPUT_ACTES_DIR = process.env.JOK_ACTES_DIR
+  ? path.resolve(process.cwd(), process.env.JOK_ACTES_DIR)
+  : path.join(__dirname, "../public/actes");
+const SKIP_ACTA_ENRICH = process.env.JOK_SKIP_ACTA_ENRICH === "1";
 const DELAY_MS  = 0;
 const sleep     = ms => new Promise(r => setTimeout(r, ms));
 const ACTA_CONCURRENCY   = 4;
-const ACTA_PREVIEW_LIMIT = 4000;
+const ACTA_PREVIEW_LIMIT = Number(process.env.ACTA_PREVIEW_LIMIT || 4000);
 const ACTA_FORCE_RELOAD  = false;
 
 // ── HTTP fetch robust ─────────────────────────────────────────
@@ -128,13 +136,14 @@ function cleanCompetitionPhaseName(name, fallback = "FASE FINAL") {
 // Structure: <div class="season-section" data-season="2025-26">
 //   <div class="category-section" data-category="Prebenjami">
 //     <a href="/competicio/4301/bcn-prebenjami-or-1-2025-26">BCN PREBENJAMI OR 1 (2025-26)</a>
-function parseCompetitionList(html) {
+function parseCompetitionList(html, seasonLabel = TARGET_SEASON) {
   const comps = [];
   const seen  = new Set();
 
-  // Extract only the 2025-26 season block using indexOf (more reliable than regex on large HTML)
-  const seasonStart = html.indexOf('data-season="2025-26"');
-  const seasonEnd   = html.indexOf('data-season="2024-25"'); // next season = end of block
+  // Extract only target season block using indexOf (more reliable than regex on large HTML)
+  const seasonStart = html.indexOf(`data-season="${seasonLabel}"`);
+  const nextSeasonIdx = seasonStart !== -1 ? html.indexOf('data-season="', seasonStart + 1) : -1;
+  const seasonEnd   = nextSeasonIdx !== -1 ? nextSeasonIdx : -1;
   const block = seasonStart !== -1
     ? html.slice(seasonStart, seasonEnd !== -1 ? seasonEnd : html.length)
     : html; // fallback to full html
@@ -760,6 +769,11 @@ const ENRICH_LIMIT  = 400;  // màxim per execució
 const STALE_MS      = 14 * 24 * 60 * 60 * 1000; // re-enriquir als 14 dies
 
 async function enrichJugadors(jugadors) {
+  if (SKIP_ACTA_ENRICH) {
+    console.log("   ⏭️  Saltant enrichJugadors (JOK_SKIP_ACTA_ENRICH=1)");
+    return;
+  }
+
   const now = Date.now();
   const all = Object.values(jugadors).filter(j => j.jugadorId);
 
@@ -831,12 +845,12 @@ async function runPool(items, limit, worker) {
 
 async function readPreviousData() {
   try {
-    const raw = await fs.readFile(DATA_FILE, "utf8");
+    const raw = await fs.readFile(OUTPUT_DATA_FILE, "utf8");
     const data = JSON.parse(raw);
 
     // Actes are now in per-category files — reconstitute from them
     if (!data.actes) {
-      const actesDir = path.join(__dirname, "../public/actes");
+      const actesDir = OUTPUT_ACTES_DIR;
       data.actes = {};
       try {
         const files = (await fs.readdir(actesDir)).filter(f => f.endsWith(".json"));
@@ -867,6 +881,11 @@ function shouldLoadActa(acta) {
 }
 
 async function loadPendingActes(output) {
+  if (SKIP_ACTA_ENRICH) {
+    console.log("   ⏭️  Saltant loadPendingActes (JOK_SKIP_ACTA_ENRICH=1)");
+    return;
+  }
+
   if (!output.actes || typeof output.actes !== "object") return;
 
   ensureJugadorsIndex(output);
@@ -1798,6 +1817,8 @@ async function mergejokIntoSidgad(categories) {
 // ── Main ──────────────────────────────────────────────────────
 async function main() {
   console.log("🏒 jok.cat Scraper v5 — iniciant...\n");
+  console.log(`📅 Temporada objectiu: ${TARGET_SEASON}`);
+  console.log(`📄 Sortida dades: ${OUTPUT_DATA_FILE}`);
   const t0 = Date.now();
   const previousData = await readPreviousData();
   const previousActes = previousData?.actes || {};
@@ -1813,10 +1834,10 @@ async function main() {
   }
 
   // Debug: show what we got
-  const season26 = listHtml.indexOf("2025-26");
-  console.log(`   HTML rebut: ${listHtml.length} bytes, '2025-26' a posició ${season26}`);
+  const seasonPos = listHtml.indexOf(TARGET_SEASON);
+  console.log(`   HTML rebut: ${listHtml.length} bytes, '${TARGET_SEASON}' a posició ${seasonPos}`);
 
-  const allComps = parseCompetitionList(listHtml);
+  const allComps = parseCompetitionList(listHtml, TARGET_SEASON);
   console.log(`   Competicions trobades: ${allComps.length}`);
   console.log("   Debug competicions carregades (jok.cat):");
   allComps.forEach(comp => {
@@ -1825,9 +1846,9 @@ async function main() {
 
   if (allComps.length === 0) {
     // Show raw HTML snippet around season section for debugging
-    if (season26 > -1) {
-      console.log("\n   HTML al voltant de 2025-26:");
-      console.log(listHtml.slice(season26, season26 + 800));
+    if (seasonPos > -1) {
+      console.log(`\n   HTML al voltant de ${TARGET_SEASON}:`);
+      console.log(listHtml.slice(seasonPos, seasonPos + 800));
     } else {
       console.log("\n   HTML primers 1000 chars:");
       console.log(listHtml.slice(0, 1000));
@@ -1835,7 +1856,7 @@ async function main() {
     process.exit(1);
   }
 
-  // All comps from the 2025-26 block are already current season
+  // All comps from target season block are already for that season
   const current = [...allComps];
   const queuedCompIds = new Set(current.map(c => String(c.id)));
   console.log(`   Processant ${current.length} competicions...\n`);
@@ -1958,7 +1979,7 @@ async function main() {
 
   const output = {
     updatedAt:  new Date().toISOString(),
-    season:     "2025-26",
+    season:     TARGET_SEASON,
     totalComps: done,
     categories,
     clubIndex,
@@ -1967,7 +1988,11 @@ async function main() {
   };
 
   migrateActes(output);
-  await loadPendingActes(output);
+  if (SKIP_ACTA_ENRICH) {
+    console.log("   ⏭️  Saltant enriquiment de pending actes (JOK_SKIP_ACTA_ENRICH=1)");
+  } else {
+    await loadPendingActes(output);
+  }
   await enrichJugadors(output.jugadors);
 
   // Build compId → catSlug lookup
@@ -1987,7 +2012,7 @@ async function main() {
   }
 
   // Write per-category actes files
-  const actesDir = path.join(__dirname, "../public/actes");
+  const actesDir = OUTPUT_ACTES_DIR;
   await fs.mkdir(actesDir, { recursive: true });
   for (const [slug, actes] of Object.entries(actesByCat)) {
     const filePath = path.join(actesDir, `${slug}.json`);
@@ -2057,13 +2082,13 @@ async function main() {
   outputMain.sidgadChildren  = sidgadChildren;
   outputMain.lastUpdate = new Date().toISOString();
 
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(outputMain, null, 2));
+  await fs.mkdir(path.dirname(OUTPUT_DATA_FILE), { recursive: true });
+  await fs.writeFile(OUTPUT_DATA_FILE, JSON.stringify(outputMain, null, 2));
 
   const elapsed = ((Date.now()-t0)/1000).toFixed(1);
   const kb      = (JSON.stringify(outputMain).length / 1024).toFixed(0);
   console.log(`\n✅ Fet en ${elapsed}s — ${done} competicions, ${errors} errors, ${kb} KB`);
-  console.log(`   → ${DATA_FILE}`);
+  console.log(`   → ${OUTPUT_DATA_FILE}`);
 
   const stats = Object.entries(categories)
     .filter(([,v]) => v.length > 0)
