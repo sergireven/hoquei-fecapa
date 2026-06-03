@@ -2,7 +2,8 @@
   "ok": true,
   "pilot": true,
   "jokCompId": "3935",
-  "fetchedAt": "2026-06-03T05:56:36.153Z",
+  "fecapaCompId": "3935",
+  "slug": "",
   "phases": [
     {
       "phaseId": "VUITENS DE FINAL::eliminatories",
@@ -326,10 +327,8 @@
   "placeholdersCount": 15,
   "sources": {
     "jok": {
-      "enabled": true,
-      "url": "https://jok.cat/competicio/3935",
-      "matchCount": 0,
-      "error": "HTTP 404"
+      "enabled": false,
+      "reason": "fecapa-id-key"
     },
     "fecapa": {
       "enabled": true,
