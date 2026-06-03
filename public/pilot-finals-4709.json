@@ -2,7 +2,7 @@
   "ok": true,
   "pilot": true,
   "jokCompId": "4709",
-  "fetchedAt": "2026-06-02T18:09:38.633Z",
+  "fetchedAt": "2026-06-03T05:56:37.306Z",
   "phases": [
     {
       "phaseId": "ELIMINATÒRIES PRÈVIES ANADA::eliminatories",
@@ -229,25 +229,6 @@
         },
         {
           "jornada": null,
-          "home": "Shum Frit Ravich A",
-          "away": "Ce Vendrell B",
-          "homeId": "9789",
-          "awayId": "9902",
-          "date": "31-05",
-          "time": "10:30",
-          "homeScore": 3,
-          "awayScore": 3,
-          "played": true,
-          "source": "jok_live",
-          "phaseName": "ELIMINATÒRIES PRÈVIES TORNADA",
-          "phaseType": "eliminatories",
-          "actaId": "145305",
-          "venue": "",
-          "phaseBucket": "elim_prev_tornada",
-          "placeholder": false
-        },
-        {
-          "jornada": null,
           "home": "Laumont Hoquei Tàrrega",
           "away": "Ch Lloret Cafes Cornella",
           "homeId": "9848",
@@ -261,6 +242,25 @@
           "phaseName": "ELIMINATÒRIES PRÈVIES TORNADA",
           "phaseType": "eliminatories",
           "actaId": "145307",
+          "venue": "",
+          "phaseBucket": "elim_prev_tornada",
+          "placeholder": false
+        },
+        {
+          "jornada": null,
+          "home": "Shum Frit Ravich A",
+          "away": "Ce Vendrell B",
+          "homeId": "9789",
+          "awayId": "9902",
+          "date": "31-05",
+          "time": "10:30",
+          "homeScore": 3,
+          "awayScore": 3,
+          "played": true,
+          "source": "jok_live",
+          "phaseName": "ELIMINATÒRIES PRÈVIES TORNADA",
+          "phaseType": "eliminatories",
+          "actaId": "145305",
           "venue": "",
           "phaseBucket": "elim_prev_tornada",
           "placeholder": false
@@ -736,7 +736,7 @@
       "enabled": true,
       "url": "https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_3937_1.php",
       "competitionId": "3937",
-      "groupName": "ALEVÍ COPA CATALANA PLATA FASE FINAL",
+      "groupName": null,
       "matchCount": 0,
       "error": "HTTP 404"
     }
