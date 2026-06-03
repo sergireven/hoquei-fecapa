@@ -247,6 +247,78 @@ function parseCalendar(html) {
   return matches;
 }
 
+function parseEliminationCalendar(html) {
+  const text = String(html || "");
+  const chunks = text.split('<div class="mb-2 shadow-md shadow-neutral-700 mt-2">');
+  if (chunks.length <= 1) return [];
+
+  const out = [];
+  const seen = new Set();
+
+  for (let i = 1; i < chunks.length; i += 1) {
+    const block = chunks[i];
+
+    const teamLinks = [...block.matchAll(/href="\/equip\/(\d+)\/[^\"]*">([^<]+)<\/a>/gi)];
+    if (teamLinks.length < 2) continue;
+
+    const home = strip(teamLinks[0][2]);
+    const away = strip(teamLinks[1][2]);
+    if (!home || !away || home === away) continue;
+
+    const dateTime = block.match(/>\s*(\d{2})-(\d{2})\s+(\d{2}:\d{2})\s*</);
+    const date = dateTime ? `${dateTime[1]}-${dateTime[2]}` : "";
+    const time = dateTime ? String(dateTime[3]) : "";
+
+    const scoreMatch = block.match(/>\s*(\d{1,2})\s*-\s*(\d{1,2})\s*</);
+    const homeScore = scoreMatch ? Number(scoreMatch[1]) : null;
+    const awayScore = scoreMatch ? Number(scoreMatch[2]) : null;
+
+    const key = `${home}|${away}|${date}|${time}|${homeScore ?? ""}|${awayScore ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    out.push({
+      jornada: null,
+      home,
+      away,
+      date,
+      time,
+      homeScore,
+      awayScore,
+      played: homeScore != null && awayScore != null,
+    });
+  }
+
+  return out;
+}
+
+function mergeCalendarMatches(primary, extra) {
+  const byKey = new Map();
+  for (const m of [...(primary || []), ...(extra || [])]) {
+    const key = [
+      String(m?.jornada ?? ""),
+      String(m?.home || "").toUpperCase(),
+      String(m?.away || "").toUpperCase(),
+      String(m?.date || ""),
+      String(m?.time || ""),
+    ].join("|");
+    if (!key.replace(/\|/g, "")) continue;
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...m });
+      continue;
+    }
+    const prev = byKey.get(key);
+    byKey.set(key, {
+      ...prev,
+      ...m,
+      homeScore: m?.homeScore != null ? m.homeScore : prev.homeScore,
+      awayScore: m?.awayScore != null ? m.awayScore : prev.awayScore,
+      played: (m?.homeScore != null && m?.awayScore != null) || prev.played === true,
+    });
+  }
+  return [...byKey.values()];
+}
+
 // ── Parse acta links from competition page HTML ────────────────
 // Expected format:
 //   /acta/136718/CLUB+HOQUEI+RIPOLLET+C-CP+CALDES+B
@@ -883,8 +955,10 @@ async function scrapeCompetition(comp) {
 
   const classification = parseClassification(html);
   const rawCalendar    = parseCalendar(html);
+  const elimCalendar   = parseEliminationCalendar(html);
+  const mergedCalendar = mergeCalendarMatches(rawCalendar, elimCalendar);
   const actaLinks      = extractActaLinks(html);
-  const calendar       = attachActesToMatches(rawCalendar, actaLinks);
+  const calendar       = attachActesToMatches(mergedCalendar, actaLinks);
 
   const teamToClub     = extractClubInfo(html);
   const teams          = extractTeams(html);
