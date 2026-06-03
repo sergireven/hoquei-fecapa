@@ -352,19 +352,31 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     const merged = addPhasePlaceholders(mergedBase, cfg);
     const phases = groupMatchesIntoPhases(merged);
 
-    return {
-      ok: true,
-      pilot: true,
-      jokCompId: compId,
-      fetchedAt: new Date().toISOString(),
-      phases,
-      matchCount: merged.length,
-      placeholdersCount: merged.filter(m => m.placeholder === true).length,
-      sources,
-    };
-  } catch (err) {
-    return {
-      ok: false,
+      // JOK is only meaningful when the key is a JOK competition ID, i.e. when a slug is
+      // provided OR fecapaCompetitionId differs from the key. Otherwise the key is a FECAPA
+      // ID and hitting jok.cat with it would return wrong/empty data.
+      const jokEnabled = effectiveSlug !== "" || fecapaCompId !== compId;
+      const jokUrl = jokEnabled
+        ? (effectiveSlug
+            ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
+            : `https://jok.cat/competicio/${encodeURIComponent(compId)}`)
+        : null;
+      const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(fecapaCompId)}_1.php`;
+
+      let jokMatches = [];
+      let fecapaMatches = [];
+      const sources = {
+        jok: jokEnabled ? { enabled: true, url: jokUrl, matchCount: 0, error: null } : { enabled: false, reason: "fecapa-id-key" },
+          if (jokEnabled) {
+            try {
+              const jokHtml = await fetchText(jokUrl, { referer: "https://jok.cat/" });
+              jokMatches = parseJokMatchesFromHtml(jokHtml, fallbackPhaseName);
+              sources.jok.matchCount = jokMatches.length;
+              sources.jok.phaseNames = [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))];
+            } catch (err) {
+              sources.jok.error = err.message || "jok-fetch-failed";
+            }
+          }
       error: err.message || "Unknown error",
     };
   }
