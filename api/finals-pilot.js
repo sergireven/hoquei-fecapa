@@ -466,6 +466,7 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     return {
       ok: true,
       pilot: true,
+      competitionKey: compId,
       jokCompId: compId,
       fecapaCompId,
       slug: effectiveSlug,
@@ -478,6 +479,7 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     return {
       ok: false,
       pilot: true,
+      competitionKey: compId,
       jokCompId: compId,
       error: err.message || "Unknown error",
     };

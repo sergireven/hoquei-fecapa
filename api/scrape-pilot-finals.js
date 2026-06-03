@@ -10,6 +10,8 @@ function getArg(name, fallback = "") {
 }
 
 function printSummary(jokCompId, outPath, data) {
+  const pilotCompKey = String(data?.competitionKey || data?.jokCompId || jokCompId || "").trim();
+  const fecapaCompId = String(data?.fecapaCompId || "").trim();
   const phases = Array.isArray(data.phases) ? data.phases.length : 0;
   const matchCount = Number(data.matchCount || 0);
   const jokCount = Number(data?.sources?.jok?.matchCount || 0);
@@ -21,9 +23,19 @@ function printSummary(jokCompId, outPath, data) {
   const fecapaErr = data?.sources?.fecapa?.error || null;
   const jokPhases = Array.isArray(data?.sources?.jok?.phaseNames) ? data.sources.jok.phaseNames : [];
   const fecapaPhases = Array.isArray(data?.sources?.fecapa?.phaseNames) ? data.sources.fecapa.phaseNames : [];
+  const jokEnabled = data?.sources?.jok?.enabled === true;
+  const jokMode = String(data?.sources?.jok?.mode || (jokEnabled ? "live" : "disabled"));
+  const mappedJokIds = Array.isArray(data?.sources?.jok?.mappedJokIds) ? data.sources.jok.mappedJokIds : [];
 
   console.log(`[pilot-finals] output: ${outPath}`);
-  console.log(`[pilot-finals] target jokCompId=${jokCompId}`);
+  console.log(`[pilot-finals] target pilotCompKey=${pilotCompKey}`);
+  if (fecapaCompId) {
+    console.log(`[pilot-finals] ids pilotCompKey=${pilotCompKey} fecapaCompId=${fecapaCompId}`);
+  }
+  console.log(`[pilot-finals] source.jok enabled=${jokEnabled} mode=${jokMode}`);
+  if (mappedJokIds.length > 0) {
+    console.log(`[pilot-finals] source.jok mappedJokIds=[${mappedJokIds.join(", ")}]`);
+  }
   console.log(`[pilot-finals] source.jok url=${jokUrl}`);
   console.log(`[pilot-finals] source.fecapa url=${fecapaUrl}`);
   console.log(`[pilot-finals] phases=${phases} matches=${matchCount} placeholders=${placeholders}`);
