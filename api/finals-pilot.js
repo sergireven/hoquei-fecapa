@@ -1,3 +1,6 @@
+const fs = require("fs").promises;
+const path = require("path");
+
 // Default copa phase templates applied when an entry does not define phaseTemplates.
 // Add a venue property to any bucket to override the venue for that phase.
 const DEFAULT_COPA_PHASE_TEMPLATES = [
@@ -286,6 +289,90 @@ async function fetchText(url, headers = {}) {
   return res.text();
 }
 
+async function readJsonFileSafe(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function cleanCompetitionPhaseName(name, fallback = "FASE FINAL") {
+  const cleaned = String(name || "")
+    .replace(/\(\d{4}-\d{2}\)\s*$/g, "")
+    .trim();
+  return cleaned || fallback;
+}
+
+async function loadCachedJokMatchesFromData({ fecapaCompId, fallbackPhaseName }) {
+  const sidgadFile = path.join(__dirname, "../public/competicions-sidgad.json");
+  const dataFile = path.join(__dirname, "../public/data.json");
+
+  const sidgad = await readJsonFileSafe(sidgadFile);
+  const data = await readJsonFileSafe(dataFile);
+  if (!sidgad || !data) return { matches: [], jokIds: [] };
+
+  const sidgadComp = sidgad[String(fecapaCompId)] || null;
+  if (!sidgadComp) return { matches: [], jokIds: [] };
+
+  const jokIds = new Set();
+  for (const m of (sidgadComp.matches || [])) {
+    const idc = String(m?.idc || "").trim();
+    if (/^\d+$/.test(idc)) jokIds.add(idc);
+  }
+  for (const idc of Object.keys(sidgadComp.classificationByGroup || {})) {
+    const key = String(idc || "").trim();
+    if (/^\d+$/.test(key)) jokIds.add(key);
+  }
+
+  if (!jokIds.size) return { matches: [], jokIds: [] };
+
+  const comps = [];
+  for (const catComps of Object.values(data?.categories || {})) {
+    if (!Array.isArray(catComps)) continue;
+    for (const c of catComps) comps.push(c);
+  }
+
+  const byId = new Map(comps.map(c => [String(c?.id || ""), c]));
+  const matches = [];
+  for (const jokId of jokIds) {
+    const comp = byId.get(jokId);
+    if (!comp) continue;
+
+    const phaseName = cleanCompetitionPhaseName(comp.name, fallbackPhaseName);
+    for (const m of (comp.calendar || [])) {
+      const home = normalizeTeamName(m?.home || "");
+      const away = normalizeTeamName(m?.away || "");
+      if (!home || !away) continue;
+
+      const homeScore = m?.homeScore != null ? Number(m.homeScore) : null;
+      const awayScore = m?.awayScore != null ? Number(m.awayScore) : null;
+      matches.push({
+        jornada: m?.jornada ?? null,
+        home,
+        away,
+        homeId: null,
+        awayId: null,
+        date: String(m?.date || ""),
+        time: String(m?.time || ""),
+        homeScore,
+        awayScore,
+        played: homeScore != null && awayScore != null,
+        source: "jok_cached",
+        phaseName,
+        phaseType: "eliminatories",
+        actaId: m?.actaId != null ? String(m.actaId) : null,
+        venue: String(m?.venue || ""),
+        phaseBucket: detectPhaseBucket(phaseName),
+        placeholder: false,
+      });
+    }
+  }
+
+  return { matches, jokIds: [...jokIds] };
+}
+
 async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
   const compId = String(jokCompId || "4709").trim();
   const cfg = PILOT_COMPETITIONS[compId];
@@ -308,15 +395,20 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     const effectiveSlug = String(slug || cfg.slug || "").trim();
     const fallbackPhaseName = cfg.defaultPhaseName || "FASE FINAL";
     const fecapaCompId = String(cfg.fecapaCompetitionId || compId).trim(); // falls back to the map key
-    const jokUrl = effectiveSlug
-      ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
-      : `https://jok.cat/competicio/${encodeURIComponent(compId)}`;
+    // If there is no slug and the configured FECAPA ID matches the map key,
+    // treat that key as a FECAPA competition ID and skip JOK.
+    const jokEnabled = effectiveSlug !== "" || fecapaCompId !== compId;
+    const jokUrl = jokEnabled
+      ? (effectiveSlug
+          ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
+          : `https://jok.cat/competicio/${encodeURIComponent(compId)}`)
+      : null;
     const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(fecapaCompId)}_1.php`;
 
     let jokMatches = [];
     let fecapaMatches = [];
     const sources = {
-      jok: { enabled: true, url: jokUrl, matchCount: 0, error: null },
+      jok: jokEnabled ? { enabled: true, url: jokUrl, matchCount: 0, error: null } : { enabled: false, reason: "fecapa-id-key" },
       fecapa: {
         enabled: true,
         url: fecapaUrl,
@@ -327,13 +419,32 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
       },
     };
 
-    try {
-      const jokHtml = await fetchText(jokUrl, { referer: "https://jok.cat/" });
-      jokMatches = parseJokMatchesFromHtml(jokHtml, fallbackPhaseName);
-      sources.jok.matchCount = jokMatches.length;
-      sources.jok.phaseNames = [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))];
-    } catch (err) {
-      sources.jok.error = err.message || "jok-fetch-failed";
+    if (jokEnabled) {
+      try {
+        const jokHtml = await fetchText(jokUrl, { referer: "https://jok.cat/" });
+        jokMatches = parseJokMatchesFromHtml(jokHtml, fallbackPhaseName);
+        sources.jok.matchCount = jokMatches.length;
+        sources.jok.phaseNames = [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))];
+      } catch (err) {
+        sources.jok.error = err.message || "jok-fetch-failed";
+      }
+    }
+
+    if (!jokMatches.length) {
+      const cached = await loadCachedJokMatchesFromData({ fecapaCompId, fallbackPhaseName });
+      if (cached.matches.length > 0) {
+        jokMatches = cached.matches;
+        sources.jok = {
+          enabled: true,
+          url: jokUrl,
+          mode: "cached-data-json",
+          fromFecapaCompetitionId: fecapaCompId,
+          mappedJokIds: cached.jokIds,
+          matchCount: jokMatches.length,
+          phaseNames: [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))],
+          error: null,
+        };
+      }
     }
 
     try {
@@ -351,32 +462,23 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     const mergedBase = mergeMatches([...jokMatches, ...fecapaMatches]);
     const merged = addPhasePlaceholders(mergedBase, cfg);
     const phases = groupMatchesIntoPhases(merged);
-
-      // JOK is only meaningful when the key is a JOK competition ID, i.e. when a slug is
-      // provided OR fecapaCompetitionId differs from the key. Otherwise the key is a FECAPA
-      // ID and hitting jok.cat with it would return wrong/empty data.
-      const jokEnabled = effectiveSlug !== "" || fecapaCompId !== compId;
-      const jokUrl = jokEnabled
-        ? (effectiveSlug
-            ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
-            : `https://jok.cat/competicio/${encodeURIComponent(compId)}`)
-        : null;
-      const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(fecapaCompId)}_1.php`;
-
-      let jokMatches = [];
-      let fecapaMatches = [];
-      const sources = {
-        jok: jokEnabled ? { enabled: true, url: jokUrl, matchCount: 0, error: null } : { enabled: false, reason: "fecapa-id-key" },
-          if (jokEnabled) {
-            try {
-              const jokHtml = await fetchText(jokUrl, { referer: "https://jok.cat/" });
-              jokMatches = parseJokMatchesFromHtml(jokHtml, fallbackPhaseName);
-              sources.jok.matchCount = jokMatches.length;
-              sources.jok.phaseNames = [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))];
-            } catch (err) {
-              sources.jok.error = err.message || "jok-fetch-failed";
-            }
-          }
+    const placeholdersCount = merged.filter(m => m && m.placeholder === true).length;
+    return {
+      ok: true,
+      pilot: true,
+      jokCompId: compId,
+      fecapaCompId,
+      slug: effectiveSlug,
+      phases,
+      matchCount: merged.length,
+      placeholdersCount,
+      sources,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      pilot: true,
+      jokCompId: compId,
       error: err.message || "Unknown error",
     };
   }
