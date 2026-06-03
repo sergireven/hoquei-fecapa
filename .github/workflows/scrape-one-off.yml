@@ -1,0 +1,138 @@
+name: Scrape One-Off
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Temporada objectiu (ex: 2025-26)"
+        required: true
+        default: "2025-26"
+      mode:
+        description: "Mode scrape"
+        required: true
+        type: choice
+        options:
+          - off
+          - on
+        default: off
+      output_file:
+        description: "Fitxer sortida data (buit = public/data.json)"
+        required: false
+        default: ""
+      actes_dir:
+        description: "Directori actes (buit = public/actes)"
+        required: false
+        default: ""
+      run_prereq_scrapers:
+        description: "Executar sidgad + categories abans del principal"
+        required: true
+        type: boolean
+        default: true
+      run_audit:
+        description: "Executar build:audit després de scrape"
+        required: true
+        type: boolean
+        default: true
+      auto_commit:
+        description: "Fer commit i push automàtic dels canvis"
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  scrape-one-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repositori
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Instal lar dependencies
+        run: npm install
+
+      - name: Executar scrapers previs
+        if: ${{ inputs.run_prereq_scrapers }}
+        run: |
+          node api/scraper-sidgad.js
+          node api/scraper-fecapa-categories.js \
+            --category "NACIONAL CATALANA" \
+            --category "PRIMERA CATALANA" \
+            --category "SEGONA CATALANA" \
+            --category "TERCERA CATALANA" \
+            --category FEM \
+            --category JUNIOR \
+            --category JUVENIL \
+            --category INFANTIL \
+            --category PREBENJAMI \
+            --category BENJAMI \
+            --category ALEVI \
+            --category VETERANS \
+            --competition-timeout-ms 45000 \
+            --output public/fecapa-categories.json
+
+      - name: Executar scrape one-off
+        env:
+          JOK_SEASON: ${{ inputs.season }}
+          JOK_OUTPUT_FILE: ${{ inputs.output_file }}
+          JOK_ACTES_DIR: ${{ inputs.actes_dir }}
+        run: |
+          if [ -z "$JOK_OUTPUT_FILE" ]; then
+            unset JOK_OUTPUT_FILE
+          fi
+          if [ -z "$JOK_ACTES_DIR" ]; then
+            unset JOK_ACTES_DIR
+          fi
+
+          if [ "${{ inputs.mode }}" = "off" ]; then
+            npm run scrape:off
+          else
+            npm run scrape:on
+          fi
+
+      - name: Build audit
+        if: ${{ inputs.run_audit }}
+        run: npm run build:audit
+
+      - name: Detectar canvis
+        id: changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "dirty=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "dirty=true" >> "$GITHUB_OUTPUT"
+            git status --short
+          fi
+
+      - name: Commit i push
+        if: ${{ inputs.auto_commit && steps.changes.outputs.dirty == 'true' }}
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A public
+          git commit -m "chore: one-off scrape ${{ inputs.season }} (${{ inputs.mode }})"
+          git push
+
+      - name: No hi ha canvis
+        if: ${{ steps.changes.outputs.dirty == 'false' }}
+        run: echo "No hi ha canvis per commitejar"
+
+      - name: Artefactes de debug en error
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-one-off-debug
+          path: |
+            debug*.txt
+            public/debug-*.html
+          retention-days: 7
