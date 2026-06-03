@@ -1,9 +1,23 @@
+// Default copa phase templates applied when an entry does not define phaseTemplates.
+// Add a venue property to any bucket to override the venue for that phase.
+const DEFAULT_COPA_PHASE_TEMPLATES = [
+  { bucket: "vuitens", phaseName: "VUITENS DE FINAL", slots: 8 },
+  { bucket: "quarts", phaseName: "QUARTS DE FINAL", slots: 4 },
+  { bucket: "semifinals", phaseName: "SEMIFINALS", slots: 2 },
+  { bucket: "final", phaseName: "FINAL", slots: 1 },
+];
+
+// To add a competition, the minimum required is the FECAPA competition ID as the key.
+// The scraper will automatically use DEFAULT_COPA_PHASE_TEMPLATES and "FASE FINAL" as
+// the default phase name. Override any field to customise behaviour:
+//   fecapaCompetitionId  – FECAPA group ID (defaults to the map key)
+//   defaultPhaseName     – fallback phase label (default: "FASE FINAL")
+//   slug                 – JOK.cat competition slug (only needed when key ≠ JOK ID)
+//   phaseTemplates       – explicit list of phases/slots/venues; set to [] to disable placeholders
 const PILOT_COMPETITIONS = {
   "4709": {
     slug: "alevi-copa-catalana-plata-fase-final-2025-26",
-    defaultPhaseName: "FASE FINAL",
     fecapaCompetitionId: "3937",
-    fecapaGroupName: "ALEVÍ COPA CATALANA PLATA FASE FINAL",
     phaseTemplates: [
       { bucket: "vuitens", phaseName: "VUITENS DE FINAL", slots: 8, venue: "PAVELLÓ MUNICIPAL D ESPORTS DE SALT" },
       { bucket: "quarts", phaseName: "QUARTS DE FINAL", slots: 4, venue: "PAVELLÓ MUNICIPAL D ESPORTS DE SALT" },
@@ -11,18 +25,8 @@ const PILOT_COMPETITIONS = {
       { bucket: "final", phaseName: "FINAL", slots: 1, venue: "PAVELLÓ MUNICIPAL RODA DE TER" },
     ],
   },
-  "4452": {
-    defaultPhaseName: "FASE FINAL",
-    fecapaCompetitionId: "4452",
-    fecapaGroupName: "COPA BARCELONA",
-    phaseTemplates: [],
-  },
-  "3935": {
-    defaultPhaseName: "FASE FINAL",
-    fecapaCompetitionId: "3935",
-    fecapaGroupName: "FASE FINAL",
-    phaseTemplates: [],
-  },
+  "4452": {},
+  "3935": {},
 };
 
 function decodeHtmlEntities(text) {
@@ -209,7 +213,11 @@ function parseFecapaMatchesFromHtml(html, fallbackPhaseName = "FASE FINAL", cfg 
 }
 
 function addPhasePlaceholders(matches, cfg) {
-  const templates = cfg?.phaseTemplates || [];
+  // Use explicit phaseTemplates when set; fall back to DEFAULT_COPA_PHASE_TEMPLATES
+  // when the key is absent (not configured). An explicit [] disables placeholders.
+  const templates = Object.prototype.hasOwnProperty.call(cfg || {}, "phaseTemplates")
+    ? (cfg.phaseTemplates || [])
+    : DEFAULT_COPA_PHASE_TEMPLATES;
   if (!templates.length) return matches || [];
 
   const out = [...(matches || [])];
@@ -299,7 +307,7 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
   try {
     const effectiveSlug = String(slug || cfg.slug || "").trim();
     const fallbackPhaseName = cfg.defaultPhaseName || "FASE FINAL";
-    const fecapaCompId = String(cfg.fecapaCompetitionId || compId).trim();
+    const fecapaCompId = String(cfg.fecapaCompetitionId || compId).trim(); // falls back to the map key
     const jokUrl = effectiveSlug
       ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
       : `https://jok.cat/competicio/${encodeURIComponent(compId)}`;
