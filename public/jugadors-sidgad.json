@@ -79015,6 +79015,14 @@
     "isGK": true,
     "fetchedAt": "2026-05-15T20:20:00.451Z"
   },
+  "91943": {
+    "sidgadId": "91943",
+    "name": "PREU GONZALEZ SAULA ERIC",
+    "birthDate": "20/11/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-06-03T14:09:23.712Z"
+  },
   "91970": {
     "sidgadId": "91970",
     "name": "PREI CARNER SHEMELIS ANNA MARIA",
@@ -96404,6 +96412,12 @@
     "130563",
     "130564",
     "130520",
-    "130561"
+    "130561",
+    "142185",
+    "142183",
+    "142237",
+    "142241",
+    "142296",
+    "142352"
   ]
 }
