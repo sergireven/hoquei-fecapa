@@ -1,11 +1,9 @@
-# Pilot Fases Finals: flux simple i automatitzat
+# Fases Finals: validació en producció
 
-Aquest projecte inclou 2 Actions complementàries:
+Aquest projecte utilitza una Action principal de comprovació:
 
-- Workflow: `.github/workflows/prod-pilot-finals-check.yml`
-- Nom a GitHub Actions: `Prod Pilot Finals Check`
-- Workflow: `.github/workflows/scrape-pilot-finals.yml`
-- Nom a GitHub Actions: `Scrape Pilot Finals`
+- Workflow: `.github/workflows/prod-finals-check.yml`
+- Nom a GitHub Actions: `Prod Finals Check`
 
 ## 1) Configuració (una sola vegada)
 
@@ -15,18 +13,18 @@ La workflow ja porta una URL de prod per defecte:
 
 - `https://hoquei-fecapa.vercel.app`
 
-## 2) Flux recomanat (commit + PR + prod + scrape)
+## 2) Flux recomanat (commit + PR + validació)
 
 1. Puja el codi (PR) i merge a la branca de producció.
 2. Quan Vercel acabi el deploy, ves a `Actions`.
-3. Executa `Scrape Pilot Finals`.
-4. Aquesta Action llegeix dades live (JOK + FECAPA), genera snapshot i el puja al repo.
-5. Revisa a `okCat360` si la lliga pilot té sentit.
+3. Executa `Prod Finals Check`.
+4. Aquesta Action consulta l'endpoint live de fases finals i valida la resposta.
+5. Revisa a `okCat360` que les fases finals es mostrin correctament.
 
 ## 3) Prova ràpida de salut (opcional)
 
 1. Ves a `Actions`.
-2. Obre `Prod Pilot Finals Check`.
+2. Obre `Prod Finals Check`.
 3. Clica `Run workflow`.
 4. Inputs recomanats:
   - `prod_base_url`: deixa el valor per defecte si és prod oficial.
@@ -42,8 +40,8 @@ La Action valida automàticament:
 - resum de `phases`, `matchCount`
 - comptadors per font (`jok`, `fecapa`) i possibles errors
 
-## Quan cal scrape?
+## Notes operatives
 
-- Per provar el pilot runtime (`/api/finals-pilot`): **normalment no cal scrape**.
-- Per refrescar snapshots estàtics (`public/data.json`, etc.): sí, fes servir els workflows de scrape existents.
-- Per deixar traça específica del pilot en un fitxer versionat: executa `Scrape Pilot Finals`.
+- L'endpoint runtime de fases finals és `/api/finals-pilot` (nom històric), però ara funciona en mode general.
+- Ja no es versionen snapshots `public/pilot-finals-*.json` des de GitHub Actions.
+- Per refrescar dades estàtiques (`public/data.json`, etc.), fes servir el pipeline de scrape general del projecte.

@@ -1,10 +1,10 @@
-name: Prod Pilot Finals Check
+name: Prod Finals Check
 
 on:
   workflow_dispatch:
     inputs:
       strict_data:
-        description: "Fail if pilot returns 0 matches"
+        description: "Fail if finals endpoint returns 0 matches"
         required: false
         type: boolean
         default: false
@@ -22,7 +22,7 @@ on:
         default: "alevi-copa-catalana-plata-fase-final-2025-26"
 
 jobs:
-  prod-pilot-check:
+  prod-finals-check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -38,7 +38,7 @@ jobs:
           fi
           echo "Using PROD_BASE_URL=${PROD_BASE_URL}"
 
-      - name: Query pilot endpoint in production
+      - name: Query finals endpoint in production
         env:
           PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
           JOK_COMP_ID: ${{ github.event.inputs.jok_comp_id }}
@@ -49,26 +49,26 @@ jobs:
           echo "Checking ${URL}"
           curl --location --fail --show-error --silent \
             -H "Accept: application/json" \
-            "${URL}" | tee pilot-response.json
+            "${URL}" | tee finals-response.json
 
           # Guard rail: avoid JSON parse errors on HTML/text redirects.
-          if ! head -c 1 pilot-response.json | grep -q '[{[]'; then
-            echo "Pilot endpoint did not return JSON. First bytes:" >&2
-            head -c 200 pilot-response.json >&2 || true
+          if ! head -c 1 finals-response.json | grep -q '[{[]'; then
+            echo "Finals endpoint did not return JSON. First bytes:" >&2
+            head -c 200 finals-response.json >&2 || true
             exit 1
           fi
 
-      - name: Validate pilot response
+      - name: Validate finals response
         env:
           STRICT_DATA: ${{ github.event.inputs.strict_data }}
         run: |
           set -euo pipefail
           node - <<'NODE'
           const fs = require("fs");
-          const data = JSON.parse(fs.readFileSync("pilot-response.json", "utf8"));
+          const data = JSON.parse(fs.readFileSync("finals-response.json", "utf8"));
 
           if (!data || data.ok !== true) {
-            console.error("Pilot endpoint did not return ok=true", data);
+            console.error("Finals endpoint did not return ok=true", data);
             process.exit(1);
           }
 

@@ -10,14 +10,10 @@ const DEFAULT_COPA_PHASE_TEMPLATES = [
   { bucket: "final", phaseName: "FINAL", slots: 1 },
 ];
 
-// To add a competition, the minimum required is the FECAPA competition ID as the key.
-// The scraper will automatically use DEFAULT_COPA_PHASE_TEMPLATES and "FASE FINAL" as
-// the default phase name. Override any field to customise behaviour:
-//   fecapaCompetitionId  – FECAPA group ID (defaults to the map key)
-//   defaultPhaseName     – fallback phase label (default: "FASE FINAL")
-//   slug                 – JOK.cat competition slug (only needed when key ≠ JOK ID)
-//   phaseTemplates       – explicit list of phases/slots/venues; set to [] to disable placeholders
-const PILOT_COMPETITIONS = {
+// Optional overrides for competitions where we need explicit slug/fecapa mapping
+// or custom phase placeholders. Any competition not listed here is still supported
+// and processed with safe defaults.
+const FINALS_COMPETITIONS = {
   "4709": {
     slug: "alevi-copa-catalana-plata-fase-final-2025-26",
     fecapaCompetitionId: "3937",
@@ -31,6 +27,24 @@ const PILOT_COMPETITIONS = {
   "4452": {},
   "3935": {},
 };
+
+function buildFinalsConfig({ compId, slug = "", fecapaCompId = "" } = {}) {
+  const id = String(compId || "").trim();
+  const fromMap = FINALS_COMPETITIONS[id] || {};
+  const explicitSlug = String(slug || "").trim();
+  const explicitFecapaCompId = String(fecapaCompId || "").trim();
+  const hasExplicitTemplates = Object.prototype.hasOwnProperty.call(fromMap, "phaseTemplates");
+
+  return {
+    defaultPhaseName: String(fromMap.defaultPhaseName || "FASE FINAL"),
+    slug: explicitSlug || String(fromMap.slug || ""),
+    fecapaCompetitionId: explicitFecapaCompId || String(fromMap.fecapaCompetitionId || id),
+    // For unknown competitions we disable placeholders by default to avoid injecting
+    // a generic cup bracket in leagues that do not use it.
+    phaseTemplates: hasExplicitTemplates ? (fromMap.phaseTemplates || []) : [],
+    fecapaGroupName: fromMap.fecapaGroupName || null,
+  };
+}
 
 function decodeHtmlEntities(text) {
   return String(text || "")
@@ -281,7 +295,7 @@ function groupMatchesIntoPhases(matches) {
 async function fetchText(url, headers = {}) {
   const res = await fetch(url, {
     headers: {
-      "user-agent": "Mozilla/5.0 (compatible; hoquei-fecapa-pilot/1.0)",
+      "user-agent": "Mozilla/5.0 (compatible; hoquei-fecapa-finals/1.0)",
       ...headers,
     },
   });
@@ -373,37 +387,23 @@ async function loadCachedJokMatchesFromData({ fecapaCompId, fallbackPhaseName })
   return { matches, jokIds: [...jokIds] };
 }
 
-async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
+async function getPilotFinalsData({ jokCompId = "4709", slug = "", fecapaCompId = "" } = {}) {
   const compId = String(jokCompId || "4709").trim();
-  const cfg = PILOT_COMPETITIONS[compId];
-  if (!cfg) {
-    return {
-      ok: true,
-      pilot: true,
-      jokCompId: compId,
-      ignored: true,
-      phases: [],
-      matchCount: 0,
-      sources: {
-        jok: { enabled: false, reason: "pilot-not-configured" },
-        fecapa: { enabled: false, reason: "pilot-not-configured" },
-      },
-    };
-  }
+  const cfg = buildFinalsConfig({ compId, slug, fecapaCompId });
 
   try {
-    const effectiveSlug = String(slug || cfg.slug || "").trim();
+    const effectiveSlug = String(cfg.slug || "").trim();
     const fallbackPhaseName = cfg.defaultPhaseName || "FASE FINAL";
-    const fecapaCompId = String(cfg.fecapaCompetitionId || compId).trim(); // falls back to the map key
-    // If there is no slug and the configured FECAPA ID matches the map key,
-    // treat that key as a FECAPA competition ID and skip JOK.
-    const jokEnabled = effectiveSlug !== "" || fecapaCompId !== compId;
+    const effectiveFecapaCompId = String(cfg.fecapaCompetitionId || compId).trim();
+    // For generalized mode we always try JOK first (with or without slug).
+    // FECAPA acts as a complementary source when mapping exists or when IDs align.
+    const jokEnabled = true;
     const jokUrl = jokEnabled
       ? (effectiveSlug
           ? `https://jok.cat/competicio/${encodeURIComponent(compId)}/${encodeURIComponent(effectiveSlug)}`
           : `https://jok.cat/competicio/${encodeURIComponent(compId)}`)
       : null;
-    const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(fecapaCompId)}_1.php`;
+    const fecapaUrl = `https://www.server2.sidgad.es/fecapa/cerilh/fecapa_gr_${encodeURIComponent(effectiveFecapaCompId)}_1.php`;
 
     let jokMatches = [];
     let fecapaMatches = [];
@@ -412,7 +412,7 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
       fecapa: {
         enabled: true,
         url: fecapaUrl,
-        competitionId: fecapaCompId,
+        competitionId: effectiveFecapaCompId,
         groupName: cfg.fecapaGroupName || null,
         matchCount: 0,
         error: null,
@@ -431,14 +431,14 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     }
 
     if (!jokMatches.length) {
-      const cached = await loadCachedJokMatchesFromData({ fecapaCompId, fallbackPhaseName });
+      const cached = await loadCachedJokMatchesFromData({ fecapaCompId: effectiveFecapaCompId, fallbackPhaseName });
       if (cached.matches.length > 0) {
         jokMatches = cached.matches;
         sources.jok = {
           enabled: true,
           url: jokUrl,
           mode: "cached-data-json",
-          fromFecapaCompetitionId: fecapaCompId,
+          fromFecapaCompetitionId: effectiveFecapaCompId,
           mappedJokIds: cached.jokIds,
           matchCount: jokMatches.length,
           phaseNames: [...new Set(jokMatches.map(m => m.phaseName).filter(Boolean))],
@@ -465,10 +465,9 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
     const placeholdersCount = merged.filter(m => m && m.placeholder === true).length;
     return {
       ok: true,
-      pilot: true,
       competitionKey: compId,
       jokCompId: compId,
-      fecapaCompId,
+      fecapaCompId: effectiveFecapaCompId,
       slug: effectiveSlug,
       phases,
       matchCount: merged.length,
@@ -478,7 +477,6 @@ async function getPilotFinalsData({ jokCompId = "4709", slug = "" } = {}) {
   } catch (err) {
     return {
       ok: false,
-      pilot: true,
       competitionKey: compId,
       jokCompId: compId,
       error: err.message || "Unknown error",
@@ -495,7 +493,8 @@ module.exports = async (req, res) => {
     const query = new URL(req.url || "", "http://localhost").searchParams;
     const jokCompId = String(query.get("jokCompId") || "4709").trim();
     const slug = String(query.get("slug") || "").trim();
-    const data = await getPilotFinalsData({ jokCompId, slug });
+    const fecapaCompId = String(query.get("fecapaCompId") || "").trim();
+    const data = await getPilotFinalsData({ jokCompId, slug, fecapaCompId });
     if (!data.ok) return res.status(500).json(data);
     return res.status(200).json(data);
   } catch (err) {
@@ -506,4 +505,6 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.getPilotFinalsData = getPilotFinalsData;module.exports.PILOT_COMPETITIONS = PILOT_COMPETITIONS;
+module.exports.getPilotFinalsData = getPilotFinalsData;
+module.exports.FINALS_COMPETITIONS = FINALS_COMPETITIONS;
+module.exports.PILOT_COMPETITIONS = FINALS_COMPETITIONS;

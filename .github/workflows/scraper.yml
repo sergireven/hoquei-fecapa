@@ -1,4 +1,4 @@
-name: Actualitzar dades FECAPA
+name: Actualitzar dades per okCat360
 
 on:
   schedule:
@@ -16,6 +16,9 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: write
+    env:
+      NODE_ENV: production
+      JOK_SEASON: "2025-26"
 
     steps:
       - name: Checkout repositori
@@ -25,15 +28,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
       - name: Instal·lar dependències
-        run: npm install
+        run: npm ci
+
+      - name: Instal·lar Chrome (Puppeteer)
+        run: npx puppeteer browsers install chrome
 
       - name: Executar scraper sidgad (dades jugadors)
-        run: node api/scraper-sidgad.js
+        run: |
+          set -euo pipefail
+          node api/scraper-sidgad.js
 
       - name: Executar scraper categories FECAPA
         run: |
+          set -euo pipefail
           node api/scraper-fecapa-categories.js \
             --category "NACIONAL CATALANA" \
             --category "PRIMERA CATALANA" \
@@ -51,7 +61,31 @@ jobs:
             --output public/fecapa-categories.json
 
       - name: Executar scraper principal
-        run: node api/scraper.js
+        run: |
+          set -euo pipefail
+          node api/scraper.js
+
+      - name: Validar sortides mínimes
+        run: |
+          set -euo pipefail
+          test -s public/fecapa-categories.json
+          test -s public/data.json
+          node - <<'NODE'
+          const fs = require("fs");
+          const data = JSON.parse(fs.readFileSync("public/data.json", "utf8"));
+          if (!data || !data.categories || typeof data.categories !== "object") {
+            console.error("public/data.json sense categories vàlides");
+            process.exit(1);
+          }
+          const comps = Object.values(data.categories).flat().filter(Boolean);
+          if (!comps.length) {
+            console.error("public/data.json no conté competicions");
+            process.exit(1);
+          }
+          const withPostSeason = comps.filter(c => c && c.hasPostSeasonPhases === true).length;
+          console.log(`Competicions totals: ${comps.length}`);
+          console.log(`Competicions amb fases finals: ${withPostSeason}`);
+          NODE
 
       - name: Construir classificacio audit
         run: npm run build:audit

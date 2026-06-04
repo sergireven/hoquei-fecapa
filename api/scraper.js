@@ -11,11 +11,27 @@ const http  = require("http");
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
 const TARGET_SEASON = String(process.env.JOK_SEASON || "2025-26").trim();
+const ALLOW_ABSOLUTE_OUTPUT = process.env.JOK_ALLOW_ABSOLUTE_OUTPUT === "1";
+
+function resolveOutputPathFromEnv(value, fallback) {
+  const raw = String(value || "").trim();
+  if (!raw) return fallback;
+
+  if (path.isAbsolute(raw)) {
+    if (ALLOW_ABSOLUTE_OUTPUT) return path.normalize(raw);
+    const rebased = path.resolve(process.cwd(), raw.replace(/^\/+/, ""));
+    console.log(`   ℹ️  Reancorant ruta absoluta a workspace: ${raw} -> ${rebased}`);
+    return rebased;
+  }
+
+  return path.resolve(process.cwd(), raw);
+}
+
 const OUTPUT_DATA_FILE = process.env.JOK_OUTPUT_FILE
-  ? path.resolve(process.cwd(), process.env.JOK_OUTPUT_FILE)
+  ? resolveOutputPathFromEnv(process.env.JOK_OUTPUT_FILE, DATA_FILE)
   : DATA_FILE;
 const OUTPUT_ACTES_DIR = process.env.JOK_ACTES_DIR
-  ? path.resolve(process.cwd(), process.env.JOK_ACTES_DIR)
+  ? resolveOutputPathFromEnv(process.env.JOK_ACTES_DIR, path.join(__dirname, "../public/actes"))
   : path.join(__dirname, "../public/actes");
 const SKIP_ACTA_ENRICH = process.env.JOK_SKIP_ACTA_ENRICH === "1";
 const DELAY_MS  = 0;
@@ -428,6 +444,310 @@ function mergeCalendarMatches(primary, extra) {
     });
   }
   return [...byKey.values()];
+}
+
+function isKnockoutPhaseName(name) {
+  const n = normalizeCompToken(name || "");
+  if (!n) return false;
+  return /(VUITENS\s+DE\s+FINAL|QUARTS?\s+DE\s+FINAL|SEMIFINALS?|\bFINAL\b|ELIMINAT[OÒ]RIES\s+PR[EEÈ]VIES|PLAY\s*-?\s*OFF|COPA)/.test(n);
+}
+
+function inferPhaseTypeFromName(name) {
+  const n = normalizeCompToken(name || "");
+  if (/PLAY\s*-?\s*OFF/.test(n)) return "playoff";
+  if (/COPA/.test(n)) return "copa";
+  if (isKnockoutPhaseName(n)) return "eliminatories";
+  return "lliga";
+}
+
+function isConcreteTeamName(name) {
+  const n = normalizeCompToken(name || "");
+  if (!n) return false;
+  if (n === "PER DEFINIR" || n === "TBD" || n === "PENDENT") return false;
+  if (/^DESCANSA\b/.test(n)) return false;
+  return true;
+}
+
+function buildPhaseMatchKey(m) {
+  return [
+    normalizeCompToken(m?.phaseName || ""),
+    normalizeCompToken(m?.home || ""),
+    normalizeCompToken(m?.away || ""),
+    String(m?.date || ""),
+    String(m?.time || ""),
+    String(m?.homeScore ?? ""),
+    String(m?.awayScore ?? ""),
+  ].join("|");
+}
+
+function extractPostSeasonPhasesFromCalendar(calendar, compName = "") {
+  const groups = new Map();
+  for (const m of (calendar || [])) {
+    const phaseName = String(m?.phaseName || "").trim() || cleanCompetitionPhaseName(compName || "", "FASE FINAL");
+    const phaseType = String(m?.phaseType || inferPhaseTypeFromName(phaseName)).trim() || "eliminatories";
+    const phaseBucket = m?.phaseBucket || detectPhaseBucket(phaseName);
+    const isPost = phaseType !== "lliga" || phaseBucket !== "other" || isKnockoutPhaseName(phaseName);
+    if (!isPost) continue;
+
+    const key = `${normalizeCompToken(phaseName)}::${phaseType}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        phaseId: key,
+        phaseName,
+        phaseType,
+        isPostSeason: true,
+        matches: [],
+      });
+    }
+
+    groups.get(key).matches.push({
+      jornada: m?.jornada ?? null,
+      home: String(m?.home || ""),
+      away: String(m?.away || ""),
+      date: String(m?.date || ""),
+      time: String(m?.time || ""),
+      homeScore: m?.homeScore ?? null,
+      awayScore: m?.awayScore ?? null,
+      played: m?.played !== false && m?.homeScore != null && m?.awayScore != null,
+      source: String(m?.source || "jok_live"),
+      phaseName,
+      phaseType,
+      phaseBucket,
+      venue: String(m?.venue || ""),
+      placeholder: m?.placeholder === true,
+      actaId: m?.actaId ? String(m.actaId) : null,
+      actaUrl: m?.actaUrl ? String(m.actaUrl) : null,
+    });
+  }
+
+  const phases = [...groups.values()];
+  for (const phase of phases) {
+    const dedup = new Map();
+    for (const m of (phase.matches || [])) {
+      const key = buildPhaseMatchKey(m);
+      if (!dedup.has(key)) {
+        dedup.set(key, { ...m });
+      } else {
+        const prev = dedup.get(key);
+        dedup.set(key, {
+          ...prev,
+          ...m,
+          source: prev.source === m.source ? prev.source : `${prev.source}+${m.source}`,
+        });
+      }
+    }
+    phase.matches = [...dedup.values()];
+  }
+
+  return phases;
+}
+
+function addKnockoutPlaceholders(phases) {
+  const templates = [
+    { bucket: "vuitens", phaseName: "VUITENS DE FINAL", slots: 8 },
+    { bucket: "quarts", phaseName: "QUARTS DE FINAL", slots: 4 },
+    { bucket: "semifinals", phaseName: "SEMIFINALS", slots: 2 },
+    { bucket: "final", phaseName: "FINAL", slots: 1 },
+  ];
+
+  const out = (phases || []).map(p => ({ ...p, matches: [...(p.matches || [])] }));
+  const hasKnockout = out.some(phase => isKnockoutPhaseName(phase?.phaseName || "") || detectPhaseBucket(phase?.phaseName || "") !== "other");
+  if (!hasKnockout) return out;
+
+  for (const tpl of templates) {
+    let phase = out.find(p => detectPhaseBucket(p?.phaseName || "") === tpl.bucket);
+    if (!phase) {
+      phase = {
+        phaseId: `${normalizeCompToken(tpl.phaseName)}::eliminatories`,
+        phaseName: tpl.phaseName,
+        phaseType: "eliminatories",
+        isPostSeason: true,
+        matches: [],
+      };
+      out.push(phase);
+    }
+
+    const tieKeys = new Set();
+    for (const m of (phase.matches || [])) {
+      const h = String(m?.home || "").trim();
+      const a = String(m?.away || "").trim();
+      if (!isConcreteTeamName(h) || !isConcreteTeamName(a)) continue;
+      const hk = normalizeCompToken(h);
+      const ak = normalizeCompToken(a);
+      if (!hk || !ak || hk === ak) continue;
+      tieKeys.add([hk, ak].sort().join("|"));
+    }
+
+    const missing = Math.max(0, tpl.slots - tieKeys.size);
+    for (let i = 0; i < missing; i += 1) {
+      phase.matches.push({
+        jornada: null,
+        home: "Per definir",
+        away: "Per definir",
+        date: "",
+        time: "",
+        homeScore: null,
+        awayScore: null,
+        played: false,
+        source: "knockout_placeholder",
+        phaseName: tpl.phaseName,
+        phaseType: "eliminatories",
+        phaseBucket: tpl.bucket,
+        venue: "",
+        placeholder: true,
+        actaId: null,
+        actaUrl: null,
+      });
+    }
+  }
+
+  return out;
+}
+
+function mergePostSeasonPhases(primary, secondary) {
+  const byPhase = new Map();
+
+  const pushPhase = (phase) => {
+    if (!phase) return;
+    const phaseName = String(phase.phaseName || "").trim() || "FASE FINAL";
+    const phaseType = String(phase.phaseType || inferPhaseTypeFromName(phaseName)).trim() || "eliminatories";
+    const key = `${normalizeCompToken(phaseName)}::${phaseType}`;
+    if (!byPhase.has(key)) {
+      byPhase.set(key, {
+        phaseId: String(phase.phaseId || key),
+        phaseName,
+        phaseType,
+        isPostSeason: phase.isPostSeason !== false,
+        matches: [],
+      });
+    }
+    const target = byPhase.get(key);
+    target.matches.push(...(phase.matches || []).map(m => ({ ...m, phaseName, phaseType })));
+  };
+
+  for (const p of (primary || [])) pushPhase(p);
+  for (const p of (secondary || [])) pushPhase(p);
+
+  const out = [...byPhase.values()];
+  for (const phase of out) {
+    const dedup = new Map();
+    for (const m of (phase.matches || [])) {
+      const key = buildPhaseMatchKey(m);
+      if (!dedup.has(key)) {
+        dedup.set(key, { ...m });
+      } else {
+        const prev = dedup.get(key);
+        dedup.set(key, {
+          ...prev,
+          ...m,
+          source: prev.source === m.source ? prev.source : `${prev.source}+${m.source}`,
+        });
+      }
+    }
+    phase.matches = [...dedup.values()];
+  }
+
+  return out;
+}
+
+function parseMatchDateTime(date, time) {
+  const rawDate = String(date || "").trim();
+  const rawTime = String(time || "").trim();
+  const m = rawDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  const d = String(m[1]).padStart(2, "0");
+  const mo = String(m[2]).padStart(2, "0");
+  let y = String(m[3]);
+  if (y.length === 2) y = `20${y}`;
+  const t = /^\d{1,2}:\d{2}$/.test(rawTime) ? rawTime : "99:99";
+  return Number(`${y}${mo}${d}${t.replace(":", "")}`);
+}
+
+function toNumericScore(v) {
+  if (v == null || v === "") return null;
+  const n = Number.parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function enrichTwoLegEliminationContext(phases) {
+  const out = (phases || []).map(phase => ({ ...phase, matches: [...(phase.matches || [])] }));
+
+  for (const phase of out) {
+    const tieMap = new Map();
+
+    for (const m of (phase.matches || [])) {
+      const home = String(m?.home || "").trim();
+      const away = String(m?.away || "").trim();
+      if (!isConcreteTeamName(home) || !isConcreteTeamName(away)) continue;
+
+      const hk = normalizeCompToken(home);
+      const ak = normalizeCompToken(away);
+      if (!hk || !ak || hk === ak) continue;
+
+      const tieTeams = [hk, ak].sort();
+      const tieKey = tieTeams.join("|");
+      if (!tieMap.has(tieKey)) tieMap.set(tieKey, []);
+      tieMap.get(tieKey).push(m);
+    }
+
+    for (const [tieKey, matches] of tieMap.entries()) {
+      if (!Array.isArray(matches) || matches.length === 0) continue;
+
+      matches.sort((a, b) => parseMatchDateTime(a?.date, a?.time) - parseMatchDateTime(b?.date, b?.time));
+
+      const [teamA, teamB] = tieKey.split("|");
+      let totalA = 0;
+      let totalB = 0;
+
+      for (const m of matches) {
+        const hs = toNumericScore(m?.homeScore);
+        const as = toNumericScore(m?.awayScore);
+        if (hs == null || as == null) continue;
+
+        const homeKey = normalizeCompToken(m?.home || "");
+        const awayKey = normalizeCompToken(m?.away || "");
+        if (!homeKey || !awayKey) continue;
+
+        if (homeKey === teamA && awayKey === teamB) {
+          totalA += hs;
+          totalB += as;
+        } else if (homeKey === teamB && awayKey === teamA) {
+          totalA += as;
+          totalB += hs;
+        }
+      }
+
+      const qualifiedNorm = totalA === totalB ? null : (totalA > totalB ? teamA : teamB);
+      const lastLegIndex = matches.length - 1;
+
+      for (let idx = 0; idx < matches.length; idx += 1) {
+        const m = matches[idx];
+        m.tieKey = tieKey;
+        m.tieLeg = idx + 1;
+        m.tieMatches = matches.length;
+
+        if (idx !== lastLegIndex) continue;
+
+        const homeKey = normalizeCompToken(m?.home || "");
+        const awayKey = normalizeCompToken(m?.away || "");
+
+        if (homeKey === teamA && awayKey === teamB) {
+          m.aggregateHome = totalA;
+          m.aggregateAway = totalB;
+        } else if (homeKey === teamB && awayKey === teamA) {
+          m.aggregateHome = totalB;
+          m.aggregateAway = totalA;
+        }
+
+        if (qualifiedNorm) {
+          if (homeKey === qualifiedNorm) m.qualifiedTeam = String(m?.home || "");
+          else if (awayKey === qualifiedNorm) m.qualifiedTeam = String(m?.away || "");
+        }
+      }
+    }
+  }
+
+  return out;
 }
 
 // ── Parse acta links from competition page HTML ────────────────
@@ -1292,6 +1612,100 @@ async function loadFecapaGroupClassificationIndex() {
   return out;
 }
 
+function mapFecapaPhaseMatchToCalendar(match, phase) {
+  const home = normalizeTeamName(match?.home || "");
+  const away = normalizeTeamName(match?.away || "");
+  if (!home || !away) return null;
+
+  const phaseName = String(phase?.phaseName || "Fase final").trim() || "Fase final";
+  const phaseType = String(phase?.phaseType || inferPhaseTypeFromName(phaseName)).trim() || "eliminatories";
+  const phaseBucket = detectPhaseBucket(phaseName);
+
+  return {
+    jornada: match?.jornada ?? null,
+    home,
+    away,
+    date: String(match?.date || ""),
+    time: String(match?.time || ""),
+    homeScore: match?.homeScore ?? null,
+    awayScore: match?.awayScore ?? null,
+    played: match?.played !== false && match?.homeScore != null && match?.awayScore != null,
+    source: "fecapa",
+    phaseName,
+    phaseType,
+    phaseBucket,
+    venue: String(match?.venue || ""),
+    placeholder: match?.placeholder === true,
+    actaId: match?.actaId ? String(match.actaId) : null,
+    actaUrl: match?.actaUrl ? String(match.actaUrl) : null,
+  };
+}
+
+function normalizeFecapaCompetitionPhases(rawPhases) {
+  const out = [];
+  for (const phase of (rawPhases || [])) {
+    if (!phase) continue;
+    const phaseName = String(phase.phaseName || "").trim() || "Fase final";
+    const phaseType = String(phase.phaseType || inferPhaseTypeFromName(phaseName)).trim() || "eliminatories";
+    const isPost = phase.isPostSeason === true || phaseType !== "lliga" || isKnockoutPhaseName(phaseName);
+    if (!isPost) continue;
+
+    const matches = [];
+    for (const m of (phase.matches || [])) {
+      const mapped = mapFecapaPhaseMatchToCalendar(m, { phaseName, phaseType });
+      if (mapped) matches.push(mapped);
+    }
+
+    out.push({
+      phaseId: String(phase.phaseId || `${normalizeCompToken(phaseName)}::${phaseType}`),
+      phaseName,
+      phaseType,
+      isPostSeason: true,
+      matches,
+    });
+  }
+  return out;
+}
+
+async function loadFecapaPostSeasonPhaseIndex() {
+  const fecapaFile = path.join(__dirname, "../public/fecapa-categories.json");
+  const raw = await fs.readFile(fecapaFile, "utf8");
+  const parsed = JSON.parse(raw);
+  const categories = parsed?.categories || {};
+  const out = {};
+
+  for (const comps of Object.values(categories)) {
+    if (!Array.isArray(comps)) continue;
+    for (const comp of comps) {
+      const phases = normalizeFecapaCompetitionPhases(comp?.competitionPhases || []);
+      if (!phases.length) continue;
+
+      const totalMatches = phases.reduce((sum, p) => sum + (p.matches || []).length, 0);
+      const keys = buildFallbackNameKeys(comp?.competitionName || "");
+      for (const key of keys) {
+        const prev = out[key];
+        const prevCount = prev
+          ? prev.reduce((sum, p) => sum + (p.matches || []).length, 0)
+          : -1;
+        if (!prev || totalMatches > prevCount) {
+          out[key] = phases;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
+function findFecapaFallbackPostSeasonPhases(index, compName) {
+  const keys = buildFallbackNameKeys(compName || "");
+  for (const key of keys) {
+    const phases = index[key];
+    if (phases && phases.length > 0) return phases;
+  }
+  return null;
+}
+
 function findFecapaFallbackClassification(index, compName) {
   const keys = buildFallbackNameKeys(compName || "");
   for (const key of keys) {
@@ -2034,21 +2448,53 @@ async function main() {
     console.log("   ℹ️  fecapa-categories.json no disponible per fallback de classificació");
   }
 
-  // MODE JOK.CAT PUR:
-  // mantenim l'estructura creada però no alterem categories/classificacions
-  // amb fusions de competicions SIDGAD.
+  let fecapaPostSeasonPhaseIndex = {};
+  try {
+    fecapaPostSeasonPhaseIndex = await loadFecapaPostSeasonPhaseIndex();
+    console.log(`   🧩 FECAPA fallback fases finals: ${Object.keys(fecapaPostSeasonPhaseIndex).length} competicions indexades`);
+  } catch {
+    console.log("   ℹ️  fecapa-categories.json no disponible per fallback de fases finals");
+  }
+
+  // MODE PRIORITAT FECAPA:
+  // si hi ha classificació FECAPA, esdevé font principal a totes les categories.
+  // JOK.cat queda com a fallback quan no hi ha dades FECAPA.
+  let fecapaPrimaryApplied = 0;
   let fecapaFallbackApplied = 0;
-  let prebenjamiFecapaPreferred = 0;
-  for (const [catName, comps] of Object.entries(output.categories)) {
-    const preferFecapa = isPrebenjamiCategory(catName);
+  let postSeasonFromJok = 0;
+  let postSeasonFromFecapa = 0;
+  let postSeasonPlaceholdersAdded = 0;
+  for (const [, comps] of Object.entries(output.categories)) {
     for (const comp of comps) {
+      const basePostSeason = extractPostSeasonPhasesFromCalendar(comp.calendar || [], comp.name || "");
+      const fecapaPhases = findFecapaFallbackPostSeasonPhases(fecapaPostSeasonPhaseIndex, comp.name || "") || [];
+      const mergedPostSeason = mergePostSeasonPhases(basePostSeason, fecapaPhases);
+      const withPlaceholders = enrichTwoLegEliminationContext(addKnockoutPlaceholders(mergedPostSeason));
+
+      const baseCount = basePostSeason.reduce((sum, p) => sum + (p.matches || []).length, 0);
+      const fecapaCount = fecapaPhases.reduce((sum, p) => sum + (p.matches || []).length, 0);
+      const finalCount = withPlaceholders.reduce((sum, p) => sum + (p.matches || []).length, 0);
+      const placeholderCount = withPlaceholders.reduce((sum, p) => sum + (p.matches || []).filter(m => m?.placeholder === true).length, 0);
+
+      if (baseCount > 0) postSeasonFromJok += 1;
+      if (fecapaCount > 0) postSeasonFromFecapa += 1;
+      if (placeholderCount > 0) postSeasonPlaceholdersAdded += 1;
+
+      comp.postSeasonPhases = withPlaceholders;
+      comp.hasPostSeasonPhases = withPlaceholders.some(p => p?.isPostSeason === true && (p?.matches || []).length > 0);
+      if (finalCount > 0) {
+        const phaseMatches = withPlaceholders.flatMap(p => (p?.matches || []).map(m => ({ ...m, compId: String(comp.id || "") })));
+        comp.calendar = mergeCalendarMatches(comp.calendar || [], phaseMatches);
+      }
+
       const hasJokClass = Array.isArray(comp.classification) && comp.classification.length > 0;
       const fallback = findFecapaFallbackClassification(fecapaGroupClassIndex, comp.name || "");
 
-      if (preferFecapa && fallback && fallback.length > 0) {
+      if (fallback && fallback.length > 0) {
+        if (hasJokClass) fecapaPrimaryApplied += 1;
+        else fecapaFallbackApplied += 1;
         comp.classification = fallback;
         comp.classificationSource = "fecapa";
-        prebenjamiFecapaPreferred += 1;
         continue;
       }
 
@@ -2057,20 +2503,17 @@ async function main() {
         continue;
       }
 
-      if (fallback && fallback.length > 0) {
-        comp.classification = fallback;
-        comp.classificationSource = "fecapa";
-        fecapaFallbackApplied += 1;
-      } else {
-        comp.classificationSource = "none";
-      }
+      comp.classificationSource = "none";
     }
   }
-  if (prebenjamiFecapaPreferred > 0) {
-    console.log(`   🔁 PREBENJAMI prioritzat amb FECAPA a ${prebenjamiFecapaPreferred} competicions`);
+  if (fecapaPrimaryApplied > 0) {
+    console.log(`   🔁 FECAPA prioritzat (substituint JOK) a ${fecapaPrimaryApplied} competicions`);
   }
   if (fecapaFallbackApplied > 0) {
-    console.log(`   🔁 FECAPA fallback aplicat a ${fecapaFallbackApplied} competicions jok.cat`);
+    console.log(`   🔁 FECAPA usat com a font única (fallback de JOK) a ${fecapaFallbackApplied} competicions`);
+  }
+  if (postSeasonFromJok > 0 || postSeasonFromFecapa > 0) {
+    console.log(`   🏁 Fases finals: base jok=${postSeasonFromJok}, fallback fecapa=${postSeasonFromFecapa}, amb placeholders=${postSeasonPlaceholdersAdded}`);
   }
   const sidgadParentMap = {};
   const sidgadChildren = {};

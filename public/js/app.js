@@ -8,7 +8,6 @@ const SIDGAD_COMP_URL = "./competicions-sidgad.json";
 const FECAPA_CATEGORIES_URL = "./fecapa-categories.json";
 const CLASSIFICATION_SOURCE_PILOTS_URL = "./classification-source-pilots.json";
 const FINALS_PILOT_API_URL = "/api/finals-pilot";
-const FINALS_PILOT_COMP_IDS = new Set(["4709", "4452", "3935"]);
 const FAV_KEY  = "hoquei_favs_v8";
 const LEVEL_FAV_KEY = "hoquei_level_favs_v1";
 
@@ -4061,16 +4060,15 @@ function getCalendarFilterableTeamNames(matches, comp = null) {
 function getDetailCalendarSourceMatches(comp) {
   if (!comp) return [];
   const allCalendar = comp.calendar || [];
-  const pilotPhaseMatches = isFinalsPilotComp(comp)
-    ? normalizePostSeasonPhases(comp.postSeasonPhases || []).flatMap(phase =>
-        (phase?.matches || []).map(m => ({
-          ...m,
-          phaseName: m?.phaseName || phase.phaseName,
-          phaseType: m?.phaseType || phase.phaseType,
-        }))
-      )
-    : [];
-  return pilotPhaseMatches.length ? pilotPhaseMatches : allCalendar;
+  const phaseMatches = normalizePostSeasonPhases(comp.postSeasonPhases || []).flatMap(phase =>
+    (phase?.matches || []).map(m => ({
+      ...m,
+      phaseName: m?.phaseName || phase.phaseName,
+      phaseType: m?.phaseType || phase.phaseType,
+    }))
+  );
+  if (!phaseMatches.length) return allCalendar;
+  return mergePilotCalendarMatches(allCalendar, phaseMatches);
 }
 
 function getTiePhaseKey(phaseName, phaseType) {
@@ -4964,7 +4962,7 @@ window.openClubFromClassif = teamName => {
 function renderClubDashboard() {
   const club = selectedClub;
 
-  // Hydrate pilot calendars for this club in background so status/next matches are accurate.
+  // Hydrate finals calendars for this club in background so status/next matches are accurate.
   const pilotComps = [...new Set((club?.teams || []).map(t => String(t?.compId || "")).filter(Boolean))]
     .map(id => findComp(id))
     .filter(c => isFinalsPilotComp(c));
@@ -6429,7 +6427,9 @@ let teamProfileReturnScreen = "home";
 
 function isFinalsPilotComp(comp) {
   const id = String(comp?.id || "").trim();
-  return !!id && FINALS_PILOT_COMP_IDS.has(id);
+  if (!id) return false;
+  if (comp?.hasPostSeasonPhases === true) return true;
+  return normalizePostSeasonPhases(comp?.postSeasonPhases || []).length > 0;
 }
 
 function buildPilotMatchKey(m) {
@@ -6485,8 +6485,10 @@ async function ensurePilotFinalsDataForComp(comp) {
   const run = (async () => {
     try {
       const slug = String(comp?.slug || "").trim();
+      const mappedFecapaCompId = String(comp?.classificationPilot?.fecapaCompetitionId || "").trim();
       const qs = new URLSearchParams({ jokCompId: compId });
       if (slug) qs.set("slug", slug);
+      if (mappedFecapaCompId) qs.set("fecapaCompId", mappedFecapaCompId);
 
       const res = await fetch(`${FINALS_PILOT_API_URL}?${qs.toString()}`);
       if (!res.ok) throw new Error(`pilot-http-${res.status}`);
@@ -6563,16 +6565,16 @@ function renderDetailHeaderMeta() {
 
   let pilotInfo = "";
   if (pilotMeta) {
-    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> ${esc(String(pilotMeta.matchCount || 0))} partits · font API</div>`;
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Fases finals:</span> ${esc(String(pilotMeta.matchCount || 0))} partits · font API</div>`;
   } else if (pilotState?.status === "loading") {
-    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> carregant dades live…</div>`;
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Fases finals:</span> carregant dades live…</div>`;
   } else if (pilotState?.status === "done" && pilotState?.empty) {
-    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> cap partit nou (fallback local)</div>`;
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Fases finals:</span> cap partit nou (fallback local)</div>`;
   } else if (pilotState?.status === "done" && pilotState?.error) {
-    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Pilot fases finals:</span> fallback local · ${esc(String(pilotState.error))}</div>`;
+    pilotInfo = `<div><span style="font-weight:700;color:#1a2035">Fases finals:</span> fallback local · ${esc(String(pilotState.error))}</div>`;
   }
 
-  const pilotSourcesInfo = pilotSources ? `<div><span style="font-weight:700;color:#1a2035">Fonts pilot:</span> jok ${esc(String(pilotSources?.jok?.matchCount ?? 0))} · fecapa ${esc(String(pilotSources?.fecapa?.matchCount ?? 0))}</div>` : "";
+  const pilotSourcesInfo = pilotSources ? `<div><span style="font-weight:700;color:#1a2035">Fonts fases finals:</span> jok ${esc(String(pilotSources?.jok?.matchCount ?? 0))} · fecapa ${esc(String(pilotSources?.fecapa?.matchCount ?? 0))}</div>` : "";
   const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
     <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
     <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>

@@ -1,3 +1,14 @@
 node_modules/
 .env
 .vercel/
+
+# Local debug artifacts
+debug_output.log
+debug*_output.txt
+public/debug-classif-*.html
+
+# Accidental empty files occasionally created during shell/debug sessions
+console.log('
+res(b))})
+{
+node
