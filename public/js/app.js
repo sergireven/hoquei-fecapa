@@ -3589,6 +3589,14 @@ function extractPlayerStatsRawFromActaRawText(rawText) {
   return result;
 }
 
+function isReasonableParsedActaPlayers(players) {
+  const list = players || [];
+  if (!list.length) return false;
+  const withLetters = list.filter(p => /[A-Za-zÀ-ÿ]/.test(String(p?.name || ""))).length;
+  const numericOnly = list.filter(p => /^\d+$/.test(String(p?.name || "").trim())).length;
+  return withLetters >= Math.ceil(list.length * 0.6) && numericOnly === 0;
+}
+
 function getActaPlayersForDisplay(acta) {
   const existingHome = acta?.playerStats?.homePlayers || [];
   const existingAway = acta?.playerStats?.awayPlayers || [];
@@ -3600,12 +3608,14 @@ function getActaPlayersForDisplay(acta) {
   const links = acta?.playerLinks || [];
   const psr = (acta?.playerStatsRaw && (acta.playerStatsRaw.homeBlock || acta.playerStatsRaw.awayBlock))
     ? acta.playerStatsRaw
-    : extractPlayerStatsRawFromActaRawText(acta?.rawText || "");
+    : extractPlayerStatsRawFromActaRawText(acta?.rawText || acta?.rawTextPreview || "");
 
   const parsedHome = parsePlayerBlock(psr?.homeBlock || "", links);
   const parsedAway = parsePlayerBlock(psr?.awayBlock || "", links.slice(parsedHome.length));
   if (parsedHome.length || parsedAway.length) {
-    return { homePlayers: parsedHome, awayPlayers: parsedAway };
+    const parsedLooksGood = (!parsedHome.length || isReasonableParsedActaPlayers(parsedHome))
+      && (!parsedAway.length || isReasonableParsedActaPlayers(parsedAway));
+    if (parsedLooksGood) return { homePlayers: parsedHome, awayPlayers: parsedAway };
   }
 
   return { homePlayers: existingHome, awayPlayers: existingAway };
