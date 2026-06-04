@@ -1,6 +1,32 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
+const VENUES_FILE = path.join(__dirname, "public", "venues.json");
+
+function loadExistingVenuesDoc() {
+  try {
+    const raw = fs.readFileSync(VENUES_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.venues && typeof parsed.venues === "object") {
+      return parsed;
+    }
+    // Backward compatibility for legacy shape: top-level map
+    if (parsed && typeof parsed === "object") {
+      return {
+        description: "Venue coordinates database",
+        updatedAt: new Date().toISOString(),
+        venues: parsed,
+      };
+    }
+  } catch {
+    // no-op
+  }
+  return {
+    description: "Venue coordinates database",
+    updatedAt: new Date().toISOString(),
+    venues: {},
+  };
+}
 
 // Load all actes and extract unique home teams with their URLs
 function extractVenuesFromAcctes() {
@@ -119,23 +145,31 @@ async function scrapeVenueCoordinates(url) {
 async function main() {
   console.log("Extracting venues from actes...");
   const { venues, actaToScrape } = extractVenuesFromAcctes();
+  const existingDoc = loadExistingVenuesDoc();
+  const existingVenues = existingDoc.venues || {};
 
   console.log(
     `Found ${Object.keys(venues).length} unique home teams to scrape.`
   );
   console.log(`Will scrape ${actaToScrape.length} actes...`);
 
-  // Scrape venues (limit to first 10 to test)
-  const limit = 10;
-  for (let i = 0; i < Math.min(limit, actaToScrape.length); i++) {
+  // Scrape venues (optional cap with VENUES_LIMIT for quick tests)
+  const requestedLimit = Number(process.env.VENUES_LIMIT || 0);
+  const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+    ? Math.min(requestedLimit, actaToScrape.length)
+    : actaToScrape.length;
+  for (let i = 0; i < limit; i++) {
     const { teamName, url, actaId } = actaToScrape[i];
-    console.log(
-      `\n[${i + 1}/${Math.min(limit, actaToScrape.length)}] Scraping ${teamName}...`
-    );
+    console.log(`\n[${i + 1}/${limit}] Scraping ${teamName}...`);
 
     const coordinates = await scrapeVenueCoordinates(url);
     if (coordinates) {
-      venues[teamName].coordinates = coordinates;
+      venues[teamName] = {
+        ...(existingVenues[teamName] || {}),
+        ...venues[teamName],
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+      };
       console.log(
         `✓ Found: ${coordinates.lat}, ${coordinates.lng}`
       );
@@ -147,16 +181,26 @@ async function main() {
     await new Promise((r) => setTimeout(r, 1000));
   }
 
-  // Save results
-  const outputPath = path.join(__dirname, "public", "venues.json");
-  fs.writeFileSync(outputPath, JSON.stringify(venues, null, 2));
-  console.log(
-    `\n✓ Venues saved to ${outputPath} (${Object.keys(venues).length} teams)`
-  );
+  // Save merged results in canonical shape expected by app.js
+  const mergedVenues = {
+    ...existingVenues,
+    ...venues,
+  };
+  const outputDoc = {
+    ...existingDoc,
+    updatedAt: new Date().toISOString(),
+    venues: mergedVenues,
+  };
+  fs.writeFileSync(VENUES_FILE, JSON.stringify(outputDoc, null, 2));
+  console.log(`\n✓ Venues saved to ${VENUES_FILE} (${Object.keys(mergedVenues).length} teams)`);
 
   // Print summary
-  const withCoords = Object.values(venues).filter((v) => v.coordinates);
-  console.log(`\n📍 Teams with coordinates: ${withCoords.length}/${Object.keys(venues).length}`);
+  const withCoords = Object.values(mergedVenues).filter((v) => {
+    const lat = v?.lat ?? v?.coordinates?.lat;
+    const lng = v?.lng ?? v?.coordinates?.lng;
+    return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  });
+  console.log(`\n📍 Teams with coordinates: ${withCoords.length}/${Object.keys(mergedVenues).length}`);
 }
 
 main().catch(console.error);

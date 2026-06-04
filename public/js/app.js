@@ -4820,7 +4820,14 @@ function getCompPlayedPct(comp) {
   return 0;
 }
 
-const isActive = comp => getCompPlayedPct(comp) < 100;
+function isCurrentSeasonView() {
+  return activeSeasonKey === "current";
+}
+
+const isActive = comp => {
+  if (!isCurrentSeasonView()) return false;
+  return getCompPlayedPct(comp) < 100;
+};
 
 function parseCalendarDateToTimestamp(dateInput, compName = "") {
   if (!dateInput) return null;
@@ -6034,9 +6041,10 @@ function buildClubMap() {
         const club = clubMap.get(clubName);
         if (!club.clubId) club.clubId = rowClubId(row, comp);
         const category = getCatForComp(comp);
-        const key = teamKeyFromRow(row, category);
+        const identityCategory = getIdentityCategoryForComp(comp, category);
+        const key = teamKeyFromRow(row, identityCategory);
         const existingIdx = club.teams.findIndex(t => t.teamKey === key);
-        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category, teamKey:key };
+        const candidate = { compId:comp.id, teamName:row.team, teamId:row.teamId, compName:comp.name, category, identityCategory, teamKey:key };
         if (existingIdx < 0) {
           club.teams.push(candidate);
         } else {
@@ -6122,7 +6130,7 @@ function renderClubTab(cursor) {
 
   const q = clubSearch.toLowerCase();
   const filtered = q ? clubs.filter(([k,v]) => k.includes(q) || v.displayName.toLowerCase().includes(q)) : clubs;
-  const totalClubsCount = filtered.length;
+  const totalTeams = filtered.reduce((sum, [, club]) => sum + (club?.teams?.length || 0), 0);
 
   if (selectedClub) {
     renderClubDashboard();
@@ -6132,15 +6140,11 @@ function renderClubTab(cursor) {
   $("home-body").innerHTML = `
     <div style="padding:0 0 8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
-          <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderClubTab()" style="width:16px;height:16px;accent-color:#003da5"/>
-          Només en curs
-        </label>
-        <div style="font-size:12px;font-weight:700;color:#334155;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:5px 10px;white-space:nowrap">Total clubs: ${totalClubsCount}</div>
         <input id="club-search" placeholder="🔍 Cerca club..." value="${esc(clubSearch)}"
           style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
           oninput="clubSearch=this.value;renderClubTab(this.selectionStart)"/>
       </div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:10px">${filtered.length} clubs · ${totalTeams} equips</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
         ${filtered.map(([key,club])=>{
           // Check how many teams have venues mapped
@@ -6169,6 +6173,25 @@ function getCatForComp(comp) {
   for (const [cat,comps] of Object.entries(DB.categories))
     if (comps.some(c=>c.id===comp.id)) return cat;
   return "Altres";
+}
+
+function detectFemIdentityCategory(compName) {
+  const n = normalizeCompName(compName || "");
+  if (!n) return null;
+  if (/MINIFEM/.test(n)) return "MiniFem";
+  if (/FEM\s*11/.test(n)) return "FEM 11";
+  if (/FEM\s*13/.test(n)) return "FEM 13";
+  if (/FEM\s*15/.test(n)) return "FEM 15";
+  if (/FEM\s*17/.test(n)) return "FEM 17";
+  if (/FEM\s*19/.test(n)) return "FEM 19";
+  if (/\bFEM\b|FEMENI|FEMENINA/.test(n)) return "Fem";
+  return null;
+}
+
+function getIdentityCategoryForComp(comp, fallbackCategory = null) {
+  const baseCategory = String(fallbackCategory || getCatForComp(comp) || "Altres").trim() || "Altres";
+  if (normalizeCompKey(baseCategory) !== "fem") return baseCategory;
+  return detectFemIdentityCategory(comp?.name || "") || baseCategory;
 }
 
 window.selectClub = function(key) {
@@ -6253,11 +6276,16 @@ function renderClubDashboard() {
       !isPlaceholderTeamName(m?.away) &&
       !isDescansaTeamName(m?.home) &&
       !isDescansaTeamName(m?.away) &&
-      (m?.homeScore == null || m?.awayScore == null)
+      (m?.homeScore == null || m?.awayScore == null) &&
+      (() => {
+        const ts = parseCalendarDateToTimestamp(m?.date || "", comp?.name || "");
+        if (ts == null) return true;
+        return ts >= (Date.now() - (45 * 24 * 60 * 60 * 1000));
+      })()
     );
     if (allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
     const playedPct = getCompPlayedPct(comp);
-    const statusFlag = (!hasPendingTeamMatch && playedPct >= 100)
+    const statusFlag = (!isCurrentSeasonView() || (!hasPendingTeamMatch && playedPct >= 100))
       ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf3;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">✅ Acabada</span>`
       : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">🟠 En curs</span>`;
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
@@ -6294,7 +6322,7 @@ function renderClubDashboard() {
         ${shieldImg(club.clubId,36)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900">${esc(club.displayName)}</div>
-          <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${allOnlyActive?"en curs":"tots"}</div>
+          <div style="font-size:11px;color:#94a3b8">${sorted.length} equip${sorted.length!==1?"s":""} · ${isCurrentSeasonView() ? (allOnlyActive?"en curs":"tots") : "finalitzades"}</div>
           ${(() => {
             // Get unique addresses from teams
             const addresses = new Map();
@@ -6326,10 +6354,10 @@ function renderClubDashboard() {
           })()}
         </div>
         <button onclick="toggleClubFav('${esc(club.key)}','${esc(club.displayName)}','${esc(club.clubId||"")}');renderClubDashboard()" style="background:${isClubFav(club.key)?"#fef9c3":"#f0f4f8"};border:1px solid ${isClubFav(club.key)?"#fcd34d":"#e2e6ef"};border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0">${isClubFav(club.key)?"⭐":"☆"}</button>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
+        ${isCurrentSeasonView() ? `<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;flex-shrink:0">
           <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;selectedClub=null;selectClub('${esc(club.key)}')" style="accent-color:#003da5"/>
           En curs
-        </label>
+        </label>` : ""}
       </div>
     </div>
     ${teamCards||`<p style="text-align:center;padding:32px;color:#94a3b8">Cap equip actiu</p>`}`;
@@ -6365,7 +6393,7 @@ function hashString32(str) {
 function buildStrongTeamIdentity(input) {
   const clubName = normalizeJokClubDisplayName(input?.clubName || "");
   const baseTeamName = normalizeJokClubDisplayName(getTeamBase(input?.teamName || ""));
-  const category = String(input?.category || "Altres").trim();
+  const category = String(input?.identityCategory || input?.category || "Altres").trim();
   const letter = String(input?.letter || "").trim().toUpperCase();
   const season = formatSeasonLabel(input?.season || DB?.season || "");
 
@@ -6405,16 +6433,20 @@ function resolveClubTeamContext(compId, teamName, teamId = null) {
         teamName: t?.teamName || teamName || "",
         teamId: t?.teamId || teamId || null,
         category: t?.category || getCatForComp(findComp(compId)) || "Altres",
+        identityCategory: t?.identityCategory || getIdentityCategoryForComp(findComp(compId), t?.category || getCatForComp(findComp(compId)) || "Altres"),
       };
     }
   }
 
+  const comp = findComp(compId);
+  const fallbackCategory = getCatForComp(comp) || "Altres";
   return {
     clubKey: null,
     clubName: normalizeJokClubDisplayName(getTeamBase(teamName || "")),
     teamName: teamName || "",
     teamId: teamId || null,
-    category: getCatForComp(findComp(compId)) || "Altres",
+    category: fallbackCategory,
+    identityCategory: getIdentityCategoryForComp(comp, fallbackCategory),
   };
 }
 
@@ -6427,17 +6459,21 @@ function gatherTeamProfileCompetitions(profile) {
       if (!comp || is3x3Competition(comp)) continue;
       const season = seasonFromComp(comp);
       if (season !== profile.season) continue;
+      const compIdentityCategory = getIdentityCategoryForComp(comp, category);
 
       const candidates = getTeamCompetitionCandidates(comp, profile.teamName, profile.teamId || null);
       let matched = candidates.filter(name => {
+        const sameCategory = normalizeCompKey(compIdentityCategory || "") === normalizeCompKey(profile.identityCategory || profile.category || "");
+        const sameLetter = extractTeamSuffix(name || "") === (profile.letter || null);
+        const looseAliasMatch = sameCategory && sameLetter && teamMatchesLoose(name, profile.teamName || "");
         const id = buildStrongTeamIdentity({
           clubName: profile.clubName,
           teamName: name,
-          category,
+          identityCategory: compIdentityCategory,
           letter: extractSquadLetter(name),
           season,
         }).strongId;
-        return id === profile.strongId;
+        return id === profile.strongId || looseAliasMatch;
       });
 
       // Conservative fallback: only exact team name within same category.
@@ -6593,11 +6629,12 @@ function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, c
   const comp = findComp(compId);
   const season = seasonFromComp(comp);
   const category = categoryHint || ctx.category || getCatForComp(comp) || "Altres";
+  const identityCategory = ctx.identityCategory || getIdentityCategoryForComp(comp, category);
   const letter = extractSquadLetter(ctx.teamName || teamName || "");
   const identity = buildStrongTeamIdentity({
     clubName: ctx.clubName,
     teamName: ctx.teamName || teamName,
-    category,
+    identityCategory,
     letter,
     season,
   });
@@ -6608,6 +6645,7 @@ function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, c
     teamName: ctx.teamName || teamName || "",
     teamId: ctx.teamId || teamId || null,
     category,
+    identityCategory,
     clubKey: clubKeyHint || ctx.clubKey || null,
   };
   teamProfileReturnScreen = source;
@@ -7345,10 +7383,10 @@ function renderAllComps(cursor) {
       <input id="all-search" placeholder="🔍 Cerca equip o competició..." value="${esc(allSearch)}"
         style="flex:1;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
         oninput="allSearch=this.value;renderAllComps(this.selectionStart)"/>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
+      ${isCurrentSeasonView() ? `<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
         <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderAllComps()" style="accent-color:#003da5"/>
         En curs
-      </label>
+      </label>` : ""}
     </div>`;
 
   const visibleTop = allFilterCat === "ALL"
@@ -7519,10 +7557,10 @@ function renderPicker() {
     <div style="padding:20px 16px 32px">
       <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#1a2035;margin-bottom:4px">Afegir equip favorit</h2>
       <p style="font-size:13px;color:#6b7a99;margin-bottom:16px">Cerca el club i selecciona l'equip</p>
-      <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;margin-bottom:16px">
+      ${isCurrentSeasonView() ? `<label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;margin-bottom:16px">
         <input type="checkbox" id="picker-active" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderPickerCatSection()" style="width:16px;height:16px;accent-color:#003da5"/>
         Mostrar només competicions en curs
-      </label>
+      </label>` : ""}
       <div style="margin-bottom:14px">
         <label style="display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#6b7a99;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">1. Club</label>
         <div id="picker-club-section"></div>

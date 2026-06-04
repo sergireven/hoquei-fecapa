@@ -10,6 +10,7 @@ const http  = require("http");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
+const FECAPA_CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
 const TARGET_SEASON = String(process.env.JOK_SEASON || "2025-26").trim();
 const ALLOW_ABSOLUTE_OUTPUT = process.env.JOK_ALLOW_ABSOLUTE_OUTPUT === "1";
 
@@ -1601,8 +1602,7 @@ function mapFecapaRowToClassification(row) {
 }
 
 async function loadFecapaGroupClassificationIndex() {
-  const fecapaFile = path.join(__dirname, "../public/fecapa-categories.json");
-  const raw = await fs.readFile(fecapaFile, "utf8");
+  const raw = await fs.readFile(FECAPA_CATEGORIES_FILE, "utf8");
   const parsed = JSON.parse(raw);
   const categories = parsed?.categories || {};
   const out = {}; // normalized group name -> classification rows
@@ -1721,6 +1721,29 @@ async function loadFecapaPostSeasonPhaseIndex() {
   return out;
 }
 
+async function loadFecapaPostSeasonCompetitionList() {
+  const raw = await fs.readFile(FECAPA_CATEGORIES_FILE, "utf8");
+  const parsed = JSON.parse(raw);
+  const categories = parsed?.categories || {};
+  const out = [];
+
+  for (const comps of Object.values(categories)) {
+    if (!Array.isArray(comps)) continue;
+    for (const comp of comps) {
+      const phases = normalizeFecapaCompetitionPhases(comp?.competitionPhases || []);
+      if (!phases.length) continue;
+      out.push({
+        competitionId: String(comp?.competitionId || "").trim(),
+        competitionName: String(comp?.competitionName || "").trim(),
+        phaseNames: [...new Set(phases.map(p => String(p?.phaseName || "").trim()).filter(Boolean))],
+      });
+    }
+  }
+
+  out.sort((a, b) => a.competitionName.localeCompare(b.competitionName));
+  return out;
+}
+
 function findFecapaFallbackPostSeasonPhases(index, compName) {
   const keys = buildFallbackNameKeys(compName || "");
   for (const key of keys) {
@@ -1729,7 +1752,6 @@ function findFecapaFallbackPostSeasonPhases(index, compName) {
   }
   return null;
 }
-
 function findFecapaFallbackClassification(index, compName) {
   const keys = buildFallbackNameKeys(compName || "");
   for (const key of keys) {
@@ -2484,6 +2506,17 @@ async function main() {
   // si hi ha classificació FECAPA, esdevé font principal a totes les categories.
   // JOK.cat queda com a fallback quan no hi ha dades FECAPA.
   let fecapaPrimaryApplied = 0;
+
+  try {
+    const postSeasonComps = await loadFecapaPostSeasonCompetitionList();
+    console.log(`   🏁 postSeason=true: ${postSeasonComps.length} competicions`);
+    for (const comp of postSeasonComps) {
+      const phaseLabel = comp.phaseNames.length ? ` :: ${comp.phaseNames.join(" | ")}` : "";
+      console.log(`      - [${comp.competitionId}] ${comp.competitionName}${phaseLabel}`);
+    }
+  } catch {
+    console.log("   ℹ️  no s'ha pogut generar el llistat postSeason=true");
+  }
   let fecapaFallbackApplied = 0;
   let postSeasonFromJok = 0;
   let postSeasonFromFecapa = 0;
