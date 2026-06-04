@@ -36,7 +36,7 @@ const REQUEST_TIMEOUT_MS = 20000;
 const MAX_CONCURRENCY = 6;
 const NO_MATCHES_PLAYED_MESSAGE = "Sense partits disputats";
 const PLAYOFF_UNAVAILABLE_MESSAGE = "No disponible actualment";
-const POSTSEASON_PHASE_RE = /\b(play\s*-?\s*off|eliminat|copa|fase\s*final|final\s*a\s*4|final\s*four)\b/i;
+const POSTSEASON_PHASE_RE = /\b(play\s*-?\s*off|eliminat|fase\s*final|final\s*a\s*4|final\s*four)\b/i;
 const ALLOW_INSECURE_TLS = process.env.FECAPA_ALLOW_INSECURE_TLS === "1"
   || process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";
 
@@ -44,7 +44,6 @@ function inferPhaseType(phaseName) {
   const n = normName(phaseName || "");
   if (/\bPLAY\s*OFF\b/.test(n)) return "playoff";
   if (/\bELIMINAT/.test(n)) return "eliminatories";
-  if (/\bCOPA\b/.test(n)) return "copa";
   if (/\bFASE\s*FINAL\b|\bFINAL\s*A\s*4\b|\bFINAL\s*FOUR\b/.test(n)) return "fase_final";
   return "lliga";
 }

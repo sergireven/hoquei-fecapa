@@ -449,13 +449,12 @@ function mergeCalendarMatches(primary, extra) {
 function isKnockoutPhaseName(name) {
   const n = normalizeCompToken(name || "");
   if (!n) return false;
-  return /(VUITENS\s+DE\s+FINAL|QUARTS?\s+DE\s+FINAL|SEMIFINALS?|\bFINAL\b|ELIMINAT[OÒ]RIES\s+PR[EEÈ]VIES|PLAY\s*-?\s*OFF|COPA)/.test(n);
+  return /(VUITENS\s+DE\s+FINAL|QUARTS?\s+DE\s+FINAL|SEMIFINALS?|\bFINAL\b|ELIMINAT[OÒ]RIES\s+PR[EEÈ]VIES|PLAY\s*-?\s*OFF)/.test(n);
 }
 
 function inferPhaseTypeFromName(name) {
   const n = normalizeCompToken(name || "");
   if (/PLAY\s*-?\s*OFF/.test(n)) return "playoff";
-  if (/COPA/.test(n)) return "copa";
   if (isKnockoutPhaseName(n)) return "eliminatories";
   return "lliga";
 }
