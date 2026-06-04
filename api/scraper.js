@@ -1669,7 +1669,9 @@ function normalizeFecapaCompetitionPhases(rawPhases) {
     if (!phase) continue;
     const phaseName = String(phase.phaseName || "").trim() || "Fase final";
     const phaseType = String(phase.phaseType || inferPhaseTypeFromName(phaseName)).trim() || "eliminatories";
-    const isPost = phase.isPostSeason === true || phaseType !== "lliga" || isKnockoutPhaseName(phaseName);
+    // Do not trust persisted flags blindly: old cached files may mark regular
+    // Copa league phases as post-season. Recompute from phase semantics only.
+    const isPost = phaseType !== "lliga" || isKnockoutPhaseName(phaseName);
     if (!isPost) continue;
 
     const matches = [];
