@@ -121,7 +121,9 @@ jobs:
           git config user.email "actions@github.com"
           git add -A public
           git commit -m "chore: one-off scrape ${{ inputs.season }} (${{ inputs.mode }})"
-          git push
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
 
       - name: No hi ha canvis
         if: ${{ steps.changes.outputs.dirty == 'false' }}
