@@ -422,7 +422,6 @@ function renderLoginButton() {
     : "";
   return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}${coordinadorBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
 }
-}
 
 // Login modal
 function openLoginModal() {
