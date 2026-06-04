@@ -417,7 +417,11 @@ function renderLoginButton() {
   const adminBtn = currentProfile?.role === "admin"
     ? `<button onclick="openAdminPanel()" style="background:#f59e0b;border:none;color:#1a2035;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">⚙️ Panell Admin</button>`
     : "";
-  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+  const coordinadorBtn = currentProfile?.role === "coordinador"
+    ? `<button onclick="openCoordinatorPanel()" style="background:#7c3aed;border:none;color:#fff;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">📋 Coordinador</button>`
+    : "";
+  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}${coordinadorBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+}
 }
 
 // Login modal
@@ -491,6 +495,9 @@ function openUserModal() {
   const adminBtn  = currentProfile?.role === "admin"
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
     : "";
+  const coordinadorBtn = currentProfile?.role === "coordinador"
+    ? `<button onclick="closeUserModal();openCoordinatorPanel()" style="width:100%;background:#7c3aed;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">📋 Panell Coordinador</button>`
+    : "";
   const teamSection = currentProfile?.role === "entrenador"
     ? `<div style="margin-bottom:16px">
         <div style="font-size:13px;color:#64748b;margin-bottom:6px">Equip assignat</div>
@@ -526,6 +533,7 @@ function openUserModal() {
       ${teamSection}
       ${locationSection}
       ${adminBtn}
+      ${coordinadorBtn}
       <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
     </div>`;
   $("user-modal-bd").style.display = "block";
@@ -1008,6 +1016,1070 @@ function closeAdminPanel() {
   $("screen-admin").style.display = "none";
   renderHome();
 }
+
+// ── PANEL COORDINADOR ────────────────────────────────────────
+const COORDINATOR_FAV_KEY = "hoquei_coordinator_favorite_v1";
+
+function loadCoordinatorFavorite() {
+  try { 
+    const data = localStorage.getItem(COORDINATOR_FAV_KEY);
+    return data ? JSON.parse(data) : null; 
+  } catch { 
+    return null; 
+  }
+}
+
+function saveCoordinatorFavorite(favorite) {
+  try { 
+    localStorage.setItem(COORDINATOR_FAV_KEY, JSON.stringify(favorite)); 
+  } catch {}
+}
+
+function setCoordinatorFavorite(clubName, clubId = null) {
+  const fav = {
+    clubName: String(clubName || "").trim(),
+    clubId: clubId ? String(clubId) : null,
+    savedAt: new Date().toISOString(),
+  };
+  saveCoordinatorFavorite(fav);
+  _syncFavToCloud("coordinator_club", fav.clubName, fav);
+}
+
+function openCoordinatorPanel() {
+  ["screen-home","screen-picker","screen-detail","screen-acta","screen-team","screen-admin"].forEach(id => $(id).style.display = "none");
+  $("screen-coordinator").style.display = "flex";
+  renderCoordinatorPanel();
+  setTimeout(() => {
+    renderCoordinatorTrainingsList();
+    renderCoordinatorWeekCalendar();
+    coordinatorPopulateMatchSelector();
+  }, 100);
+}
+
+function closeCoordinatorPanel() {
+  $("screen-coordinator").style.display = "none";
+  renderHome();
+}
+
+function renderCoordinatorPanel() {
+  const body = $("coordinator-body");
+  const currentFav = loadCoordinatorFavorite();
+  
+  // Recollir tots els clubs de la classificació
+  const allClubs = new Set();
+  for (const comps of Object.values(DB?.categories || {})) {
+    for (const comp of comps) {
+      for (const row of (comp.classification || [])) {
+        if (row?.team && !isDescansaTeamName(row.team)) {
+          allClubs.add(row.team);
+        }
+      }
+    }
+  }
+  const clubList = Array.from(allClubs).sort();
+  
+  const clubOptions = clubList.map(club => 
+    `<option value="${esc(club)}" ${currentFav?.clubName === club ? "selected" : ""}>${esc(club)}</option>`
+  ).join("");
+  
+  body.innerHTML = `
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Club Favorit</div>
+      <div style="margin-bottom:8px">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Selecciona el teu club</label>
+        <select id="coordinator-club-select" onchange="handleCoordinatorClubChange(this.value)" 
+          style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;cursor:pointer">
+          <option value="">-- Cap club seleccionat --</option>
+          ${clubOptions}
+        </select>
+      </div>
+      ${currentFav ? `<div style="margin-top:10px;padding:10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;color:#3730a3;font-weight:600">✓ Club: ${esc(currentFav.clubName)}</div>` : ""}
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">📊 Exportar Resultats</div>
+      <button onclick="exportCoordinatorResultsToExcel()" style="width:100%;background:#059669;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-bottom:8px">📊 Descarregar Excel (Classificació + Calendari)</button>
+      <button onclick="exportCoordinatorResultsToPDF()" style="width:100%;background:#dc2626;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-bottom:8px">📄 Descarregar PDF (Classificació + Calendari)</button>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Pròximes Funcionalitats</div>
+      <button onclick="alert('Gestió entrenamientos - Fase 3 (En desenvolvimento)')" style="width:100%;background:#6b7280;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;opacity:0.6;margin-bottom:8px">🏋️ Gestionar Entrenamientos</button>
+      <button onclick="alert('Calendari amb entrenamientos - Fase 4 (En desenvolvimento)')" style="width:100%;background:#6b7280;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;opacity:0.6;margin-bottom:8px">📅 Calendari amb Entrenamientos</button>
+      <button onclick="alert('Generació de convocatòries - Fase 5 (En desenvolupament)')" style="width:100%;background:#6b7280;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;opacity:0.6">🎯 Generar Convocatòries</button>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">🏋️ Gestionar Entrenamientos (FASE 3)</div>
+      
+      <!-- Training Form -->
+      <div style="background:#f8f9fa;border:1px solid #e2e6ef;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#1a2035;margin-bottom:8px;text-transform:uppercase">Nuevo Entrenamiento</div>
+        <input type="date" id="training-date" placeholder="Fecha" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px;font-family:inherit">
+        <input type="time" id="training-time" placeholder="Hora" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px;font-family:inherit">
+        <input type="text" id="training-location" placeholder="Ubicación (ej: Pabellón...)" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px;font-family:inherit">
+        <input type="number" id="training-duration" placeholder="Duración (minutos)" min="15" max="300" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:6px;font-family:inherit">
+        <textarea id="training-notes" placeholder="Notas (opcional)" rows="2" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;margin-bottom:8px;font-family:inherit;resize:none"></textarea>
+        <button onclick="coordinatorAddTraining()" style="width:100%;background:#7c3aed;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px;border-radius:8px;cursor:pointer">+ Agregar Entrenamiento</button>
+      </div>
+
+      <!-- Training List -->
+      <div id="coordinator-trainings-list" style="max-height:400px;overflow-y:auto">
+        <!-- Trainings will be rendered here -->
+      </div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">📅 Calendari Setmanal (FASE 4)</div>
+      <div id="coordinator-week-calendar" style="font-size:11px">
+        <!-- Week calendar will render here -->
+      </div>
+      <div style="margin-top:10px;text-align:center">
+        <button onclick="coordinatorResetWeek()" style="background:#64748b;border:none;color:#fff;font-weight:600;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer">Torna a Aquesta Setmana</button>
+      </div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px 14px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">🎯 Generar Convocatòria (FASE 5)</div>
+      
+      <!-- Match Selection -->
+      <div style="background:#f8f9fa;border:1px solid #e2e6ef;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#1a2035;margin-bottom:8px;text-transform:uppercase">Selecciona Partit</div>
+        <select id="convocatoria-match-select" onchange="coordinatorOnMatchSelected()" style="width:100%;padding:8px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:8px">
+          <option value="">-- Selecciona un partit --</option>
+        </select>
+        <button onclick="coordinatorGenerateConvocatoria()" style="width:100%;background:#10b981;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px;border-radius:8px;cursor:pointer">↓ Generar Convocatoria</button>
+      </div>
+
+      <!-- Convocatoria Players List -->
+      <div id="convocatoria-players-container" style="display:none">
+        <div style="background:#f8f9fa;border:1px solid #e2e6ef;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:#1a2035;margin-bottom:10px">Jugadors</div>
+          <div id="convocatoria-players-list" style="max-height:300px;overflow-y:auto;font-size:11px">
+            <!-- Players will render here -->
+          </div>
+        </div>
+        
+        <div style="display:flex;gap:8px">
+          <button onclick="downloadConvocatoriaMarkdown(loadCoordinatorFavorite().clubName, $('convocatoria-match-select').value)" style="flex:1;background:#8b5cf6;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px;border-radius:8px;cursor:pointer">📄 Descarregar Convocatoria</button>
+          <button onclick="coordinatorClearConvocatoria()" style="flex:1;background:#6b7280;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px;border-radius:8px;cursor:pointer">Tancar</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:12px;padding:12px 14px;font-size:12px;color:#92400e">
+      <div style="font-weight:700;margin-bottom:6px">📋 Roadmap del Panel Coordinador</div>
+      <ul style="margin:0;padding-left:16px;list-style:disc">
+        <li>✅ Fase 1: Club favorit (MVP) - Completada</li>
+        <li>✅ Fase 2: Exportar resultats (Excel/PDF) - Completada</li>
+        <li>✅ Fase 3: Gestionar entrenamientos - Completada</li>
+        <li>✅ Fase 4: Calendari amb entrenamientos - Completada</li>
+        <li>✅ Fase 5: Generació de convocatòries - Completada</li>
+      </ul>
+    </div>
+  `;
+}
+
+// Render training list for coordinator
+function renderCoordinatorTrainingsList() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav) return;
+
+  const trainings = getUpcomingTrainings(fav.clubName, 60);
+  const list = $("coordinator-trainings-list");
+  
+  if (!trainings.length) {
+    list.innerHTML = `<div style="padding:12px;text-align:center;color:#94a3b8;font-size:12px">No hay entrenamientos programados</div>`;
+    return;
+  }
+
+  list.innerHTML = trainings.map((t, idx) => {
+    const dateObj = new Date(t.date);
+    const formatted = dateObj.toLocaleDateString("ca-ES", { weekday: "short", month: "short", day: "numeric" });
+    return `
+      <div style="background:#f8f9fa;border:1px solid #e2e6ef;border-radius:8px;padding:10px;margin-bottom:8px;font-size:11px">
+        <div style="font-weight:700;color:#1a2035;margin-bottom:4px">${formatted} a las ${t.time}</div>
+        <div style="color:#475569;margin-bottom:2px">📍 ${esc(t.location)}</div>
+        <div style="color:#475569;margin-bottom:2px">⏱️ ${t.duration} min</div>
+        ${t.notes ? `<div style="color:#64748b;font-size:10px;margin-top:4px;padding:4px;background:#fff;border-radius:4px">${esc(t.notes)}</div>` : ""}
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="coordinatorEditTraining('${t.id}')" style="flex:1;background:#3b82f6;border:none;color:#fff;font-weight:600;font-size:10px;padding:4px;border-radius:4px;cursor:pointer">✏️ Editar</button>
+          <button onclick="coordinatorDeleteTraining('${t.id}')" style="flex:1;background:#ef4444;border:none;color:#fff;font-weight:600;font-size:10px;padding:4px;border-radius:4px;cursor:pointer">🗑️ Borrar</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// Add training handler
+async function coordinatorAddTraining() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav) {
+    alert("Selecciona un club favorito primero");
+    return;
+  }
+
+  const date = $("training-date").value;
+  const time = $("training-time").value;
+  const location = $("training-location").value;
+  const duration = $("training-duration").value;
+  const notes = $("training-notes").value;
+
+  if (!date || !time || !location || !duration) {
+    alert("Por favor completa fecha, hora, ubicación y duración");
+    return;
+  }
+
+  await createTraining(fav.clubName, date, time, location, duration, notes);
+
+  // Clear form
+  $("training-date").value = "";
+  $("training-time").value = "";
+  $("training-location").value = "";
+  $("training-duration").value = "";
+  $("training-notes").value = "";
+
+  renderCoordinatorTrainingsList();
+}
+
+// Delete training handler
+async function coordinatorDeleteTraining(trainingId) {
+  const fav = loadCoordinatorFavorite();
+  if (!fav || !confirm("¿Está seguro de que desea eliminar este entrenamiento?")) return;
+
+  await deleteTraining(fav.clubName, trainingId);
+  renderCoordinatorTrainingsList();
+}
+
+// Edit training handler (placeholder for now)
+function coordinatorEditTraining(trainingId) {
+  alert("Editar entrenamientos - Proximamente en una futura versión");
+}
+
+// Window exports for training UI handlers
+window.coordinatorAddTraining = coordinatorAddTraining;
+window.coordinatorDeleteTraining = coordinatorDeleteTraining;
+window.coordinatorEditTraining = coordinatorEditTraining;
+
+window.handleCoordinatorClubChange = function(clubName) {
+  if (clubName.trim()) {
+    setCoordinatorFavorite(clubName);
+    weekCalendarCurrentDate = new Date(); // Reset to current week
+    renderCoordinatorPanel();
+    setTimeout(() => {
+      renderCoordinatorTrainingsList();
+      renderCoordinatorWeekCalendar();
+      coordinatorPopulateMatchSelector();
+    }, 100);
+  }
+};
+
+// ── Coordinator Week Calendar (FASE 4) ──────────────────────
+let weekCalendarCurrentDate = new Date(); // Store current week view date
+
+// Get start of week (Monday)
+function getWeekStart(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
+  return new Date(d.setDate(diff));
+}
+
+// Get 7 days starting from Monday
+function getWeekDays(date = new Date()) {
+  const start = getWeekStart(date);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+// Get matches for a club during a date range
+function getClubMatches(clubName, startDate, endDate) {
+  const allComps = Object.values(DB?.categories || {}).flat();
+  const matches = [];
+  
+  for (const comp of allComps) {
+    for (const match of (comp.calendar || [])) {
+      const matchDate = new Date(match.date);
+      if (matchDate >= startDate && matchDate <= endDate) {
+        if (teamMatchesLoose(match.home, clubName) || teamMatchesLoose(match.away, clubName)) {
+          matches.push({
+            date: match.date,
+            time: match.time || "",
+            home: match.home,
+            away: match.away,
+            homeScore: match.homeScore,
+            awayScore: match.awayScore,
+            comp: comp.name,
+            isHome: teamMatchesLoose(match.home, clubName),
+          });
+        }
+      }
+    }
+  }
+  return matches;
+}
+
+// Get trainings for a club during a date range
+function getClubTrainingsInRange(clubName, startDate, endDate) {
+  const trainings = loadCoordinatorTrainings(clubName);
+  return trainings.filter(t => {
+    const tDate = new Date(t.date);
+    return tDate >= startDate && tDate <= endDate;
+  });
+}
+
+// Get events for a specific date (matches + trainings)
+function getDayEvents(clubName, date) {
+  const dateStr = date.toISOString().split("T")[0];
+  const allComps = Object.values(DB?.categories || {}).flat();
+  
+  const dayMatches = [];
+  for (const comp of allComps) {
+    for (const match of (comp.calendar || [])) {
+      if (match.date === dateStr) {
+        if (teamMatchesLoose(match.home, clubName) || teamMatchesLoose(match.away, clubName)) {
+          dayMatches.push({
+            type: "match",
+            time: match.time || "",
+            home: match.home,
+            away: match.away,
+            homeScore: match.homeScore,
+            awayScore: match.awayScore,
+            isHome: teamMatchesLoose(match.home, clubName),
+          });
+        }
+      }
+    }
+  }
+  
+  const trainings = loadCoordinatorTrainings(clubName);
+  const dayTrainings = trainings.filter(t => t.date === dateStr).map(t => ({
+    type: "training",
+    time: t.time,
+    location: t.location,
+    duration: t.duration,
+    notes: t.notes,
+    id: t.id,
+  }));
+  
+  return { matches: dayMatches, trainings: dayTrainings };
+}
+
+// Render week calendar
+function renderCoordinatorWeekCalendar() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav) return;
+
+  const container = $("coordinator-week-calendar");
+  if (!container) return;
+
+  const weekStart = getWeekStart(weekCalendarCurrentDate);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  const days = getWeekDays(weekCalendarCurrentDate);
+  const weekLabel = `${weekStart.toLocaleDateString("ca-ES", { day: "numeric", month: "short" })} - ${weekEnd.toLocaleDateString("ca-ES", { day: "numeric", month: "short", year: "numeric" })}`;
+
+  // Build calendar HTML
+  const calendarHTML = `
+    <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <button onclick="coordinatorPrevWeek()" style="background:#e2e6ef;border:none;width:32px;height:32px;border-radius:6px;cursor:pointer;font-weight:700">←</button>
+      <div style="font-weight:700;color:#1a2035;font-size:12px;text-transform:uppercase;letter-spacing:.05em">${weekLabel}</div>
+      <button onclick="coordinatorNextWeek()" style="background:#e2e6ef;border:none;width:32px;height:32px;border-radius:6px;cursor:pointer;font-weight:700">→</button>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:6px;font-size:11px">
+      ${days.map(day => {
+        const events = getDayEvents(fav.clubName, day);
+        const dayName = day.toLocaleDateString("ca-ES", { weekday: "short" }).toUpperCase();
+        const dayNum = day.getDate();
+        const isToday = day.toDateString() === new Date().toDateString();
+        const hasMatch = events.matches.length > 0;
+        const hasTraining = events.trainings.length > 0;
+        
+        return `
+          <div style="background:#fff;border:2px solid ${isToday ? "#7c3aed" : "#e2e6ef"};border-radius:8px;padding:8px;min-height:120px;display:flex;flex-direction:column">
+            <div style="font-weight:700;color:#1a2035;margin-bottom:6px">${dayName} ${dayNum}</div>
+            
+            ${hasMatch ? `
+              <div style="background:#fee2e2;border-left:3px solid #dc2626;padding:4px 6px;margin-bottom:4px;border-radius:3px;font-size:10px;color:#7f1d1d;font-weight:600">
+                ⚽ MATCH
+                ${events.matches[0].time ? `<div style="font-size:9px;margin-top:2px">${events.matches[0].time}</div>` : ""}
+              </div>
+            ` : ""}
+            
+            ${events.trainings.map(t => `
+              <div style="background:#dbeafe;border-left:3px solid #3b82f6;padding:4px 6px;margin-bottom:3px;border-radius:3px;font-size:10px;color:#1e40af;font-weight:600">
+                🏋️ ${t.time}
+                <div style="font-size:9px;margin-top:2px;color:#1e3a8a">${t.location}</div>
+              </div>
+            `).join("")}
+            
+            ${!hasMatch && events.trainings.length === 0 ? `
+              <div style="color:#cbd5e1;font-size:10px;text-align:center;padding:20px 0">—</div>
+            ` : ""}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  container.innerHTML = calendarHTML;
+}
+
+// Navigate weeks
+function coordinatorPrevWeek() {
+  weekCalendarCurrentDate.setDate(weekCalendarCurrentDate.getDate() - 7);
+  renderCoordinatorWeekCalendar();
+}
+
+function coordinatorNextWeek() {
+  weekCalendarCurrentDate.setDate(weekCalendarCurrentDate.getDate() + 7);
+  renderCoordinatorWeekCalendar();
+}
+
+// Reset to current week
+function coordinatorResetWeek() {
+  weekCalendarCurrentDate = new Date();
+  renderCoordinatorWeekCalendar();
+}
+
+// Window exports
+window.coordinatorPrevWeek = coordinatorPrevWeek;
+window.coordinatorNextWeek = coordinatorNextWeek;
+window.coordinatorResetWeek = coordinatorResetWeek;
+
+// ── Coordinator Convocatoria Generation (FASE 5) ─────────────
+const CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v1";
+
+// Load player roster from recent match records
+function getTeamPlayerRoster(clubName) {
+  const players = new Map(); // playerId -> {name, position}
+  const allComps = Object.values(DB?.categories || {}).flat();
+  
+  for (const comp of allComps) {
+    for (const match of (comp.actes || [])) {
+      const isHome = teamMatchesLoose(match.teamHome, clubName);
+      const isAway = teamMatchesLoose(match.teamAway, clubName);
+      
+      if (isHome) {
+        for (const player of (match.teamHomePlayers || [])) {
+          const playerName = player?.name || player?.playerName || player;
+          if (playerName && typeof playerName === "string" && playerName.length > 1) {
+            if (!players.has(playerName)) {
+              players.set(playerName, { name: playerName, position: player?.position || "Jugador", dorsal: player?.dorsal || "" });
+            }
+          }
+        }
+      }
+      if (isAway) {
+        for (const player of (match.teamAwayPlayers || [])) {
+          const playerName = player?.name || player?.playerName || player;
+          if (playerName && typeof playerName === "string" && playerName.length > 1) {
+            if (!players.has(playerName)) {
+              players.set(playerName, { name: playerName, position: player?.position || "Jugador", dorsal: player?.dorsal || "" });
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(players.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Load convocatoria data for a match
+function loadConvocatoria(clubName, matchDate) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
+    return cache[`${clubName}_${matchDate}`] || null;
+  } catch {
+    return null;
+  }
+}
+
+// Save convocatoria data
+function saveConvocatoria(clubName, matchDate, convocatoria) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
+    cache[`${clubName}_${matchDate}`] = convocatoria;
+    localStorage.setItem(CONVOCATORIA_CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn("Error saving convocatoria:", e);
+  }
+}
+
+// Create new convocatoria
+function createConvocatoria(clubName, matchDate, matchData) {
+  const roster = getTeamPlayerRoster(clubName);
+  const players = roster.map(p => ({
+    name: p.name,
+    position: p.position,
+    dorsal: p.dorsal,
+    status: "available", // available | injured
+    notes: "",
+  }));
+
+  const convocatoria = {
+    clubName,
+    matchDate,
+    matchHome: matchData?.home || "",
+    matchAway: matchData?.away || "",
+    matchTime: matchData?.time || "",
+    createdAt: new Date().toISOString(),
+    players,
+  };
+
+  saveConvocatoria(clubName, matchDate, convocatoria);
+  return convocatoria;
+}
+
+// Update player status in convocatoria
+function updatePlayerStatus(clubName, matchDate, playerName, status) {
+  const convocatoria = loadConvocatoria(clubName, matchDate);
+  if (!convocatoria) return;
+
+  const player = convocatoria.players.find(p => p.name === playerName);
+  if (player) player.status = status;
+  
+  saveConvocatoria(clubName, matchDate, convocatoria);
+}
+
+// Update player notes
+function updatePlayerNotes(clubName, matchDate, playerName, notes) {
+  const convocatoria = loadConvocatoria(clubName, matchDate);
+  if (!convocatoria) return;
+
+  const player = convocatoria.players.find(p => p.name === playerName);
+  if (player) player.notes = notes;
+  
+  saveConvocatoria(clubName, matchDate, convocatoria);
+}
+
+// Export convocatoria as Markdown
+function exportConvocatoriaMarkdown(clubName, matchDate) {
+  const convocatoria = loadConvocatoria(clubName, matchDate);
+  if (!convocatoria) {
+    alert("No convocatoria found for this match");
+    return;
+  }
+
+  const availablePlayers = convocatoria.players.filter(p => p.status === "available");
+  const injuredPlayers = convocatoria.players.filter(p => p.status === "injured");
+
+  let md = `# Convocatòria\n\n`;
+  md += `**${convocatoria.clubName}**\n\n`;
+  md += `## Partit\n\n`;
+  md += `${convocatoria.matchHome} vs ${convocatoria.matchAway}\n\n`;
+  if (convocatoria.matchDate) md += `**Data**: ${convocatoria.matchDate}\n`;
+  if (convocatoria.matchTime) md += `**Hora**: ${convocatoria.matchTime}\n\n`;
+
+  md += `## Jugadors Disponibles (${availablePlayers.length})\n\n`;
+  md += `| Nº | Jugador | Posició | Observacions |\n`;
+  md += `|----|---------|---------|---------------|\n`;
+  
+  for (const p of availablePlayers) {
+    md += `| ${p.dorsal || "-"} | ${p.name} | ${p.position} | ${p.notes || "-"} |\n`;
+  }
+
+  if (injuredPlayers.length > 0) {
+    md += `\n## Lesionats/Baixa (${injuredPlayers.length})\n\n`;
+    md += `| Jugador | Observacions |\n`;
+    md += `|---------|---------------|\n`;
+    for (const p of injuredPlayers) {
+      md += `| ${p.name} | ${p.notes || "Lesionat"} |\n`;
+    }
+  }
+
+  md += `\n_Generat el ${new Date().toLocaleDateString("ca-ES")}_\n`;
+
+  return md;
+}
+
+// Download convocatoria as .md file
+function downloadConvocatoriaMarkdown(clubName, matchDate) {
+  const md = exportConvocatoriaMarkdown(clubName, matchDate);
+  if (!md) return;
+
+  const element = document.createElement("a");
+  element.setAttribute("href", "data:text/markdown;charset=utf-8," + encodeURIComponent(md));
+  element.setAttribute("download", `Convocatoria_${clubName}_${matchDate}.md`);
+  element.style.display = "none";
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
+
+// Get upcoming matches for club
+function getUpcomingMatchesForConvocatoria(clubName) {
+  const allComps = Object.values(DB?.categories || {}).flat();
+  const matches = [];
+  const today = new Date();
+  
+  for (const comp of allComps) {
+    for (const match of (comp.calendar || [])) {
+      const matchDate = new Date(match.date);
+      if (matchDate >= today) {
+        if (teamMatchesLoose(match.home, clubName) || teamMatchesLoose(match.away, clubName)) {
+          matches.push({
+            date: match.date,
+            time: match.time || "",
+            home: match.home,
+            away: match.away,
+            comp: comp.name,
+          });
+        }
+      }
+    }
+  }
+  
+  return matches.sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 10);
+}
+
+// Window exports
+window.createConvocatoria = createConvocatoria;
+window.updatePlayerStatus = updatePlayerStatus;
+window.updatePlayerNotes = updatePlayerNotes;
+window.downloadConvocatoriaMarkdown = downloadConvocatoriaMarkdown;
+
+// ── Coordinator Convocatoria UI Handlers ─────────────────────
+function coordinatorPopulateMatchSelector() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav) return;
+
+  const matches = getUpcomingMatchesForConvocatoria(fav.clubName);
+  const selector = $("convocatoria-match-select");
+  
+  selector.innerHTML = `<option value="">-- Selecciona un partit --</option>`;
+  
+  for (const match of matches) {
+    const label = `${match.date} ${match.time ? match.time + " " : ""}(${match.home} vs ${match.away})`;
+    selector.innerHTML += `<option value="${match.date}">${label}</option>`;
+  }
+}
+
+function coordinatorOnMatchSelected() {
+  const matchDate = $("convocatoria-match-select").value;
+  if (matchDate) {
+    // Show loading state - container will be filled when generating
+  }
+}
+
+function coordinatorGenerateConvocatoria() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav) {
+    alert("Selecciona un club favorit primero");
+    return;
+  }
+
+  const matchDate = $("convocatoria-match-select").value;
+  if (!matchDate) {
+    alert("Selecciona un partit primero");
+    return;
+  }
+
+  // Get match details
+  const allComps = Object.values(DB?.categories || {}).flat();
+  let matchData = { date: matchDate, home: "", away: "", time: "" };
+  
+  for (const comp of allComps) {
+    for (const match of (comp.calendar || [])) {
+      if (match.date === matchDate) {
+        if (teamMatchesLoose(match.home, fav.clubName) || teamMatchesLoose(match.away, fav.clubName)) {
+          matchData = { date: matchDate, home: match.home, away: match.away, time: match.time || "" };
+          break;
+        }
+      }
+    }
+  }
+
+  // Create or load convocatoria
+  let convocatoria = loadConvocatoria(fav.clubName, matchDate);
+  if (!convocatoria) {
+    convocatoria = createConvocatoria(fav.clubName, matchDate, matchData);
+  }
+
+  // Render players
+  renderConvocatoriaPlayers(fav.clubName, matchDate, convocatoria);
+  
+  // Show players container
+  $("convocatoria-players-container").style.display = "block";
+}
+
+function renderConvocatoriaPlayers(clubName, matchDate, convocatoria) {
+  const container = $("convocatoria-players-list");
+  
+  container.innerHTML = convocatoria.players.map(player => `
+    <div style="background:#fff;border:1px solid #e2e6ef;border-radius:6px;padding:8px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:600;color:#1a2035">${player.name}</div>
+        <select onchange="updatePlayerStatus('${clubName}', '${matchDate}', '${player.name}', this.value); renderConvocatoriaPlayers('${clubName}', '${matchDate}', loadConvocatoria('${clubName}', '${matchDate}'))" style="padding:3px 6px;border:1px solid #e2e6ef;border-radius:4px;font-size:10px">
+          <option value="available" ${player.status === "available" ? "selected" : ""}>✓ Disponible</option>
+          <option value="injured" ${player.status === "injured" ? "selected" : ""}>✗ Lesionat</option>
+        </select>
+      </div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:4px">${player.position}${player.dorsal ? " · Nº" + player.dorsal : ""}</div>
+      <input type="text" value="${player.notes}" onchange="updatePlayerNotes('${clubName}', '${matchDate}', '${player.name}', this.value)" placeholder="Observacions..." style="width:100%;padding:4px 6px;border:1px solid #e2e6ef;border-radius:4px;font-size:10px;font-family:inherit" />
+    </div>
+  `).join("");
+}
+
+function coordinatorClearConvocatoria() {
+  $("convocatoria-players-container").style.display = "none";
+}
+
+// Window exports for UI handlers
+window.coordinatorPopulateMatchSelector = coordinatorPopulateMatchSelector;
+window.coordinatorOnMatchSelected = coordinatorOnMatchSelected;
+window.coordinatorGenerateConvocatoria = coordinatorGenerateConvocatoria;
+window.coordinatorClearConvocatoria = coordinatorClearConvocatoria;
+
+// ── Export functions for coordinator results ────────────────
+function getCoordinatorResultsData() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav || !fav.clubName) {
+    alert("Selecciona un club favorit primer.");
+    return null;
+  }
+
+  const clubName = fav.clubName;
+  const allComps = Object.values(DB?.categories || {}).flat();
+  
+  // Trobar totes les competicions on juga el club
+  const clubComps = [];
+  for (const comp of allComps) {
+    const classifRow = (comp.classification || []).find(r => teamMatchesLoose(r?.team, clubName));
+    if (classifRow) {
+      clubComps.push({ comp, classifRow });
+    }
+  }
+
+  if (!clubComps.length) {
+    alert(`No es va trobar el club "${clubName}" en cap classificació.`);
+    return null;
+  }
+
+  // Obtenir calendari de tots els partits del club
+  const matches = [];
+  for (const { comp } of clubComps) {
+    for (const match of (comp.calendar || [])) {
+      if (teamMatchesLoose(match.home, clubName) || teamMatchesLoose(match.away, clubName)) {
+        matches.push({
+          comp,
+          date: match.date || "",
+          time: match.time || "",
+          home: match.home || "",
+          away: match.away || "",
+          homeScore: match.homeScore,
+          awayScore: match.awayScore,
+          jornada: match.jornada || "",
+          played: match.homeScore != null && match.awayScore != null,
+        });
+      }
+    }
+  }
+
+  return {
+    clubName,
+    competitions: clubComps,
+    matches,
+  };
+}
+
+function exportCoordinatorResultsToExcel() {
+  const data = getCoordinatorResultsData();
+  if (!data) return;
+
+  const { clubName, competitions, matches } = data;
+  const wb = XLSX.utils.book_new();
+
+  // ─ Sheet 1: Classification
+  const classifSheet = [];
+  classifSheet.push(["Classificació", clubName, "", "", ""]);
+  classifSheet.push([]);
+
+  for (const { comp, classifRow } of competitions) {
+    classifSheet.push([comp.name, "", "", "", ""]);
+    classifSheet.push(["Pos", "Equip", "PJ", "G", "E"]);
+    
+    for (const row of (comp.classification || [])) {
+      classifSheet.push([
+        row.pos || row.position || "",
+        row.team || "",
+        row.pj || row.played || "",
+        row.pg || row.won || "",
+        row.pe || row.drawn || "",
+      ]);
+    }
+    classifSheet.push([]);
+  }
+
+  const classifWs = XLSX.utils.aoa_to_sheet(classifSheet);
+  XLSX.utils.book_append_sheet(wb, classifWs, "Classificació");
+
+  // ─ Sheet 2: Calendar
+  const calendarSheet = [];
+  calendarSheet.push(["Calendari", clubName, "", "", "", ""]);
+  calendarSheet.push([]);
+  calendarSheet.push(["Data", "Hora", "Jornada", "Local", "Visitant", "Resultat"]);
+
+  for (const match of matches) {
+    const result = match.played
+      ? `${match.homeScore} - ${match.awayScore}`
+      : "---";
+    const isHome = teamMatchesLoose(match.home, clubName);
+    const myTeam = isHome ? match.home : match.away;
+    const rival = isHome ? match.away : match.home;
+
+    calendarSheet.push([
+      match.date,
+      match.time || "",
+      match.jornada || "",
+      match.home,
+      match.away,
+      result,
+    ]);
+  }
+
+  const calendarWs = XLSX.utils.aoa_to_sheet(calendarSheet);
+  XLSX.utils.book_append_sheet(wb, calendarWs, "Calendari");
+
+  // Download
+  const fileName = `Resultat_${clubName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+function exportCoordinatorResultsToPDF() {
+  const data = getCoordinatorResultsData();
+  if (!data) return;
+
+  const { clubName, competitions, matches } = data;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let yPosition = 10;
+  const lineHeight = 6;
+  const margin = 10;
+
+  // Title
+  doc.setFontSize(18);
+  doc.setFont(undefined, "bold");
+  doc.text(`Resultat del Club: ${clubName}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 12;
+
+  // Date
+  doc.setFontSize(10);
+  doc.setFont(undefined, "normal");
+  const exportDate = new Date().toLocaleDateString("ca-ES");
+  doc.text(`Generat: ${exportDate}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 8;
+
+  // ─ Classifications section
+  doc.setFontSize(12);
+  doc.setFont(undefined, "bold");
+  doc.text("Classificacions", margin, yPosition);
+  yPosition += 8;
+
+  for (const { comp, classifRow } of competitions) {
+    if (yPosition > pageHeight - 20) {
+      doc.addPage();
+      yPosition = 10;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, "bold");
+    doc.text(`${comp.name}`, margin, yPosition);
+    yPosition += 6;
+
+    // Table header
+    doc.setFontSize(9);
+    doc.setFont(undefined, "bold");
+    const colX = [margin, margin + 10, margin + 50, margin + 70, margin + 85];
+    doc.text("Pos", colX[0], yPosition);
+    doc.text("Equip", colX[1], yPosition);
+    doc.text("PJ", colX[2], yPosition);
+    doc.text("G", colX[3], yPosition);
+    doc.text("E", colX[4], yPosition);
+    yPosition += 5;
+
+    // Table data
+    doc.setFont(undefined, "normal");
+    for (const row of (comp.classification || []).slice(0, 15)) {
+      if (yPosition > pageHeight - 15) {
+        doc.addPage();
+        yPosition = 10;
+      }
+      doc.text(String(row.pos || row.position || ""), colX[0], yPosition);
+      doc.text(String(row.team || "").substring(0, 20), colX[1], yPosition);
+      doc.text(String(row.pj || row.played || ""), colX[2], yPosition);
+      doc.text(String(row.pg || row.won || ""), colX[3], yPosition);
+      doc.text(String(row.pe || row.drawn || ""), colX[4], yPosition);
+      yPosition += 5;
+    }
+    yPosition += 5;
+  }
+
+  // ─ Calendar section
+  if (yPosition > pageHeight - 25) {
+    doc.addPage();
+    yPosition = 10;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, "bold");
+  doc.text("Calendari de Partits", margin, yPosition);
+  yPosition += 8;
+
+  doc.setFontSize(9);
+  for (const match of matches.slice(0, 30)) {
+    if (yPosition > pageHeight - 10) {
+      doc.addPage();
+      yPosition = 10;
+    }
+
+    const result = match.played ? `${match.homeScore}-${match.awayScore}` : "---";
+    const line = `${match.date} | ${match.home} vs ${match.away} | ${result}`;
+    doc.text(line, margin, yPosition);
+    yPosition += 4;
+  }
+
+  // Save
+  const fileName = `Resultat_${clubName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+  doc.save(fileName);
+}
+
+window.exportCoordinatorResultsToExcel = exportCoordinatorResultsToExcel;
+window.exportCoordinatorResultsToPDF = exportCoordinatorResultsToPDF;
+
+// ── Coordinator Training Management (FASE 3) ────────────────
+const TRAININGS_CACHE_KEY = "hoquei_coordinator_trainings_v1";
+
+// Load trainings from localStorage (fallback cache)
+function loadCoordinatorTrainings(clubId) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(TRAININGS_CACHE_KEY) || "{}");
+    return cache[clubId] || [];
+  } catch {
+    return [];
+  }
+}
+
+// Save trainings to localStorage
+function saveCoordinatorTrainings(clubId, trainings) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(TRAININGS_CACHE_KEY) || "{}");
+    cache[clubId] = trainings;
+    localStorage.setItem(TRAININGS_CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn("Error saving trainings to localStorage:", e);
+  }
+}
+
+// Sync training to cloud via Supabase
+async function syncTrainingToCloud(action, training, clubId) {
+  if (!currentProfile) return false;
+  return await _syncFavToCloud("coordinator_training", `${clubId}_${action}`, training);
+}
+
+// Create new training
+async function createTraining(clubId, date, time, location, duration, notes) {
+  if (!clubId || !date || !time || !location || !duration) {
+    alert("Por favor completa todos los campos obligatorios");
+    return false;
+  }
+
+  const newTraining = {
+    id: generateId(),
+    clubId,
+    date,
+    time,
+    location,
+    duration: parseInt(duration),
+    notes: notes || "",
+    createdAt: new Date().toISOString(),
+  };
+
+  const trainings = loadCoordinatorTrainings(clubId);
+  trainings.push(newTraining);
+  saveCoordinatorTrainings(clubId, trainings);
+
+  // Cloud sync
+  await syncTrainingToCloud("create", newTraining, clubId);
+
+  return true;
+}
+
+// Update existing training
+async function updateTraining(clubId, trainingId, updates) {
+  const trainings = loadCoordinatorTrainings(clubId);
+  const idx = trainings.findIndex(t => t.id === trainingId);
+  if (idx === -1) return false;
+
+  trainings[idx] = { ...trainings[idx], ...updates, updatedAt: new Date().toISOString() };
+  saveCoordinatorTrainings(clubId, trainings);
+
+  // Cloud sync
+  await syncTrainingToCloud("update", trainings[idx], clubId);
+
+  return true;
+}
+
+// Delete training
+async function deleteTraining(clubId, trainingId) {
+  const trainings = loadCoordinatorTrainings(clubId);
+  const filtered = trainings.filter(t => t.id !== trainingId);
+  saveCoordinatorTrainings(clubId, filtered);
+
+  // Cloud sync
+  await syncTrainingToCloud("delete", { id: trainingId }, clubId);
+
+  return true;
+}
+
+// Get upcoming trainings
+function getUpcomingTrainings(clubId, days = 30) {
+  const trainings = loadCoordinatorTrainings(clubId);
+  const today = new Date();
+  const future = new Date();
+  future.setDate(future.getDate() + days);
+
+  return trainings.filter(t => {
+    const tDate = new Date(t.date);
+    return tDate >= today && tDate <= future;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// Format training for display
+function formatTrainingRow(training) {
+  const dateObj = new Date(training.date);
+  const formatted = dateObj.toLocaleDateString("ca-ES", { weekday: "short", month: "short", day: "numeric" });
+  return {
+    formatted,
+    date: training.date,
+    time: training.time,
+    location: training.location,
+    duration: training.duration,
+    notes: training.notes,
+  };
+}
+
+// Helper: generate simple ID
+function generateId() {
+  return "t_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+}
+
+// Window exports for training functions
+window.createTraining = createTraining;
+window.updateTraining = updateTraining;
+window.deleteTraining = deleteTraining;
+window.getUpcomingTrainings = getUpcomingTrainings;
 
 // ── Auditoria FECAPA ↔ jok.cat ────────────────────────────────
 let adminAuditCache = null;
@@ -1882,6 +2954,8 @@ async function updateUserRole(uid, role) {
 }
 window.openAdminPanel      = openAdminPanel;
 window.closeAdminPanel     = closeAdminPanel;
+window.openCoordinatorPanel   = openCoordinatorPanel;
+window.closeCoordinatorPanel  = closeCoordinatorPanel;
 window.updateUserRole      = updateUserRole;
 window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
