@@ -90,6 +90,10 @@
     /* Admin panel screen */
     #screen-admin{display:none;flex-direction:column;min-height:100vh}
   </style>
+  <!-- Export libraries for coordinator panel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -194,6 +198,17 @@
     </div>
   </div>
   <div id="admin-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
+</div>
+
+<!-- Coordinator panel -->
+<div id="screen-coordinator" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="detail-header">
+    <div class="detail-header-inner">
+      <div><button id="coordinator-back-btn" onclick="closeCoordinatorPanel()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">← Enrere</button></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#fff;margin:8px 0 4px">Panell de Coordinador</div>
+    </div>
+  </div>
+  <div id="coordinator-body" style="max-width:680px;margin:0 auto;width:100%;padding:16px 14px 40px;flex:1;overflow-y:auto"></div>
 </div>
 
 <script src="js/app.js?v=20260602c"></script>
