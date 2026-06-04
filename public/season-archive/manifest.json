@@ -6,6 +6,24 @@
       "label": "2024-25",
       "dataUrl": "./season-archive/data-2024-25.json",
       "actesBaseUrl": "./season-archive/actes/2024-25"
+    },
+    {
+      "key": "2023-24",
+      "label": "2023-24",
+      "dataUrl": "./season-archive/data-2023-24.json",
+      "actesBaseUrl": "./season-archive/actes/2023-24"
+    },
+    {
+      "key": "2022-23",
+      "label": "2022-23",
+      "dataUrl": "./season-archive/data-2022-23.json",
+      "actesBaseUrl": "./season-archive/actes/2022-23"
+    },
+    {
+      "key": "2021-22",
+      "label": "2021-22",
+      "dataUrl": "./season-archive/data-2021-22.json",
+      "actesBaseUrl": "./season-archive/actes/2021-22"
     }
   ]
 }

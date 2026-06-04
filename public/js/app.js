@@ -2704,9 +2704,12 @@ function shieldImg(clubId, size) {
   // When extension is unknown, try gif -> png -> jpg before showing placeholder.
   const src = hasExt ? SHIELD + safeId : SHIELD + safeId + ".gif";
   const fallbackScript = hasExt
-    ? "this.onerror=null;this.style.display='none'"
+    ? "if(this.dataset.try==='orig'){this.dataset.try='png';this.src=this.dataset.base+'.png';return;}if(this.dataset.try==='png'){this.dataset.try='gif';this.src=this.dataset.base+'.gif';return;}if(this.dataset.try==='gif'){this.dataset.try='jpg';this.src=this.dataset.base+'.jpg';return;}this.onerror=null;this.style.display='none'"
     : "if(this.dataset.try==='gif'){this.dataset.try='png';this.src=this.dataset.base+'.png';return;}if(this.dataset.try==='png'){this.dataset.try='jpg';this.src=this.dataset.base+'.jpg';return;}this.onerror=null;this.style.display='none'";
-  const dataAttrs = hasExt ? "" : ` data-base="${SHIELD + safeId}" data-try="gif"`;
+  const baseNoExt = hasExt ? safeId.replace(/\.[^.]+$/, "") : safeId;
+  const dataAttrs = hasExt
+    ? ` data-base="${SHIELD + baseNoExt}" data-try="orig"`
+    : ` data-base="${SHIELD + safeId}" data-try="gif"`;
   return `<img src="${src}" width="${size}" height="${size}"${dataAttrs} style="object-fit:contain;background:#f5f7fc;border-radius:${r}px;padding:${p}px;flex-shrink:0;vertical-align:middle" onerror="${fallbackScript}" alt=""/>`;
 }
 
@@ -4716,7 +4719,9 @@ function semanticClubKey(name) {
 }
 
 function rowsForClubMap(comp) {
-  const classRows = (comp?.classification || []).filter(r => r && String(r.team || "").trim());
+  const classRows = (comp?.classification || [])
+    .filter(r => r && String(r.team || "").trim())
+    .filter(r => !isDescansaTeamName(r.team) && !isPlaceholderTeamName(r.team));
   if (classRows.length) return classRows;
 
   const teamRows = (comp?.teams || [])
