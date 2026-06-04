@@ -4460,7 +4460,6 @@ function renderFavs() {
     </div>`;
     return;
   }
-  const updAt=DB?.updatedAt?new Date(DB.updatedAt).toLocaleDateString("ca-ES"):"?";
   const clubMap = clubFavs.length ? buildClubMap() : null;
   const hasAnyPrev = clubFavs.length || levelFavs.length || playerFavs.length;
   const both = favs.length && hasAnyPrev;
@@ -4476,8 +4475,7 @@ function renderFavs() {
   const teamSection = favs.length ? `
     ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${(clubFavs.length||levelFavs.length||playerFavs.length)?"16px":0} 0 8px">🏒 Equips</div>`:""}
     ${favs.map(buildFavCard).join("")}` : "";
-  body.innerHTML=clubSection+levelSection+playerSection+teamSection+
-    `<p style="text-align:center;font-size:11px;color:#cbd5e1;margin-top:4px;padding-bottom:16px">Actualitzat: ${updAt}</p>`;
+  body.innerHTML=clubSection+levelSection+playerSection+teamSection;
 }
 
 async function hydrateActaLinksForFavoriteComps() {
@@ -5000,6 +4998,7 @@ function renderClubDashboard() {
     const {last, next} = getLastAndNext(cal, t.teamName);
     const catColor=CAT_COLOR[t.category]||"#6b7a99";
     const catEmoji=CAT_EMOJI[t.category]||"🏒";
+    const teamFavOn = isFav(t.compId, t.teamName);
 
     return `
       <div style="background:#fff;border:1.5px solid #e2e6ef;border-left:4px solid ${catColor};border-radius:12px;overflow:hidden;margin-bottom:10px">
@@ -5011,6 +5010,7 @@ function renderClubDashboard() {
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
           ${statusFlag}
+          <button onclick="toggleFav('${esc(t.compId)}','${esc(t.teamName)}','${esc(comp.name||"")}','${esc(t.category||"")}');renderClubDashboard()" style="background:${teamFavOn?"#fef9c3":"#f0f4f8"};border:1px solid ${teamFavOn?"#fcd34d":"#e2e6ef"};color:${teamFavOn?"#92400e":"#64748b"};border-radius:7px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0" title="${teamFavOn?"Treure de favorits":"Afegir a favorits"}">${teamFavOn?"⭐":"☆"}</button>
           <button onclick="openDetail('${esc(t.compId)}','${esc(t.teamName)}','classif')" style="background:#f0f4f8;border:1px solid #e2e6ef;color:#003da5;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">→</button>
         </div>
         <div style="padding:7px 10px">
@@ -5161,8 +5161,10 @@ function gatherTeamProfileCompetitions(profile) {
       const season = seasonFromComp(comp);
       if (season !== profile.season) continue;
 
-      const candidates = getTeamCompetitionCandidates(comp, profile.teamName, null);
+      const candidates = getTeamCompetitionCandidates(comp, profile.teamName, profile.teamId || null);
       const matched = candidates.filter(name => {
+        const sameLetter = extractTeamSuffix(name || "") === (profile.letter || null);
+        const looseAliasMatch = sameLetter && teamMatchesLoose(name, profile.teamName || "");
         const id = buildStrongTeamIdentity({
           clubName: profile.clubName,
           teamName: name,
@@ -5170,7 +5172,7 @@ function gatherTeamProfileCompetitions(profile) {
           letter: extractSquadLetter(name),
           season,
         }).strongId;
-        return id === profile.strongId;
+        return id === profile.strongId || looseAliasMatch;
       });
       if (!matched.length) continue;
 
@@ -5276,7 +5278,7 @@ async function renderTeamProfile() {
   }).join("");
 
   const playerRows = players.length
-    ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:2px solid #e2e6ef"><th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">Gols</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">Blaves</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th></tr></thead><tbody>${players.map(p => `<tr style="border-bottom:1px solid #f0f4f8"><td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(String(p.name || "?"))}</td><td style="padding:7px 8px;text-align:center;font-size:13px;font-weight:700;color:#1a2035">${p.g}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#2563eb">${p.b}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#64748b">${p.partits}</td></tr>`).join("")}</tbody></table></div>`
+    ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:2px solid #e2e6ef"><th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#e5001c">Gols</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563eb">Blaves</th><th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th></tr></thead><tbody>${players.map(p => `<tr style="border-bottom:1px solid #f0f4f8"><td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035"><button data-jid="${esc(String(p.id || ""))}" style="background:none;border:none;padding:0;margin:0;color:#003da5;font:inherit;font-weight:700;cursor:pointer;text-align:left">${esc(String(p.name || "?"))}</button></td><td style="padding:7px 8px;text-align:center;font-size:13px;font-weight:700;color:#1a2035">${p.g}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#2563eb">${p.b}</td><td style="padding:7px 8px;text-align:center;font-size:13px;color:#64748b">${p.partits}</td></tr>`).join("")}</tbody></table></div>`
     : `<div style="text-align:center;padding:16px;color:#94a3b8">Jugadors no disponibles.</div>`;
 
   body.innerHTML = `
@@ -5288,7 +5290,10 @@ async function renderTeamProfile() {
       ${stat(totals.pe, "Empats", "#d97706")}
       ${stat(totals.pp, "Derrotes", "#dc2626")}
     </div>
-    <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#475569"><span style="font-weight:700;color:#1a2035">TeamID:</span> ${esc(teamProfile.strongId)} · ${esc(teamProfile.displayName)}</div>
+    <div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#475569;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div><span style="font-weight:700;color:#1a2035">TeamID:</span> ${esc(teamProfile.strongId)} · ${esc(teamProfile.displayName)}</div>
+      <button onclick="openTeamAdvancedStatsFromProfile()" style="background:#f5f7fc;border:1px solid #d8dee9;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer;white-space:nowrap" title="Estadístiques avançades (totes les competicions)">🔍 Estadístiques avançades</button>
+    </div>
     <div style="margin-bottom:12px">${compCards || `<div style="text-align:center;padding:16px;color:#94a3b8">No s'han trobat competicions per aquest equip aquesta temporada.</div>`}</div>
     <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px">${playerRows}</div>`;
 }
@@ -5332,6 +5337,196 @@ window.openTeamProfileFromClub = (compId, teamName, teamId = null, category = nu
 window.openTeamProfileFromClassif = (teamName, teamId = null) => {
   if (!detailComp?.id) return;
   openTeamProfile(detailComp.id, teamName, teamId, getCatForComp(detailComp), null, "detail");
+};
+
+async function calculateGlobalTeamMetrics(profile) {
+  const entries = gatherTeamProfileCompetitions(profile);
+  if (!entries.length) return null;
+
+  const playedMatches = [];
+  const playersByMatch = {};
+  const playerStats = {};
+  const playerCards = {};
+  let points = 0;
+  let bestPos = Number.POSITIVE_INFINITY;
+
+  for (const entry of entries) {
+    const comp = entry.comp;
+    const matched = entry.matched || [];
+    if (!comp || !matched.length) continue;
+
+    if (entry.teamRow) {
+      points += Number(entry.teamRow.pts || 0);
+      const p = Number(entry.teamRow.pos || 0);
+      if (p > 0 && p < bestPos) bestPos = p;
+    }
+
+    for (const m of (comp.calendar || [])) {
+      if (m?.homeScore == null || m?.awayScore == null) continue;
+      const isHome = matched.some(n => teamMatchesCalendarExact(m.home || "", n));
+      const isAway = matched.some(n => teamMatchesCalendarExact(m.away || "", n));
+      if (!isHome && !isAway) continue;
+
+      const myScore = isHome ? Number(m.homeScore || 0) : Number(m.awayScore || 0);
+      const theirScore = isHome ? Number(m.awayScore || 0) : Number(m.homeScore || 0);
+      playedMatches.push({
+        ts: parseMatchTimestamp(m?.date || "", comp?.name || ""),
+        myScore,
+        theirScore,
+      });
+    }
+
+    const catSlug = getCatSlugForComp(comp);
+    const actes = catSlug ? await loadCatActes(catSlug) : {};
+    for (const acta of Object.values(actes || {})) {
+      if (String(acta?.compId || "") !== String(comp?.id || "")) continue;
+      const homeIsTeam = matched.some(n => teamMatchesCalendarExact(acta?.home || "", n));
+      const awayIsTeam = matched.some(n => teamMatchesCalendarExact(acta?.away || "", n));
+      if (!homeIsTeam && !awayIsTeam) continue;
+
+      const players = [
+        ...(homeIsTeam ? (acta?.playerStats?.homePlayers || []) : []),
+        ...(awayIsTeam ? (acta?.playerStats?.awayPlayers || []) : []),
+      ];
+
+      const matchKey = `${String(comp?.id || "")}|${String(acta?.actaId || acta?.id || acta?.matchDate || acta?.date || "")}`;
+      playersByMatch[matchKey] = Math.max(playersByMatch[matchKey] || 0, players.length);
+
+      for (const p of players) {
+        if (!p?.jugadorId) continue;
+        const pid = String(p.jugadorId);
+        const ps = playerStats[pid] ||= { name: p.name || "—", goals: 0, matches: 0 };
+        ps.goals += Number(p.g || 0);
+        ps.matches += 1;
+
+        const pc = playerCards[pid] ||= { name: p.name || "—", blaves: 0, vermelles: 0 };
+        pc.blaves += Number(p.b || 0);
+        pc.vermelles += Number(p.v || 0);
+      }
+    }
+  }
+
+  if (!playedMatches.length) return null;
+
+  playedMatches.sort((a, b) => b.ts - a.ts);
+  const last5 = playedMatches.slice(0, 5);
+  const trend = { w: 0, d: 0, l: 0 };
+  const recentForm = [];
+  for (const m of last5) {
+    if (m.myScore > m.theirScore) { trend.w += 1; recentForm.push("W"); }
+    else if (m.myScore === m.theirScore) { trend.d += 1; recentForm.push("D"); }
+    else { trend.l += 1; recentForm.push("L"); }
+  }
+
+  const totalMatches = playedMatches.length;
+  const goalsFor = playedMatches.reduce((acc, m) => acc + m.myScore, 0);
+  const goalsAgainst = playedMatches.reduce((acc, m) => acc + m.theirScore, 0);
+  const shutouts = playedMatches.filter(m => m.theirScore === 0).length;
+  const avgGoals = Number((goalsFor / Math.max(1, totalMatches)).toFixed(2));
+  const avgGoalsAgainst = Number((goalsAgainst / Math.max(1, totalMatches)).toFixed(2));
+
+  const playerCountVals = Object.values(playersByMatch);
+  const avgPlayersPerMatch = playerCountVals.length
+    ? Number((playerCountVals.reduce((a, b) => a + b, 0) / playerCountVals.length).toFixed(1))
+    : 0;
+
+  const topScorer = Object.values(playerStats).length
+    ? Object.values(playerStats).reduce((a, b) => a.goals >= b.goals ? a : b)
+    : { name: "—", goals: 0, matches: 0 };
+
+  const ages = [];
+  let goalkeepers = 0;
+  for (const pid of Object.keys(playerStats)) {
+    const player = getPlayerById(pid);
+    if (player?.isGK) goalkeepers += 1;
+    if (!player?.birthDate) continue;
+    const parts = String(player.birthDate).split(/[\/\-]/);
+    const dob = parts[0]?.length === 4
+      ? new Date(`${parts[0]}-${parts[1]}-${parts[2]}`)
+      : new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    if (isNaN(dob)) continue;
+    const now = new Date();
+    const y = now.getFullYear() - dob.getFullYear();
+    const age = y - (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+    if (age > 0 && age < 100) ages.push(age);
+  }
+  if (!goalkeepers) goalkeepers = 1;
+  const avgAge = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : "—";
+
+  const suspended = [];
+  let totalYellowCards = 0;
+  let totalRedCards = 0;
+  for (const c of Object.values(playerCards)) {
+    totalYellowCards += Number(c.blaves || 0);
+    totalRedCards += Number(c.vermelles || 0);
+    if ((c.blaves || 0) >= 5) suspended.push(`${c.name} (${c.blaves} blaves)`);
+    if ((c.vermelles || 0) > 0) suspended.push(`${c.name} (vermella)`);
+  }
+
+  const alsoFemNames = [];
+  let reinforcesOthersCount = 0;
+  let alsoFemCount = 0;
+  for (const pid of Object.keys(playerStats)) {
+    const player = getPlayerById(pid);
+    if (!player) continue;
+    const cats = new Set((player.teamStats || []).map(ts => String(ts?.cat || "").toLowerCase()).filter(Boolean));
+    if (cats.has("fem")) {
+      alsoFemCount += 1;
+      alsoFemNames.push(playerStats[pid].name);
+    }
+    const nonFemCats = [...cats].filter(c => c !== "fem");
+    if (nonFemCats.length > 1) reinforcesOthersCount += 1;
+  }
+
+  return {
+    teamName: profile?.displayName || profile?.teamName || "Equip",
+    trend,
+    recentForm,
+    recentFormOldToNew: [...recentForm].reverse(),
+    avgPlayersPerMatch,
+    avgGoals,
+    avgGoalsAgainst,
+    shutouts,
+    totalMatches,
+    points,
+    position: Number.isFinite(bestPos) ? bestPos : "—",
+    goalsFor,
+    goalsAgainst,
+    goalsDiff: goalsFor - goalsAgainst,
+    winRate: last5.length ? Math.round((trend.w / last5.length) * 100) : 0,
+    topScorer,
+    suspended,
+    goalkeepers,
+    winProbability: last5.length ? Math.round((trend.w / last5.length) * 100) : 0,
+    reinforcements: [],
+    reinforcesOthersCount,
+    reinforcedByLowerCount: 0,
+    alsoFemCount,
+    alsoFemNames: alsoFemNames.sort((a, b) => String(a).localeCompare(String(b), "ca")),
+    probabilityModel: null,
+    referenceTeamName: "",
+    avgAge,
+    improvement: "N/A",
+    totalYellowCards,
+    avgYellowCards: (totalYellowCards / Math.max(1, totalMatches)).toFixed(3),
+    totalRedCards,
+    avgRedCards: (totalRedCards / Math.max(1, totalMatches)).toFixed(3),
+  };
+}
+
+window.openTeamAdvancedStatsFromProfile = async function() {
+  if (!teamProfile) return;
+  const metrics = await calculateGlobalTeamMetrics(teamProfile);
+  if (!metrics) {
+    alert("No hi ha prou dades per calcular les estadístiques globals d'aquest equip");
+    return;
+  }
+  showRivalModal(metrics, teamProfile.displayName || teamProfile.teamName || "Equip", "Totes les competicions");
+};
+
+window.openTeamAdvancedStatsFromClassif = async function(teamName) {
+  if (!detailComp?.id || !teamName) return;
+  await openRivalAnalysis(teamName, detailComp.id, detailTeam || "");
 };
 
 // ── ALL COMPS ─────────────────────────────────────────────────
@@ -6736,7 +6931,7 @@ async function renderDetailClassif(){
           const pos=r.pos<=3?`<span style="font-size:28px">${["🥇","🥈","🥉"][r.pos-1]}</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:${pc}">${r.pos}</span>`;
           return `<tr style="background:${mine?"#eff6ff":"transparent"};border-bottom:1px solid #f0f2f8">
             <td style="padding:9px 6px;text-align:center">${pos}</td>
-            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openTeamProfileFromClassif('${esc(r.team)}','${esc(String(r.teamId||""))}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure fitxa global de l'equip">${esc(normalizeJokClubDisplayName(r.team))}</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
+            <td style="padding:9px 6px"><div style="display:flex;align-items:center;gap:6px"><button onclick="openClubFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center" title="Veure club">${shieldImg(cid,22)}</button><button onclick="openTeamProfileFromClassif('${esc(r.team)}','${esc(String(r.teamId||""))}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:${mine?800:500};color:${mine?"#003da5":"#334155"};cursor:pointer;text-align:left" title="Veure fitxa global de l'equip">${esc(normalizeJokClubDisplayName(r.team))}</button><button onclick="openTeamAdvancedStatsFromClassif('${esc(r.team)}');event.stopPropagation();" style="background:none;border:none;padding:0;margin:0;font-size:14px;cursor:pointer" title="Estadístiques avançades (competició actual)">🔍</button>${mine?`<span style="color:#e5001c;font-size:10px">◀</span>`:""}</div></td>
             <td style="padding:9px 4px;text-align:center;color:#94a3b8">${r.pj??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#16a34a;font-weight:600">${r.pg??"-"}</td>
             <td style="padding:9px 4px;text-align:center;color:#d97706">${r.pe??"-"}</td>
@@ -7750,11 +7945,11 @@ window.openRivalAnalysis = async function(teamName, compId, referenceTeamName = 
   }
 
   console.log("Showing modal...");
-  showRivalModal(metrics, teamName);
+  showRivalModal(metrics, teamName, "Competició actual");
   console.log("Modal shown");
 };
 
-function showRivalModal(metrics, teamName) {
+function showRivalModal(metrics, teamName, scopeLabel = "") {
   const modal = document.createElement('div');
   modal.style.cssText = `
     position: fixed;
@@ -7773,7 +7968,10 @@ function showRivalModal(metrics, teamName) {
   modal.innerHTML = `
     <div style="background: white; border-radius: 16px; padding: 24px; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3)">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
-        <h2 style="margin: 0; font-family: 'Barlow Condensed'; font-size: 24px; font-weight: 900">${teamName}</h2>
+        <div>
+          <h2 style="margin: 0; font-family: 'Barlow Condensed'; font-size: 24px; font-weight: 900">${teamName}</h2>
+          ${scopeLabel ? `<div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">${esc(scopeLabel)}</div>` : ""}
+        </div>
         <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer">&times;</button>
       </div>
 
