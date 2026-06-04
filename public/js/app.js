@@ -2176,16 +2176,19 @@ function rebuildGlobalJugadorsIndex() {
   }
 }
 
-function getPlayerById(jid) {
+function getPlayerById(jid, options = {}) {
+  const { allowCrossSeason = false } = options || {};
   const key = String(jid || "").trim();
   if (!key) return null;
-  return globalJugadorsIndex.get(key) || DB?.jugadors?.[key] || null;
+  return DB?.jugadors?.[key] || (allowCrossSeason ? globalJugadorsIndex.get(key) : null) || null;
 }
 
-function getAllPlayersEntries() {
-  if (!globalJugadorsIndex.size && DB?.jugadors) {
+function getAllPlayersEntries(options = {}) {
+  const { allowCrossSeason = false } = options || {};
+  if (DB?.jugadors) {
     return Object.entries(DB.jugadors);
   }
+  if (!allowCrossSeason) return [];
   return Array.from(globalJugadorsIndex.entries());
 }
 
@@ -2308,6 +2311,7 @@ async function switchActiveSeason(nextKey, options = {}) {
     detailComp = null;
     detailTeam = null;
     detailTeamId = null;
+    selectedClub = null;
     homeTab = "favs";
     renderHome();
   } catch (err) {
@@ -2318,6 +2322,24 @@ async function switchActiveSeason(nextKey, options = {}) {
     if (showLoading) {
       setGlobalLoadingState(false);
     }
+  }
+}
+
+async function getSeasonDataForKey(seasonKey) {
+  const key = String(seasonKey || "").trim();
+  if (!key) return null;
+  if (seasonDataCache.has(key)) return seasonDataCache.get(key) || null;
+
+  const target = seasonCatalog.find(s => s.key === key);
+  if (!target?.dataUrl) return null;
+
+  try {
+    const data = await fetchJsonFile(target.dataUrl);
+    if (!data?.categories) return null;
+    seasonDataCache.set(key, data);
+    return data;
+  } catch {
+    return null;
   }
 }
 
@@ -2490,22 +2512,22 @@ const CAT_COLOR = {
   "Veterans":"#6b7280","Altres":"#6b7280",
 };
 
-function getPlayerSourceCatCounts(player) {
+function getPlayerSourceCatCounts(player, seasonData = DB) {
   const out = {};
   for (const src of (player?.sources || [])) {
-    const cat = DB?.actesIndex?.[String(src?.id)];
+    const cat = seasonData?.actesIndex?.[String(src?.id)];
     if (!cat) continue;
     out[cat] = (out[cat] || 0) + 1;
   }
   return out;
 }
 
-function normalizePlayerTeamStatsForDisplay(player) {
+function normalizePlayerTeamStatsForDisplay(player, seasonData = DB) {
   const teamStats = [...(player?.teamStats || [])];
   if (teamStats.length <= 1) return teamStats;
 
   const uniqueCats = [...new Set(teamStats.map(t => t.cat).filter(Boolean))];
-  const srcCatCounts = Object.entries(getPlayerSourceCatCounts(player));
+  const srcCatCounts = Object.entries(getPlayerSourceCatCounts(player, seasonData));
 
   // Heuristic fix: if all teams have same category but sources clearly span multiple categories,
   // distribute categories by prominence (most matches team -> most frequent source category).
@@ -2519,7 +2541,9 @@ function normalizePlayerTeamStatsForDisplay(player) {
   return teamStats;
 }
 
-async function buildPlayerTeamStatsFromSources(player, jid) {
+async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
+  const seasonData = options?.seasonData || DB;
+  const seasonKey = options?.seasonKey || activeSeasonKey;
   const sources = (player?.sources || []).filter(s => s?.type === "acta" && s?.id != null);
   if (!sources.length) return [];
 
@@ -2547,10 +2571,10 @@ async function buildPlayerTeamStatsFromSources(player, jid) {
 
   for (const src of sources) {
     const actaId = String(src.id);
-    const cat = DB?.actesIndex?.[actaId];
+    const cat = seasonData?.actesIndex?.[actaId];
     if (!cat) continue;
 
-    const actes = await loadCatActes(cat);
+    const actes = await loadCatActes(cat, seasonKey);
     const acta = actes?.[actaId];
     if (!acta?.playerStats) continue;
 
@@ -2619,12 +2643,7 @@ function buildNameMap() {
   _nameMapNorm = new Map();
   _clubTokenToIds = new Map();
   // Use classification rows — correct mixed-case names with reliable clubId
-  const allSeasonData = [
-    ...new Set([
-      DB,
-      ...Array.from(seasonDataCache.values()),
-    ]),
-  ].filter(Boolean);
+  const allSeasonData = [DB].filter(Boolean);
 
   for (const seasonData of allSeasonData) {
     for (const comps of Object.values(seasonData.categories||{})) {
@@ -4576,6 +4595,7 @@ function buildFavCard(fav) {
   const comp=findComp(fav.compId); if (!comp) return "";
   if (is3x3Competition(comp)) return "";
   const cl=comp.classification||[], cal=comp.calendar||[];
+  const hideClassifUi = shouldHideClassificationUi(comp);
   const myRow=cl.find(r=>teamMatchesLoose(r.team,fav.teamName));
   const myCal=cal.filter(m=>teamIn(m.home,fav.teamName)||teamIn(m.away,fav.teamName));
   const {last, next} = getLastAndNext(cal, fav.teamName);
@@ -4633,7 +4653,7 @@ function buildFavCard(fav) {
         ${!last&&!next?`<p style="text-align:center;color:#94a3b8;font-size:13px;padding:2px 0">Sense partits registrats</p>`:""}
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
-        <button onclick="openDetail('${esc(fav.compId)}','${esc(fav.teamName)}','classif')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📊 Classificació</button>
+        ${hideClassifUi ? "" : `<button onclick="openDetail('${esc(fav.compId)}','${esc(fav.teamName)}','classif')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📊 Classificació</button>`}
         <button onclick="openDetail('${esc(fav.compId)}','${esc(fav.teamName)}','calendar')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">📅 Calendari</button>
       </div>
     </div>`;
@@ -6432,6 +6452,20 @@ function isFinalsPilotComp(comp) {
   return normalizePostSeasonPhases(comp?.postSeasonPhases || []).length > 0;
 }
 
+function shouldHideClassificationUi(comp) {
+  if (!comp) return false;
+  const classifLen = (comp.classification || []).length;
+  if (classifLen > 0) return false;
+  return isFinalsPilotComp(comp);
+}
+
+function updateDetailTabsVisibility() {
+  const hideClassif = shouldHideClassificationUi(detailComp);
+  const classifTab = document.querySelector('.detail-tab[data-tab="classif"]');
+  if (classifTab) classifTab.style.display = hideClassif ? "none" : "";
+  if (hideClassif && detailTab === "classif") detailTab = "calendar";
+}
+
 function buildPilotMatchKey(m) {
   const home = normalizeCompKey(m?.home || "");
   const away = normalizeCompKey(m?.away || "");
@@ -6606,6 +6640,7 @@ async function ensurePilotFinalsForCurrentDetail(rawComp) {
   detailTeam = mergedSelected.teamName || detailTeam;
   detailTeamId = mergedSelected.teamId || detailTeamId;
 
+  updateDetailTabsVisibility();
   renderDetailHeaderMeta();
   renderDetailCalendar();
 }
@@ -6619,6 +6654,7 @@ function openDetail(compId,teamName,tab,teamId=null){
   detailTeamId = mergedSelected.teamId || null;
   detailTab=tab||"classif";
   if (!detailComp) return;
+  updateDetailTabsVisibility();
   $("screen-home").style.display="none"; $("screen-picker").style.display="none"; $("screen-detail").style.display="flex";
   renderDetailHeaderMeta();
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
@@ -6643,10 +6679,10 @@ async function openPlayerModal(jid, fallbackName) {
                || "Jugador";
 
   // Team i categoria del teamStats principal
-  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, jid);
+  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, jid, { seasonData: DB, seasonKey: activeSeasonKey });
   const fixedTeamStats = sourceTeamStats.length
     ? sourceTeamStats
-    : normalizePlayerTeamStatsForDisplay(player);
+    : normalizePlayerTeamStatsForDisplay(player, DB);
   const firstTeam  = fixedTeamStats?.[0];
   const teamSuffix = firstTeam ? `, ${normalizeJokClubDisplayName(firstTeam.team)}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
@@ -6689,74 +6725,111 @@ async function openPlayerModal(jid, fallbackName) {
     : "";
 
   // ── Estadístiques de temporada ────────────────────────────────
-  const cs      = [...(player?.careerStats || [])].sort((a, b) => b.seasonName.localeCompare(a.seasonName));
+  const parseSeasonToken = raw => {
+    const m = String(raw || "").match(/(20\d{2})\s*[-/]\s*(\d{2,4})/);
+    if (!m) return "";
+    return `${m[1]}-${String(m[2]).slice(-2)}`;
+  };
+  const cs = [...(player?.careerStats || [])]
+    .sort((a, b) => String(b?.seasonName || "").localeCompare(String(a?.seasonName || "")))
+    .map(s => ({ ...s, _seasonToken: parseSeasonToken(s?.seasonName) }));
+
+  const selectedSeasonToken = parseSeasonToken(DB?.season || "");
+  const selectedSeasonIdx = selectedSeasonToken
+    ? cs.findIndex(s => s._seasonToken === selectedSeasonToken)
+    : -1;
+  const preferredSeasonIdx = selectedSeasonIdx >= 0 ? selectedSeasonIdx : 0;
+  const selectedSeasonFallbackToLatest = selectedSeasonToken && selectedSeasonIdx < 0;
   const current = cs[0];
-  const history = cs.slice(1);
 
   const statBox = (val, lbl, color) =>
     `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
 
-  // ── Equips (teamStats del scraper) ────────────────────────────
-  const teamStats = fixedTeamStats || [];
+  const buildSeasonDisplayRows = async seasonToken => {
+    if (!seasonToken) return [];
+    const seasonEntry = seasonCatalog.find(s => parseSeasonToken(s.key) === seasonToken || String(s.key) === seasonToken) || null;
+    const seasonKey = seasonEntry?.key || null;
+    const seasonData = seasonKey ? await getSeasonDataForKey(seasonKey) : null;
+    if (!seasonData) return [];
 
-  // Fallback: categories des de sources si no hi ha teamStats
-  const catCounts = {};
-  if (!teamStats.length) {
-    for (const src of (player?.sources || [])) {
-      const cat = DB?.actesIndex?.[src.id];
-      if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
+    const seasonPlayer = seasonData?.jugadors?.[String(jid)] || null;
+    if (!seasonPlayer) return [];
+
+    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, jid, { seasonData, seasonKey: seasonKey || activeSeasonKey });
+    const teamStats = fromSources.length
+      ? fromSources
+      : normalizePlayerTeamStatsForDisplay(seasonPlayer, seasonData);
+
+    if (teamStats.length) {
+      return teamStats.map(t => ({
+        label: esc(normalizeJokClubDisplayName(t.team)),
+        sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""),
+        count: Number(t.count || 0),
+      }));
     }
-  }
-  const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
 
-  // Secció principal: equips amb barra visual
-  const displayRows = teamStats.length
-    ? teamStats.map(t => ({ label: esc(normalizeJokClubDisplayName(t.team)), sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""), count: t.count }))
-    : catEntries.map(([cat, cnt]) => ({ label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: cnt }));
-  const maxCount = displayRows[0]?.count || 1;
+    const catCounts = getPlayerSourceCatCounts(seasonPlayer, seasonData);
+    return Object.entries(catCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, cnt]) => ({ label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: Number(cnt || 0) }));
+  };
 
-  const breakdownSection = displayRows.length ? `
-    <div class="pm-section-title" style="margin-top:${current?"12px":"0"}">${teamStats.length ? "Equips" : "Categories"}</div>
-    ${displayRows.map(r => `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
-          ${r.sublabel ? `<div style="font-size:10px;color:#94a3b8">${r.sublabel}</div>` : ""}
-        </div>
-        <div style="width:60px;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden;flex-shrink:0">
-          <div style="width:${Math.round(r.count/maxCount*100)}%;height:100%;background:#003da5;border-radius:4px"></div>
-        </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:24px;text-align:right;flex-shrink:0">${r.count}</div>
-      </div>`).join("")}` : "";
+  const seasonRowsByToken = new Map();
+  await Promise.all(cs.map(async s => {
+    if (!s?._seasonToken) return;
+    const rows = await buildSeasonDisplayRows(s._seasonToken);
+    seasonRowsByToken.set(s._seasonToken, rows || []);
+  }));
 
-  const currentSection = current ? `
+  const seasonsSections = cs.length ? `
     <div class="pm-section">
-      <div class="pm-section-title">Temporada ${esc(current.seasonName)}</div>
-      <div style="display:flex;background:#f8fafc;border-radius:12px">
-        ${statBox(current.match_count, "Partits",   "#1a2035")}
-        ${statBox(current.total_goals, "Gols",      "#e5001c")}
-        ${statBox(current.total_blue || "·", "Blaves",    "#2563eb")}
-        ${statBox(current.total_red  || "·", "Vermelles", "#dc2626")}
-      </div>
-      ${breakdownSection}
-    </div>` : (breakdownSection ? `<div class="pm-section">${breakdownSection}</div>` : "");
-
-  const historySection = history.length ? `
-    <div class="pm-section">
-      <div class="pm-section-title">Temporades anteriors</div>
-      ${history.map(s => `
-        <div style="display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #f8fafc">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#1a2035;width:68px">${esc(s.seasonName)}</div>
-          <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap">
-            <span style="font-size:13px;color:#6b7a99"><b style="color:#1a2035">${s.match_count}</b> P</span>
-            <span style="font-size:13px;color:#6b7a99"><b style="color:#e5001c">${s.total_goals}</b> G</span>
-            ${s.total_blue ? `<span style="font-size:13px;color:#6b7a99"><b style="color:#2563eb">${s.total_blue}</b> B</span>` : ""}
-            ${s.total_red  ? `<span style="font-size:13px;color:#6b7a99"><b style="color:#dc2626">${s.total_red}</b> R</span>` : ""}
+      <div class="pm-section-title">Temporades</div>
+      ${cs.map((s, idx) => {
+        const isLatest = idx === 0;
+        const isPreferred = idx === preferredSeasonIdx;
+        const shouldOpen = isLatest || isPreferred;
+        const seasonRows = seasonRowsByToken.get(s._seasonToken) || [];
+        const maxCount = Math.max(1, Number(seasonRows[0]?.count || 0));
+        const breakdownSection = seasonRows.length ? `
+          <div class="pm-section-title" style="margin-top:12px">Equips / Categories</div>
+          ${seasonRows.map(r => `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
+                ${r.sublabel ? `<div style="font-size:10px;color:#94a3b8">${r.sublabel}</div>` : ""}
+              </div>
+              <div style="width:60px;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden;flex-shrink:0">
+                <div style="width:${Math.round((Number(r.count || 0)/maxCount)*100)}%;height:100%;background:#003da5;border-radius:4px"></div>
+              </div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:24px;text-align:right;flex-shrink:0">${Number(r.count || 0)}</div>
+            </div>`).join("")}` : "";
+        const highlight = isPreferred
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#e8f2ff;color:#1d4ed8;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">Temporada seleccionada</span>`
+          : "";
+        return `<details ${shouldOpen ? "open" : ""} style="background:#fff;border:1.5px solid ${isPreferred ? "#bfdbfe" : "#e2e6ef"};border-radius:12px;padding:10px 11px;margin-bottom:8px">
+          <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(String(s?.seasonName || "Temporada"))}</div>
+              ${highlight}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:#6b7a99;flex-shrink:0">
+              <span><b style="color:#1a2035">${s?.match_count ?? "–"}</b> P</span>
+              <span><b style="color:#e5001c">${s?.total_goals ?? "–"}</b> G</span>
+            </div>
+          </summary>
+          <div style="display:flex;background:#f8fafc;border-radius:12px;margin-top:10px">
+            ${statBox(s?.match_count, "Partits",   "#1a2035")}
+            ${statBox(s?.total_goals, "Gols",      "#e5001c")}
+            ${statBox((s?.total_blue ?? 0) || "·", "Blaves",    "#2563eb")}
+            ${statBox((s?.total_red ?? 0) || "·",  "Vermelles", "#dc2626")}
           </div>
-        </div>`).join("")}
+          ${breakdownSection}
+        </details>`;
+      }).join("")}
+      ${selectedSeasonFallbackToLatest ? `<div style="margin-top:4px;font-size:11px;color:#64748b">No hi ha registre del jugador a la temporada seleccionada; es mostra prioritzada la més nova disponible.</div>` : ""}
     </div>` : "";
 
-  const noDataHtml = !current && !displayRows.length ? `
+  const noDataHtml = !current ? `
     <div class="pm-section" style="color:#94a3b8;font-size:13px;text-align:center;padding:24px 16px">
       Dades detallades no disponibles encara.<br/>Les estadístiques es carreguen progressivament.
     </div>` : "";
@@ -6772,8 +6845,7 @@ async function openPlayerModal(jid, fallbackName) {
       </div>
       <button onclick="closePlayerModal()" style="background:#f0f4f8;border:none;border-radius:10px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0;margin-left:8px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
-    ${currentSection}
-    ${historySection}
+    ${seasonsSections}
     ${noDataHtml}
     <div class="pm-section">
       <a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#003da5;text-decoration:none">🔗 Veure perfil a jok.cat →</a>
@@ -7036,9 +7108,12 @@ function getTeamCompetitionCandidates(comp, teamName, teamId = null) {
     }
   }
 
+  // Keep calendar matching anchored to the original team identity only.
+  // Do not expand transitively via newly discovered rivals.
+  const anchors = out.length ? [...out] : [String(teamName || "").trim()].filter(Boolean);
   for (const m of (comp.calendar || [])) {
-    if (out.some(c => teamMatchesCalendarExact(m?.home, c))) pushUnique(m?.home);
-    if (out.some(c => teamMatchesCalendarExact(m?.away, c))) pushUnique(m?.away);
+    if (anchors.some(c => teamMatchesCalendarExact(m?.home, c))) pushUnique(m?.home);
+    if (anchors.some(c => teamMatchesCalendarExact(m?.away, c))) pushUnique(m?.away);
   }
 
   if (!wantedId && !out.length && teamName) {
