@@ -2552,7 +2552,7 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
 
   const teamCatCounts = {};
 
-  const addAppearance = (players, team, cat) => {
+  const addAppearance = (players, team, cat, compId = null) => {
     if (!Array.isArray(players) || !team || !cat) return;
     const appeared = players.some(p => {
       const pid = String(
@@ -2565,8 +2565,12 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
     if (!appeared) return;
 
     const key = `${team}::${cat}`;
-    if (!teamCatCounts[key]) teamCatCounts[key] = { team, cat, count: 0 };
+    if (!teamCatCounts[key]) teamCatCounts[key] = { team, cat, count: 0, compIds: [] };
     teamCatCounts[key].count += 1;
+    if (compId != null && compId !== "") {
+      const cid = String(compId);
+      if (!teamCatCounts[key].compIds.includes(cid)) teamCatCounts[key].compIds.push(cid);
+    }
   };
 
   for (const src of sources) {
@@ -2578,8 +2582,8 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
     const acta = actes?.[actaId];
     if (!acta?.playerStats) continue;
 
-    addAppearance(acta.playerStats.homePlayers, acta.home, cat);
-    addAppearance(acta.playerStats.awayPlayers, acta.away, cat);
+    addAppearance(acta.playerStats.homePlayers, acta.home, cat, acta?.compId);
+    addAppearance(acta.playerStats.awayPlayers, acta.away, cat, acta?.compId);
   }
 
   return Object.values(teamCatCounts).sort((a, b) => b.count - a.count);
@@ -2648,9 +2652,13 @@ function buildNameMap() {
   for (const seasonData of allSeasonData) {
     for (const comps of Object.values(seasonData.categories||{})) {
       for (const comp of comps) {
+        const compTeamToClub = comp?.teamToClub || {};
         for (const r of (comp.classification||[])) {
-          if (!r.clubId||!r.team) continue;
-          const clubId = String(r.clubId);
+          if (!r?.team) continue;
+          const fromRow = r.clubId != null ? String(r.clubId) : null;
+          const fromTeamId = r.teamId != null ? String(compTeamToClub[String(r.teamId)] || "") : "";
+          const clubId = fromRow || fromTeamId;
+          if (!clubId) continue;
           const n = r.team.toLowerCase();
           const base = n.replace(/\s+[a-z]$/,"").trim();
           const norm = normalizeTeamKeyForMatching(r.team);
@@ -2665,6 +2673,31 @@ function buildNameMap() {
             if (!_clubTokenToIds.has(token)) _clubTokenToIds.set(token, new Map());
             const tokenMap = _clubTokenToIds.get(token);
             tokenMap.set(clubId, (tokenMap.get(clubId) || 0) + 1);
+          }
+        }
+
+        // Extra mapping from comp roster keeps logos stable even when classif rows miss clubId.
+        for (const t of (comp.teams || [])) {
+          const teamId = t?.id ?? t?.teamId;
+          const teamName = t?.name || t?.teamName || "";
+          if (!teamName) continue;
+          const mappedClubId = teamId != null ? String(compTeamToClub[String(teamId)] || "") : "";
+          if (!mappedClubId) continue;
+
+          const n = String(teamName).toLowerCase();
+          const base = n.replace(/\s+[a-z]$/, "").trim();
+          const norm = normalizeTeamKeyForMatching(teamName);
+          const baseNorm = normalizeTeamKeyForMatching(getTeamBase(teamName));
+          if (!_nameMap.has(n)) _nameMap.set(n, mappedClubId);
+          if (!_nameMap.has(base)) _nameMap.set(base, mappedClubId);
+          if (norm && !_nameMapNorm.has(norm)) _nameMapNorm.set(norm, mappedClubId);
+          if (baseNorm && !_nameMapNorm.has(baseNorm)) _nameMapNorm.set(baseNorm, mappedClubId);
+
+          const uniqTokens = [...new Set(tokenizeClubName(teamName))];
+          for (const token of uniqTokens) {
+            if (!_clubTokenToIds.has(token)) _clubTokenToIds.set(token, new Map());
+            const tokenMap = _clubTokenToIds.get(token);
+            tokenMap.set(mappedClubId, (tokenMap.get(mappedClubId) || 0) + 1);
           }
         }
       }
@@ -2718,8 +2751,31 @@ function getClubId(name) {
   return null;
 }
 
-function rowClubId(row) {
-  return row.clubId || getClubIdByTeamId(row.teamId) || getClubId(row.team) || null;
+function rowClubId(row, comp = null) {
+  if (!row) return null;
+  if (row.clubId) return row.clubId;
+
+  if (row.teamId != null) {
+    if (comp?.teamToClub?.[String(row.teamId)]) return comp.teamToClub[String(row.teamId)];
+    const byTeamId = getClubIdByTeamId(row.teamId);
+    if (byTeamId) return byTeamId;
+  }
+
+  if (comp?.teams?.length && row.team) {
+    const matchingTeam = comp.teams.find(t => {
+      const name = t?.name || t?.teamName || "";
+      return teamMatchesCalendarExact(name, row.team) || teamMatchesLoose(name, row.team);
+    });
+    const matchingId = matchingTeam?.id ?? matchingTeam?.teamId;
+    if (matchingId != null) {
+      const fromCompMap = comp.teamToClub?.[String(matchingId)];
+      if (fromCompMap) return fromCompMap;
+      const fromIndex = getClubIdByTeamId(matchingId);
+      if (fromIndex) return fromIndex;
+    }
+  }
+
+  return getClubId(row.team) || null;
 }
 
 function shieldImg(clubId, size) {
@@ -3417,11 +3473,20 @@ window.openActa = async function(actaId, fallbackUrl) {
 
 function parsePlayerBlock(block, links) {
   const result = [];
-  // Match: (name with spaces/accents) followed by exactly 3 integers
-  const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?= [A-Za-zÀ-ÿ]|$)/g;
+  // Match: player name + G B V and optional FD Pe
+  const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?: (\d+) (\d+))?(?= [A-Za-zÀ-ÿ]|$)/g;
   let m, i = 0;
   while ((m = re.exec(block)) !== null) {
-    result.push({ name: m[1].trim(), g: +m[2], b: +m[3], v: +m[4], url: links[i]?.url || null, jugadorId: links[i]?.jugadorId || null });
+    result.push({
+      name: m[1].trim(),
+      g: +m[2],
+      b: +m[3],
+      v: +m[4],
+      fd: m[5] != null ? +m[5] : null,
+      pe: m[6] != null ? +m[6] : null,
+      url: links[i]?.url || null,
+      jugadorId: links[i]?.jugadorId || null
+    });
     i++;
   }
   // Fallback: if regex missed some, try simpler split by known player count
@@ -3432,7 +3497,7 @@ function parsePlayerBlock(block, links) {
       const nameParts = [];
       while (j < tokens.length && !/^\d+$/.test(tokens[j])) nameParts.push(tokens[j++]);
       const g = +tokens[j++] || 0, b = +tokens[j++] || 0, v = +tokens[j++] || 0;
-      result.push({ name: nameParts.join(" "), g, b, v, url: link.url, jugadorId: link.jugadorId });
+      result.push({ name: nameParts.join(" "), g, b, v, fd: null, pe: null, url: link.url, jugadorId: link.jugadorId });
     });
   }
   return result;
@@ -3473,15 +3538,45 @@ function playerTableHtml(players, teamName, teamColor) {
 
 function getVenueLinks(teamName) {
   if (!venuesDB?.venues || !teamName) return "";
-  const coords = getVenueCoordinates(teamName);
-  if (!coords) return "";
-  const { lat, lng } = coords;
-  if (!lat || !lng) return "";
-  return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap">
-    <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">📍 Google Maps →</a>
-    <a href="https://maps.apple.com/?q=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#003da5;text-decoration:none">🗺️ Apple Maps →</a>
+  const venue = venuesDB.venues[teamName];
+  if (!venue) return "";
+  const address = String(venue.address || "").trim();
+  if (!address) return "";
+  return `<div style="border-top:1px solid #f0f2f8;padding:10px 14px;font-size:12px;color:#6b7a99">
+    <span style="font-weight:700">On s'ha jugat:</span> ${esc(address)}
   </div>`;
 }
+
+function getTeamFouls(players) {
+  let hasFoulsData = false;
+  let total = 0;
+  for (const p of (players || [])) {
+    const v = Number(p?.fd);
+    if (!Number.isFinite(v)) continue;
+    hasFoulsData = true;
+    total += v;
+  }
+  return hasFoulsData ? total : null;
+}
+
+window.openActaTeamFromHeader = function(compId, teamName) {
+  const wantedTeam = String(teamName || "").trim();
+  if (!wantedTeam) return;
+
+  let comp = compId ? findComp(compId) : null;
+  if (!comp) {
+    const allComps = Object.values(DB?.categories || {}).flat();
+    comp = allComps.find(c =>
+      (c.classification || []).some(r => teamMatchesLoose(r?.team || "", wantedTeam))
+      || (c.calendar || []).some(m => teamMatchesLoose(m?.home || "", wantedTeam) || teamMatchesLoose(m?.away || "", wantedTeam))
+    ) || null;
+  }
+  if (!comp) return;
+
+  const rowMatch = (comp.classification || []).find(r => teamMatchesLoose(r?.team || "", wantedTeam));
+  const teamForDetail = rowMatch?.team || wantedTeam;
+  openDetail(comp.id, teamForDetail, "calendar");
+};
 
 async function enrichActaPlayerNumbers(acta) {
   const allPlayers = [
@@ -3545,8 +3640,16 @@ function openActaDetail(acta) {
   const compName = stripSeasonSuffix(acta.compName || acta.actaMeta?.compName || "");
   const jornada = acta.jornada ? `J${acta.jornada}` : "";
   const actaUrl = acta.actaUrl || acta.url || "";
+  const homeFouls = getTeamFouls(homePlayers);
+  const awayFouls = getTeamFouls(awayPlayers);
+  const compIdEsc = esc(String(acta.compId || ""));
+  const homeEsc = esc(acta.home || "");
+  const awayEsc = esc(acta.away || "");
 
-  $("acta-header-title").textContent = `${acta.home} – ${acta.away}`;
+  $("acta-header-title").innerHTML = `
+    <button onclick="openActaTeamFromHeader('${compIdEsc}','${homeEsc}')" style="background:none;border:none;padding:0;margin:0;color:#003da5;font:inherit;font-weight:800;cursor:pointer">${homeEsc}</button>
+    <span style="color:#64748b"> – </span>
+    <button onclick="openActaTeamFromHeader('${compIdEsc}','${awayEsc}')" style="background:none;border:none;padding:0;margin:0;color:#003da5;font:inherit;font-weight:800;cursor:pointer">${awayEsc}</button>`;
   $("acta-header-meta").textContent = [jornada, date, time, compName].filter(Boolean).join(" · ");
 
   $("acta-body").innerHTML = `
@@ -3555,15 +3658,16 @@ function openActaDetail(acta) {
       <div style="display:flex;align-items:center;padding:16px 14px;gap:8px">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
           ${shieldImg(homeId, 44)}
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2">${esc(acta.home)}</div>
+          <button onclick="openActaTeamFromHeader('${compIdEsc}','${homeEsc}')" style="background:none;border:none;padding:0;margin:0;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2;color:#003da5;cursor:pointer">${homeEsc}</button>
         </div>
         <div style="text-align:center;flex-shrink:0;min-width:80px">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;color:#1a2035">${acta.homeScore ?? "–"} · ${acta.awayScore ?? "–"}</div>
+          ${(homeFouls != null || awayFouls != null) ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#64748b;margin-top:2px">Faltes: ${homeFouls ?? "-"} · ${awayFouls ?? "-"}</div>` : ""}
           ${date||time?`<div style="font-size:11px;color:#94a3b8;margin-top:4px">${[date,time].filter(Boolean).join(" ")}</div>`:""}
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
           ${shieldImg(awayId, 44)}
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2">${esc(acta.away)}</div>
+          <button onclick="openActaTeamFromHeader('${compIdEsc}','${awayEsc}')" style="background:none;border:none;padding:0;margin:0;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;line-height:1.2;color:#003da5;cursor:pointer">${awayEsc}</button>
         </div>
       </div>
       <div style="border-top:1px solid #f0f2f8;padding:10px 14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
@@ -3926,6 +4030,22 @@ function buildDetailCompView(baseComp, preferredTeamName = null, preferredTeamId
     .filter(c => normalizeCompKey(c?.name || "") === nameKey);
 
   if (siblings.length <= 1) {
+    return {
+      ...baseComp,
+      postSeasonPhases: normalizePostSeasonPhases(baseComp?.postSeasonPhases || []),
+      detailMergeInfo: {
+        merged: false,
+        baseCompId: String(baseComp.id || ""),
+        classificationFromCompId: String(baseComp.id || ""),
+        calendarFromCompId: String(baseComp.id || ""),
+        sameNameCompIds: [String(baseComp.id || "")],
+      },
+    };
+  }
+
+  // If detail opens from a competition card (no team context), keep data scoped to this competition.
+  const hasTeamContext = !!String(preferredTeamName || "").trim() || !!String(preferredTeamId || "").trim();
+  if (!hasTeamContext) {
     return {
       ...baseComp,
       postSeasonPhases: normalizePostSeasonPhases(baseComp?.postSeasonPhases || []),
@@ -4792,10 +4912,10 @@ function buildClubMap() {
         const teamName = decodeHtml(row.team);
         const clubName = teamName.toLowerCase().replace(/\s+[a-e]$/,"").trim();
         if (!clubMap.has(clubName)) {
-          clubMap.set(clubName, { displayName: teamName.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row), teams:[] });
+          clubMap.set(clubName, { displayName: teamName.replace(/\s+[A-E]$/,"").trim(), clubId: rowClubId(row, comp), teams:[] });
         }
         const club = clubMap.get(clubName);
-        if (!club.clubId) club.clubId = rowClubId(row);
+        if (!club.clubId) club.clubId = rowClubId(row, comp);
         const category = getCatForComp(comp);
         const key = teamKeyFromRow(row, category);
         const existingIdx = club.teams.findIndex(t => t.teamKey === key);
@@ -4885,6 +5005,7 @@ function renderClubTab(cursor) {
 
   const q = clubSearch.toLowerCase();
   const filtered = q ? clubs.filter(([k,v]) => k.includes(q) || v.displayName.toLowerCase().includes(q)) : clubs;
+  const totalClubsCount = filtered.length;
 
   if (selectedClub) {
     renderClubDashboard();
@@ -4894,13 +5015,14 @@ function renderClubTab(cursor) {
   $("home-body").innerHTML = `
     <div style="padding:0 0 8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-        <input id="club-search" placeholder="🔍 Cerca club..." value="${esc(clubSearch)}"
-          style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
-          oninput="clubSearch=this.value;renderClubTab(this.selectionStart)"/>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6b7a99;cursor:pointer;white-space:nowrap">
           <input type="checkbox" ${allOnlyActive?"checked":""} onchange="allOnlyActive=this.checked;renderClubTab()" style="width:16px;height:16px;accent-color:#003da5"/>
           Només en curs
         </label>
+        <div style="font-size:12px;font-weight:700;color:#334155;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:5px 10px;white-space:nowrap">Total clubs: ${totalClubsCount}</div>
+        <input id="club-search" placeholder="🔍 Cerca club..." value="${esc(clubSearch)}"
+          style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 13px;font-size:14px;color:#1a2035;outline:none"
+          oninput="clubSearch=this.value;renderClubTab(this.selectionStart)"/>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
         ${filtered.map(([key,club])=>{
@@ -6581,14 +6703,40 @@ function renderDetailHeaderMeta() {
   $("detail-comp-name").textContent=stripSeasonSuffix(detailComp.name || "");
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   const playedPct = getCompPlayedPct(detailComp);
-  const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
-  const statusColor = playedPct >= 100 ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
+
+  const isPendingRelevant = m => {
+    if (!m) return false;
+    if (m?.homeScore != null && m?.awayScore != null) return false;
+    if (isDescansaTeamName(m?.home) || isDescansaTeamName(m?.away)) return false;
+    if (isPlaceholderTeamName(m?.home) || isPlaceholderTeamName(m?.away)) return false;
+    const ts = parseCalendarDateToTimestamp(m?.date || "", detailComp?.name || "");
+    if (ts != null && Number.isFinite(ts)) {
+      const staleCutoffMs = 7 * 24 * 60 * 60 * 1000;
+      if (ts < (Date.now() - staleCutoffMs)) return false;
+    }
+    return true;
+  };
+
+  const regularMatches = detailComp?.calendar || [];
+  const phaseMatches = normalizePostSeasonPhases(detailComp?.postSeasonPhases || []).flatMap(p => p?.matches || []);
+  const hasPendingRelevant = [...regularMatches, ...phaseMatches].some(isPendingRelevant);
+  const playedMatchCount = [...regularMatches, ...phaseMatches].filter(m => m?.homeScore != null && m?.awayScore != null).length;
+  const isFinished = playedPct >= 100 || (playedMatchCount > 0 && !hasPendingRelevant);
+  const status = (playedPct == null || playedPct === 0) ? "No començada" : (isFinished ? "Finalitzada" : "En curs");
+  const statusColor = isFinished ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
+
   const classifCount = (detailComp.classification||[]).length;
+  const rosterTeams = [...new Set((detailComp.teams || [])
+    .map(t => String(t?.teamName || t?.name || "").trim())
+    .filter(Boolean)
+    .filter(t => !isDescansaTeamName(t) && !isPlaceholderTeamName(t)))];
   const fallbackTeams = classifCount ? [] : [...new Set((detailComp.calendar || []).flatMap(m => [m?.home, m?.away]))]
     .filter(Boolean)
-    .filter(t => !isDescansaTeamName(t) && !isPlaceholderTeamName(t));
-  const eqLabel = classifCount || fallbackTeams.length;
+    .filter(t => !isDescansaTeamName(t) && !isPlaceholderTeamName(t))
+    .filter(t => isLikelyCompetitionTeamName(t, detailComp));
+  const eqLabel = classifCount || rosterTeams.length || fallbackTeams.length;
   const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
+  const phaseMatchCount = normalizePostSeasonPhases(detailComp.postSeasonPhases || []).reduce((acc, p) => acc + ((p?.matches || []).length), 0);
   const isAdmin = currentProfile?.role === "admin";
   const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
   const pilotMap = detailComp.classificationPilot || null;
@@ -6619,7 +6767,7 @@ function renderDetailHeaderMeta() {
   $("detail-meta").innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span>${eqLabel} equip${eqLabel!==1?"s":""}</span>
     <span style="color:${statusColor};font-weight:700">${status} · ${playedPct}%</span>
-    ${phaseCount ? `<span style="font-weight:700;color:#3730a3">${phaseCount} fase${phaseCount!==1?"s":""} final${phaseCount!==1?"s":""}</span>` : ""}
+    ${phaseCount ? `<span style="display:inline-flex;align-items:center;font-weight:800;color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:2px 8px">${phaseMatchCount} partit${phaseMatchCount!==1?"s":""} fase final</span>` : ""}
     ${sourceBadge ? `<span>${sourceBadge}</span>` : ""}
   </div>${adminMeta}`;
 }
@@ -6738,8 +6886,16 @@ async function openPlayerModal(jid, fallbackName) {
   const selectedSeasonIdx = selectedSeasonToken
     ? cs.findIndex(s => s._seasonToken === selectedSeasonToken)
     : -1;
-  const preferredSeasonIdx = selectedSeasonIdx >= 0 ? selectedSeasonIdx : 0;
-  const selectedSeasonFallbackToLatest = selectedSeasonToken && selectedSeasonIdx < 0;
+  const currentSeasonData = seasonDataCache.get("current") || null;
+  const currentSeasonToken = parseSeasonToken(currentSeasonData?.season || "");
+  const currentSeasonIdx = currentSeasonToken
+    ? cs.findIndex(s => s._seasonToken === currentSeasonToken)
+    : -1;
+  const preferredSeasonIdx = selectedSeasonIdx >= 0
+    ? selectedSeasonIdx
+    : (currentSeasonIdx >= 0 ? currentSeasonIdx : 0);
+  const selectedSeasonFallbackToCurrent = selectedSeasonToken && selectedSeasonIdx < 0 && currentSeasonIdx >= 0;
+  const selectedSeasonFallbackToLatest = selectedSeasonToken && selectedSeasonIdx < 0 && currentSeasonIdx < 0;
   const current = cs[0];
 
   const statBox = (val, lbl, color) =>
@@ -6747,7 +6903,11 @@ async function openPlayerModal(jid, fallbackName) {
 
   const buildSeasonDisplayRows = async seasonToken => {
     if (!seasonToken) return [];
-    const seasonEntry = seasonCatalog.find(s => parseSeasonToken(s.key) === seasonToken || String(s.key) === seasonToken) || null;
+    const seasonEntry = seasonCatalog.find(s =>
+      parseSeasonToken(s.key) === seasonToken
+      || parseSeasonToken(s.label) === seasonToken
+      || String(s.key) === seasonToken
+    ) || null;
     const seasonKey = seasonEntry?.key || null;
     const seasonData = seasonKey ? await getSeasonDataForKey(seasonKey) : null;
     if (!seasonData) return [];
@@ -6762,16 +6922,19 @@ async function openPlayerModal(jid, fallbackName) {
 
     if (teamStats.length) {
       return teamStats.map(t => ({
+        teamName: String(t.team || ""),
         label: esc(normalizeJokClubDisplayName(t.team)),
         sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""),
         count: Number(t.count || 0),
+        compId: String((t.compIds || [])[0] || ""),
+        seasonKey: seasonKey || "",
       }));
     }
 
     const catCounts = getPlayerSourceCatCounts(seasonPlayer, seasonData);
     return Object.entries(catCounts)
       .sort((a, b) => b[1] - a[1])
-      .map(([cat, cnt]) => ({ label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: Number(cnt || 0) }));
+      .map(([cat, cnt]) => ({ teamName: "", label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: Number(cnt || 0), compId: "", seasonKey: seasonKey || "" }));
   };
 
   const seasonRowsByToken = new Map();
@@ -6795,7 +6958,9 @@ async function openPlayerModal(jid, fallbackName) {
           ${seasonRows.map(r => `
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
               <div style="flex:1;min-width:0">
-                <div style="font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
+                ${r.teamName
+                  ? `<button onclick="openPlayerTeamFromModal('${esc(r.teamName)}','${esc(r.seasonKey || "")}', '${esc(r.compId || "")}')" style="background:none;border:none;padding:0;margin:0;font-size:12px;font-weight:700;color:#003da5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;cursor:pointer;text-align:left">${r.label}</button>`
+                  : `<div style="font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>`}
                 ${r.sublabel ? `<div style="font-size:10px;color:#94a3b8">${r.sublabel}</div>` : ""}
               </div>
               <div style="width:60px;height:7px;background:#f0f4f8;border-radius:4px;overflow:hidden;flex-shrink:0">
@@ -6826,6 +6991,7 @@ async function openPlayerModal(jid, fallbackName) {
           ${breakdownSection}
         </details>`;
       }).join("")}
+      ${selectedSeasonFallbackToCurrent ? `<div style="margin-top:4px;font-size:11px;color:#64748b">No hi ha registre del jugador a la temporada seleccionada; es mostra la temporada actual.</div>` : ""}
       ${selectedSeasonFallbackToLatest ? `<div style="margin-top:4px;font-size:11px;color:#64748b">No hi ha registre del jugador a la temporada seleccionada; es mostra prioritzada la més nova disponible.</div>` : ""}
     </div>` : "";
 
@@ -6863,6 +7029,87 @@ function closePlayerModal() {
   currentJugadorId = null;
 }
 window.closePlayerModal = closePlayerModal;
+
+window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "") => {
+  const wantedTeam = String(teamName || "").trim();
+  const wantedSeason = String(seasonKey || "").trim() || activeSeasonKey;
+  if (!wantedTeam) return;
+
+  const hasTeamInComp = comp => {
+    if (!comp) return false;
+    const inClassif = (comp.classification || []).some(r =>
+      teamMatchesCalendarExact(r?.team || "", wantedTeam) || teamMatchesLoose(r?.team || "", wantedTeam)
+    );
+    if (inClassif) return true;
+    return (comp.calendar || []).some(m =>
+      teamMatchesCalendarExact(m?.home || "", wantedTeam)
+      || teamMatchesCalendarExact(m?.away || "", wantedTeam)
+      || teamMatchesLoose(m?.home || "", wantedTeam)
+      || teamMatchesLoose(m?.away || "", wantedTeam)
+    );
+  };
+
+  const resolveBestTeamComp = () => {
+    const allComps = Object.values(DB?.categories || {}).flat();
+    let bestComp = null;
+    let bestTeamName = wantedTeam;
+    let bestScore = -1;
+
+    for (const comp of allComps) {
+      if (!comp || is3x3Competition(comp)) continue;
+      let score = 0;
+      let candidateName = wantedTeam;
+
+      const exactClassif = (comp.classification || []).find(r => teamMatchesCalendarExact(r?.team || "", wantedTeam));
+      const looseClassif = exactClassif ? null : (comp.classification || []).find(r => teamMatchesLoose(r?.team || "", wantedTeam));
+      if (exactClassif || looseClassif) {
+        score = 1000;
+        candidateName = (exactClassif || looseClassif)?.team || wantedTeam;
+      } else {
+        const exactCal = (comp.calendar || []).find(m => teamMatchesCalendarExact(m?.home || "", wantedTeam) || teamMatchesCalendarExact(m?.away || "", wantedTeam));
+        const looseCal = exactCal ? null : (comp.calendar || []).find(m => teamMatchesLoose(m?.home || "", wantedTeam) || teamMatchesLoose(m?.away || "", wantedTeam));
+        if (!exactCal && !looseCal) continue;
+        score = exactCal ? 800 : 600;
+        const m = exactCal || looseCal;
+        candidateName = teamMatchesLoose(m?.home || "", wantedTeam) ? (m?.home || wantedTeam) : (m?.away || wantedTeam);
+      }
+
+      score += competitionPriority(comp);
+      if (score > bestScore) {
+        bestScore = score;
+        bestComp = comp;
+        bestTeamName = candidateName;
+      }
+    }
+
+    return { comp: bestComp, teamName: bestTeamName };
+  };
+
+  try {
+    if (wantedSeason !== activeSeasonKey) {
+      await switchActiveSeason(wantedSeason, { showLoading: true });
+    }
+
+    let comp = compIdHint ? findComp(compIdHint) : null;
+    let teamForDetail = wantedTeam;
+    if (!comp || !hasTeamInComp(comp)) {
+      const best = resolveBestTeamComp();
+      comp = best.comp;
+      teamForDetail = best.teamName || wantedTeam;
+    }
+
+    if (!comp) {
+      alert("No s'ha trobat cap competició per aquest equip en aquesta temporada");
+      return;
+    }
+
+    closePlayerModal();
+    openDetail(comp.id, teamForDetail, "calendar");
+  } catch (err) {
+    console.error("player-modal team navigation error", err);
+    alert(`No s'ha pogut obrir el detall de l'equip: ${err?.message || "error desconegut"}`);
+  }
+};
 
 function setupListeners(){
   const bb=$("back-btn");
