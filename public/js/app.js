@@ -4149,6 +4149,7 @@ function buildTwoLegEliminationContext(matches, compName = "") {
 // ── Match card ────────────────────────────────────────────────
 function matchCard(m, myTeam, compId, options = {}) {
   const { showTravel = false, eliminationCtx = null } = options || {};
+  const effectiveCompId = compId || m.compId;
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const isByeHome = isDescansaTeamName(m.home);
@@ -4159,7 +4160,6 @@ function matchCard(m, myTeam, compId, options = {}) {
   const hasActa = !!(acta && (acta.actaUrl || acta.url));
 
   // Debug logging
-  const effectiveCompId = compId || m.compId;
   if (!played) {
     console.log("Match card - played:", played, "compId param:", compId, "m.compId:", m.compId, "effectiveCompId:", effectiveCompId);
     if (!effectiveCompId) {
