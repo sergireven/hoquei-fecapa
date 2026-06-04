@@ -922,7 +922,10 @@ function extractReferees(rawText) {
 
   const m = rawText.match(/Àrbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i)
          || rawText.match(/Arbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i)
-         || rawText.match(/Arbitro\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i);
+         || rawText.match(/Arbitro\s+(.+?)\s+Jugador\s+G\s+B\s+V\s+FD\s+Pe/i)
+         || rawText.match(/Àrbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V/i)
+         || rawText.match(/Arbitre\s+(.+?)\s+Jugador\s+G\s+B\s+V/i)
+         || rawText.match(/Arbitro\s+(.+?)\s+Jugador\s+G\s+B\s+V/i);
 
   if (!m) return refs;
 
@@ -946,7 +949,7 @@ function extractPlayerStatsRaw(rawText) {
     awayBlock: "",
   };
 
-  const parts = rawText.split(/Jugador\s+G\s+B\s+V\s+FD\s+Pe/i);
+  const parts = rawText.split(/Jugador\s+G\s+B\s+V(?:\s+FD\s+Pe)?/i);
   if (parts.length < 3) return result;
 
   const cleanBlock = (txt) => String(txt || "")
