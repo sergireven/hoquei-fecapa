@@ -3576,7 +3576,7 @@ function extractPlayerStatsRawFromActaRawText(rawText) {
     awayBlock: "",
   };
 
-  const parts = String(rawText || "").split(/Jugador\s+G\s+B\s+V\s+FD\s+Pe/i);
+  const parts = String(rawText || "").split(/Jugador\s+G\s+B\s+V(?:\s+FD\s+Pe)?/i);
   if (parts.length < 3) return result;
 
   const cleanBlock = txt => String(txt || "")
@@ -7386,7 +7386,7 @@ function renderDetailCalendar(){
     ? `${sortedJornades.map(([j,ms])=>`
       <div style="margin-bottom:10px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(j)}</div>
-        ${ms.map(m=>matchCard(m,detailTeam,detailComp.id,{ eliminationCtx: eliminationCtxByMatch.get(m) || null })).join("")}
+        ${ms.map(m=>matchCard(m,detailTeam,detailComp.id,{ eliminationCtx: eliminationCtxByMatch.get(m) || null, showSourceLabel:false })).join("")}
       </div>`).join("")}`
     : `<div style="text-align:center;padding:20px;color:#94a3b8">No hi ha partits per aquest filtre.</div>`;
 
