@@ -966,11 +966,20 @@ function parsePlayerStats(playerStatsRaw, playerLinks) {
 
   function parseBlock(block, offset) {
     const result = [];
-    const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?= [A-Za-zÀ-ÿ]|$)/g;
+    const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?: (\d+) (\d+))?(?= [A-Za-zÀ-ÿ]|$)/g;
     let m, i = 0;
     while ((m = re.exec(block)) !== null) {
       const link = links[offset + i] || {};
-      result.push({ name: m[1].trim(), g: +m[2], b: +m[3], v: +m[4], jugadorId: link.jugadorId || null, url: link.url || null });
+      result.push({
+        name: m[1].trim(),
+        g: +m[2],
+        b: +m[3],
+        v: +m[4],
+        fd: m[5] != null ? +m[5] : null,
+        pe: m[6] != null ? +m[6] : null,
+        jugadorId: link.jugadorId || null,
+        url: link.url || null,
+      });
       i++;
     }
     if (!result.length && links.slice(offset).length) {
@@ -981,7 +990,18 @@ function parsePlayerStats(playerStatsRaw, playerLinks) {
         const nameParts = [];
         while (j < tokens.length && !/^\d+$/.test(tokens[j])) nameParts.push(tokens[j++]);
         const g = +tokens[j++] || 0, b = +tokens[j++] || 0, v = +tokens[j++] || 0;
-        result.push({ name: nameParts.join(" "), g, b, v, jugadorId: link.jugadorId || null, url: link.url || null });
+        const fd = /^\d+$/.test(tokens[j] || "") ? (+tokens[j++]) : null;
+        const pe = /^\d+$/.test(tokens[j] || "") ? (+tokens[j++]) : null;
+        result.push({
+          name: nameParts.join(" "),
+          g,
+          b,
+          v,
+          fd,
+          pe,
+          jugadorId: link.jugadorId || null,
+          url: link.url || null,
+        });
       });
     }
     return result;
