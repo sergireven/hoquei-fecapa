@@ -1,20 +1,20 @@
 {
   "jugadors": {
-    "runAt": "2026-06-03T14:41:55.766Z",
-    "total": 9708,
-    "enrichits": 62,
-    "pendents": 9646
+    "runAt": "2026-06-04T06:38:49.169Z",
+    "total": 9298,
+    "enrichits": 61,
+    "pendents": 9237
   },
   "sidgad": {
-    "runAt": "2026-06-03T14:09:23.926Z",
-    "total": 10012,
-    "enrichits": 10012,
+    "runAt": "2026-06-04T06:05:18.910Z",
+    "total": 10025,
+    "enrichits": 10025,
     "pendents": 0,
-    "processatsAquestRun": 1,
-    "buitsOErrors": 0,
-    "partitsPendents": 0,
-    "competicions": 99,
-    "partitsSidgad": 917,
-    "classificacions": 74
+    "processatsAquestRun": 0,
+    "buitsOErrors": 1,
+    "partitsPendents": 1213,
+    "competicions": 100,
+    "partitsSidgad": 1513,
+    "classificacions": 1
   }
 }
