@@ -2262,8 +2262,8 @@ async function loadSeasonCatalog() {
       actesBaseUrl: s.actesBaseUrl || inferArchiveActesBaseUrl(s.key),
     }))];
 
-  const preferred = loadSelectedSeasonKey();
-  activeSeasonKey = seasonCatalog.some(s => s.key === preferred) ? preferred : "current";
+  // Always start app on current season; previous selection should not override startup default.
+  activeSeasonKey = "current";
 }
 
 async function switchActiveSeason(nextKey, options = {}) {
@@ -2289,6 +2289,10 @@ async function switchActiveSeason(nextKey, options = {}) {
 
     DB = seasonDataCache.get(nextKey);
     activeSeasonKey = nextKey;
+    allOnlyActive = activeSeasonKey === "current";
+    _nameMap = null;
+    _nameMapNorm = null;
+    _clubTokenToIds = null;
     saveSelectedSeasonKey(nextKey);
     applyClassificationSourceMerge();
     runIdentityRegressionChecks();
@@ -2579,23 +2583,62 @@ function getClubIdByTeamId(teamId) {
 
 let _nameMap = null;
 let _nameMapNorm = null;
+let _clubTokenToIds = null;
+
+const CLUB_TOKEN_STOPWORDS = new Set([
+  "club", "hoquei", "hockey", "pati", "patins", "patin", "esportiu", "esports", "es",
+  "cp", "ch", "hc", "phc", "ce", "cn", "ue", "fd", "fc", "a", "b", "c", "d", "e", "f", "g",
+  "de", "del", "d", "la", "el", "els", "les", "i", "y", "the", "team", "masculina", "femeni", "femeni",
+]);
+
+function tokenizeClubName(name) {
+  const clean = normalizeTeamName(shortTeamDisplayName(name || ""))
+    .replace(/\s+[a-z]$/, "")
+    .trim();
+  if (!clean) return [];
+  return clean
+    .split(" ")
+    .map(t => t.trim())
+    .filter(Boolean)
+    .filter(t => t.length >= 3)
+    .filter(t => !CLUB_TOKEN_STOPWORDS.has(t));
+}
+
 function buildNameMap() {
   if (_nameMap || !DB) return;
   _nameMap = new Map();
   _nameMapNorm = new Map();
+  _clubTokenToIds = new Map();
   // Use classification rows — correct mixed-case names with reliable clubId
-  for (const comps of Object.values(DB.categories||{})) {
-    for (const comp of comps) {
-      for (const r of (comp.classification||[])) {
-        if (!r.clubId||!r.team) continue;
-        const n = r.team.toLowerCase();
-        const base = n.replace(/\s+[a-z]$/,"").trim();
-        const norm = normalizeTeamKeyForMatching(r.team);
-        const baseNorm = normalizeTeamKeyForMatching(getTeamBase(r.team));
-        if (!_nameMap.has(n))    _nameMap.set(n,    r.clubId);
-        if (!_nameMap.has(base)) _nameMap.set(base, r.clubId);
-        if (norm && !_nameMapNorm.has(norm)) _nameMapNorm.set(norm, r.clubId);
-        if (baseNorm && !_nameMapNorm.has(baseNorm)) _nameMapNorm.set(baseNorm, r.clubId);
+  const allSeasonData = [
+    ...new Set([
+      DB,
+      ...Array.from(seasonDataCache.values()),
+    ]),
+  ].filter(Boolean);
+
+  for (const seasonData of allSeasonData) {
+    for (const comps of Object.values(seasonData.categories||{})) {
+      for (const comp of comps) {
+        for (const r of (comp.classification||[])) {
+          if (!r.clubId||!r.team) continue;
+          const clubId = String(r.clubId);
+          const n = r.team.toLowerCase();
+          const base = n.replace(/\s+[a-z]$/,"").trim();
+          const norm = normalizeTeamKeyForMatching(r.team);
+          const baseNorm = normalizeTeamKeyForMatching(getTeamBase(r.team));
+          if (!_nameMap.has(n))    _nameMap.set(n, clubId);
+          if (!_nameMap.has(base)) _nameMap.set(base, clubId);
+          if (norm && !_nameMapNorm.has(norm)) _nameMapNorm.set(norm, clubId);
+          if (baseNorm && !_nameMapNorm.has(baseNorm)) _nameMapNorm.set(baseNorm, clubId);
+
+          const uniqTokens = [...new Set(tokenizeClubName(r.team))];
+          for (const token of uniqTokens) {
+            if (!_clubTokenToIds.has(token)) _clubTokenToIds.set(token, new Map());
+            const tokenMap = _clubTokenToIds.get(token);
+            tokenMap.set(clubId, (tokenMap.get(clubId) || 0) + 1);
+          }
+        }
       }
     }
   }
@@ -2603,6 +2646,7 @@ function buildNameMap() {
 
 function getClubId(name) {
   if (!DB||!name) return null;
+  if (isDescansaTeamName(name) || isPlaceholderTeamName(name)) return null;
   buildNameMap();
   const n = String(name).toLowerCase();
   const base = n.replace(/\s+[a-z]$/, "").trim();
@@ -2615,6 +2659,34 @@ function getClubId(name) {
   for (const [k,v] of _nameMap) {
     if (k.length>5 && (k.includes(base)||base.includes(k))) return v;
   }
+
+  // High-confidence fallback: infer club by distinctive locality tokens.
+  const tokens = tokenizeClubName(name);
+  if (!tokens.length) return null;
+
+  const scores = new Map();
+  for (const token of tokens) {
+    const tokenMap = _clubTokenToIds?.get(token);
+    if (!tokenMap) continue;
+    for (const [clubId, count] of tokenMap.entries()) {
+      scores.set(clubId, (scores.get(clubId) || 0) + count);
+    }
+  }
+
+  if (norm) {
+    for (const [k, clubId] of (_nameMapNorm || new Map()).entries()) {
+      if (!k || !clubId) continue;
+      if (k === norm || k.includes(norm) || norm.includes(k)) {
+        scores.set(clubId, (scores.get(clubId) || 0) + 3);
+      }
+    }
+  }
+
+  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length) return null;
+  const [bestId, bestScore] = ranked[0];
+  const secondScore = ranked[1]?.[1] || 0;
+  if (bestScore >= 3 && bestScore >= secondScore + 2) return bestId;
   return null;
 }
 
@@ -2979,6 +3051,10 @@ function findComp(compId) {
 }
 // -- Busca actes (cerca en el cache de categories carregades)
 const actesCache = {}; // seasonKey::catSlug → { actaId: actaData }
+const actaLinkHydrationState = new Map(); // seasonKey::compId -> {status, promise?}
+const actaLookupById = new Map(); // seasonKey::actaId -> acta
+const actaLookupBySignature = new Map(); // seasonKey::compId::home|away|date|hs|as -> acta
+const actaLookupByBaseSignature = new Map(); // seasonKey::compId::home|away|date -> [acta]
 
 function getActesCacheKey(slug, seasonKey = activeSeasonKey) {
   return `${String(seasonKey || "current")}::${String(slug || "")}`;
@@ -2997,7 +3073,203 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
   } catch(e) {
     actesCache[key] = {};
   }
+
+  indexSeasonActesLookup(actesCache[key], seasonKey);
   return actesCache[key];
+}
+
+function buildActaSignatureBase(home, away, date) {
+  const h = normalizeTeamName(home || "");
+  const a = normalizeTeamName(away || "");
+  const d = String(date || "").trim();
+  if (!h || !a || !d) return "";
+  return `${h}|${a}|${d}`;
+}
+
+function buildActaSignature(home, away, date, homeScore, awayScore) {
+  const base = buildActaSignatureBase(home, away, date);
+  if (!base || homeScore == null || awayScore == null) return "";
+  return `${base}|${Number(homeScore)}|${Number(awayScore)}`;
+}
+
+function getActaDateForLookup(acta) {
+  return String(acta?.date || acta?.matchDate || acta?.actaMeta?.date || "").trim();
+}
+
+function indexSeasonActesLookup(actesById, seasonKey = activeSeasonKey) {
+  const sk = String(seasonKey || "current");
+  for (const acta of Object.values(actesById || {})) {
+    if (!acta) continue;
+
+    const actaId = String(acta?.actaId || acta?.id || "").trim();
+    if (actaId) {
+      actaLookupById.set(`${sk}::${actaId}`, acta);
+    }
+
+    const compId = String(acta?.compId || "").trim();
+    if (!compId) continue;
+
+    const date = getActaDateForLookup(acta);
+    const scoreKey = buildActaSignature(acta?.home, acta?.away, date, acta?.homeScore, acta?.awayScore);
+    if (scoreKey) {
+      actaLookupBySignature.set(`${sk}::${compId}::${scoreKey}`, acta);
+    }
+
+    const baseKey = buildActaSignatureBase(acta?.home, acta?.away, date);
+    if (baseKey) {
+      const bucketKey = `${sk}::${compId}::${baseKey}`;
+      const list = actaLookupByBaseSignature.get(bucketKey) || [];
+      list.push(acta);
+      actaLookupByBaseSignature.set(bucketKey, list);
+    }
+  }
+}
+
+function findActaByMatchSignature(match, compIdHint = null, seasonKey = activeSeasonKey) {
+  if (!match) return null;
+  const compId = String(compIdHint || match?.compId || "").trim();
+  if (!compId) return null;
+
+  const sk = String(seasonKey || "current");
+  const scoreKey = buildActaSignature(match?.home, match?.away, match?.date, match?.homeScore, match?.awayScore);
+  if (scoreKey) {
+    const strict = actaLookupBySignature.get(`${sk}::${compId}::${scoreKey}`);
+    if (strict) return strict;
+  }
+
+  const baseKey = buildActaSignatureBase(match?.home, match?.away, match?.date);
+  if (!baseKey) return null;
+  const bucket = actaLookupByBaseSignature.get(`${sk}::${compId}::${baseKey}`) || [];
+  if (bucket.length === 1) return bucket[0] || null;
+  return null;
+}
+
+function getActaDateValue(acta) {
+  return String(acta?.date || acta?.matchDate || acta?.actaMeta?.date || "").trim();
+}
+
+function buildActaLookupKey(home, away, date) {
+  const h = normalizeTeamName(home || "");
+  const a = normalizeTeamName(away || "");
+  const d = String(date || "").trim();
+  if (!h || !a || !d) return "";
+  return `${h}|${a}|${d}`;
+}
+
+function buildActaScoreLookupKey(home, away, date, homeScore, awayScore) {
+  const base = buildActaLookupKey(home, away, date);
+  if (!base) return "";
+  if (homeScore == null || awayScore == null) return "";
+  return `${base}|${Number(homeScore)}|${Number(awayScore)}`;
+}
+
+function getActaIdValue(acta) {
+  const id = String(acta?.actaId || acta?.id || "").trim();
+  return id || null;
+}
+
+function getActaUrlValue(acta) {
+  return String(acta?.actaUrl || acta?.url || "").trim() || null;
+}
+
+async function hydrateCompetitionActaLinks(comp, seasonKey = activeSeasonKey) {
+  if (!comp?.id) return false;
+  const compId = String(comp.id || "");
+  const stateKey = `${String(seasonKey || "current")}::${compId}`;
+  const prev = actaLinkHydrationState.get(stateKey);
+  if (prev?.status === "done") return false;
+  if (prev?.status === "loading" && prev.promise) return prev.promise;
+
+  const run = (async () => {
+    try {
+      const catSlug = getCatSlugForComp(comp);
+      if (!catSlug) {
+        actaLinkHydrationState.set(stateKey, { status: "done", empty: true });
+        return false;
+      }
+
+      const actes = await loadCatActes(catSlug, seasonKey);
+      const byId = new Map();
+      const byBase = new Map();
+      const byScore = new Map();
+
+      for (const acta of Object.values(actes || {})) {
+        if (String(acta?.compId || "") !== compId) continue;
+
+        const actaId = getActaIdValue(acta);
+        const actaUrl = getActaUrlValue(acta);
+        if (actaId) byId.set(actaId, acta);
+        if (!actaUrl && !actaId) continue;
+
+        const date = getActaDateValue(acta);
+        const baseKey = buildActaLookupKey(acta?.home, acta?.away, date);
+        if (baseKey) {
+          const list = byBase.get(baseKey) || [];
+          list.push(acta);
+          byBase.set(baseKey, list);
+        }
+
+        const scoreKey = buildActaScoreLookupKey(acta?.home, acta?.away, date, acta?.homeScore, acta?.awayScore);
+        if (scoreKey && !byScore.has(scoreKey)) {
+          byScore.set(scoreKey, acta);
+        }
+      }
+
+      const patchMatch = m => {
+        if (!m || !m.home || !m.away) return false;
+        if (m.actaUrl) return false;
+
+        let resolved = null;
+
+        const matchActaId = String(m?.actaId || "").trim();
+        if (matchActaId && byId.has(matchActaId)) {
+          resolved = byId.get(matchActaId);
+        }
+
+        if (!resolved) {
+          const strict = buildActaScoreLookupKey(m.home, m.away, m.date, m.homeScore, m.awayScore);
+          if (strict && byScore.has(strict)) {
+            resolved = byScore.get(strict);
+          }
+        }
+
+        if (!resolved) {
+          const base = buildActaLookupKey(m.home, m.away, m.date);
+          const cands = base ? (byBase.get(base) || []) : [];
+          if (cands.length === 1) resolved = cands[0];
+        }
+
+        if (!resolved) return false;
+
+        const newId = getActaIdValue(resolved);
+        const newUrl = getActaUrlValue(resolved);
+        if (!newId && !newUrl) return false;
+
+        if (!m.actaId && newId) m.actaId = newId;
+        if (!m.actaUrl && newUrl) m.actaUrl = newUrl;
+        return !!m.actaUrl;
+      };
+
+      let changed = false;
+      for (const m of (comp.calendar || [])) {
+        if (patchMatch(m)) changed = true;
+      }
+      for (const phase of (comp.postSeasonPhases || [])) {
+        for (const m of (phase?.matches || [])) {
+          if (patchMatch(m)) changed = true;
+        }
+      }
+
+      actaLinkHydrationState.set(stateKey, { status: "done", changed });
+      return changed;
+    } catch (err) {
+      actaLinkHydrationState.set(stateKey, { status: "done", error: err?.message || String(err) });
+      return false;
+    }
+  })();
+
+  actaLinkHydrationState.set(stateKey, { status: "loading", promise: run });
+  return run;
 }
 
 async function preloadReinforcementActes(comp, teamName, teamInClassif, currentCatSlug, actes) {
@@ -3038,6 +3310,9 @@ function findActa(actaId, seasonKey = activeSeasonKey) {
   if (!DB || !actaId) return null;
   const id = String(actaId);
 
+  const byIndexedId = actaLookupById.get(`${String(seasonKey || "current")}::${id}`);
+  if (byIndexedId) return byIndexedId;
+
   for (const slug of Object.values(DB?.actesIndex || {})) {
     const key = getActesCacheKey(slug, seasonKey);
     const actes = actesCache[key];
@@ -3052,7 +3327,7 @@ function findActa(actaId, seasonKey = activeSeasonKey) {
   return null;
 }
 // -- Fa match actes
-function getMatchActa(match) {
+function getMatchActa(match, compIdHint = null) {
   if (!match) return null;
 
   if (match.actaId) {
@@ -3067,6 +3342,9 @@ function getMatchActa(match) {
       actaSlug: match.actaSlug || "",
     };
   }
+
+  const bySignature = findActaByMatchSignature(match, compIdHint, activeSeasonKey);
+  if (bySignature) return bySignature;
 
   return null;
 }
@@ -3452,7 +3730,10 @@ function applyCompetitionActivityHeuristics() {
 
 function isDescansaTeamName(teamName) {
   const n = normalizeCompKey(teamName || "");
-  return n === "descansa" || n === "descans" || n.startsWith("descansa ");
+  return n === "descansa"
+    || n === "descans"
+    || /^descansa\d+$/.test(n)
+    || n.startsWith("descansa ");
 }
 
 function phaseTypeLabel(phaseType) {
@@ -3868,17 +4149,17 @@ function buildTwoLegEliminationContext(matches, compName = "") {
 // ── Match card ────────────────────────────────────────────────
 function matchCard(m, myTeam, compId, options = {}) {
   const { showTravel = false, eliminationCtx = null } = options || {};
+  const effectiveCompId = compId || m.compId;
   const riH    = teamIn(m.home,myTeam), riA = teamIn(m.away,myTeam);
   const played = m.played!==false && m.homeScore!=null;
   const isByeHome = isDescansaTeamName(m.home);
   const isByeAway = isDescansaTeamName(m.away);
   const cidH   = isByeHome ? null : getClubId(m.home);
   const cidA   = isByeAway ? null : getClubId(m.away);
-  const acta   = getMatchActa(m);
+  const acta   = getMatchActa(m, effectiveCompId);
   const hasActa = !!(acta && (acta.actaUrl || acta.url));
 
   // Debug logging
-  const effectiveCompId = compId || m.compId;
   if (!played) {
     console.log("Match card - played:", played, "compId param:", compId, "m.compId:", m.compId, "effectiveCompId:", effectiveCompId);
     if (!effectiveCompId) {
@@ -4165,6 +4446,7 @@ window.togglePlayerFavAndRender = jid => { togglePlayerFav(jid); renderJugadorsT
 
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
+  void hydrateActaLinksForFavoriteComps();
   const body=$("home-body");
   if (!favs.length && !clubFavs.length && !levelFavs.length && !playerFavs.length) {
     body.innerHTML=`<div style="text-align:center;padding:48px 20px 32px">
@@ -4193,6 +4475,23 @@ function renderFavs() {
     ${favs.map(buildFavCard).join("")}` : "";
   body.innerHTML=clubSection+levelSection+playerSection+teamSection+
     `<p style="text-align:center;font-size:11px;color:#cbd5e1;margin-top:4px;padding-bottom:16px">Actualitzat: ${updAt}</p>`;
+}
+
+async function hydrateActaLinksForFavoriteComps() {
+  const ids = [...new Set((favs || []).map(f => String(f?.compId || "")).filter(Boolean))];
+  if (!ids.length) return;
+
+  let changed = false;
+  for (const compId of ids) {
+    const comp = findComp(compId);
+    if (!comp) continue;
+    const updated = await hydrateCompetitionActaLinks(comp, activeSeasonKey);
+    if (updated) changed = true;
+  }
+
+  if (changed && homeTab === "favs") {
+    renderFavs();
+  }
 }
 
 function buildLevelFavCard(fav) {
@@ -6111,7 +6410,11 @@ function openDetail(compId,teamName,tab,teamId=null){
   renderDetailHeaderMeta();
   document.querySelectorAll(".detail-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===detailTab));
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===`panel-${detailTab}`));
-  renderDetailClassif().then(() => { renderDetailCalendar(); renderDetailJugadors(); });
+  renderDetailClassif().then(async () => {
+    await hydrateCompetitionActaLinks(detailComp, activeSeasonKey);
+    renderDetailCalendar();
+    renderDetailJugadors();
+  });
   void ensurePilotFinalsForCurrentDetail(rawComp);
   window.scrollTo(0,0);
 }
