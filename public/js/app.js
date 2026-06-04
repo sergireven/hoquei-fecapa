@@ -5173,8 +5173,9 @@ function gatherTeamProfileCompetitions(profile) {
 
       const candidates = getTeamCompetitionCandidates(comp, profile.teamName, profile.teamId || null);
       const matched = candidates.filter(name => {
+        const sameCategory = normalizeCompKey(category || "") === normalizeCompKey(profile.category || "");
         const sameLetter = extractTeamSuffix(name || "") === (profile.letter || null);
-        const looseAliasMatch = sameLetter && teamMatchesLoose(name, profile.teamName || "");
+        const looseAliasMatch = sameCategory && sameLetter && teamMatchesLoose(name, profile.teamName || "");
         const id = buildStrongTeamIdentity({
           clubName: profile.clubName,
           teamName: name,
