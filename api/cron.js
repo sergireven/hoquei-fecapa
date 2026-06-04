@@ -1,9 +1,14 @@
 // api/cron.js — Vercel Serverless Function
-// S'executa automàticament cada nit a les 02:00 UTC (veure vercel.json)
-// També es pot cridar manualment: GET https://el-teu-domini.vercel.app/api/cron
+// S'invoca cada 30 minuts via Vercel Cron i només executa el pipeline
+// entre les 09:30 i les 22:30 a la zona horària Europe/Madrid.
+// També es pot cridar manualment amb ?force=1.
 
 const { execSync } = require("child_process");
 const path = require("path");
+
+const CATALAN_TIME_ZONE = "Europe/Madrid";
+const START_WINDOW_MINUTES = (9 * 60) + 30;
+const END_WINDOW_MINUTES = (22 * 60) + 30;
 
 function runNodeStep(scriptName, timeoutMs) {
   const scriptPath = path.join(__dirname, scriptName);
@@ -14,6 +19,29 @@ function runNodeStep(scriptName, timeoutMs) {
   });
 }
 
+function getCatalanClock(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CATALAN_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+
+  const hour = Number(parts.find(part => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find(part => part.type === "minute")?.value || 0);
+  return {
+    hour,
+    minute,
+    totalMinutes: (hour * 60) + minute,
+    label: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+  };
+}
+
+function isWithinCatalanUpdateWindow(now = new Date()) {
+  const clock = getCatalanClock(now);
+  return clock.totalMinutes >= START_WINDOW_MINUTES && clock.totalMinutes <= END_WINDOW_MINUTES;
+}
+
 module.exports = async (req, res) => {
   // Seguretat: comprova que la crida ve del cron de Vercel o té el secret correcte
   const authHeader = req.headers["authorization"];
@@ -21,6 +49,21 @@ module.exports = async (req, res) => {
   
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: "No autoritzat" });
+  }
+
+  const forceRun = String(req?.query?.force || "") === "1";
+  const catalanClock = getCatalanClock();
+  if (!forceRun && !isWithinCatalanUpdateWindow()) {
+    console.log(`⏭️ Fora de finestra horària (${catalanClock.label} ${CATALAN_TIME_ZONE}). S'omet execució.`);
+    return res.status(200).json({
+      ok: true,
+      skipped: true,
+      reason: "outside_catalan_update_window",
+      localTime: catalanClock.label,
+      timeZone: CATALAN_TIME_ZONE,
+      window: "09:30-22:30",
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   const start = Date.now();
