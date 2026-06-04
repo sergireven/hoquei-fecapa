@@ -1965,7 +1965,7 @@ let fecapaCategoriesDB = null;
 let classificationSourcePilotsDB = null;
 let currentJugadorId = null;
 let homeTab = "favs"; // "favs" | "all" | "club"
-let seasonCatalog = [{ key: "current", label: "Actual", dataUrl: DATA_URL }];
+let seasonCatalog = [{ key: "current", label: "Actual", dataUrl: DATA_URL, actesBaseUrl: "./actes" }];
 let activeSeasonKey = "current";
 const seasonDataCache = new Map();
 const globalJugadorsIndex = new Map();
@@ -2115,6 +2115,12 @@ function getSeasonLabelFromData(data, fallback = "Temporada") {
   return fallback;
 }
 
+function stripSeasonSuffix(name) {
+  return String(name || "")
+    .replace(/\s*\((?:20\d{2})-(?:\d{2,4})\)\s*$/, "")
+    .trim();
+}
+
 async function fetchJsonFile(url) {
   const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status} carregant ${url}`);
@@ -2187,6 +2193,45 @@ function getActiveSeasonLabel() {
   return item?.label || getSeasonLabelFromData(DB, "Temporada");
 }
 
+function getActiveSeasonEntry() {
+  return seasonCatalog.find(s => s.key === activeSeasonKey) || seasonCatalog[0] || null;
+}
+
+function normalizeActesBaseUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  return raw.replace(/\/+$/, "");
+}
+
+function inferArchiveActesBaseUrl(seasonKey) {
+  const key = String(seasonKey || "").trim();
+  if (!key || key === "current") return "./actes";
+  return `./season-archive/actes/${key}`;
+}
+
+function getSeasonActesBaseUrl(seasonKey = activeSeasonKey) {
+  const entry = seasonCatalog.find(s => s.key === seasonKey) || null;
+  if (entry?.actesBaseUrl) return normalizeActesBaseUrl(entry.actesBaseUrl);
+  return normalizeActesBaseUrl(inferArchiveActesBaseUrl(seasonKey));
+}
+
+function setGlobalLoadingState(isLoading, noteText = "Carregant dades...") {
+  const loading = $("screen-loading");
+  const note = $("loading-note");
+  if (note) note.textContent = noteText;
+
+  if (isLoading) {
+    ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team", "screen-admin"].forEach(id => {
+      const el = $(id);
+      if (el) el.style.display = "none";
+    });
+    if (loading) loading.style.display = "flex";
+    return;
+  }
+
+  if (loading) loading.style.display = "none";
+}
+
 async function loadSeasonCatalog() {
   let manifest = null;
   try {
@@ -2201,6 +2246,7 @@ async function loadSeasonCatalog() {
       key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
       label: String(s?.label || s?.season || `Arxiu ${idx + 1}`).trim(),
       dataUrl: String(s?.dataUrl || "").trim(),
+      actesBaseUrl: normalizeActesBaseUrl(s?.actesBaseUrl || s?.actesUrl || ""),
     }))
     .filter(s => s.key && s.dataUrl);
 
@@ -2208,34 +2254,58 @@ async function loadSeasonCatalog() {
     key: "current",
     label: getSeasonLabelFromData(DB, "Actual"),
     dataUrl: DATA_URL,
-  }, ...normalized.filter(s => s.key !== "current")];
+    actesBaseUrl: "./actes",
+  }, ...normalized
+    .filter(s => s.key !== "current")
+    .map(s => ({
+      ...s,
+      actesBaseUrl: s.actesBaseUrl || inferArchiveActesBaseUrl(s.key),
+    }))];
 
   const preferred = loadSelectedSeasonKey();
   activeSeasonKey = seasonCatalog.some(s => s.key === preferred) ? preferred : "current";
 }
 
-async function switchActiveSeason(nextKey) {
+async function switchActiveSeason(nextKey, options = {}) {
+  const { showLoading = true } = options;
   const target = seasonCatalog.find(s => s.key === nextKey);
   if (!target) return;
   if (activeSeasonKey === nextKey) return;
 
-  if (!seasonDataCache.has(nextKey)) {
-    const data = await fetchJsonFile(target.dataUrl);
-    if (!data?.categories) throw new Error(`Dataset invàlid per ${target.label}`);
-    seasonDataCache.set(nextKey, data);
-    rebuildGlobalJugadorsIndex();
+  const prevSeasonKey = activeSeasonKey;
+  const prevDb = DB;
+
+  if (showLoading) {
+    setGlobalLoadingState(true, `Carregant temporada ${target.label}...`);
   }
 
-  DB = seasonDataCache.get(nextKey);
-  activeSeasonKey = nextKey;
-  saveSelectedSeasonKey(nextKey);
-  applyClassificationSourceMerge();
-  runIdentityRegressionChecks();
-  detailComp = null;
-  detailTeam = null;
-  detailTeamId = null;
-  homeTab = "favs";
-  renderHome();
+  try {
+    if (!seasonDataCache.has(nextKey)) {
+      const data = await fetchJsonFile(target.dataUrl);
+      if (!data?.categories) throw new Error(`Dataset invàlid per ${target.label}`);
+      seasonDataCache.set(nextKey, data);
+      rebuildGlobalJugadorsIndex();
+    }
+
+    DB = seasonDataCache.get(nextKey);
+    activeSeasonKey = nextKey;
+    saveSelectedSeasonKey(nextKey);
+    applyClassificationSourceMerge();
+    runIdentityRegressionChecks();
+    detailComp = null;
+    detailTeam = null;
+    detailTeamId = null;
+    homeTab = "favs";
+    renderHome();
+  } catch (err) {
+    DB = prevDb;
+    activeSeasonKey = prevSeasonKey;
+    throw err;
+  } finally {
+    if (showLoading) {
+      setGlobalLoadingState(false);
+    }
+  }
 }
 
 window.onSeasonSelectChange = async (value) => {
@@ -2908,18 +2978,26 @@ function findComp(compId) {
   return null;
 }
 // -- Busca actes (cerca en el cache de categories carregades)
-const actesCache = {}; // catSlug → { actaId: actaData }
+const actesCache = {}; // seasonKey::catSlug → { actaId: actaData }
 
-async function loadCatActes(slug) {
-  if (actesCache[slug]) return actesCache[slug];
+function getActesCacheKey(slug, seasonKey = activeSeasonKey) {
+  return `${String(seasonKey || "current")}::${String(slug || "")}`;
+}
+
+async function loadCatActes(slug, seasonKey = activeSeasonKey) {
+  const key = getActesCacheKey(slug, seasonKey);
+  if (actesCache[key]) return actesCache[key];
+
+  const baseUrl = getSeasonActesBaseUrl(seasonKey);
+  const fileUrl = `${baseUrl}/${slug}.json`;
   try {
-    const res = await fetch(`./actes/${slug}.json?t=${Date.now()}`);
+    const res = await fetch(`${fileUrl}?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    actesCache[slug] = await res.json();
+    actesCache[key] = await res.json();
   } catch(e) {
-    actesCache[slug] = {};
+    actesCache[key] = {};
   }
-  return actesCache[slug];
+  return actesCache[key];
 }
 
 async function preloadReinforcementActes(comp, teamName, teamInClassif, currentCatSlug, actes) {
@@ -2956,11 +3034,20 @@ async function preloadReinforcementActes(comp, teamName, teamInClassif, currentC
   await Promise.all([...extraCats].map(slug => loadCatActes(slug)));
 }
 
-function findActa(actaId) {
+function findActa(actaId, seasonKey = activeSeasonKey) {
   if (!DB || !actaId) return null;
   const id = String(actaId);
-  for (const actes of Object.values(actesCache)) {
-    if (actes[id]) return actes[id];
+
+  for (const slug of Object.values(DB?.actesIndex || {})) {
+    const key = getActesCacheKey(slug, seasonKey);
+    const actes = actesCache[key];
+    if (actes?.[id]) return actes[id];
+  }
+
+  const prefix = `${String(seasonKey || "current")}::`;
+  for (const [key, actes] of Object.entries(actesCache)) {
+    if (!key.startsWith(prefix)) continue;
+    if (actes?.[id]) return actes[id];
   }
   return null;
 }
@@ -2998,12 +3085,12 @@ function getSafeActaUrl(rawUrl) {
 }
 
 window.openActa = async function(actaId, fallbackUrl) {
-  let acta = actaId ? findActa(actaId) : null;
+  let acta = actaId ? findActa(actaId, activeSeasonKey) : null;
 
   if (!acta && actaId && DB?.actesIndex) {
     const slug = DB.actesIndex[String(actaId)];
     if (slug) {
-      const actes = await loadCatActes(slug);
+      const actes = await loadCatActes(slug, activeSeasonKey);
       acta = actes[String(actaId)] || null;
     }
   }
@@ -3146,7 +3233,7 @@ function openActaDetail(acta) {
   const date = acta.actaMeta?.date || acta.date || "";
   const time = acta.actaMeta?.time || acta.time || "";
   const refs = (acta.referees || []).filter(r => r && r.length > 2);
-  const compName = (acta.compName || acta.actaMeta?.compName || "").replace(/\s*\(2025-26\)/,"");
+  const compName = stripSeasonSuffix(acta.compName || acta.actaMeta?.compName || "");
   const jornada = acta.jornada ? `J${acta.jornada}` : "";
   const actaUrl = acta.actaUrl || acta.url || "";
 
@@ -4222,7 +4309,7 @@ function buildFavCard(fav) {
         ${shieldImg(cid,40)}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:clamp(16px,5vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(normalizeJokClubDisplayName(fav.teamName))}</div>
-          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((comp.name||"").replace(/\s*\(2025-26\)/,""))}</div>
+          <div style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name||""))}</div>
           ${sourceBadge ? `<div style="margin-top:4px">${sourceBadge}</div>` : ""}
         </div>
         ${myRow?`<div style="background:${posColor(myRow.pos)}18;color:${posColor(myRow.pos)};border:1.5px solid ${posColor(myRow.pos)}44;border-radius:10px;padding:5px 9px;text-align:center;flex-shrink:0">
@@ -4616,7 +4703,7 @@ function renderClubDashboard() {
           <span style="font-size:14px">${catEmoji}</span>
           <div style="flex:1;min-width:0">
             <button onclick="openTeamProfileFromClub('${esc(t.compId)}','${esc(t.teamName)}','${esc(String(t.teamId||""))}','${esc(t.category||"")}','${esc(club.key||"")}')" style="background:none;border:none;padding:0;margin:0;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#003da5;cursor:pointer;text-align:left;max-width:100%">${decodeHtml(t.teamName)}</button>
-            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+            <div style="font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name||""))}</div>
           </div>
           ${myRow?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:${posColor(myRow.pos)};flex-shrink:0">${myRow.pos}è · ${myRow.pts}pts</span>`:""}
           ${statusFlag}
@@ -5347,7 +5434,7 @@ function renderAllComps(cursor) {
           <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${color}">${comp.pctPlayed!=null?comp.pctPlayed+"%":"?"}</span>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(comp.name.replace(/\s*\(2025-26\)/,""))}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(stripSeasonSuffix(comp.name||""))}</div>
           <div style="font-size:11px;color:#94a3b8;margin-top:1px">${(comp.classification||[]).length||"?"} equips</div>
         </div>
         ${showSourceIcon ? classifSourceIconHtml(comp) : ""}
@@ -5945,7 +6032,7 @@ function getJokCompetitionUrl(comp) {
 
 function renderDetailHeaderMeta() {
   if (!detailComp) return;
-  $("detail-comp-name").textContent=detailComp.name.replace(/\s*\(2025-26\)/,"");
+  $("detail-comp-name").textContent=stripSeasonSuffix(detailComp.name || "");
   const sourceBadge = classifSourceBadgeHtml(detailComp);
   const playedPct = getCompPlayedPct(detailComp);
   const status = (playedPct == null || playedPct === 0) ? "No començada" : (playedPct >= 100 ? "Finalitzada" : "En curs");
@@ -6677,7 +6764,7 @@ async function init(){
 
     if (activeSeasonKey !== "current") {
       try {
-        await switchActiveSeason(activeSeasonKey);
+        await switchActiveSeason(activeSeasonKey, { showLoading: false });
       } catch {
         activeSeasonKey = "current";
       }

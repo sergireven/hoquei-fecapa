@@ -4,7 +4,8 @@
     {
       "key": "2024-25",
       "label": "2024-25",
-      "dataUrl": "./season-archive/data-2024-25.json"
+      "dataUrl": "./season-archive/data-2024-25.json",
+      "actesBaseUrl": "./season-archive/actes/2024-25"
     }
   ]
 }
