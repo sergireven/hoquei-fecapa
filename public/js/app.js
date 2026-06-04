@@ -2122,9 +2122,19 @@ function stripSeasonSuffix(name) {
 }
 
 async function fetchJsonFile(url) {
-  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status} carregant ${url}`);
-  return res.json();
+  const raw = String(url || "").trim();
+  const urls = [raw];
+  if (raw.startsWith("./")) urls.push(raw.slice(2));
+  else if (raw && !raw.startsWith("/") && !raw.startsWith("http")) urls.push(`./${raw}`);
+
+  let lastStatus = null;
+  for (const candidate of [...new Set(urls)].filter(Boolean)) {
+    const res = await fetch(`${candidate}${candidate.includes("?") ? "&" : "?"}t=${Date.now()}`);
+    if (res.ok) return res.json();
+    lastStatus = res.status;
+  }
+
+  throw new Error(`HTTP ${lastStatus || 404} carregant ${raw}`);
 }
 
 function mergePlayerSources(a = [], b = []) {
