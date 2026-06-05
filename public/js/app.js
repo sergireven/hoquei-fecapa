@@ -122,6 +122,36 @@ function getRoleLabel(role, fallback = "") {
   return ROLE_LABELS[key] || fallback;
 }
 
+function normalizeRoles(rawRoles) {
+  if (!rawRoles) return [];
+  const arr = Array.isArray(rawRoles)
+    ? rawRoles
+    : String(rawRoles)
+      .split(",")
+      .map(v => String(v || "").trim())
+      .filter(Boolean);
+  const valid = arr.filter(r => ROLE_OPTIONS.includes(r) && r);
+  return [...new Set(valid)];
+}
+
+function getProfileRoles(profile) {
+  if (!profile) return [];
+  const fromList = normalizeRoles(profile.roles);
+  if (fromList.length) return fromList;
+  return normalizeRoles(profile.role);
+}
+
+function profileHasRole(profile, role) {
+  if (!profile || !role) return false;
+  return getProfileRoles(profile).includes(role);
+}
+
+function getProfileRolesLabel(profile, fallback = "") {
+  const roles = getProfileRoles(profile);
+  if (!roles.length) return fallback;
+  return roles.map(r => getRoleLabel(r, r)).join(" · ");
+}
+
 function loadUserLocationStore() {
   try { return JSON.parse(localStorage.getItem(USER_LOCATION_KEY) || "{}"); }
   catch { return {}; }
@@ -407,17 +437,17 @@ async function _removeFavFromCloud(type, key) {
 
 function renderLoginButton() {
   if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
-  const roleBadge = getRoleLabel(currentProfile?.role, "");
+  const roleBadge = getProfileRolesLabel(currentProfile, "");
   const loginBtn = currentUser
     ? `<button onclick="openUserModal()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
         <span style="background:#e5001c;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${(currentUser.email||"?")[0].toUpperCase()}</span>
         ${esc(roleBadge)}
        </button>`
     : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
-  const adminBtn = currentProfile?.role === "admin"
+  const adminBtn = profileHasRole(currentProfile, "admin")
     ? `<button onclick="openAdminPanel()" style="background:#f59e0b;border:none;color:#1a2035;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">⚙️ Panell Admin</button>`
     : "";
-  const coordinadorBtn = currentProfile?.role === "coordinador"
+  const coordinadorBtn = profileHasRole(currentProfile, "coordinador")
     ? `<button onclick="openCoordinatorPanel()" style="background:#7c3aed;border:none;color:#fff;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">📋 Coordinador</button>`
     : "";
   return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}${coordinadorBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
@@ -489,15 +519,15 @@ window.sendMagicLink  = loginWithEmail; // alias
 
 // User menu modal
 function openUserModal() {
-  const roleLabel = getRoleLabel(currentProfile?.role, "Usuari");
+  const roleLabel = getProfileRolesLabel(currentProfile, "Usuari");
   const userLoc = getCurrentUserLocation();
-  const adminBtn  = currentProfile?.role === "admin"
+  const adminBtn  = profileHasRole(currentProfile, "admin")
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
     : "";
-  const coordinadorBtn = currentProfile?.role === "coordinador"
+  const coordinadorBtn = profileHasRole(currentProfile, "coordinador")
     ? `<button onclick="closeUserModal();openCoordinatorPanel()" style="width:100%;background:#7c3aed;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">📋 Panell Coordinador</button>`
     : "";
-  const teamSection = currentProfile?.role === "entrenador"
+  const teamSection = profileHasRole(currentProfile, "entrenador")
     ? `<div style="margin-bottom:16px">
         <div style="font-size:13px;color:#64748b;margin-bottom:6px">Equip assignat</div>
         <div style="display:flex;gap:8px">
@@ -1006,6 +1036,10 @@ async function renderAdminBenjamiPanel(body) {
 }
 
 function openAdminPanel() {
+  if (!profileHasRole(currentProfile, "admin")) {
+    alert("No tens permisos d'admin.");
+    return;
+  }
   ["screen-home","screen-picker","screen-detail","screen-acta"].forEach(id => $(id).style.display = "none");
   $("screen-admin").style.display = "flex";
   adminPanelView = "mapping";
@@ -1230,6 +1264,10 @@ function coordinatorChooseClub(encodedClubName) {
 }
 
 function openCoordinatorPanel() {
+  if (!profileHasRole(currentProfile, "coordinador")) {
+    alert("No tens permisos de coordinador.");
+    return;
+  }
   ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team", "screen-admin"].forEach(id => $(id).style.display = "none");
   $("screen-coordinator").style.display = "flex";
   const fav = loadCoordinatorFavorite();
@@ -3557,20 +3595,22 @@ async function renderAdminPanel() {
   body.innerHTML = `${renderAdminTopNav("users")}<div style="text-align:center;padding:32px;color:#94a3b8">Carregant usuaris...</div>`;
   const { data: profiles, error } = await _sb.rpc("get_all_profiles_admin", { admin_email: currentUser?.email });
   if (error || !profiles) { body.innerHTML = `${renderAdminTopNav("users")}<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
-  const rows = profiles.map(p => `
-    <tr style="border-bottom:1px solid #f0f4f8">
+  const rows = profiles.map(p => {
+    const pRoles = getProfileRoles(p);
+    const roleControls = ROLE_OPTIONS.filter(Boolean).map(r => {
+      const checked = pRoles.includes(r) ? "checked" : "";
+      return `<label style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:3px 8px;font-size:11px;color:#334155;cursor:pointer"><input type="checkbox" class="admin-role-toggle" data-uid="${esc(p.id)}" value="${r}" ${checked} onchange="updateUserRoles('${esc(p.id)}')" style="margin:0"/>${esc(getRoleLabel(r, r))}</label>`;
+    }).join("");
+
+    return `<tr style="border-bottom:1px solid #f0f4f8">
       <td style="padding:10px 8px;font-size:13px;color:#1a2035;font-weight:500;word-break:break-all">${esc(p.email)}</td>
-      <td style="padding:10px 8px;text-align:center">
-        <select onchange="updateUserRole('${esc(p.id)}',this.value)"
-          style="border:1.5px solid #e2e6ef;border-radius:8px;padding:5px 8px;font-size:13px;font-family:inherit;cursor:pointer">
-          ${ROLE_OPTIONS.map(r => `<option value="${r}" ${p.role===r?"selected":""}>${esc(getRoleLabel(r, r))}</option>`).join("")}
-        </select>
-      </td>
+      <td style="padding:10px 8px"><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">${roleControls}</div></td>
       <td style="padding:10px 8px;font-size:12px;color:#64748b">${esc(p.team_name||"")}</td>
       <td style="padding:10px 8px;text-align:center">
         <button onclick="adminDeleteUser('${esc(p.id)}')" title="Eliminar" style="background:none;border:none;color:#e5001c;cursor:pointer;font-size:15px;line-height:1;padding:2px 6px">✕</button>
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   body.innerHTML = `
     ${renderAdminTopNav("users")}
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e2e6ef;padding:16px;margin-bottom:16px">
@@ -3578,14 +3618,9 @@ async function renderAdminPanel() {
       <input id="admin-add-email" type="email" placeholder="email@exemple.com"
         style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;margin-bottom:8px;font-family:inherit;outline:none"/>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <select id="admin-add-role" onchange="adminToggleTeamField()"
-          style="flex:1;border:1.5px solid #e2e6ef;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;cursor:pointer">
-          <option value="">Sense rol</option>
-          <option value="entrenador">Entrenador</option>
-          <option value="coordinador">Coordinador</option>
-          <option value="gestor_botiga">Gestor de botiga</option>
-          <option value="admin">Admin</option>
-        </select>
+        <div style="flex:1;border:1.5px solid #e2e6ef;border-radius:10px;padding:9px 10px;display:flex;gap:8px;flex-wrap:wrap;background:#fff">
+          ${ROLE_OPTIONS.filter(Boolean).map(r => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;cursor:pointer"><input type="checkbox" class="admin-add-role" value="${r}" onchange="adminToggleTeamField()" style="margin:0"/>${esc(getRoleLabel(r, r))}</label>`).join("")}
+        </div>
         <input id="admin-add-team" type="text" placeholder="Equip (entrenador)"
           style="flex:1;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;display:none"/>
       </div>
@@ -3606,20 +3641,42 @@ async function renderAdminPanel() {
     </div>`;
 }
 function adminToggleTeamField() {
-  const role = $("admin-add-role")?.value;
+  const role = [...document.querySelectorAll(".admin-add-role:checked")].map(el => String(el.value || "")).includes("entrenador");
   const tf = $("admin-add-team");
-  if (tf) tf.style.display = role === "entrenador" ? "block" : "none";
+  if (tf) tf.style.display = role ? "block" : "none";
 }
 async function adminAddUser() {
   const email = $("admin-add-email")?.value?.trim();
-  const role  = $("admin-add-role")?.value || null;
+  const roles = [...document.querySelectorAll(".admin-add-role:checked")].map(el => String(el.value || "")).filter(Boolean);
+  const role  = roles[0] || null;
   const team  = $("admin-add-team")?.value?.trim() || null;
   const msg   = $("admin-add-msg");
   if (!email || !email.includes("@")) { msg.style.color = "#e5001c"; msg.textContent = "E-mail invàlid."; return; }
   msg.style.color = "#64748b"; msg.textContent = "Desant...";
-  const { error } = await _sb.rpc("admin_manage_user", { admin_email: currentUser.email, p_email: email, p_role: role, p_team: team });
-  if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
-  else { msg.style.color = "#16a34a"; msg.textContent = "✓ Usuari desat."; renderAdminPanel(); }
+  const multi = await _sb.rpc("admin_manage_user_roles", { admin_email: currentUser.email, p_email: email, p_roles: roles, p_team: team });
+  if (multi.error && !/function\s+public\.admin_manage_user_roles|does not exist|42883/i.test(String(multi.error?.message || ""))) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Error: " + multi.error.message;
+    return;
+  }
+  if (!multi.error) {
+    msg.style.color = "#16a34a";
+    msg.textContent = "✓ Usuari desat.";
+    renderAdminPanel();
+    return;
+  }
+
+  const legacy = await _sb.rpc("admin_manage_user", { admin_email: currentUser.email, p_email: email, p_role: role, p_team: team });
+  if (legacy.error) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Error: " + legacy.error.message;
+  } else {
+    msg.style.color = "#92400e";
+    msg.textContent = roles.length > 1
+      ? "Usuari desat (backend antic: només s'ha aplicat el primer rol)."
+      : "✓ Usuari desat.";
+    renderAdminPanel();
+  }
 }
 async function adminDeleteUser(uid) {
   if (!confirm("Eliminar aquest usuari?")) return;
@@ -3627,15 +3684,30 @@ async function adminDeleteUser(uid) {
   if (error) alert("Error: " + error.message);
   else renderAdminPanel();
 }
-async function updateUserRole(uid, role) {
-  const { error } = await _sb.rpc("update_user_role_admin", { admin_email: currentUser?.email, target_id: uid, new_role: role||null });
-  if (error) alert("Error: " + error.message);
+async function updateUserRoles(uid) {
+  const selector = `.admin-role-toggle[data-uid="${uid}"]:checked`;
+  const roles = [...document.querySelectorAll(selector)].map(el => String(el.value || "")).filter(Boolean);
+  const multi = await _sb.rpc("update_user_roles_admin", { admin_email: currentUser?.email, target_id: uid, new_roles: roles });
+  if (multi.error && !/function\s+public\.update_user_roles_admin|does not exist|42883/i.test(String(multi.error?.message || ""))) {
+    alert("Error: " + multi.error.message);
+    renderAdminPanel();
+    return;
+  }
+  if (!multi.error) return;
+
+  const legacy = await _sb.rpc("update_user_role_admin", { admin_email: currentUser?.email, target_id: uid, new_role: roles[0] || null });
+  if (legacy.error) {
+    alert("Error: " + legacy.error.message);
+    renderAdminPanel();
+    return;
+  }
+  if (roles.length > 1) alert("Backend antic: només s'ha aplicat el primer rol.");
 }
 window.openAdminPanel      = openAdminPanel;
 window.closeAdminPanel     = closeAdminPanel;
 window.openCoordinatorPanel   = openCoordinatorPanel;
 window.closeCoordinatorPanel  = closeCoordinatorPanel;
-window.updateUserRole      = updateUserRole;
+window.updateUserRoles     = updateUserRoles;
 window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
@@ -8634,7 +8706,7 @@ function renderDetailHeaderMeta() {
   const eqLabel = classifCount || rosterTeams.length || fallbackTeams.length;
   const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
   const phaseMatchCount = normalizePostSeasonPhases(detailComp.postSeasonPhases || []).reduce((acc, p) => acc + ((p?.matches || []).length), 0);
-  const isAdmin = currentProfile?.role === "admin";
+  const isAdmin = profileHasRole(currentProfile, "admin");
   const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
   const pilotMap = detailComp.classificationPilot || null;
   const mergeInfo = detailComp.detailMergeInfo || null;
