@@ -3,12 +3,17 @@ const path = require("path");
 const https = require("https");
 const http = require("http");
 
-const DATA_FILE = path.join(__dirname, "../public/data.json");
+const args = process.argv.slice(2);
+const dataFileArgIndex = args.indexOf("--data-file");
+const dataFileArg = dataFileArgIndex >= 0 ? args[dataFileArgIndex + 1] : "";
+const DATA_FILE = dataFileArg
+  ? path.resolve(process.cwd(), dataFileArg)
+  : path.join(__dirname, "../public/data.json");
 const BASE = "https://jok.cat";
 const CONCURRENCY = 4;
 const DELAY_MS = 150;
 const PREVIEW_LIMIT = 4000;
-const FORCE_RELOAD = false;
+const FORCE_RELOAD = args.includes("--force");
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -153,7 +158,7 @@ function extractPlayerStatsRaw(rawText) {
  * Example: "CLUB HOQUEI RIPOLLET C 3 - 9 6 - 3 CLUB HOQUEI RIPOLLET B"
  * @returns {{ homeFouls: number|null, awayFouls: number|null }}
  */
-function extractTeamFouls(rawText, homeScore, awayScore) {
+function extractTeamFouls(rawText, homeScore, awayScore, homeTeamName = "") {
   const hs = Number(homeScore);
   const as = Number(awayScore);
   if (!Number.isFinite(hs) || !Number.isFinite(as)) return { homeFouls: null, awayFouls: null };
@@ -162,13 +167,46 @@ function extractTeamFouls(rawText, homeScore, awayScore) {
   if (!text) return { homeFouls: null, awayFouls: null };
 
   // Match: homeGoals - homeFouls awayGoals - awayFouls
-  const re = new RegExp(`\\b${hs}\\s*-\\s*(\\d+)\\s+${as}\\s*-\\s*(\\d+)\\b`);
-  const m = text.match(re);
-  if (!m) return { homeFouls: null, awayFouls: null };
+  const re = new RegExp(`\\b${hs}\\s*-\\s*(\\d+)\\s+${as}\\s*-\\s*(\\d+)\\b`, "g");
+  const candidates = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    candidates.push({
+      index: m.index,
+      homeFouls: Number(m[1]),
+      awayFouls: Number(m[2]),
+    });
+  }
+
+  if (!candidates.length) return { homeFouls: null, awayFouls: null };
+
+  if (candidates.length === 1) {
+    return {
+      homeFouls: candidates[0].homeFouls,
+      awayFouls: candidates[0].awayFouls,
+    };
+  }
+
+  const homeName = String(homeTeamName || "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (homeName) {
+    const textLower = text.toLowerCase();
+    const homeIdx = textLower.indexOf(homeName);
+    if (homeIdx >= 0) {
+      const anchored = candidates
+        .filter(c => c.index >= homeIdx)
+        .sort((a, b) => a.index - b.index)[0];
+      if (anchored) {
+        return {
+          homeFouls: anchored.homeFouls,
+          awayFouls: anchored.awayFouls,
+        };
+      }
+    }
+  }
 
   return {
-    homeFouls: Number(m[1]),
-    awayFouls: Number(m[2]),
+    homeFouls: candidates[0].homeFouls,
+    awayFouls: candidates[0].awayFouls,
   };
 }
 
@@ -340,7 +378,7 @@ async function main() {
         target.playerLinks = playerLinks;
 
         // Extract and store team-level fouls from the score block.
-        const fouls = extractTeamFouls(rawText, target.homeScore, target.awayScore);
+        const fouls = extractTeamFouls(rawText, target.homeScore, target.awayScore, target.home);
         if (fouls.homeFouls != null) target.homeFouls = fouls.homeFouls;
         if (fouls.awayFouls != null) target.awayFouls = fouls.awayFouls;
 

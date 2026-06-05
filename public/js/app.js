@@ -1245,8 +1245,51 @@ function coordinatorMatchesClubSearch(entry, query) {
   return haystack.includes(q);
 }
 
+let coordinatorMatchesLastRefreshAt = 0;
+let coordinatorMatchesRefreshPromise = null;
+
+async function coordinatorRefreshCurrentSeasonData(force = false) {
+  if (activeSeasonKey !== "current") return false;
+
+  const now = Date.now();
+  if (!force && coordinatorMatchesRefreshPromise) {
+    await coordinatorMatchesRefreshPromise;
+    return false;
+  }
+  if (!force && (now - coordinatorMatchesLastRefreshAt) < 60000) return false;
+
+  coordinatorMatchesRefreshPromise = (async () => {
+    try {
+      const res = await fetch(DATA_URL + "?t=" + Date.now());
+      if (!res.ok) return false;
+      const fresh = JSON.parse(await res.text());
+      if (!fresh || !fresh.categories) return false;
+
+      DB = fresh;
+      seasonDataCache.set("current", fresh);
+      rebuildGlobalJugadorsIndex();
+      applyClassificationSourceMerge();
+      applyCompetitionActivityHeuristics();
+      coordinatorMatchesLastRefreshAt = Date.now();
+      return true;
+    } catch (err) {
+      console.warn("[coordinator] refresh data failed", err?.message || err);
+      return false;
+    } finally {
+      coordinatorMatchesRefreshPromise = null;
+    }
+  })();
+
+  return coordinatorMatchesRefreshPromise;
+}
+
 function coordinatorSetTab(tab) {
   coordinatorPanelTab = ["club", "trainings", "convocatories"].includes(tab) ? tab : "club";
+  if (coordinatorPanelTab === "convocatories") {
+    coordinatorRefreshCurrentSeasonData(false)
+      .finally(() => renderCoordinatorPanel());
+    return;
+  }
   renderCoordinatorPanel();
 }
 
@@ -2144,15 +2187,15 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName) {
     || teamMatchesCalendarExact(match?.away || "", team)
   );
   const looseMatch = (match) => matchBelongsToCoordinatorPool(match, teamPool);
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const nowTs = Date.now();
+  const pastToleranceMs = 2 * 60 * 60 * 1000;
   const matches = [];
 
   for (const comp of Object.values(DB?.categories || {}).flat()) {
     for (const match of (comp?.calendar || [])) {
       if (!(strictMatch(match) || looseMatch(match))) continue;
-      const ts = parseMatchTimestamp(match?.date || "", comp?.name || "");
-      if (!ts || ts < startOfToday.getTime()) continue;
+      const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
+      if (!ts || ts < (nowTs - pastToleranceMs)) continue;
       matches.push({
         compId: String(comp?.id || ""),
         compName: comp?.name || "",
@@ -5367,52 +5410,48 @@ function getVenueLinks(teamName) {
 }
 
 function getActaTeamFouls(acta) {
+  const parseFromScoreBlock = () => {
+    const text = String(acta?.rawText || acta?.rawTextPreview || "").replace(/\s+/g, " ").trim();
+    if (!text) return { homeFouls: null, awayFouls: null };
+
+    const hs = Number(acta?.homeScore);
+    const as = Number(acta?.awayScore);
+    if (!Number.isFinite(hs) || !Number.isFinite(as)) return { homeFouls: null, awayFouls: null };
+
+    const re = new RegExp(`\\b${hs}\\s*-\\s*(\\d+)\\s+${as}\\s*-\\s*(\\d+)\\b`);
+    const m = text.match(re);
+    if (!m) return { homeFouls: null, awayFouls: null };
+
+    return {
+      homeFouls: Number(m[1]),
+      awayFouls: Number(m[2]),
+    };
+  };
+
   const explicitHome = Number(acta?.homeFouls);
   const explicitAway = Number(acta?.awayFouls);
+  const fromScoreBlock = parseFromScoreBlock();
+
   if (Number.isFinite(explicitHome) && Number.isFinite(explicitAway)) {
+    // Some historical actas were persisted as 0-0 due to mapping noise.
+    // If score-block parsing yields non-zero fouls, prefer that value.
+    if (
+      explicitHome === 0 &&
+      explicitAway === 0 &&
+      Number.isFinite(fromScoreBlock.homeFouls) &&
+      Number.isFinite(fromScoreBlock.awayFouls) &&
+      (fromScoreBlock.homeFouls !== 0 || fromScoreBlock.awayFouls !== 0)
+    ) {
+      return fromScoreBlock;
+    }
     return { homeFouls: explicitHome, awayFouls: explicitAway };
   }
 
-  const sumPlayerFouls = (players) => {
-    let total = 0;
-    let found = false;
-    for (const p of (players || [])) {
-      const fouls = Number(p?.fd);
-      if (!Number.isFinite(fouls)) continue;
-      total += fouls;
-      found = true;
-    }
-    return found ? total : null;
-  };
-
-  const directHome = sumPlayerFouls(acta?.playerStats?.homePlayers || []);
-  const directAway = sumPlayerFouls(acta?.playerStats?.awayPlayers || []);
-  if (directHome != null || directAway != null) {
-    return { homeFouls: directHome, awayFouls: directAway };
+  if (fromScoreBlock.homeFouls != null && fromScoreBlock.awayFouls != null) {
+    return fromScoreBlock;
   }
 
-  const parsedPlayers = getActaPlayersForDisplay(acta);
-  const parsedHome = sumPlayerFouls(parsedPlayers?.homePlayers || []);
-  const parsedAway = sumPlayerFouls(parsedPlayers?.awayPlayers || []);
-  if (parsedHome != null || parsedAway != null) {
-    return { homeFouls: parsedHome, awayFouls: parsedAway };
-  }
-
-  const text = String(acta?.rawText || acta?.rawTextPreview || "").replace(/\s+/g, " ").trim();
-  if (!text) return { homeFouls: null, awayFouls: null };
-
-  const hs = Number(acta?.homeScore);
-  const as = Number(acta?.awayScore);
-  if (!Number.isFinite(hs) || !Number.isFinite(as)) return { homeFouls: null, awayFouls: null };
-
-  const re = new RegExp(`${hs}\\s*-\\s*${as}\\s+(\\d+)\\s*-\\s*(\\d+)`);
-  const m = text.match(re);
-  if (!m) return { homeFouls: null, awayFouls: null };
-
-  return {
-    homeFouls: Number(m[1]),
-    awayFouls: Number(m[2]),
-  };
+  return { homeFouls: 0, awayFouls: 0 };
 }
 
 function hasAnyPlayerFouls(players) {
@@ -6346,7 +6385,7 @@ function matchCard(m, myTeam, compId, options = {}) {
           ${isByeAway ? "" : shieldImg(cidA,22)}
           ${awayAnalysisIcon}
           <div style="display:flex;align-items:center;gap:4px;justify-content:flex-start;min-width:0;flex-wrap:wrap">
-            <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?"#003da5":"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
+            <span style="font-size:clamp(12px,3.5vw,14px);font-weight:${riA?800:500};color:${riA?sideColor:"#334155"};text-align:left;line-height:1.3;overflow-wrap:anywhere">${esc(normalizeJokClubDisplayName(m.away))}</span>
             ${awayQualifiedBadge}
           </div>
         </div>
