@@ -33,6 +33,11 @@ on:
         required: true
         type: boolean
         default: true
+      force_actes_reload:
+        description: "Forcar recarrega d'actes i recalcul de faltes equip"
+        required: true
+        type: boolean
+        default: false
       auto_commit:
         description: "Fer commit i push automàtic dels canvis"
         required: true
@@ -98,6 +103,17 @@ jobs:
             npm run scrape:off
           else
             npm run scrape:on
+          fi
+
+      - name: Recarregar actes (force)
+        if: ${{ inputs.force_actes_reload }}
+        env:
+          JOK_OUTPUT_FILE: ${{ inputs.output_file }}
+        run: |
+          if [ -n "$JOK_OUTPUT_FILE" ]; then
+            npm run scrape:actes:load -- --force --data-file "$JOK_OUTPUT_FILE"
+          else
+            npm run scrape:actes:load -- --force
           fi
 
       - name: Build audit
