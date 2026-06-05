@@ -963,6 +963,56 @@ function extractPlayerStatsRaw(rawText) {
   return result;
 }
 
+/**
+ * Extracts team-level fouls from the rawText of a JOK.cat acta page.
+ * JOK.cat format in rawText: "HOMETEAM homeGoals - homeFouls awayGoals - awayFouls AWAYTEAM"
+ * Example: "CLUB HOQUEI RIPOLLET C 3 - 9 6 - 3 CLUB HOQUEI RIPOLLET B"
+ * @returns {{ homeFouls: number|null, awayFouls: number|null }}
+ */
+function extractTeamFouls(rawText, homeScore, awayScore) {
+  const hs = Number(homeScore);
+  const as = Number(awayScore);
+  if (!Number.isFinite(hs) || !Number.isFinite(as)) return { homeFouls: null, awayFouls: null };
+
+  const text = String(rawText || "").replace(/\s+/g, " ").trim();
+  if (!text) return { homeFouls: null, awayFouls: null };
+
+  // Match: homeGoals - homeFouls awayGoals - awayFouls
+  const re = new RegExp(`\\b${hs}\\s*-\\s*(\\d+)\\s+${as}\\s*-\\s*(\\d+)\\b`);
+  const m = text.match(re);
+  if (!m) return { homeFouls: null, awayFouls: null };
+
+  return {
+    homeFouls: Number(m[1]),
+    awayFouls: Number(m[2]),
+  };
+}
+
+/**
+ * Extracts team fouls from the rawText of a JOK.cat acta page.
+ * Format in rawText: "HOMETEAM homeGoals - homeFouls awayGoals - awayFouls AWAYTEAM"
+ * Example: "CLUB HOQUEI RIPOLLET C 3 - 9 6 - 3 CLUB HOQUEI RIPOLLET B"
+ * @returns {{ homeFouls: number|null, awayFouls: number|null }}
+ */
+function extractTeamFouls(rawText, homeScore, awayScore) {
+  const hs = Number(homeScore);
+  const as = Number(awayScore);
+  if (!Number.isFinite(hs) || !Number.isFinite(as)) return { homeFouls: null, awayFouls: null };
+
+  const text = String(rawText || "").replace(/\s+/g, " ").trim();
+  if (!text) return { homeFouls: null, awayFouls: null };
+
+  // homeGoals - homeFouls awayGoals - awayFouls
+  const re = new RegExp(`\\b${hs}\\s*-\\s*(\\d+)\\s+${as}\\s*-\\s*(\\d+)\\b`);
+  const m = text.match(re);
+  if (!m) return { homeFouls: null, awayFouls: null };
+
+  return {
+    homeFouls: Number(m[1]),
+    awayFouls: Number(m[2]),
+  };
+}
+
 function parsePlayerStats(playerStatsRaw, playerLinks) {
   const psr = playerStatsRaw || {};
   const links = playerLinks || [];
@@ -1277,6 +1327,12 @@ async function loadPendingActes(output) {
         target.referees = referees;
         target.playerStats = parsePlayerStats(playerStatsRaw, playerLinks);
         target.playerLinks = playerLinks;
+
+        // Extract and store team-level fouls from the score block.
+        const fouls = extractTeamFouls(rawText, target.homeScore, target.awayScore);
+        if (fouls.homeFouls != null) target.homeFouls = fouls.homeFouls;
+        if (fouls.awayFouls != null) target.awayFouls = fouls.awayFouls;
+
         delete target.playerStatsRaw;
         delete target.rawTextPreview;
 

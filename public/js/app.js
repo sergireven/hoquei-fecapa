@@ -1072,23 +1072,93 @@ function saveCoordinatorSettingsCache(cache) {
   localStorage.setItem(COORDINATOR_SETTINGS_KEY, JSON.stringify(cache || {}));
 }
 
+function getCoordinatorSeasonPeriodDefaults(seasonKey = activeSeasonKey) {
+  const entry = seasonCatalog.find(s => s.key === seasonKey) || getActiveSeasonEntry() || null;
+  const source = String(entry?.key || entry?.label || seasonKey || "").trim();
+  const m = source.match(/(\d{4})\s*[-/]\s*(\d{2,4})/);
+  let startYear = 0;
+  let endYear = 0;
+
+  if (m) {
+    startYear = Number(m[1]);
+    const endRaw = String(m[2]);
+    endYear = endRaw.length === 2
+      ? Number(`${String(startYear).slice(0, 2)}${endRaw}`)
+      : Number(endRaw);
+  } else {
+    const now = new Date();
+    const y = now.getFullYear();
+    startYear = now.getMonth() >= 7 ? y : (y - 1);
+    endYear = startYear + 1;
+  }
+
+  return {
+    periodStart: `${startYear}-09-01`,
+    periodEnd: `${endYear}-06-30`,
+  };
+}
+
 function getCoordinatorClubSettings(clubName) {
-  const defaults = { periodStart: "", periodEnd: "", lastLocation: "" };
+  const seasonDefaults = getCoordinatorSeasonPeriodDefaults();
+  const defaults = {
+    periodStart: seasonDefaults.periodStart,
+    periodEnd: seasonDefaults.periodEnd,
+    lastLocation: "",
+    lastLockerRoom: "",
+  };
   if (!clubName) return { ...defaults };
   const cache = loadCoordinatorSettingsCache();
-  return { ...defaults, ...(cache[String(clubName)] || {}) };
+  const entry = cache[String(clubName)] || {};
+  const bySeason = entry?.seasonPeriods?.[String(activeSeasonKey)] || {};
+  const periodStart = String(bySeason.periodStart || entry.periodStart || defaults.periodStart || "").trim();
+  const periodEnd = String(bySeason.periodEnd || entry.periodEnd || defaults.periodEnd || "").trim();
+  return {
+    ...defaults,
+    ...entry,
+    periodStart,
+    periodEnd,
+  };
 }
 
 function updateCoordinatorClubSettings(clubName, updates) {
   const name = String(clubName || "").trim();
   if (!name) return;
   const cache = loadCoordinatorSettingsCache();
+  const prev = cache[name] || {};
+  const nextUpdates = { ...(updates || {}) };
+  const hasPeriodStart = Object.prototype.hasOwnProperty.call(nextUpdates, "periodStart");
+  const hasPeriodEnd = Object.prototype.hasOwnProperty.call(nextUpdates, "periodEnd");
+  const seasonKey = String(activeSeasonKey || "current");
+  const seasonPeriods = { ...(prev.seasonPeriods || {}) };
+
+  if (hasPeriodStart || hasPeriodEnd) {
+    seasonPeriods[seasonKey] = {
+      ...(seasonPeriods[seasonKey] || {}),
+      ...(hasPeriodStart ? { periodStart: String(nextUpdates.periodStart || "") } : {}),
+      ...(hasPeriodEnd ? { periodEnd: String(nextUpdates.periodEnd || "") } : {}),
+    };
+  }
+
   cache[name] = {
-    ...(cache[name] || {}),
-    ...(updates || {}),
+    ...prev,
+    ...nextUpdates,
+    ...(hasPeriodStart ? { periodStart: String(nextUpdates.periodStart || "") } : {}),
+    ...(hasPeriodEnd ? { periodEnd: String(nextUpdates.periodEnd || "") } : {}),
+    seasonPeriods,
     updatedAt: new Date().toISOString(),
   };
   saveCoordinatorSettingsCache(cache);
+}
+
+function coordinatorResolveTeamName(clubName, selectedValue) {
+  const wanted = String(selectedValue || "").trim();
+  if (!wanted) return "";
+  const teams = getCoordinatorClubTeams(clubName);
+  const byKey = teams.find(team => String(team?.teamKey || "") === wanted);
+  if (byKey?.teamName) return String(byKey.teamName).trim();
+  const byName = teams.find(team => String(team?.teamName || "").trim() === wanted);
+  if (byName?.teamName) return String(byName.teamName).trim();
+  return wanted;
 }
 
 function getCoordinatorClubEntries() {
@@ -1242,7 +1312,14 @@ function renderCoordinatorTrainingsTab(currentFav) {
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Exportacio d'entrenaments</div>
         <button onclick="exportCoordinatorTrainingsToExcel()" style="width:100%;background:#2563eb;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-bottom:8px">Exportar entrenaments a Excel</button>
-        <div style="font-size:12px;color:#64748b">Inclou club, equip, data, hora, durada, lloc i observacions.</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select id="training-export-format" style="flex:1;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit;background:#fff">
+            <option value="pdf">Document PDF</option>
+            <option value="word">Document Word</option>
+          </select>
+          <button onclick="exportCoordinatorTrainingsDocument()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Exportar document</button>
+        </div>
+        <div style="font-size:12px;color:#64748b">Inclou club, equip, data, hora, ubicacio, vestidor, durada i observacions.</div>
       </div>
     </div>
 
@@ -1258,11 +1335,8 @@ function renderCoordinatorTrainingsTab(currentFav) {
           <input type="time" id="training-time" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit"/>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px">
-          <select id="training-space-type" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit">
-            <option value="pista">Pista</option>
-            <option value="vestidor">Vestidor</option>
-          </select>
-          <input type="text" id="training-location" value="${esc(settings.lastLocation || "")}" placeholder="Pavello o ubicacio" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit"/>
+          <input type="text" id="training-location" value="${esc(settings.lastLocation || "")}" placeholder="Ubicacio / pavello" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit"/>
+          <input type="text" id="training-locker-room" value="${esc(settings.lastLockerRoom || "")}" placeholder="Vestidor" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit"/>
           <input type="number" id="training-duration" min="15" max="300" placeholder="Durada (min)" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit"/>
         </div>
         <select id="training-recurrence" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit;margin-bottom:8px">
@@ -1297,7 +1371,11 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     return `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:22px;text-align:center;color:#64748b">Selecciona primer un club a la pestanya de gestió club.</div>`;
   }
   const teams = getCoordinatorClubTeams(currentFav.clubName);
-  const teamOptions = teams.map(team => `<option value="${esc(team.teamName)}" ${coordinatorConvTeamFilter === team.teamName ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`).join("");
+  const selectedToken = teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter)?.teamKey || coordinatorConvTeamFilter;
+  const teamOptions = teams.map(team => {
+    const teamToken = String(team?.teamKey || team?.teamName || "");
+    return `<option value="${esc(teamToken)}" ${selectedToken === teamToken ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`;
+  }).join("");
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px">
@@ -1392,6 +1470,19 @@ function coordinatorTrainingSpaceLabel(spaceType) {
   return String(spaceType || "").toLowerCase() === "vestidor" ? "Vestidor" : "Pista";
 }
 
+function coordinatorTrainingLocationLabel(training) {
+  return String(training?.location || "").trim() || "—";
+}
+
+function coordinatorTrainingLockerRoomLabel(training) {
+  const explicit = String(training?.lockerRoom || "").trim();
+  if (explicit) return explicit;
+  if (String(training?.spaceType || "").toLowerCase() === "vestidor") {
+    return String(training?.location || "").trim() || "—";
+  }
+  return "—";
+}
+
 function coordinatorEnsureValidConvTeam(currentFav) {
   if (!currentFav?.clubName) {
     coordinatorConvTeamFilter = "";
@@ -1466,8 +1557,8 @@ async function createTraining(clubId, payload) {
     .map(name => String(name || "").trim())
     .filter(Boolean))];
   const time = String(payload?.time || "").trim();
-  const spaceType = String(payload?.spaceType || "pista").trim().toLowerCase() === "vestidor" ? "vestidor" : "pista";
   const location = String(payload?.location || "").trim();
+  const lockerRoom = String(payload?.lockerRoom || "").trim();
   const duration = Number(payload?.duration || 0);
   const notes = String(payload?.notes || "").trim();
   const recurrence = String(payload?.recurrence || "none").trim();
@@ -1499,8 +1590,8 @@ async function createTraining(clubId, payload) {
       JSON.stringify(coordinatorGetTrainingTeamNames(t).sort()) === JSON.stringify(sortedTeamNames)
       && String(t?.date || "") === date
       && String(t?.time || "") === time
-      && String(t?.spaceType || "pista") === spaceType
       && normalizeTeamName(t?.location || "") === normalizeTeamName(location)
+      && normalizeTeamName(t?.lockerRoom || "") === normalizeTeamName(lockerRoom)
     );
     if (duplicate) {
       skipped += 1;
@@ -1515,8 +1606,8 @@ async function createTraining(clubId, payload) {
       teamLabel: teamNames.map(name => shortTeamDisplayName(name)).join(" + "),
       date,
       time,
-      spaceType,
       location,
+      lockerRoom,
       duration,
       notes,
       recurrence,
@@ -1583,15 +1674,20 @@ async function coordinatorAddTraining() {
     .filter(Boolean);
   const date = $("training-date")?.value || "";
   const time = $("training-time")?.value || "";
-  const spaceType = $("training-space-type")?.value || "pista";
   const location = $("training-location")?.value || "";
+  const lockerRoom = $("training-locker-room")?.value || "";
   const duration = $("training-duration")?.value || "";
   const recurrence = $("training-recurrence")?.value || "none";
   const notes = $("training-notes")?.value || "";
   const periodStart = $("coordinator-period-start")?.value || "";
   const periodEnd = $("coordinator-period-end")?.value || "";
 
-  updateCoordinatorClubSettings(fav.clubName, { periodStart, periodEnd, lastLocation: location });
+  updateCoordinatorClubSettings(fav.clubName, {
+    periodStart,
+    periodEnd,
+    lastLocation: location,
+    lastLockerRoom: lockerRoom,
+  });
 
   const startDate = recurrence === "none"
     ? date
@@ -1601,8 +1697,8 @@ async function coordinatorAddTraining() {
     teamNames,
     date: startDate,
     time,
-    spaceType,
     location,
+    lockerRoom,
     duration,
     notes,
     recurrence,
@@ -1661,7 +1757,8 @@ function renderCoordinatorTrainingsList() {
         </div>
         <button onclick="coordinatorDeleteTraining('${esc(t.id)}')" style="background:#ef4444;border:none;color:#fff;font-weight:700;font-size:11px;padding:6px 10px;border-radius:8px;cursor:pointer">Eliminar</button>
       </div>
-      <div style="font-size:12px;color:#475569;margin-bottom:3px">📍 ${esc(coordinatorTrainingSpaceLabel(t.spaceType))} · ${esc(t.location || "")}</div>
+      <div style="font-size:12px;color:#475569;margin-bottom:3px">📍 Ubicacio: ${esc(coordinatorTrainingLocationLabel(t))}</div>
+      <div style="font-size:12px;color:#475569;margin-bottom:3px">🚪 Vestidor: ${esc(coordinatorTrainingLockerRoomLabel(t))}</div>
       <div style="font-size:12px;color:#475569;margin-bottom:3px">⏱️ ${esc(String(t.duration || ""))} min</div>
       ${t.recurrence && t.recurrence !== "none" ? `<div style="font-size:11px;color:#6366f1;margin-bottom:3px">Recurrencia ${esc(t.recurrence === "weekly" ? "setmanal" : "mensual")}</div>` : ""}
       ${t.notes ? `<div style="margin-top:6px;font-size:11px;color:#64748b;background:#fff;border-radius:8px;padding:8px">${esc(t.notes)}</div>` : ""}
@@ -1689,13 +1786,13 @@ function exportCoordinatorTrainingsToExcel() {
     ["Periode inici", settings.periodStart || "-"],
     ["Periode fi", settings.periodEnd || "-"],
     [],
-    ["Data", "Hora", "Equips", "Espai", "Ubicacio", "Durada", "Recurrencia", "Observacions"],
+    ["Data", "Hora", "Equips", "Ubicacio", "Vestidor", "Durada", "Recurrencia", "Observacions"],
     ...trainings.map(t => [
       t.date || "",
       t.time || "",
       coordinatorFormatTrainingTeamNames(t),
-      coordinatorTrainingSpaceLabel(t.spaceType),
-      t.location || "",
+      coordinatorTrainingLocationLabel(t),
+      coordinatorTrainingLockerRoomLabel(t),
       t.duration || "",
       t.recurrence || "none",
       t.notes || "",
@@ -1705,6 +1802,120 @@ function exportCoordinatorTrainingsToExcel() {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   XLSX.utils.book_append_sheet(wb, ws, "Entrenaments");
   XLSX.writeFile(wb, `Entrenaments_${fav.clubName.replace(/\s+/g, "_")}.xlsx`);
+}
+
+function buildCoordinatorTrainingsDocumentHtml(clubName, settings, trainings) {
+  const rows = trainings.map(t => `<tr>
+    <td>${esc(t.date || "")}</td>
+    <td>${esc(t.time || "")}</td>
+    <td>${esc(coordinatorFormatTrainingTeamNames(t))}</td>
+    <td>${esc(coordinatorTrainingLocationLabel(t))}</td>
+    <td>${esc(coordinatorTrainingLockerRoomLabel(t))}</td>
+    <td>${esc(String(t.duration || ""))}</td>
+    <td>${esc(t.recurrence || "none")}</td>
+    <td>${esc(t.notes || "")}</td>
+  </tr>`).join("");
+
+  return `
+    <div style="font-family:Arial,sans-serif;background:#fff;color:#111;padding:18px;width:980px;box-sizing:border-box">
+      <h1 style="margin:0 0 8px;font-size:22px">Entrenaments · ${esc(clubName)}</h1>
+      <div style="font-size:12px;color:#374151;margin-bottom:12px">Temporada: ${esc(getActiveSeasonLabel())} · Periode: ${esc(settings.periodStart || "-")} → ${esc(settings.periodEnd || "-")}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:#f3f4f6">
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Data</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Hora</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Equip(s)</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Ubicacio</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Vestidor</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Durada</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Recurrencia</th>
+            <th style="padding:6px;border:1px solid #d1d5db;text-align:left">Observacions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function exportCoordinatorTrainingsDocument() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav?.clubName) {
+    alert("Selecciona primer un club.");
+    return;
+  }
+
+  const format = String($("training-export-format")?.value || "pdf").toLowerCase();
+  const settings = getCoordinatorClubSettings(fav.clubName);
+  const trainings = loadCoordinatorTrainings(fav.clubName).slice().sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  if (!trainings.length) {
+    alert("No hi ha entrenaments per exportar.");
+    return;
+  }
+
+  const baseName = `Entrenaments_${fav.clubName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}`;
+  const html = buildCoordinatorTrainingsDocumentHtml(fav.clubName, settings, trainings);
+
+  if (format === "word") {
+    const wrapped = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+    const blob = new Blob([wrapped], { type: "application/msword;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${baseName}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  if (!window.jspdf?.jsPDF || !window.html2canvas) {
+    alert("La llibreria de PDF no esta disponible.");
+    return;
+  }
+
+  const stage = document.createElement("div");
+  stage.style.position = "fixed";
+  stage.style.left = "-99999px";
+  stage.style.top = "0";
+  stage.style.width = "1000px";
+  stage.style.background = "#ffffff";
+  stage.innerHTML = html;
+  document.body.appendChild(stage);
+
+  try {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const canvas = await window.html2canvas(stage.firstElementChild || stage, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 8;
+    const maxWidth = pageWidth - margin * 2;
+    const maxHeight = pageHeight - margin * 2;
+
+    let renderWidth = maxWidth;
+    let renderHeight = (canvas.height * renderWidth) / canvas.width;
+    if (renderHeight > maxHeight) {
+      renderHeight = maxHeight;
+      renderWidth = (canvas.width * renderHeight) / canvas.height;
+    }
+
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", (pageWidth - renderWidth) / 2, margin, renderWidth, renderHeight, undefined, "FAST");
+    doc.save(`${baseName}.pdf`);
+  } catch (err) {
+    console.error("Error exportant document d'entrenaments:", err);
+    alert("No s'ha pogut generar el document PDF.");
+  } finally {
+    stage.remove();
+  }
 }
 
 function getWeekStart(date = new Date()) {
@@ -1780,6 +1991,7 @@ function getCoordinatorDayEvents(clubName, date, teamName = "") {
       time: t.time,
       spaceType: t.spaceType,
       location: t.location,
+      lockerRoom: t.lockerRoom,
       duration: t.duration,
       teamName: t.teamName,
       teamNames: coordinatorGetTrainingTeamNames(t),
@@ -1815,7 +2027,7 @@ function renderCoordinatorWeekCalendar() {
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         <button onclick="coordinatorSetCalendarTeam('')" style="background:${!coordinatorCalendarTeamFilter ? "#1a2035" : "#f8fafc"};border:1.5px solid ${!coordinatorCalendarTeamFilter ? "#1a2035" : "#e2e6ef"};color:${!coordinatorCalendarTeamFilter ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
-        ${teams.map(team => `<button onclick="coordinatorSetCalendarTeam('${esc(team.teamName)}')" style="background:${coordinatorCalendarTeamFilter === team.teamName ? "#1a2035" : "#f8fafc"};border:1.5px solid ${coordinatorCalendarTeamFilter === team.teamName ? "#1a2035" : "#e2e6ef"};color:${coordinatorCalendarTeamFilter === team.teamName ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">${esc(shortTeamDisplayName(team.teamName || ""))}</button>`).join("")}
+        ${teams.map(team => `<button onclick="coordinatorSetCalendarTeam('${esc(team.teamName)}')" style="background:${coordinatorCalendarTeamFilter === team.teamName ? "#1a2035" : "#f8fafc"};border:1.5px solid ${coordinatorCalendarTeamFilter === team.teamName ? "#1a2035" : "#e2e6ef"};color:${coordinatorCalendarTeamFilter === team.teamName ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">${esc(formatCoordinatorTeamLabel(team))}</button>`).join("")}
       </div>
     </div>
     <div style="overflow-x:auto">
@@ -1837,7 +2049,7 @@ function renderCoordinatorWeekCalendar() {
             ${events.trainings.map(training => `<div style="background:#ecfeff;border:1px solid #a5f3fc;border-left:4px solid #0891b2;border-radius:8px;padding:8px 9px">
               <div style="font-size:10px;font-weight:800;color:#0f766e;text-transform:uppercase;margin-bottom:2px">Entrenament · ${esc(training.time || "")}</div>
               <div style="font-size:11px;font-weight:700;color:#0f172a">${esc(training.teamLabel || shortTeamDisplayName(training.teamName || ""))}</div>
-              <div style="font-size:10px;color:#64748b">${esc(coordinatorTrainingSpaceLabel(training.spaceType))} · ${esc(training.location || "")} · ${esc(String(training.duration || ""))} min</div>
+              <div style="font-size:10px;color:#64748b">Ubicacio: ${esc(coordinatorTrainingLocationLabel(training))} · Vestidor: ${esc(coordinatorTrainingLockerRoomLabel(training))} · ${esc(String(training.duration || ""))} min</div>
             </div>`).join("")}
             ${!events.matches.length && !events.trainings.length ? `<div style="margin:auto 0;font-size:11px;color:#cbd5e1;text-align:center">Sense activitat</div>` : ""}
           </div>`;
@@ -2085,11 +2297,14 @@ function renderCoordinatorConvMatchSummary() {
 }
 
 function coordinatorSetConvTeam(teamName) {
-  coordinatorConvTeamFilter = String(teamName || "");
+  const fav = loadCoordinatorFavorite();
+  const nextTeamName = coordinatorResolveTeamName(fav?.clubName || "", teamName);
+  coordinatorConvTeamFilter = String(nextTeamName || "");
   coordinatorConvMatchKey = "";
   coordinatorClearConvocatoria();
   if ($("convocatoria-match-select")) {
     coordinatorPopulateMatchSelector();
+    renderCoordinatorConvMatchSummary();
     return;
   }
   renderCoordinatorPanel();
@@ -2107,12 +2322,15 @@ function coordinatorPopulateMatchSelector() {
   }
 
   const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter);
+  const prevMatchKey = coordinatorConvMatchKey;
   selector.innerHTML = matches.length
     ? matches.map(match => `<option value="${match.key}">${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(shortTeamDisplayName(match.home))} vs ${esc(shortTeamDisplayName(match.away))}</option>`).join("")
     : `<option value="">No hi ha partits disponibles</option>`;
 
   if (matches.length) {
-    coordinatorConvMatchKey = matches[0].key;
+    coordinatorConvMatchKey = matches.some(match => match.key === prevMatchKey)
+      ? prevMatchKey
+      : matches[0].key;
     selector.value = coordinatorConvMatchKey;
   } else {
     coordinatorConvMatchKey = "";
@@ -2286,6 +2504,7 @@ window.coordinatorSaveTrainingPeriod = coordinatorSaveTrainingPeriod;
 window.coordinatorAddTraining = coordinatorAddTraining;
 window.coordinatorDeleteTraining = coordinatorDeleteTraining;
 window.exportCoordinatorTrainingsToExcel = exportCoordinatorTrainingsToExcel;
+window.exportCoordinatorTrainingsDocument = exportCoordinatorTrainingsDocument;
 window.coordinatorSetCalendarTeam = coordinatorSetCalendarTeam;
 window.coordinatorPrevWeek = coordinatorPrevWeek;
 window.coordinatorNextWeek = coordinatorNextWeek;
@@ -2487,20 +2706,11 @@ async function exportCoordinatorResultsToPDF() {
       pageNode.querySelectorAll("[title='Arrossega per ordenar']").forEach(node => node.remove());
       pageNode.querySelectorAll("[draggable='true']").forEach(node => node.setAttribute("draggable", "false"));
 
-      // Evita canvas tainted per logos en domini extern.
+      // Manté els escuts al render PDF intentant CORS anònim.
       pageNode.querySelectorAll("img").forEach(img => {
         const src = String(img.getAttribute("src") || "");
         if (!/^https?:\/\//i.test(src)) return;
-        const w = Number(img.getAttribute("width") || img.width || 40);
-        const h = Number(img.getAttribute("height") || img.height || 40);
-        const ph = document.createElement("div");
-        ph.style.width = `${Math.max(16, w)}px`;
-        ph.style.height = `${Math.max(16, h)}px`;
-        ph.style.borderRadius = "10px";
-        ph.style.background = "#e2e6ef";
-        ph.style.border = "1px solid #cbd5e1";
-        ph.style.flexShrink = "0";
-        img.replaceWith(ph);
+        img.setAttribute("crossorigin", "anonymous");
       });
 
       stage.appendChild(pageNode);
@@ -5091,6 +5301,31 @@ function getActaTeamFouls(acta) {
     return { homeFouls: explicitHome, awayFouls: explicitAway };
   }
 
+  const sumPlayerFouls = (players) => {
+    let total = 0;
+    let found = false;
+    for (const p of (players || [])) {
+      const fouls = Number(p?.fd);
+      if (!Number.isFinite(fouls)) continue;
+      total += fouls;
+      found = true;
+    }
+    return found ? total : null;
+  };
+
+  const directHome = sumPlayerFouls(acta?.playerStats?.homePlayers || []);
+  const directAway = sumPlayerFouls(acta?.playerStats?.awayPlayers || []);
+  if (directHome != null || directAway != null) {
+    return { homeFouls: directHome, awayFouls: directAway };
+  }
+
+  const parsedPlayers = getActaPlayersForDisplay(acta);
+  const parsedHome = sumPlayerFouls(parsedPlayers?.homePlayers || []);
+  const parsedAway = sumPlayerFouls(parsedPlayers?.awayPlayers || []);
+  if (parsedHome != null || parsedAway != null) {
+    return { homeFouls: parsedHome, awayFouls: parsedAway };
+  }
+
   const text = String(acta?.rawText || acta?.rawTextPreview || "").replace(/\s+/g, " ").trim();
   if (!text) return { homeFouls: null, awayFouls: null };
 
@@ -5249,7 +5484,7 @@ function openActaDetail(acta) {
         </div>
         <div style="text-align:center;flex-shrink:0;min-width:80px">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;color:#1a2035">${acta.homeScore ?? "–"} · ${acta.awayScore ?? "–"}</div>
-          ${(homeFouls != null || awayFouls != null) ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#64748b;margin-top:2px">Faltes equip: ${homeFouls ?? "-"} · ${awayFouls ?? "-"}</div>` : ""}
+          ${(homeFouls != null || awayFouls != null) ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#64748b;margin-top:2px">Faltes equip · Local: ${homeFouls ?? "-"} · Visitant: ${awayFouls ?? "-"}</div>` : ""}
           ${date||time?`<div style="font-size:11px;color:#94a3b8;margin-top:4px">${[date,time].filter(Boolean).join(" ")}</div>`:""}
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
@@ -6335,14 +6570,13 @@ function buildFavCard(fav) {
 
   let classifHtml="";
   if (cl.length&&myRow) {
-    const myIdx=cl.findIndex(r=>teamMatchesLoose(r.team,fav.teamName));
-    const slice=cl.slice(Math.max(0,myIdx-2),Math.min(cl.length,myIdx+3));
+    const rows=cl;
     classifHtml=`
       <div style="border-top:1px solid #f0f2f8;border-bottom:1px solid #f0f2f8">
         <div style="display:flex;background:#f8fafc;padding:3px 12px">
           ${["#","Equip","PJ","G","E","Pe","Avg","Pts"].map((h,i)=>`<div style="width:${i===0?26:i===1?'auto':i===7?32:i===6?30:22}px;${i===1?"flex:1;":""}font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:${i===3?"#16a34a":i===4?"#d97706":i===5?"#dc2626":i===6?"#64748b":i===7?"#e5001c":"#94a3b8"};${i>1?"text-align:center":""}">${h}</div>`).join("")}
         </div>
-        ${slice.map(r=>{
+        ${rows.map(r=>{
           const mine=teamMatchesLoose(r.team,fav.teamName), rcid=rowClubId(r);
           const avg = calcGoalAverage(r.gf, r.gc);
           const avgColor = goalAverageColor(avg);
