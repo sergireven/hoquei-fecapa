@@ -450,7 +450,10 @@ function renderLoginButton() {
   const coordinadorBtn = profileHasRole(currentProfile, "coordinador")
     ? `<button onclick="openCoordinatorPanel()" style="background:#7c3aed;border:none;color:#fff;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">📋 Coordinador</button>`
     : "";
-  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}${coordinadorBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
+  const entrenadorBtn = profileHasRole(currentProfile, "entrenador")
+    ? `<button onclick="openCoachPanel()" style="background:#0891b2;border:none;color:#fff;font-weight:800;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">🏒 Entrenador</button>`
+    : "";
+  return `<div style="display:flex;gap:6px;align-items:center">${loginBtn}${adminBtn}${coordinadorBtn}${entrenadorBtn}<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button></div>`;
 }
 
 // Login modal
@@ -527,6 +530,9 @@ function openUserModal() {
   const coordinadorBtn = profileHasRole(currentProfile, "coordinador")
     ? `<button onclick="closeUserModal();openCoordinatorPanel()" style="width:100%;background:#7c3aed;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">📋 Panell Coordinador</button>`
     : "";
+  const entrenadorPanelBtn = profileHasRole(currentProfile, "entrenador")
+    ? `<button onclick="closeUserModal();openCoachPanel()" style="width:100%;background:#0891b2;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">🏒 Panell Entrenador</button>`
+    : "";
   const teamSection = profileHasRole(currentProfile, "entrenador")
     ? `<div style="margin-bottom:16px">
         <div style="font-size:13px;color:#64748b;margin-bottom:6px">Equip assignat</div>
@@ -563,6 +569,7 @@ function openUserModal() {
       ${locationSection}
       ${adminBtn}
       ${coordinadorBtn}
+      ${entrenadorPanelBtn}
       <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
     </div>`;
   $("user-modal-bd").style.display = "block";
