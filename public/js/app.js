@@ -124,14 +124,70 @@ function getRoleLabel(role, fallback = "") {
 
 function normalizeRoles(rawRoles) {
   if (!rawRoles) return [];
-  const arr = Array.isArray(rawRoles)
-    ? rawRoles
-    : String(rawRoles)
-      .split(",")
-      .map(v => String(v || "").trim())
-      .filter(Boolean);
+  let arr = [];
+  if (Array.isArray(rawRoles)) {
+    arr = rawRoles;
+  } else {
+    const raw = String(rawRoles || "").trim();
+    if (!raw) return [];
+
+    // Accept JSON arrays, e.g. ["admin","coordinador"].
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) arr = parsed;
+      } catch {}
+    }
+
+    // Accept Postgres array text, e.g. {admin,coordinador}.
+    if (!arr.length && raw.startsWith("{") && raw.endsWith("}")) {
+      arr = raw
+        .slice(1, -1)
+        .split(",")
+        .map(v => String(v || "").trim().replace(/^"|"$/g, ""))
+        .filter(Boolean);
+    }
+
+    if (!arr.length) {
+      arr = raw
+        .split(",")
+        .map(v => String(v || "").trim())
+        .filter(Boolean);
+    }
+  }
   const valid = arr.filter(r => ROLE_OPTIONS.includes(r) && r);
   return [...new Set(valid)];
+}
+
+async function refreshProfileRoles(profile) {
+  if (!_sb || !profile?.id) return profile;
+
+  const mergeProfile = next => ({ ...profile, ...next });
+
+  // First try direct row fetch (full, up-to-date roles array when allowed by RLS).
+  try {
+    const { data, error } = await _sb
+      .from("profiles")
+      .select("*")
+      .eq("id", profile.id)
+      .single();
+    if (!error && data) return mergeProfile(data);
+  } catch {}
+
+  // Fallback to existing RPC path and match by id/email.
+  try {
+    if (profile.email) {
+      const { data, error } = await _sb.rpc("get_profile_by_email", { p_email: profile.email });
+      if (!error && Array.isArray(data) && data.length) {
+        const byId = data.find(p => String(p?.id || "") === String(profile.id || ""));
+        const byEmail = data.find(p => String(p?.email || "").toLowerCase() === String(profile.email || "").toLowerCase());
+        const best = byId || byEmail || data[0];
+        if (best) return mergeProfile(best);
+      }
+    }
+  } catch {}
+
+  return profile;
 }
 
 function getProfileRoles(profile) {
@@ -371,7 +427,7 @@ async function initAuth() {
   } else {
     const soft = _loadSoftSession();
     if (soft?.email) {
-      currentProfile = soft;
+      currentProfile = await refreshProfileRoles(soft);
       currentUser    = { email: soft.email, id: soft.id };
     }
   }
@@ -492,7 +548,7 @@ async function loginWithEmail() {
   const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
   if (profiles && profiles.length > 0) {
     // Usuari registrat → accés directe via sessió lleugera
-    const profile = profiles[0];
+    const profile = await refreshProfileRoles(profiles[0]);
     currentProfile = profile;
     currentUser    = { email: profile.email, id: profile.id };
     const profileLoc = getProfileLocation(profile);
