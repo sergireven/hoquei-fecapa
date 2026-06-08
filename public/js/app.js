@@ -110,6 +110,7 @@ const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
     flowType: "pkce",
   },
 });
+const LOCAL_REMEMBER_PROFILE_KEY = "hoquei_user_v2";
 const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
@@ -436,6 +437,35 @@ function estimateTravelForDestination(destinationText) {
   };
 }
 
+function saveRememberedProfile(profile) {
+  try {
+    const payload = {
+      id: String(profile?.id || ""),
+      email: String(profile?.email || ""),
+      roles: getProfileRoles(profile),
+      role: String(profile?.role || ""),
+      team_name: String(profile?.team_name || ""),
+      savedAt: new Date().toISOString(),
+    };
+    if (!payload.id || !payload.email) return;
+    localStorage.setItem(LOCAL_REMEMBER_PROFILE_KEY, JSON.stringify(payload));
+  } catch {}
+}
+
+function loadRememberedProfile() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_REMEMBER_PROFILE_KEY) || "null");
+    if (!parsed?.id || !parsed?.email) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearRememberedProfile() {
+  localStorage.removeItem(LOCAL_REMEMBER_PROFILE_KEY);
+}
+
 async function initAuth() {
   if (!_sb) return;
   try {
@@ -443,8 +473,15 @@ async function initAuth() {
     if (session?.user) {
       await _loadProfile(session.user);
     } else {
-      currentUser = null;
-      currentProfile = null;
+      const remembered = loadRememberedProfile();
+      if (remembered?.id && remembered?.email) {
+        const profile = await refreshProfileRoles(remembered);
+        currentProfile = profile;
+        currentUser = { id: profile.id, email: profile.email };
+      } else {
+        currentUser = null;
+        currentProfile = null;
+      }
     }
   } catch {
     currentUser = null;
@@ -455,8 +492,15 @@ async function initAuth() {
     if (session?.user) {
       await _loadProfile(session.user);
     } else {
-      currentUser = null;
-      currentProfile = null;
+      const remembered = loadRememberedProfile();
+      if (remembered?.id && remembered?.email) {
+        const profile = await refreshProfileRoles(remembered);
+        currentProfile = profile;
+        currentUser = { id: profile.id, email: profile.email };
+      } else {
+        currentUser = null;
+        currentProfile = null;
+      }
     }
     renderHome();
   });
@@ -470,9 +514,11 @@ async function _loadProfile(user) {
     currentProfile = profile;
     const profileLoc = getProfileLocation(profile);
     if (profileLoc) setCurrentUserLocation(profileLoc);
+    saveRememberedProfile(profile);
     await loadFavsFromCloud();
   } else {
     currentProfile = { id: user.id, email: user.email || "" };
+    saveRememberedProfile(currentProfile);
   }
 }
 
@@ -569,6 +615,28 @@ async function loginWithEmail() {
   const email = $("login-email-input")?.value?.trim();
   const msg   = $("login-msg");
   if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
+
+  const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
+  if (profiles && profiles.length > 0) {
+    const profile = await refreshProfileRoles(profiles[0]);
+    currentProfile = profile;
+    currentUser = { email: profile.email, id: profile.id };
+    saveRememberedProfile(profile);
+    const profileLoc = getProfileLocation(profile);
+    if (profileLoc) setCurrentUserLocation(profileLoc);
+    await loadFavsFromCloud();
+    closeLoginModal();
+    const detailVisible = $("screen-detail")?.style?.display === "flex";
+    if (detailVisible && detailComp) {
+      await renderDetailClassif();
+      renderDetailCalendar();
+      renderDetailJugadors();
+    } else {
+      renderHome();
+    }
+    return;
+  }
+
   msg.textContent = "Enviant enllaç d'accés...";
   const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
@@ -691,6 +759,7 @@ async function saveUserLocation() {
 }
 
 async function signOut() {
+  clearRememberedProfile();
   await _sb?.auth.signOut();
   currentUser = null; currentProfile = null;
   closeUserModal();
