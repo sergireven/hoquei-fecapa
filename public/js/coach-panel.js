@@ -1160,31 +1160,6 @@ function _renderLiveTab() {
     </div>`;
 }
 
-/* ── Tàctiques ──────────────────────────────────────────────────────────── */
-function _renderTacticsTab() {
-  const tactic = COACH_TACTICS[coachTacticIdx];
-
-  const tacBtns = COACH_TACTICS.map((t, i) =>
-    `<button onclick="coachSetTactic(${i})" style="background:${i === coachTacticIdx ? "#1a2035" : "#fff"};border:1.5px solid ${i === coachTacticIdx ? "#1a2035" : "#e2e6ef"};color:${i === coachTacticIdx ? "#fff" : "#334155"};font-weight:600;font-size:12px;padding:9px 13px;border-radius:10px;cursor:pointer;text-align:left;width:100%">
-      <div style="font-weight:700">${_cesc(t.name)}</div>
-      <div style="font-size:10px;opacity:.65;margin-top:2px;line-height:1.3">${_cesc(t.desc)}</div>
-    </button>`
-  ).join("");
-
-  return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Formació</div>
-        <div style="display:flex;flex-direction:column;gap:7px">${tacBtns}</div>
-      </div>
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#1a2035;margin-bottom:4px">${_cesc(tactic.name)}</div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:14px">${_cesc(tactic.desc)}</div>
-        <div style="display:flex;justify-content:center">${_tacticSVG(tactic)}</div>
-      </div>
-    </div>`;
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
    SVG HELPERS
 ══════════════════════════════════════════════════════════════════════════ */
