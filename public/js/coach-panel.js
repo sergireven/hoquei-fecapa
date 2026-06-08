@@ -605,6 +605,17 @@ async function renderCoachPanel(clubSearchCursor) {
   const body = document.getElementById("coach-body");
   if (!body) return;
 
+  const writeUid = await _coachAuthUidForWrite();
+  const authBadge = writeUid
+    ? `<div style="display:inline-flex;align-items:center;gap:7px;background:#ecfdf5;border:1px solid #86efac;color:#166534;font-size:12px;font-weight:700;padding:7px 10px;border-radius:999px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#22c55e"></span>
+        Sessio BD activa
+      </div>`
+    : `<div style="display:inline-flex;align-items:center;gap:7px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:12px;font-weight:700;padding:7px 10px;border-radius:999px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#f59e0b"></span>
+        Sessio BD no activa - cal login OTP
+      </div>`;
+
   const options = _coachEnsureTeamSelection();
   const team = _cteam();
   const club = _cclub();
@@ -661,7 +672,7 @@ async function renderCoachPanel(clubSearchCursor) {
   else if (coachPanelTab === "objectives") content = await _renderObjectivesTab();
   else if (coachPanelTab === "match") content = _renderMatchTab();
 
-  body.innerHTML = teamRow + tabsHtml + content;
+  body.innerHTML = teamRow + `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${authBadge}</div>` + tabsHtml + content;
   if (clubSearchCursor !== undefined) {
     const input = document.getElementById("coach-club-search");
     if (input) {
