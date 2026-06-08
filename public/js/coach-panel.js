@@ -990,7 +990,6 @@ function _renderInteractiveBoardCard(isFullscreen) {
       <div style="width:min(1400px,100%);height:100%;display:flex;align-items:stretch">${inner}</div>
     </div>`;
 }
-}
 
 /* ── En Viu ─────────────────────────────────────────────────────────────── */
 const _EVT_TYPES = [
