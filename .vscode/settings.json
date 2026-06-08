@@ -1,3 +1,9 @@
 {
-    "chat.agent.maxRequests": 150
+    "chat.agent.maxRequests": 150,
+    "chat.tools.terminal.autoApprove": {
+        "/^git remote -v$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }
