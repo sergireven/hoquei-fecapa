@@ -409,6 +409,30 @@ function estimateTravelForMatch(match, myTeam) {
   };
 }
 
+function estimateTravelForDestination(destinationText) {
+  if (!currentUser?.id) return null;
+  const userLoc = getCurrentUserLocation();
+  if (!userLoc) return null;
+  const q = String(destinationText || "").trim();
+  if (!q) return null;
+
+  const venue = venuesDB?.venues || {};
+  const key = Object.keys(venue).find(name => teamMatchesCalendarExact(name, q) || teamMatchesLoose(name, q));
+  if (!key) return null;
+  const coords = getVenueCoordinates(key);
+  if (!coords) return null;
+
+  const km = haversineKm(userLoc.lat, userLoc.lng, coords.lat, coords.lng);
+  if (!Number.isFinite(km)) return null;
+  const avgSpeedKmh = 35;
+  const minutes = Math.max(8, Math.round((km / avgSpeedKmh) * 60));
+  return {
+    km,
+    minutes,
+    originLabel: userLoc.label,
+  };
+}
+
 function _saveSoftSession(profile) {
   localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
 }
@@ -575,6 +599,16 @@ async function loginWithEmail() {
 }
 window.loginWithEmail = loginWithEmail;
 window.sendMagicLink  = loginWithEmail; // alias
+
+if (typeof window.openCoachPanel !== "function") {
+  window.openCoachPanel = function () {
+    alert("El panell d'entrenador no s'ha pogut carregar. Torna-ho a provar o recarrega la pàgina.");
+  };
+}
+
+if (typeof window.closeCoachPanel !== "function") {
+  window.closeCoachPanel = function () {};
+}
 
 // User menu modal
 function openUserModal() {
@@ -4393,6 +4427,7 @@ let userFavView = "none"; // none | calendar | convocatories
 let userFavWeekCalendarDate = new Date();
 let userFavCalendarTeamFilter = "";
 let userFavConvTeamFilter = "";
+let userFavConvSelectedMatchKey = "";
 const seasonDataCache = new Map();
 const globalJugadorsIndex = new Map();
 let allSearch     = "";
@@ -7222,7 +7257,36 @@ function getUserFavoritePlayersForTeam(teamName = "") {
   });
   if (!selectedTeam) return all;
   const filtered = all.filter(p => p.team && (teamMatchesCalendarExact(p.team, selectedTeam) || teamMatchesLoose(p.team, selectedTeam)));
-  return filtered.length ? filtered : all;
+  return filtered;
+}
+
+function getUserConvMatchMeta(match) {
+  if (!match) return { venueLabel: "", mapUrl: "", travel: null };
+  if (match.isAdHoc) {
+    const location = String(match.location || "").trim();
+    return {
+      venueLabel: location,
+      mapUrl: location ? `https://www.google.com/maps?q=${encodeURIComponent(location)}` : "",
+      travel: location ? estimateTravelForDestination(location) : null,
+    };
+  }
+  const mapLinks = buildVenueDirectionsForMatch(match);
+  return {
+    venueLabel: mapLinks?.label || "",
+    mapUrl: mapLinks?.nativeUrl || "",
+    travel: estimateTravelForMatch(match, match.matchedTeam || ""),
+  };
+}
+
+function getUserConvAvailabilitySummary(players, availabilityByMatch = {}) {
+  const summary = { selected: players.length, convocats: 0, dubtes: 0, baixes: 0 };
+  for (const player of players) {
+    const status = String(availabilityByMatch?.[player.id]?.status || "disponible");
+    if (status === "dubte") summary.dubtes += 1;
+    else if (status === "no_disponible") summary.baixes += 1;
+    else summary.convocats += 1;
+  }
+  return summary;
 }
 
 function getUserFavoriteDayEvents(dateInput, teamFilter = "") {
@@ -7423,16 +7487,17 @@ function renderUserFavConvocatoriesPanel() {
   const matches = getUserFavoriteUpcomingMatches(userFavConvTeamFilter || "").slice(0, 18);
   const leadMinutes = getGlobalConvocationLeadMinutes();
   const availabilityStore = loadUserConvAvailabilityStore();
+  if (userFavConvSelectedMatchKey && !matches.some(m => userConvocationMatchKey(m) === userFavConvSelectedMatchKey)) {
+    userFavConvSelectedMatchKey = "";
+  }
+  if (!userFavConvSelectedMatchKey && matches.length) {
+    userFavConvSelectedMatchKey = userConvocationMatchKey(matches[0]);
+  }
 
   panel.innerHTML = `
     <div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#1a2035">Convocatòries (tutors)</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:12px;color:#475569;font-weight:700">Minuts abans</label>
-          <input id="user-conv-lead-minutes" type="number" min="15" max="360" value="${leadMinutes}" style="width:78px;padding:7px 9px;border:1px solid #dbe3f0;border-radius:8px;font-size:12px"/>
-          <button onclick="saveUserGlobalConvocationLeadMinutes()" style="background:#1a2035;border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;cursor:pointer">Desar</button>
-        </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         <button onclick="setUserFavConvTeamFilter('')" style="background:${!userFavConvTeamFilter ? "#1a2035" : "#f8fafc"};color:${!userFavConvTeamFilter ? "#fff" : "#334155"};border:1px solid ${!userFavConvTeamFilter ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
@@ -7440,22 +7505,33 @@ function renderUserFavConvocatoriesPanel() {
       </div>
       ${matches.map(match => {
         const mKey = userConvocationMatchKey(match);
+        const isOpen = mKey === userFavConvSelectedMatchKey;
         const convDateTime = formatConvocationDateTime(match, leadMinutes);
-        const mapLinks = buildVenueDirectionsForMatch(match);
-        const travel = estimateTravelForMatch(match, match.matchedTeam || "");
+        const matchMeta = getUserConvMatchMeta(match);
         const players = getUserFavoritePlayersForTeam(match.matchedTeam || userFavConvTeamFilter || "");
-        return `<div style="border:1.5px solid #e2e6ef;border-radius:12px;padding:10px;margin-bottom:10px;background:#f8fafc">
+        const summary = getUserConvAvailabilitySummary(players, availabilityStore?.[mKey] || {});
+        return `<div onclick="userToggleConvMatchDetail('${mKey}')" style="border:1.5px solid ${isOpen ? "#1a2035" : "#e2e6ef"};border-radius:12px;padding:10px;margin-bottom:10px;background:${isOpen ? "#eef2ff" : "#f8fafc"};cursor:pointer">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px">
             <div>
               <div style="font-size:14px;font-weight:800;color:#1a2035">${esc(shortTeamDisplayName(match.home))} vs ${esc(shortTeamDisplayName(match.away))}</div>
               <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(match.compName)}</div>
             </div>
-            <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(match.matchedTeam || ""))}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+              <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(match.matchedTeam || ""))}</div>
+              <div style="font-size:11px;color:${isOpen ? "#1a2035" : "#64748b"};font-weight:800">${isOpen ? "▼" : "►"} Detall</div>
+            </div>
           </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:800;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:3px 8px">Seleccionats: ${summary.selected}</span>
+            <span style="font-size:11px;font-weight:800;background:#dcfce7;color:#166534;border-radius:999px;padding:3px 8px">Convocats: ${summary.convocats}</span>
+            <span style="font-size:11px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:999px;padding:3px 8px">Dubtes: ${summary.dubtes}</span>
+            <span style="font-size:11px;font-weight:800;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px">Baixes: ${summary.baixes}</span>
+          </div>
+          ${isOpen ? `<div onclick="event.stopPropagation()" style="border-top:1px dashed #cbd5e1;padding-top:8px">
           <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">
             <div><b>Hora convocatòria:</b> ${esc(convDateTime)}</div>
-            ${mapLinks ? `<div><a href="${esc(mapLinks.nativeUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;text-decoration:none">📍 Mapa</a></div>` : ""}
-            ${travel ? `<div style="color:#0f766e;font-weight:700">🚗 ~${travel.minutes} min · ${travel.km.toFixed(1)} km</div>` : ""}
+            ${matchMeta.venueLabel ? `<div><b>Ubicació:</b> ${matchMeta.mapUrl ? `<a href="${esc(matchMeta.mapUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;text-decoration:none">${esc(matchMeta.venueLabel)}</a>` : esc(matchMeta.venueLabel)}</div>` : ""}
+            ${matchMeta.travel ? `<div style="color:#0f766e;font-weight:700">🚗 ~${matchMeta.travel.minutes} min · ${matchMeta.travel.km.toFixed(1)} km</div>` : ""}
           </div>
           <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Disponibilitat jugadors favorits</div>
           ${players.length ? `<div style="display:grid;grid-template-columns:${isMobile ? "1fr" : "repeat(auto-fit,minmax(230px,1fr))"};gap:8px">${players.map(player => {
@@ -7469,7 +7545,8 @@ function renderUserFavConvocatoriesPanel() {
               </select>
               <input type="text" value="${esc(stored.note || "")}" onchange="userSetConvPlayerNote('${mKey}','${esc(player.id)}', this.value)" placeholder="Nota tutor" style="width:100%;padding:7px 8px;border:1px solid #dbe3f0;border-radius:8px;font-size:12px"/>
             </div>`;
-          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">No hi ha jugadors favorits per aquest filtre.</div>`}
+          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">No hi ha jugadors adscrits a aquest equip.</div>`}
+          </div>` : ""}
         </div>`;
       }).join("")}
       ${!matches.length ? `<div style="padding:16px;text-align:center;color:#94a3b8">No hi ha partits propers per als favorits seleccionats.</div>` : ""}
@@ -7522,6 +7599,7 @@ function userFavNextWeek() {
 
 function setUserFavConvTeamFilter(teamName) {
   userFavConvTeamFilter = String(teamName || "").trim();
+  userFavConvSelectedMatchKey = "";
   renderUserFavConvocatoriesPanel();
 }
 
@@ -7534,10 +7612,18 @@ function saveUserGlobalConvocationLeadMinutes() {
 
 function userSetConvPlayerStatus(matchKey, playerId, status) {
   setUserConvPlayerAvailability(matchKey, playerId, { status: String(status || "disponible") });
+  renderUserFavConvocatoriesPanel();
 }
 
 function userSetConvPlayerNote(matchKey, playerId, note) {
   setUserConvPlayerAvailability(matchKey, playerId, { note: String(note || "") });
+}
+
+function userToggleConvMatchDetail(matchKey) {
+  const key = String(matchKey || "");
+  if (!key) return;
+  userFavConvSelectedMatchKey = userFavConvSelectedMatchKey === key ? "" : key;
+  renderUserFavConvocatoriesPanel();
 }
 
 async function hydrateActaLinksForFavoriteComps() {
@@ -7725,6 +7811,7 @@ window.setUserFavConvTeamFilter = setUserFavConvTeamFilter;
 window.saveUserGlobalConvocationLeadMinutes = saveUserGlobalConvocationLeadMinutes;
 window.userSetConvPlayerStatus = userSetConvPlayerStatus;
 window.userSetConvPlayerNote = userSetConvPlayerNote;
+window.userToggleConvMatchDetail = userToggleConvMatchDetail;
 
 window.openLevelFav = nodeKey => {
   const fav = levelFavs.find(f=>f.nodeKey===nodeKey);
@@ -10686,7 +10773,7 @@ function parseMatchTimestamp(dateInput, compName = "") {
     const y = parseInt(yyyyMmDd[1], 10);
     const m = parseInt(yyyyMmDd[2], 10);
     const d = parseInt(yyyyMmDd[3], 10);
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const ddMmYyyy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
@@ -10694,7 +10781,7 @@ function parseMatchTimestamp(dateInput, compName = "") {
     const d = parseInt(ddMmYyyy[1], 10);
     const m = parseInt(ddMmYyyy[2], 10);
     const y = parseInt(ddMmYyyy[3], 10);
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const ddMm = raw.match(/^(\d{1,2})[\/-](\d{1,2})$/);
@@ -10703,7 +10790,7 @@ function parseMatchTimestamp(dateInput, compName = "") {
     const m = parseInt(ddMm[2], 10);
     const seasonStart = extractSeasonStartYear(compName);
     const y = m >= 8 ? seasonStart : seasonStart + 1;
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const parsed = Date.parse(raw);
