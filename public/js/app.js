@@ -3758,6 +3758,7 @@ async function adminAddUser() {
   const team  = $("admin-add-team")?.value?.trim() || null;
   const msg   = $("admin-add-msg");
   if (!email || !email.includes("@")) { msg.style.color = "#e5001c"; msg.textContent = "E-mail invàlid."; return; }
+  if (!roles.length) { msg.style.color = "#e5001c"; msg.textContent = "Selecciona almenys un rol."; return; }
   msg.style.color = "#64748b"; msg.textContent = "Desant...";
   const multi = await _sb.rpc("admin_manage_user_roles", { admin_email: currentUser.email, p_email: email, p_roles: roles, p_team: team });
   if (multi.error && !/function\s+public\.admin_manage_user_roles|does not exist|42883/i.test(String(multi.error?.message || ""))) {
@@ -3793,6 +3794,11 @@ async function adminDeleteUser(uid) {
 async function updateUserRoles(uid) {
   const selector = `.admin-role-toggle[data-uid="${uid}"]:checked`;
   const roles = [...document.querySelectorAll(selector)].map(el => String(el.value || "")).filter(Boolean);
+  if (!roles.length) {
+    alert("Cada usuari ha de tenir almenys un rol.");
+    renderAdminPanel();
+    return;
+  }
   const multi = await _sb.rpc("update_user_roles_admin", { admin_email: currentUser?.email, target_id: uid, new_roles: roles });
   if (multi.error && !/function\s+public\.update_user_roles_admin|does not exist|42883/i.test(String(multi.error?.message || ""))) {
     alert("Error: " + multi.error.message);
