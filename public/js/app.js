@@ -1494,7 +1494,7 @@ function getCoordinatorClubTeams(clubName) {
   const all = [...baseTeams, ...extraTeams];
   const seen = new Set();
   return all.filter(team => {
-    const key = String(team?.teamKey || `${team?.teamName || ""}::${team?.category || ""}`).trim();
+    const key = normalizeTeamNameStrict(team?.teamName || "") + "::" + String(team?.category || "").trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -1773,8 +1773,6 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
   }
   const teams = getCoordinatorClubTeams(currentFav.clubName);
   const selectedToken = teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter)?.teamKey || coordinatorConvTeamFilter;
-  const selectedTeamName = coordinatorResolveTeamName(currentFav.clubName, selectedToken);
-  const leadMinutes = getGlobalConvocationLeadMinutes();
   const teamOptions = teams.map(team => {
     const teamToken = String(team?.teamKey || team?.teamName || "");
     return `<option value="${esc(teamToken)}" ${selectedToken === teamToken ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`;
@@ -1788,19 +1786,6 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
           <option value="">Selecciona equip</option>
           ${teamOptions}
         </select>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-          ${teams.map(team => {
-            const teamToken = String(team?.teamKey || team?.teamName || "");
-            const teamName = String(team?.teamName || "");
-            const active = selectedTeamName && teamName && teamMatchesCalendarExact(selectedTeamName, teamName);
-            return `<button onclick="coordinatorSetConvTeam('${esc(teamToken)}')" style="background:${active ? "#1a2035" : "#f8fafc"};border:1.5px solid ${active ? "#1a2035" : "#e2e6ef"};color:${active ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">${esc(formatCoordinatorTeamLabel(team))}</button>`;
-          }).join("")}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <label style="font-size:12px;color:#475569;font-weight:700">Temps convocatoria (min)</label>
-          <input id="coordinator-conv-lead-minutes" type="number" min="15" max="360" value="${leadMinutes}" style="width:86px;padding:7px 9px;border:1px solid #dbe3f0;border-radius:8px;font-size:12px"/>
-          <button onclick="coordinatorSaveConvocationLeadMinutes()" style="background:#1a2035;border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;cursor:pointer">Desar</button>
-        </div>
         <div style="font-size:12px;color:#64748b">En seleccionar l'equip es carrega automaticament el seguent partit disponible.</div>
       </div>
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
@@ -6229,7 +6214,7 @@ function parseCalendarDateToTimestamp(dateInput, compName = "") {
     const y = parseInt(yyyyMmDd[1], 10);
     const m = parseInt(yyyyMmDd[2], 10);
     const d = parseInt(yyyyMmDd[3], 10);
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const ddMmYyyy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
@@ -6237,7 +6222,7 @@ function parseCalendarDateToTimestamp(dateInput, compName = "") {
     const d = parseInt(ddMmYyyy[1], 10);
     const m = parseInt(ddMmYyyy[2], 10);
     const y = parseInt(ddMmYyyy[3], 10);
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const ddMm = raw.match(/^(\d{1,2})[\/-](\d{1,2})$/);
@@ -6246,7 +6231,7 @@ function parseCalendarDateToTimestamp(dateInput, compName = "") {
     const m = parseInt(ddMm[2], 10);
     const seasonStart = extractSeasonStartYear(compName);
     const y = m >= 8 ? seasonStart : seasonStart + 1;
-    return Date.UTC(y, m - 1, d);
+    return new Date(y, m - 1, d).getTime();
   }
 
   const parsed = Date.parse(raw);
