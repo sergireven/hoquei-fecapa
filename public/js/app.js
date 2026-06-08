@@ -616,27 +616,6 @@ async function loginWithEmail() {
   const msg   = $("login-msg");
   if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
 
-  const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
-  if (profiles && profiles.length > 0) {
-    const profile = await refreshProfileRoles(profiles[0]);
-    currentProfile = profile;
-    currentUser = { email: profile.email, id: profile.id };
-    saveRememberedProfile(profile);
-    const profileLoc = getProfileLocation(profile);
-    if (profileLoc) setCurrentUserLocation(profileLoc);
-    await loadFavsFromCloud();
-    closeLoginModal();
-    const detailVisible = $("screen-detail")?.style?.display === "flex";
-    if (detailVisible && detailComp) {
-      await renderDetailClassif();
-      renderDetailCalendar();
-      renderDetailJugadors();
-    } else {
-      renderHome();
-    }
-    return;
-  }
-
   msg.textContent = "Enviant enllaç d'accés...";
   const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
