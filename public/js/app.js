@@ -102,8 +102,15 @@ const CLASSIFICATION_SOURCE_PILOTS = [
 // ── Supabase auth ─────────────────────────────────────────────
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
-const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
-const SOFT_SESSION_KEY = "hoquei_user_v1";
+const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce",
+  },
+});
+const LOCAL_REMEMBER_PROFILE_KEY = "hoquei_user_v2";
 const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
@@ -290,7 +297,6 @@ async function persistUserLocationToCloud(location) {
       location_lng: packedLoc.lng,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -311,7 +317,6 @@ async function persistUserLocationToCloud(location) {
       location_lng: packedLoc.lng,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -325,7 +330,6 @@ async function persistUserLocationToCloud(location) {
       ...currentProfile,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -433,43 +437,88 @@ function estimateTravelForDestination(destinationText) {
   };
 }
 
-function _saveSoftSession(profile) {
-  localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
+function saveRememberedProfile(profile) {
+  try {
+    const payload = {
+      id: String(profile?.id || ""),
+      email: String(profile?.email || ""),
+      roles: getProfileRoles(profile),
+      role: String(profile?.role || ""),
+      team_name: String(profile?.team_name || ""),
+      savedAt: new Date().toISOString(),
+    };
+    if (!payload.id || !payload.email) return;
+    localStorage.setItem(LOCAL_REMEMBER_PROFILE_KEY, JSON.stringify(payload));
+  } catch {}
 }
-function _clearSoftSession() {
-  localStorage.removeItem(SOFT_SESSION_KEY);
+
+function loadRememberedProfile() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_REMEMBER_PROFILE_KEY) || "null");
+    if (!parsed?.id || !parsed?.email) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
-function _loadSoftSession() {
-  try { return JSON.parse(localStorage.getItem(SOFT_SESSION_KEY)); } catch { return null; }
+
+function clearRememberedProfile() {
+  localStorage.removeItem(LOCAL_REMEMBER_PROFILE_KEY);
 }
 
 async function initAuth() {
   if (!_sb) return;
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session) {
-    await _loadProfile(session.user);
-  } else {
-    const soft = _loadSoftSession();
-    if (soft?.email) {
-      currentProfile = await refreshProfileRoles(soft);
-      currentUser    = { email: soft.email, id: soft.id };
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      await _loadProfile(session.user);
+    } else {
+      const remembered = loadRememberedProfile();
+      if (remembered?.id && remembered?.email) {
+        const profile = await refreshProfileRoles(remembered);
+        currentProfile = profile;
+        currentUser = { id: profile.id, email: profile.email };
+      } else {
+        currentUser = null;
+        currentProfile = null;
+      }
     }
+  } catch {
+    currentUser = null;
+    currentProfile = null;
   }
+
   _sb.auth.onAuthStateChange(async (event, session) => {
-    if (session) { await _loadProfile(session.user); }
-    else         { currentUser = null; currentProfile = null; _clearSoftSession(); }
+    if (session?.user) {
+      await _loadProfile(session.user);
+    } else {
+      const remembered = loadRememberedProfile();
+      if (remembered?.id && remembered?.email) {
+        const profile = await refreshProfileRoles(remembered);
+        currentProfile = profile;
+        currentUser = { id: profile.id, email: profile.email };
+      } else {
+        currentUser = null;
+        currentProfile = null;
+      }
+    }
     renderHome();
   });
 }
+
 async function _loadProfile(user) {
   currentUser = user;
-  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).single();
-  if (data) {
-    currentProfile = data;
-    const profileLoc = getProfileLocation(data);
+  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const profile = data || await refreshProfileRoles({ id: user.id, email: user.email || "" });
+  if (profile) {
+    currentProfile = profile;
+    const profileLoc = getProfileLocation(profile);
     if (profileLoc) setCurrentUserLocation(profileLoc);
-    _saveSoftSession(data);
+    saveRememberedProfile(profile);
     await loadFavsFromCloud();
+  } else {
+    currentProfile = { id: user.id, email: user.email || "" };
+    saveRememberedProfile(currentProfile);
   }
 }
 
@@ -566,36 +615,32 @@ async function loginWithEmail() {
   const email = $("login-email-input")?.value?.trim();
   const msg   = $("login-msg");
   if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
-  msg.textContent = "Comprovant...";
 
-  // Comprova si l'email ja existeix a la base de dades
   const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
   if (profiles && profiles.length > 0) {
-    // Usuari registrat → accés directe via sessió lleugera
     const profile = await refreshProfileRoles(profiles[0]);
     currentProfile = profile;
-    currentUser    = { email: profile.email, id: profile.id };
+    currentUser = { email: profile.email, id: profile.id };
+    saveRememberedProfile(profile);
     const profileLoc = getProfileLocation(profile);
     if (profileLoc) setCurrentUserLocation(profileLoc);
-    _saveSoftSession(profile);
     await loadFavsFromCloud();
     closeLoginModal();
-    // Rerenderitza segons la pantalla visible; detailComp pot quedar en memòria
-    // tot i estar a Home, i això impedia refrescar el botó d'Admin/Login.
     const detailVisible = $("screen-detail")?.style?.display === "flex";
     if (detailVisible && detailComp) {
-      await renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
+      await renderDetailClassif();
+      renderDetailCalendar();
+      renderDetailJugadors();
     } else {
       renderHome();
     }
     return;
   }
 
-  // Usuari nou → envia magic link per registrar-se
-  msg.textContent = "Enviant enllaç de registre...";
+  msg.textContent = "Enviant enllaç d'accés...";
   const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
-  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ Ets nou! Comprova el correu per activar el compte."; }
+  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ T'hem enviat un enllaç. En obrir-lo, la sessió quedarà guardada automàticament."; }
 }
 window.loginWithEmail = loginWithEmail;
 window.sendMagicLink  = loginWithEmail; // alias
@@ -678,7 +723,6 @@ async function saveTeamName() {
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
   else {
     currentProfile.team_name = team;
-    _saveSoftSession(currentProfile);
     msg.style.color = "#16a34a"; msg.textContent = "✓ Desat";
   }
 }
@@ -715,9 +759,9 @@ async function saveUserLocation() {
 }
 
 async function signOut() {
+  clearRememberedProfile();
   await _sb?.auth.signOut();
   currentUser = null; currentProfile = null;
-  _clearSoftSession();
   closeUserModal();
   renderHome();
 }
@@ -1600,9 +1644,9 @@ function coordinatorSetTab(tab) {
   renderCoordinatorPanel();
 }
 
-function coordinatorSetClubSearch(value) {
+function coordinatorSetClubSearch(value, cursor) {
   coordinatorClubSearch = String(value || "");
-  renderCoordinatorPanel();
+  renderCoordinatorPanel(Number.isFinite(Number(cursor)) ? Number(cursor) : undefined);
 }
 
 function coordinatorChooseClub(encodedClubName) {
@@ -1656,7 +1700,7 @@ function renderCoordinatorClubTab(currentFav) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px">
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Club favorit</div>
-        <input id="coordinator-club-search" value="${esc(coordinatorClubSearch)}" oninput="coordinatorSetClubSearch(this.value)" placeholder="Cerca club..." style="width:100%;padding:11px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px"/>
+        <input id="coordinator-club-search" value="${esc(coordinatorClubSearch)}" oninput="coordinatorSetClubSearch(this.value, this.selectionStart)" placeholder="Cerca club..." style="width:100%;padding:11px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px"/>
         <div style="font-size:12px;color:#64748b;margin-bottom:10px">${filtered.length} clubs trobats</div>
         ${currentFav ? `<div style="display:flex;align-items:center;gap:10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 12px"><div>${shieldImg(selectedEntry?.clubId || currentFav.clubId || null, 28)}</div><div style="min-width:0"><div style="font-size:11px;color:#4338ca;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Club actiu</div><div style="font-size:14px;color:#1e1b4b;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(currentFav.clubName)}</div></div></div>` : `<div style="padding:14px;border:1px dashed #cbd5e1;border-radius:10px;color:#64748b;font-size:13px">Selecciona un club per activar el panell.</div>`}
         ${selectedTeams.length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">${selectedTeams.map(team => `<span style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:5px 10px;font-size:11px;color:#334155">${shieldImg(selectedEntry?.clubId || null, 14)} ${esc(formatCoordinatorTeamLabel(team))}</span>`).join("")}</div>` : ""}
@@ -1867,7 +1911,7 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     </div>`;
 }
 
-function renderCoordinatorPanel() {
+function renderCoordinatorPanel(searchCursor) {
   const body = $("coordinator-body");
   const currentFav = loadCoordinatorFavorite();
   if (coordinatorPanelTab === "convocatories") {
@@ -1886,6 +1930,13 @@ function renderCoordinatorPanel() {
   }
   if (coordinatorPanelTab === "convocatories") {
     coordinatorPopulateMatchSelector();
+  }
+  if (coordinatorPanelTab === "club" && searchCursor !== undefined) {
+    const input = $("coordinator-club-search");
+    if (input) {
+      input.focus();
+      input.setSelectionRange(searchCursor, searchCursor);
+    }
   }
 }
 

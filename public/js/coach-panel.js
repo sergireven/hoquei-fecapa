@@ -87,6 +87,7 @@ const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 /* ── State ───────────────────────────────────────────────────────────────── */
 let coachPanelTab        = "planning";
 let coachClubInput       = "";
+let coachClubSearch      = "";
 let coachTeamInput       = "";   // overrides currentProfile.team_name when set
 let coachTrainings       = [];
 let coachTrainingsLoaded = false;
@@ -136,6 +137,14 @@ function _coachTeamLoose(a, b) {
   const aa = String(a || "").trim().toLowerCase();
   const bb = String(b || "").trim().toLowerCase();
   return !!aa && !!bb && (aa.includes(bb) || bb.includes(aa));
+}
+
+function _coachSearchNorm(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function _coachLoadConvocatoriaStore() {
@@ -487,21 +496,27 @@ function coachSetMatchSubTab(tab) {
 }
 
 /* ── Main render ─────────────────────────────────────────────────────────── */
-async function renderCoachPanel() {
+async function renderCoachPanel(clubSearchCursor) {
   const body = document.getElementById("coach-body");
   if (!body) return;
 
   const options = _coachEnsureTeamSelection();
   const team = _cteam();
   const club = _cclub();
+  const query = _coachSearchNorm(coachClubSearch);
+  const filteredClubOptions = query
+    ? options.filter(o => _coachSearchNorm(o.clubName).includes(query))
+    : options;
+  const visibleClubOptions = filteredClubOptions.length ? filteredClubOptions : options;
   const selectedClub = options.find(o => o.clubName === club) || null;
   const teamOptions = (selectedClub?.teams || []).map(t => `<option value="${_cesc(t)}" ${teamMatchesCalendarExact(t, team) ? "selected" : ""}>${_cesc(t)}</option>`).join("");
 
   const teamRow = options.length
     ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <label style="font-size:13px;font-weight:700;color:#64748b;white-space:nowrap">Club:</label>
+        <input id="coach-club-search" value="${_cesc(coachClubSearch)}" placeholder="🔍 Cerca club..." oninput="coachSetClubSearch(this.value, this.selectionStart)" style="min-width:220px;flex:1;max-width:340px;padding:9px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff"/>
         <select onchange="coachSetClub(this.value)" style="min-width:220px;flex:1;max-width:340px;padding:9px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff">
-          ${options.map(o => `<option value="${_cesc(o.clubName)}" ${o.clubName === club ? "selected" : ""}>${_cesc(o.clubName)}</option>`).join("")}
+          ${visibleClubOptions.map(o => `<option value="${_cesc(o.clubName)}" ${o.clubName === club ? "selected" : ""}>${_cesc(o.clubName)}</option>`).join("")}
         </select>
         <label style="font-size:13px;font-weight:700;color:#64748b;white-space:nowrap">Equip:</label>
         <select onchange="coachSetTeam(this.value)" style="min-width:220px;flex:1;max-width:380px;padding:9px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff">
@@ -533,6 +548,13 @@ async function renderCoachPanel() {
   else if (coachPanelTab === "match") content = _renderMatchTab();
 
   body.innerHTML = teamRow + tabsHtml + content;
+  if (clubSearchCursor !== undefined) {
+    const input = document.getElementById("coach-club-search");
+    if (input) {
+      input.focus();
+      input.setSelectionRange(clubSearchCursor, clubSearchCursor);
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1138,31 +1160,6 @@ function _renderLiveTab() {
     </div>`;
 }
 
-/* ── Tàctiques ──────────────────────────────────────────────────────────── */
-function _renderTacticsTab() {
-  const tactic = COACH_TACTICS[coachTacticIdx];
-
-  const tacBtns = COACH_TACTICS.map((t, i) =>
-    `<button onclick="coachSetTactic(${i})" style="background:${i === coachTacticIdx ? "#1a2035" : "#fff"};border:1.5px solid ${i === coachTacticIdx ? "#1a2035" : "#e2e6ef"};color:${i === coachTacticIdx ? "#fff" : "#334155"};font-weight:600;font-size:12px;padding:9px 13px;border-radius:10px;cursor:pointer;text-align:left;width:100%">
-      <div style="font-weight:700">${_cesc(t.name)}</div>
-      <div style="font-size:10px;opacity:.65;margin-top:2px;line-height:1.3">${_cesc(t.desc)}</div>
-    </button>`
-  ).join("");
-
-  return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Formació</div>
-        <div style="display:flex;flex-direction:column;gap:7px">${tacBtns}</div>
-      </div>
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#1a2035;margin-bottom:4px">${_cesc(tactic.name)}</div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:14px">${_cesc(tactic.desc)}</div>
-        <div style="display:flex;justify-content:center">${_tacticSVG(tactic)}</div>
-      </div>
-    </div>`;
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
    SVG HELPERS
 ══════════════════════════════════════════════════════════════════════════ */
@@ -1489,6 +1486,7 @@ function coachSetTeam(val) {
 
 function coachSetClub(val) {
   coachClubInput = (val || "").trim();
+  coachClubSearch = coachClubInput;
   const options = _coachBuildClubTeamOptions();
   const selected = options.find(o => o.clubName === coachClubInput) || null;
   if (selected && selected.teams.length) {
@@ -1498,6 +1496,11 @@ function coachSetClub(val) {
   coachPlayerObjsLoaded = false;
   coachEditingPlayer = null;
   renderCoachPanel();
+}
+
+function coachSetClubSearch(value, cursor) {
+  coachClubSearch = String(value || "");
+  renderCoachPanel(Number.isFinite(Number(cursor)) ? Number(cursor) : undefined);
 }
 
 function coachLoadLineupFromConvocatoria() {
@@ -1850,6 +1853,7 @@ window.coachSetTab             = coachSetTab;
 window.coachSetMatchSubTab     = coachSetMatchSubTab;
 window.coachSetTeam            = coachSetTeam;
 window.coachSetClub            = coachSetClub;
+window.coachSetClubSearch      = coachSetClubSearch;
 window.coachTogglePillar       = coachTogglePillar;
 window.coachSaveTraining       = coachSaveTraining;
 window.coachDeleteTraining     = coachDeleteTraining;
