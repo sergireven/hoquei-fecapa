@@ -705,6 +705,7 @@ let adminAuditSearchQuery = "";
 let adminAuditSearchTimer = null;
 let adminMappingIssueFilters = { error: true, warning: false, outdated: false, mapping_ok_fecapa_empty: true };
 let adminMappingIncidentExpandAll = null;
+const adminRoleDraftByUid = new Map();
 
 const numOrNull = raw => {
   const n = parseInt(String(raw || "").trim(), 10);
@@ -3703,17 +3704,26 @@ async function renderAdminPanel() {
   if (error || !profiles) { body.innerHTML = `${renderAdminTopNav("users")}<div style="color:#e5001c;padding:16px">Error: ${esc(error?.message||"Sense accés")}</div>`; return; }
   const rows = profiles.map(p => {
     const pRoles = getProfileRoles(p);
+    const draftRoles = adminRoleDraftByUid.get(String(p.id));
+    const selectedRoles = Array.isArray(draftRoles) ? draftRoles : pRoles;
+    const uidAttr = esc(p.id);
+    const uidDom = esc(String(p.id).replace(/[^a-zA-Z0-9_-]/g, "_"));
     const roleControls = ROLE_OPTIONS.filter(Boolean).map(r => {
-      const checked = pRoles.includes(r) ? "checked" : "";
-      return `<label style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:3px 8px;font-size:11px;color:#334155;cursor:pointer"><input type="checkbox" class="admin-role-toggle" data-uid="${esc(p.id)}" value="${r}" ${checked} onchange="updateUserRoles('${esc(p.id)}')" style="margin:0"/>${esc(getRoleLabel(r, r))}</label>`;
+      const checked = selectedRoles.includes(r) ? "checked" : "";
+      return `<label style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:3px 8px;font-size:11px;color:#334155;cursor:pointer"><input type="checkbox" class="admin-role-toggle" data-uid="${uidAttr}" value="${r}" ${checked} onchange="adminMarkRoleDirty('${uidAttr}')" style="margin:0"/>${esc(getRoleLabel(r, r))}</label>`;
     }).join("");
+    const isDirty = adminRoleDraftByUid.has(String(p.id));
+    const saveLabel = isDirty ? "Guardar" : "Desat";
+    const statusText = isDirty ? "Canvis pendents" : "";
 
     return `<tr style="border-bottom:1px solid #f0f4f8">
       <td style="padding:10px 8px;font-size:13px;color:#1a2035;font-weight:500;word-break:break-all">${esc(p.email)}</td>
       <td style="padding:10px 8px"><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">${roleControls}</div></td>
       <td style="padding:10px 8px;font-size:12px;color:#64748b">${esc(p.team_name||"")}</td>
       <td style="padding:10px 8px;text-align:center">
+        <button id="admin-save-roles-${uidDom}" onclick="adminSaveUserRoles('${uidAttr}')" style="background:${isDirty ? "#16a34a" : "#e2e8f0"};border:none;color:${isDirty ? "#fff" : "#64748b"};font-weight:700;font-size:11px;padding:6px 9px;border-radius:8px;cursor:${isDirty ? "pointer" : "default"};margin-right:6px" ${isDirty ? "" : "disabled"}>${saveLabel}</button>
         <button onclick="adminDeleteUser('${esc(p.id)}')" title="Eliminar" style="background:none;border:none;color:#e5001c;cursor:pointer;font-size:15px;line-height:1;padding:2px 6px">✕</button>
+        <div id="admin-role-msg-${uidDom}" style="margin-top:5px;font-size:11px;color:${isDirty ? "#92400e" : "#94a3b8"}">${statusText}</div>
       </td>
     </tr>`;
   }).join("");
@@ -3795,31 +3805,98 @@ async function updateUserRoles(uid) {
   const selector = `.admin-role-toggle[data-uid="${uid}"]:checked`;
   const roles = [...document.querySelectorAll(selector)].map(el => String(el.value || "")).filter(Boolean);
   if (!roles.length) {
-    alert("Cada usuari ha de tenir almenys un rol.");
-    renderAdminPanel();
-    return;
+    return { ok: false, message: "Cada usuari ha de tenir almenys un rol." };
   }
   const multi = await _sb.rpc("update_user_roles_admin", { admin_email: currentUser?.email, target_id: uid, new_roles: roles });
   if (multi.error && !/function\s+public\.update_user_roles_admin|does not exist|42883/i.test(String(multi.error?.message || ""))) {
-    alert("Error: " + multi.error.message);
-    renderAdminPanel();
-    return;
+    return { ok: false, message: "Error: " + multi.error.message };
   }
-  if (!multi.error) return;
+  if (!multi.error) return { ok: true };
 
   const legacy = await _sb.rpc("update_user_role_admin", { admin_email: currentUser?.email, target_id: uid, new_role: roles[0] || null });
   if (legacy.error) {
-    alert("Error: " + legacy.error.message);
-    renderAdminPanel();
+    return { ok: false, message: "Error: " + legacy.error.message };
+  }
+  if (roles.length > 1) {
+    return { ok: true, message: "Backend antic: només s'ha aplicat el primer rol." };
+  }
+  return { ok: true };
+}
+
+function adminMarkRoleDirty(uid) {
+  const selector = `.admin-role-toggle[data-uid="${uid}"]:checked`;
+  const roles = [...document.querySelectorAll(selector)].map(el => String(el.value || "")).filter(Boolean);
+  const uidDom = String(uid).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const saveBtn = $(`admin-save-roles-${uidDom}`);
+  const msg = $(`admin-role-msg-${uidDom}`);
+
+  if (!roles.length) {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.style.background = "#e2e8f0";
+      saveBtn.style.color = "#64748b";
+      saveBtn.style.cursor = "default";
+    }
+    if (msg) {
+      msg.style.color = "#b91c1c";
+      msg.textContent = "Cal almenys un rol";
+    }
     return;
   }
-  if (roles.length > 1) alert("Backend antic: només s'ha aplicat el primer rol.");
+
+  adminRoleDraftByUid.set(String(uid), roles);
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.style.background = "#16a34a";
+    saveBtn.style.color = "#fff";
+    saveBtn.style.cursor = "pointer";
+  }
+  if (msg) {
+    msg.style.color = "#92400e";
+    msg.textContent = "Canvis pendents";
+  }
+}
+
+async function adminSaveUserRoles(uid) {
+  const uidKey = String(uid);
+  const uidDom = uidKey.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const msg = $(`admin-role-msg-${uidDom}`);
+  const saveBtn = $(`admin-save-roles-${uidDom}`);
+
+  if (saveBtn?.disabled) return;
+  if (msg) {
+    msg.style.color = "#64748b";
+    msg.textContent = "Desant...";
+  }
+
+  const result = await updateUserRoles(uidKey);
+  if (!result?.ok) {
+    if (msg) {
+      msg.style.color = "#b91c1c";
+      msg.textContent = result?.message || "Error desant rols";
+    }
+    return;
+  }
+
+  adminRoleDraftByUid.delete(uidKey);
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.background = "#e2e8f0";
+    saveBtn.style.color = "#64748b";
+    saveBtn.style.cursor = "default";
+  }
+  if (msg) {
+    msg.style.color = "#16a34a";
+    msg.textContent = result.message ? `✓ ${result.message}` : "✓ Desat";
+  }
 }
 window.openAdminPanel      = openAdminPanel;
 window.closeAdminPanel     = closeAdminPanel;
 window.openCoordinatorPanel   = openCoordinatorPanel;
 window.closeCoordinatorPanel  = closeCoordinatorPanel;
 window.updateUserRoles     = updateUserRoles;
+window.adminMarkRoleDirty  = adminMarkRoleDirty;
+window.adminSaveUserRoles  = adminSaveUserRoles;
 window.adminAddUser        = adminAddUser;
 window.adminDeleteUser     = adminDeleteUser;
 window.adminToggleTeamField = adminToggleTeamField;
