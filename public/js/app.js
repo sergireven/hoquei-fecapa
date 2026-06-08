@@ -102,8 +102,14 @@ const CLASSIFICATION_SOURCE_PILOTS = [
 // ── Supabase auth ─────────────────────────────────────────────
 const SUPABASE_URL = "https://ggltghiojxllxajeblme.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SPmYJDTieqtV8EDT-DdHyA_nc_sK7RE";
-const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
-const SOFT_SESSION_KEY = "hoquei_user_v1";
+const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce",
+  },
+});
 const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
@@ -290,7 +296,6 @@ async function persistUserLocationToCloud(location) {
       location_lng: packedLoc.lng,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -311,7 +316,6 @@ async function persistUserLocationToCloud(location) {
       location_lng: packedLoc.lng,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -325,7 +329,6 @@ async function persistUserLocationToCloud(location) {
       ...currentProfile,
       user_location: packedLoc,
     };
-    _saveSoftSession(currentProfile);
     return true;
   }
 
@@ -433,43 +436,43 @@ function estimateTravelForDestination(destinationText) {
   };
 }
 
-function _saveSoftSession(profile) {
-  localStorage.setItem(SOFT_SESSION_KEY, JSON.stringify(profile));
-}
-function _clearSoftSession() {
-  localStorage.removeItem(SOFT_SESSION_KEY);
-}
-function _loadSoftSession() {
-  try { return JSON.parse(localStorage.getItem(SOFT_SESSION_KEY)); } catch { return null; }
-}
-
 async function initAuth() {
   if (!_sb) return;
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session) {
-    await _loadProfile(session.user);
-  } else {
-    const soft = _loadSoftSession();
-    if (soft?.email) {
-      currentProfile = await refreshProfileRoles(soft);
-      currentUser    = { email: soft.email, id: soft.id };
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      await _loadProfile(session.user);
+    } else {
+      currentUser = null;
+      currentProfile = null;
     }
+  } catch {
+    currentUser = null;
+    currentProfile = null;
   }
+
   _sb.auth.onAuthStateChange(async (event, session) => {
-    if (session) { await _loadProfile(session.user); }
-    else         { currentUser = null; currentProfile = null; _clearSoftSession(); }
+    if (session?.user) {
+      await _loadProfile(session.user);
+    } else {
+      currentUser = null;
+      currentProfile = null;
+    }
     renderHome();
   });
 }
+
 async function _loadProfile(user) {
   currentUser = user;
-  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).single();
-  if (data) {
-    currentProfile = data;
-    const profileLoc = getProfileLocation(data);
+  const { data } = await _sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const profile = data || await refreshProfileRoles({ id: user.id, email: user.email || "" });
+  if (profile) {
+    currentProfile = profile;
+    const profileLoc = getProfileLocation(profile);
     if (profileLoc) setCurrentUserLocation(profileLoc);
-    _saveSoftSession(data);
     await loadFavsFromCloud();
+  } else {
+    currentProfile = { id: user.id, email: user.email || "" };
   }
 }
 
@@ -566,36 +569,10 @@ async function loginWithEmail() {
   const email = $("login-email-input")?.value?.trim();
   const msg   = $("login-msg");
   if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
-  msg.textContent = "Comprovant...";
-
-  // Comprova si l'email ja existeix a la base de dades
-  const { data: profiles } = await _sb.rpc("get_profile_by_email", { p_email: email });
-  if (profiles && profiles.length > 0) {
-    // Usuari registrat → accés directe via sessió lleugera
-    const profile = await refreshProfileRoles(profiles[0]);
-    currentProfile = profile;
-    currentUser    = { email: profile.email, id: profile.id };
-    const profileLoc = getProfileLocation(profile);
-    if (profileLoc) setCurrentUserLocation(profileLoc);
-    _saveSoftSession(profile);
-    await loadFavsFromCloud();
-    closeLoginModal();
-    // Rerenderitza segons la pantalla visible; detailComp pot quedar en memòria
-    // tot i estar a Home, i això impedia refrescar el botó d'Admin/Login.
-    const detailVisible = $("screen-detail")?.style?.display === "flex";
-    if (detailVisible && detailComp) {
-      await renderDetailClassif(); renderDetailCalendar(); renderDetailJugadors();
-    } else {
-      renderHome();
-    }
-    return;
-  }
-
-  // Usuari nou → envia magic link per registrar-se
-  msg.textContent = "Enviant enllaç de registre...";
+  msg.textContent = "Enviant enllaç d'accés...";
   const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
-  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ Ets nou! Comprova el correu per activar el compte."; }
+  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ T'hem enviat un enllaç. En obrir-lo, la sessió quedarà guardada automàticament."; }
 }
 window.loginWithEmail = loginWithEmail;
 window.sendMagicLink  = loginWithEmail; // alias
@@ -678,7 +655,6 @@ async function saveTeamName() {
   if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
   else {
     currentProfile.team_name = team;
-    _saveSoftSession(currentProfile);
     msg.style.color = "#16a34a"; msg.textContent = "✓ Desat";
   }
 }
@@ -717,7 +693,6 @@ async function saveUserLocation() {
 async function signOut() {
   await _sb?.auth.signOut();
   currentUser = null; currentProfile = null;
-  _clearSoftSession();
   closeUserModal();
   renderHome();
 }
