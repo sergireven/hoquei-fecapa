@@ -1632,6 +1632,30 @@ function coachSetClub(val) {
 
 function coachSetClubSearch(value, cursor) {
   coachClubSearch = String(value || "");
+
+  const queryNorm = _coachSearchNorm(coachClubSearch);
+  const options = _coachBuildClubTeamOptions();
+
+  if (queryNorm) {
+    const filtered = options.filter(o => _coachSearchNorm(o.clubName).includes(queryNorm));
+    const exact = filtered.find(o => _coachSearchNorm(o.clubName) === queryNorm) || null;
+
+    let nextClub = null;
+    if (exact) nextClub = exact;
+    else if (filtered.length === 1) nextClub = filtered[0];
+    else if (filtered.length > 1) {
+      const currentStillVisible = filtered.some(o => o.clubName === coachClubInput);
+      if (!currentStillVisible) nextClub = filtered[0];
+    }
+
+    if (nextClub) {
+      coachClubInput = nextClub.clubName;
+      const firstTeam = nextClub.teams?.[0]?.teamName || "";
+      const hasCurrentTeam = (nextClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", coachTeamInput));
+      if (!hasCurrentTeam) coachTeamInput = firstTeam;
+    }
+  }
+
   renderCoachPanel(Number.isFinite(Number(cursor)) ? Number(cursor) : undefined);
 }
 
