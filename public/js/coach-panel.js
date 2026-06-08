@@ -137,6 +137,26 @@ async function _cauthUid() {
     return null;
   }
 }
+
+async function _coachAuthUidForWrite() {
+  const sb = _csb();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.auth.getSession();
+    if (error) return null;
+    const uid = data?.session?.user?.id || null;
+    if (!uid) return null;
+
+    // If UI profile was loaded from remembered fallback and does not match
+    // active Supabase session, block writes to prevent RLS violations.
+    const profileId = String((typeof currentProfile !== "undefined" ? currentProfile?.id : "") || "").trim();
+    if (profileId && profileId !== String(uid)) return null;
+
+    return uid;
+  } catch {
+    return null;
+  }
+}
 function _cclub() { return coachClubInput || ""; }
 function _cteam() { return coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || ""; }
 
@@ -1426,8 +1446,8 @@ async function coachSaveTraining() {
   const msg = document.getElementById("coach-plan-msg");
   const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
 
-  const uid = await _cauthUid();
-  if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
+  const uid = await _coachAuthUidForWrite();
+  if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
   const team = _cteam();
   if (!team) { setMsg("Indica primer l'equip.", "#e5001c"); return; }
   const date = (document.getElementById("coach-plan-date")?.value || coachPlanningDate).trim();
@@ -1488,8 +1508,8 @@ async function coachSavePlayerObjective() {
   const msg = document.getElementById("coach-obj-msg");
   const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
 
-  const uid = await _cauthUid();
-  if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
+  const uid = await _coachAuthUidForWrite();
+  if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
   const name = (document.getElementById("coach-new-player")?.value || "").trim();
   if (!name) { setMsg("Introdueix el nom del jugador.", "#e5001c"); return; }
   const team = _cteam();
@@ -1510,7 +1530,8 @@ async function coachSavePlayerObjective() {
   if (existing?.id) {
     ({ error } = await sb.from("coach_player_objectives")
       .update({ pillar_data: pillarData, updated_at: new Date().toISOString() })
-      .eq("id", existing.id));
+      .eq("id", existing.id)
+      .eq("coach_user_id", uid));
   } else {
     ({ error } = await sb.from("coach_player_objectives").upsert({
       coach_user_id: uid,
