@@ -126,6 +126,18 @@ function _cuid() { return (typeof currentUser !== "undefined" ? currentUser?.id 
 function _cclub() { return coachClubInput || ""; }
 function _cteam() { return coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || ""; }
 
+function _coachTeamEq(a, b) {
+  if (typeof teamMatchesCalendarExact === "function") return teamMatchesCalendarExact(a, b);
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function _coachTeamLoose(a, b) {
+  if (typeof teamMatchesLoose === "function") return teamMatchesLoose(a, b);
+  const aa = String(a || "").trim().toLowerCase();
+  const bb = String(b || "").trim().toLowerCase();
+  return !!aa && !!bb && (aa.includes(bb) || bb.includes(aa));
+}
+
 function _coachLoadConvocatoriaStore() {
   try {
     return JSON.parse(localStorage.getItem(COACH_CONVOCATORIA_CACHE_KEY) || "{}");
@@ -145,11 +157,15 @@ function _coachBuildClubTeamOptions() {
   };
 
   if (typeof buildClubMap === "function") {
-    const clubMap = buildClubMap();
-    for (const [, club] of clubMap.entries()) {
-      for (const t of (club?.teams || [])) {
-        addPair(club?.displayName || "", t?.teamName || "");
+    try {
+      const clubMap = buildClubMap();
+      for (const [, club] of clubMap.entries()) {
+        for (const t of (club?.teams || [])) {
+          addPair(club?.displayName || "", t?.teamName || "");
+        }
       }
+    } catch {
+      // Fallback to convocatoria cache when global DB map is not ready yet.
     }
   }
 
@@ -180,20 +196,20 @@ function _coachEnsureTeamSelection() {
   let selectedTeam = String(coachTeamInput || "").trim();
 
   if (!selectedClub && selectedTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => teamMatchesCalendarExact(t, selectedTeam) || teamMatchesLoose(t, selectedTeam))) || null;
+    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t, selectedTeam) || _coachTeamLoose(t, selectedTeam))) || null;
   }
 
   if (!selectedClub && profileTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => teamMatchesCalendarExact(t, profileTeam) || teamMatchesLoose(t, profileTeam))) || null;
+    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t, profileTeam) || _coachTeamLoose(t, profileTeam))) || null;
     if (selectedClub && !selectedTeam) {
-      selectedTeam = (selectedClub.teams || []).find(t => teamMatchesCalendarExact(t, profileTeam)) || profileTeam;
+      selectedTeam = (selectedClub.teams || []).find(t => _coachTeamEq(t, profileTeam)) || profileTeam;
     }
   }
 
   if (!selectedClub) selectedClub = options[0] || null;
   if (!selectedClub) return options;
 
-  const hasTeamInClub = (selectedClub.teams || []).some(t => teamMatchesCalendarExact(t, selectedTeam));
+  const hasTeamInClub = (selectedClub.teams || []).some(t => _coachTeamEq(t, selectedTeam));
   if (!selectedTeam || !hasTeamInClub) selectedTeam = selectedClub.teams?.[0] || "";
 
   coachClubInput = selectedClub.clubName;
@@ -448,7 +464,10 @@ function openCoachPanel() {
   coachTeamInput = coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || "";
   const el = document.getElementById("screen-coach");
   if (el) el.style.display = "flex";
-  renderCoachPanel();
+  Promise.resolve(renderCoachPanel()).catch(err => {
+    console.error("[coach-panel] open error", err);
+    alert("No s'ha pogut obrir el panell entrenador. Recarrega la pàgina.");
+  });
 }
 
 function closeCoachPanel() {
