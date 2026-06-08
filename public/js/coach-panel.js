@@ -124,6 +124,17 @@ function _cesc(s) {
 }
 function _csb()  { return typeof _sb !== "undefined" ? _sb : null; }
 function _cuid() { return (typeof currentUser !== "undefined" ? currentUser?.id : null) || (typeof currentProfile !== "undefined" ? currentProfile?.id : null) || null; }
+async function _cauthUid() {
+  const sb = _csb();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.auth.getUser();
+    if (error) return null;
+    return data?.user?.id || null;
+  } catch {
+    return null;
+  }
+}
 function _cclub() { return coachClubInput || ""; }
 function _cteam() { return coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || ""; }
 
@@ -1334,9 +1345,10 @@ async function _loadTrainings() {
   const sb = _csb();
   coachTrainings       = [];
   coachTrainingsLoaded = true;
-  if (!sb || !_cuid()) return;
+  const uid = await _cauthUid();
+  if (!sb || !uid) return;
   const team = _cteam();
-  let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", _cuid());
+  let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
   if (team) q = q.eq("team_name", team);
   q = q.order("plan_date", { ascending: true });
   const { data, error } = await q;
@@ -1348,7 +1360,8 @@ async function coachSaveTraining() {
   const msg = document.getElementById("coach-plan-msg");
   const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
 
-  if (!sb || !_cuid()) { setMsg("Sessió no activa.", "#e5001c"); return; }
+  const uid = await _cauthUid();
+  if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
   const team = _cteam();
   if (!team) { setMsg("Indica primer l'equip.", "#e5001c"); return; }
   const date = (document.getElementById("coach-plan-date")?.value || coachPlanningDate).trim();
@@ -1356,7 +1369,7 @@ async function coachSaveTraining() {
 
   setMsg("Desant...");
   const { error } = await sb.from("coach_training_plans").insert({
-    coach_user_id:    _cuid(),
+    coach_user_id:    uid,
     team_name:        team,
     plan_date:        date,
     duration_minutes: Number(document.getElementById("coach-plan-dur")?.value || coachPlanningDuration) || 90,
@@ -1379,8 +1392,9 @@ async function coachSaveTraining() {
 async function coachDeleteTraining(id) {
   if (!confirm("Eliminar aquest entrenament?")) return;
   const sb = _csb();
-  if (!sb || !_cuid()) return;
-  const { error } = await sb.from("coach_training_plans").delete().eq("id", id).eq("coach_user_id", _cuid());
+  const uid = await _cauthUid();
+  if (!sb || !uid) return;
+  const { error } = await sb.from("coach_training_plans").delete().eq("id", id).eq("coach_user_id", uid);
   if (error) { alert("Error: " + error.message); return; }
   coachTrainings = coachTrainings.filter(t => t.id !== id);
   renderCoachPanel();
@@ -1391,8 +1405,9 @@ async function _loadPlayerObjectives(team) {
   coachPlayerObjs       = {};
   coachPlayerObjsTeam   = team || "";
   coachPlayerObjsLoaded = true;
-  if (!sb || !_cuid()) return;
-  let q = sb.from("coach_player_objectives").select("*").eq("coach_user_id", _cuid());
+  const uid = await _cauthUid();
+  if (!sb || !uid) return;
+  let q = sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid);
   if (team !== null && team !== undefined) q = q.eq("team_name", team);
   const { data, error } = await q;
   if (!error && data) {
@@ -1407,7 +1422,8 @@ async function coachSavePlayerObjective() {
   const msg = document.getElementById("coach-obj-msg");
   const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
 
-  if (!sb || !_cuid()) { setMsg("Sessió no activa.", "#e5001c"); return; }
+  const uid = await _cauthUid();
+  if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
   const name = (document.getElementById("coach-new-player")?.value || "").trim();
   if (!name) { setMsg("Introdueix el nom del jugador.", "#e5001c"); return; }
   const team = _cteam();
@@ -1431,7 +1447,7 @@ async function coachSavePlayerObjective() {
       .eq("id", existing.id));
   } else {
     ({ error } = await sb.from("coach_player_objectives").upsert({
-      coach_user_id: _cuid(),
+      coach_user_id: uid,
       team_name:     team || "",
       player_name:   name,
       season:        "2025-26",
@@ -1453,11 +1469,12 @@ async function coachSavePlayerObjective() {
 async function coachDeletePlayerObj(playerName) {
   if (!confirm(`Eliminar objectius de ${playerName}?`)) return;
   const sb = _csb();
-  if (!sb || !_cuid()) return;
+  const uid = await _cauthUid();
+  if (!sb || !uid) return;
   const existing = coachPlayerObjs[playerName];
   let error;
   if (existing?.id) {
-    ({ error } = await sb.from("coach_player_objectives").delete().eq("id", existing.id));
+    ({ error } = await sb.from("coach_player_objectives").delete().eq("id", existing.id).eq("coach_user_id", uid));
   }
   if (error) { alert("Error: " + error.message); return; }
   coachPlayerObjsLoaded = false;
@@ -1470,13 +1487,14 @@ async function coachSaveMatchEvents() {
   const msg = document.getElementById("coach-match-msg");
   const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
 
-  if (!sb || !_cuid()) { setMsg("Sessió no activa.", "#e5001c"); return; }
+  const uid = await _cauthUid();
+  if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
   const team = _cteam();
   if (!team) { setMsg("Indica l'equip.", "#e5001c"); return; }
   setMsg("Desant...");
 
   const payload = {
-    coach_user_id:     _cuid(),
+    coach_user_id:     uid,
     team_name:         team,
     match_date:        coachMatchState.matchDate,
     opponent:          coachMatchState.opponent || "",
@@ -1489,7 +1507,7 @@ async function coachSaveMatchEvents() {
 
   let error;
   if (coachMatchState.savedId) {
-    ({ error } = await sb.from("coach_match_events").update(payload).eq("id", coachMatchState.savedId));
+    ({ error } = await sb.from("coach_match_events").update(payload).eq("id", coachMatchState.savedId).eq("coach_user_id", uid));
   } else {
     const res = await sb.from("coach_match_events").insert(payload).select("id").single();
     error = res.error;
