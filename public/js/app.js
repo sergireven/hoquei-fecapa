@@ -576,6 +576,16 @@ async function loginWithEmail() {
 window.loginWithEmail = loginWithEmail;
 window.sendMagicLink  = loginWithEmail; // alias
 
+if (typeof window.openCoachPanel !== "function") {
+  window.openCoachPanel = function () {
+    alert("El panell d'entrenador no s'ha pogut carregar. Torna-ho a provar o recarrega la pàgina.");
+  };
+}
+
+if (typeof window.closeCoachPanel !== "function") {
+  window.closeCoachPanel = function () {};
+}
+
 // User menu modal
 function openUserModal() {
   const roleLabel = getProfileRolesLabel(currentProfile, "Usuari");
