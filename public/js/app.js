@@ -6928,6 +6928,47 @@ function getUserFavoriteTeamNames() {
   return names.sort((a, b) => String(a).localeCompare(String(b)));
 }
 
+function getUserFavoriteTeamFilterOptions() {
+  const items = [];
+  const upsert = (teamName, category = "") => {
+    const team = String(teamName || "").trim();
+    const cat = String(category || "").trim();
+    if (!team) return;
+    const existing = items.find(it => teamMatchesCalendarExact(it.teamName, team) || teamMatchesLoose(it.teamName, team));
+    if (!existing) {
+      items.push({ teamName: team, category: cat });
+      return;
+    }
+    if (!existing.category && cat) existing.category = cat;
+  };
+
+  for (const f of (favs || [])) {
+    upsert(f?.teamName || "", f?.category || "");
+  }
+
+  if (clubFavs.length) {
+    const map = buildClubMap();
+    for (const clubFav of clubFavs) {
+      const entry = map.get(clubFav?.key) || null;
+      for (const team of (entry?.teams || [])) {
+        upsert(team?.teamName || "", team?.category || "");
+      }
+    }
+  }
+
+  return items
+    .sort((a, b) => String(a.teamName).localeCompare(String(b.teamName)))
+    .map(item => {
+      const catLabel = item.category ? (CAT_LABELS[item.category] || item.category) : "";
+      const teamLabel = shortTeamDisplayName(item.teamName || "");
+      return {
+        ...item,
+        categoryLabel: catLabel,
+        chipLabel: catLabel ? `${teamLabel} · ${catLabel}` : teamLabel,
+      };
+    });
+}
+
 function getUserFavoritePlayersForTeam(teamName = "") {
   const selectedTeam = String(teamName || "").trim();
   const all = (playerFavs || []).map(id => {
@@ -7053,7 +7094,8 @@ function setUserConvPlayerAvailability(matchKey, playerId, updates) {
 function renderUserFavCalendarPanel() {
   const panel = $("user-favs-utility-panel");
   if (!panel) return;
-  const teams = getUserFavoriteTeamNames();
+  const teamOptions = getUserFavoriteTeamFilterOptions();
+  const teams = teamOptions.map(t => t.teamName);
   const isMobile = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
   const weekStart = getWeekStart(userFavWeekCalendarDate);
   const weekEnd = new Date(weekStart);
@@ -7087,7 +7129,7 @@ function renderUserFavCalendarPanel() {
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         <button onclick="setUserFavCalendarTeamFilter('')" style="background:${!userFavCalendarTeamFilter ? "#1a2035" : "#f8fafc"};color:${!userFavCalendarTeamFilter ? "#fff" : "#334155"};border:1px solid ${!userFavCalendarTeamFilter ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
-        ${teams.map(team => `<button onclick="setUserFavCalendarTeamFilter('${esc(team)}')" style="background:${userFavCalendarTeamFilter === team ? "#1a2035" : "#f8fafc"};color:${userFavCalendarTeamFilter === team ? "#fff" : "#334155"};border:1px solid ${userFavCalendarTeamFilter === team ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">${esc(shortTeamDisplayName(team))}</button>`).join("")}
+        ${teamOptions.map(opt => `<button onclick="setUserFavCalendarTeamFilter('${esc(opt.teamName)}')" style="background:${userFavCalendarTeamFilter === opt.teamName ? "#1a2035" : "#f8fafc"};color:${userFavCalendarTeamFilter === opt.teamName ? "#fff" : "#334155"};border:1px solid ${userFavCalendarTeamFilter === opt.teamName ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">${esc(opt.chipLabel)}</button>`).join("")}
       </div>
       ${isMobile
         ? `<div style="display:grid;grid-template-columns:1fr;gap:8px">${dayCards}</div>`
@@ -7099,7 +7141,8 @@ function renderUserFavConvocatoriesPanel() {
   const panel = $("user-favs-utility-panel");
   if (!panel) return;
   const isMobile = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
-  const teams = getUserFavoriteTeamNames();
+  const teamOptions = getUserFavoriteTeamFilterOptions();
+  const teams = teamOptions.map(t => t.teamName);
   if (userFavConvTeamFilter && !teams.includes(userFavConvTeamFilter)) userFavConvTeamFilter = "";
   const matches = getUserFavoriteUpcomingMatches(userFavConvTeamFilter || "").slice(0, 18);
   const leadMinutes = getGlobalConvocationLeadMinutes();
@@ -7117,7 +7160,7 @@ function renderUserFavConvocatoriesPanel() {
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         <button onclick="setUserFavConvTeamFilter('')" style="background:${!userFavConvTeamFilter ? "#1a2035" : "#f8fafc"};color:${!userFavConvTeamFilter ? "#fff" : "#334155"};border:1px solid ${!userFavConvTeamFilter ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
-        ${teams.map(team => `<button onclick="setUserFavConvTeamFilter('${esc(team)}')" style="background:${userFavConvTeamFilter === team ? "#1a2035" : "#f8fafc"};color:${userFavConvTeamFilter === team ? "#fff" : "#334155"};border:1px solid ${userFavConvTeamFilter === team ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">${esc(shortTeamDisplayName(team))}</button>`).join("")}
+        ${teamOptions.map(opt => `<button onclick="setUserFavConvTeamFilter('${esc(opt.teamName)}')" style="background:${userFavConvTeamFilter === opt.teamName ? "#1a2035" : "#f8fafc"};color:${userFavConvTeamFilter === opt.teamName ? "#fff" : "#334155"};border:1px solid ${userFavConvTeamFilter === opt.teamName ? "#1a2035" : "#e2e6ef"};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">${esc(opt.chipLabel)}</button>`).join("")}
       </div>
       ${matches.map(match => {
         const mKey = userConvocationMatchKey(match);
