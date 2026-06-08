@@ -157,12 +157,30 @@ function _coachLoadConvocatoriaStore() {
 
 function _coachBuildClubTeamOptions() {
   const map = new Map();
-  const addPair = (clubName, teamName) => {
+  const addPair = (clubName, teamName, category = "") => {
     const club = String(clubName || "").trim();
     const team = String(teamName || "").trim();
+    const cat = String(category || "").trim();
     if (!club || !team) return;
-    if (!map.has(club)) map.set(club, new Set());
-    map.get(club).add(team);
+
+    const clubKey = _coachSearchNorm(club);
+    if (!clubKey) return;
+    if (!map.has(clubKey)) {
+      map.set(clubKey, { clubName: club, teams: new Map() });
+    }
+    const entry = map.get(clubKey);
+    if (String(club).length > String(entry.clubName || "").length) {
+      entry.clubName = club;
+    }
+
+    const teamKey = _coachSearchNorm(team);
+    if (!teamKey) return;
+    const prev = entry.teams.get(teamKey);
+    if (!prev) {
+      entry.teams.set(teamKey, { teamName: team, category: cat });
+      return;
+    }
+    if (!prev.category && cat) prev.category = cat;
   };
 
   if (typeof buildClubMap === "function") {
@@ -170,7 +188,7 @@ function _coachBuildClubTeamOptions() {
       const clubMap = buildClubMap();
       for (const [, club] of clubMap.entries()) {
         for (const t of (club?.teams || [])) {
-          addPair(club?.displayName || "", t?.teamName || "");
+          addPair(club?.displayName || "", t?.teamName || "", t?.category || "");
         }
       }
     } catch {
@@ -184,10 +202,10 @@ function _coachBuildClubTeamOptions() {
     if (parts.length >= 2) addPair(parts[0], parts[1]);
   }
 
-  return [...map.entries()]
-    .map(([clubName, teamSet]) => ({
-      clubName,
-      teams: [...teamSet].sort((a, b) => String(a).localeCompare(String(b))),
+  return [...map.values()]
+    .map(entry => ({
+      clubName: entry.clubName,
+      teams: [...entry.teams.values()].sort((a, b) => String(a?.teamName || "").localeCompare(String(b?.teamName || ""))),
     }))
     .sort((a, b) => String(a.clubName).localeCompare(String(b.clubName)));
 }
@@ -205,21 +223,21 @@ function _coachEnsureTeamSelection() {
   let selectedTeam = String(coachTeamInput || "").trim();
 
   if (!selectedClub && selectedTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t, selectedTeam) || _coachTeamLoose(t, selectedTeam))) || null;
+    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam) || _coachTeamLoose(t?.teamName || "", selectedTeam))) || null;
   }
 
   if (!selectedClub && profileTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t, profileTeam) || _coachTeamLoose(t, profileTeam))) || null;
+    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", profileTeam) || _coachTeamLoose(t?.teamName || "", profileTeam))) || null;
     if (selectedClub && !selectedTeam) {
-      selectedTeam = (selectedClub.teams || []).find(t => _coachTeamEq(t, profileTeam)) || profileTeam;
+      selectedTeam = ((selectedClub.teams || []).find(t => _coachTeamEq(t?.teamName || "", profileTeam))?.teamName) || profileTeam;
     }
   }
 
   if (!selectedClub) selectedClub = options[0] || null;
   if (!selectedClub) return options;
 
-  const hasTeamInClub = (selectedClub.teams || []).some(t => _coachTeamEq(t, selectedTeam));
-  if (!selectedTeam || !hasTeamInClub) selectedTeam = selectedClub.teams?.[0] || "";
+  const hasTeamInClub = (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam));
+  if (!selectedTeam || !hasTeamInClub) selectedTeam = selectedClub.teams?.[0]?.teamName || "";
 
   coachClubInput = selectedClub.clubName;
   coachTeamInput = selectedTeam;
@@ -509,7 +527,16 @@ async function renderCoachPanel(clubSearchCursor) {
     : options;
   const visibleClubOptions = filteredClubOptions.length ? filteredClubOptions : options;
   const selectedClub = options.find(o => o.clubName === club) || null;
-  const teamOptions = (selectedClub?.teams || []).map(t => `<option value="${_cesc(t)}" ${teamMatchesCalendarExact(t, team) ? "selected" : ""}>${_cesc(t)}</option>`).join("");
+  const teamOptions = (selectedClub?.teams || []).map(t => {
+    const teamName = String(t?.teamName || "").trim();
+    const category = String(t?.category || "").trim();
+    const categoryLabel = category
+      ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[category]) ? CAT_LABELS[category] : category)
+      : "";
+    const teamLabel = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(teamName) : teamName;
+    const label = categoryLabel ? `${teamLabel} · ${categoryLabel}` : teamLabel;
+    return `<option value="${_cesc(teamName)}" ${teamMatchesCalendarExact(teamName, team) ? "selected" : ""}>${_cesc(label)}</option>`;
+  }).join("");
 
   const teamRow = options.length
     ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -1490,7 +1517,7 @@ function coachSetClub(val) {
   const options = _coachBuildClubTeamOptions();
   const selected = options.find(o => o.clubName === coachClubInput) || null;
   if (selected && selected.teams.length) {
-    coachTeamInput = selected.teams[0];
+    coachTeamInput = selected.teams[0].teamName || "";
   }
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
