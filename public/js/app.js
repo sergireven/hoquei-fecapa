@@ -1600,9 +1600,9 @@ function coordinatorSetTab(tab) {
   renderCoordinatorPanel();
 }
 
-function coordinatorSetClubSearch(value) {
+function coordinatorSetClubSearch(value, cursor) {
   coordinatorClubSearch = String(value || "");
-  renderCoordinatorPanel();
+  renderCoordinatorPanel(Number.isFinite(Number(cursor)) ? Number(cursor) : undefined);
 }
 
 function coordinatorChooseClub(encodedClubName) {
@@ -1656,7 +1656,7 @@ function renderCoordinatorClubTab(currentFav) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px">
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Club favorit</div>
-        <input id="coordinator-club-search" value="${esc(coordinatorClubSearch)}" oninput="coordinatorSetClubSearch(this.value)" placeholder="Cerca club..." style="width:100%;padding:11px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px"/>
+        <input id="coordinator-club-search" value="${esc(coordinatorClubSearch)}" oninput="coordinatorSetClubSearch(this.value, this.selectionStart)" placeholder="Cerca club..." style="width:100%;padding:11px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px"/>
         <div style="font-size:12px;color:#64748b;margin-bottom:10px">${filtered.length} clubs trobats</div>
         ${currentFav ? `<div style="display:flex;align-items:center;gap:10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 12px"><div>${shieldImg(selectedEntry?.clubId || currentFav.clubId || null, 28)}</div><div style="min-width:0"><div style="font-size:11px;color:#4338ca;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Club actiu</div><div style="font-size:14px;color:#1e1b4b;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(currentFav.clubName)}</div></div></div>` : `<div style="padding:14px;border:1px dashed #cbd5e1;border-radius:10px;color:#64748b;font-size:13px">Selecciona un club per activar el panell.</div>`}
         ${selectedTeams.length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">${selectedTeams.map(team => `<span style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:999px;padding:5px 10px;font-size:11px;color:#334155">${shieldImg(selectedEntry?.clubId || null, 14)} ${esc(formatCoordinatorTeamLabel(team))}</span>`).join("")}</div>` : ""}
@@ -1867,7 +1867,7 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     </div>`;
 }
 
-function renderCoordinatorPanel() {
+function renderCoordinatorPanel(searchCursor) {
   const body = $("coordinator-body");
   const currentFav = loadCoordinatorFavorite();
   if (coordinatorPanelTab === "convocatories") {
@@ -1886,6 +1886,13 @@ function renderCoordinatorPanel() {
   }
   if (coordinatorPanelTab === "convocatories") {
     coordinatorPopulateMatchSelector();
+  }
+  if (coordinatorPanelTab === "club" && searchCursor !== undefined) {
+    const input = $("coordinator-club-search");
+    if (input) {
+      input.focus();
+      input.setSelectionRange(searchCursor, searchCursor);
+    }
   }
 }
 
