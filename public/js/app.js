@@ -3771,7 +3771,8 @@ async function adminAddUser() {
   if (!roles.length) { msg.style.color = "#e5001c"; msg.textContent = "Selecciona almenys un rol."; return; }
   msg.style.color = "#64748b"; msg.textContent = "Desant...";
   const multi = await _sb.rpc("admin_manage_user_roles", { admin_email: currentUser.email, p_email: email, p_roles: roles, p_team: team });
-  if (multi.error && !/function\s+public\.admin_manage_user_roles|does not exist|42883/i.test(String(multi.error?.message || ""))) {
+  const multiMissing = /function\s+public\.admin_manage_user_roles|does not exist|42883/i.test(String(multi.error?.message || ""));
+  if (multi.error && !multiMissing) {
     msg.style.color = "#e5001c";
     msg.textContent = "Error: " + multi.error.message;
     return;
@@ -3783,15 +3784,20 @@ async function adminAddUser() {
     return;
   }
 
+  // Never silently downgrade multi-role requests to legacy single-role API.
+  if (roles.length > 1) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "El backend actual no admet multirol (falta migracio SQL de rols).";
+    return;
+  }
+
   const legacy = await _sb.rpc("admin_manage_user", { admin_email: currentUser.email, p_email: email, p_role: role, p_team: team });
   if (legacy.error) {
     msg.style.color = "#e5001c";
     msg.textContent = "Error: " + legacy.error.message;
   } else {
-    msg.style.color = "#92400e";
-    msg.textContent = roles.length > 1
-      ? "Usuari desat (backend antic: només s'ha aplicat el primer rol)."
-      : "✓ Usuari desat.";
+    msg.style.color = "#16a34a";
+    msg.textContent = "✓ Usuari desat.";
     renderAdminPanel();
   }
 }
@@ -3808,17 +3814,20 @@ async function updateUserRoles(uid) {
     return { ok: false, message: "Cada usuari ha de tenir almenys un rol." };
   }
   const multi = await _sb.rpc("update_user_roles_admin", { admin_email: currentUser?.email, target_id: uid, new_roles: roles });
-  if (multi.error && !/function\s+public\.update_user_roles_admin|does not exist|42883/i.test(String(multi.error?.message || ""))) {
+  const multiMissing = /function\s+public\.update_user_roles_admin|does not exist|42883/i.test(String(multi.error?.message || ""));
+  if (multi.error && !multiMissing) {
     return { ok: false, message: "Error: " + multi.error.message };
   }
   if (!multi.error) return { ok: true };
 
+  // Never silently downgrade multi-role updates to legacy single-role API.
+  if (roles.length > 1) {
+    return { ok: false, message: "El backend actual no admet multirol (falta migracio SQL de rols)." };
+  }
+
   const legacy = await _sb.rpc("update_user_role_admin", { admin_email: currentUser?.email, target_id: uid, new_role: roles[0] || null });
   if (legacy.error) {
     return { ok: false, message: "Error: " + legacy.error.message };
-  }
-  if (roles.length > 1) {
-    return { ok: true, message: "Backend antic: només s'ha aplicat el primer rol." };
   }
   return { ok: true };
 }
