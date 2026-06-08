@@ -115,6 +115,8 @@ let coachBoardState  = null;
 let coachSavedPlays  = [];
 let coachTacticsMsg  = "";
 let coachPlaybackTimer = null;
+let coachBoardDragState = null;
+let coachBoardSuppressClickUntil = 0;
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -459,7 +461,7 @@ function _coachBoardPointFromEvent(evt) {
   const y = ((evt.clientY - rect.top) / rect.height) * 100;
   return {
     x: _clamp(x, 4, 96),
-    y: _clamp(y, 6, 94),
+    y: _clamp(y, 4, 96),
   };
 }
 
@@ -486,6 +488,60 @@ function _coachCreateAnnotation(tool, start, end) {
 function _coachRenderTacticsTabRoot() {
   const root = document.getElementById("coach-tactics-root");
   if (root) root.innerHTML = _renderTacticsPanelInner();
+}
+
+function _coachIsPhoneLikeScreen() {
+  if (typeof window === "undefined") return false;
+  const w = Number(window.innerWidth || 0);
+  const h = Number(window.innerHeight || 0);
+  const shortSide = Math.min(w, h);
+  return shortSide > 0 && shortSide < 700;
+}
+
+function _coachUpdateBoardEntityPosition(kind, id, point) {
+  if (kind === "player") {
+    const player = coachBoardState.players.find(item => item.id === id);
+    if (!player) return false;
+    player.x = point.x;
+    player.y = point.y;
+    return true;
+  }
+  if (kind === "puck") {
+    coachBoardState.puck.x = point.x;
+    coachBoardState.puck.y = point.y;
+    return true;
+  }
+  return false;
+}
+
+function _coachSyncDraggedEntityToDom(kind, id) {
+  const svg = document.getElementById("coach-tactics-board-svg");
+  if (!svg) return;
+
+  if (kind === "player") {
+    const player = coachBoardState.players.find(item => item.id === id);
+    if (!player) return;
+    const node = svg.querySelector(`[data-coach-entity-kind="player"][data-coach-entity-id="${id}"]`);
+    if (!node) return;
+    const circle = node.querySelector("circle");
+    const label = node.querySelector("text");
+    if (circle) {
+      circle.setAttribute("cx", String(player.x));
+      circle.setAttribute("cy", String(player.y));
+    }
+    if (label) {
+      label.setAttribute("x", String(player.x));
+      label.setAttribute("y", String(player.y + 0.3));
+    }
+    return;
+  }
+
+  if (kind === "puck") {
+    const puck = svg.querySelector("[data-coach-entity-kind='puck'] circle");
+    if (!puck) return;
+    puck.setAttribute("cx", String(coachBoardState.puck.x));
+    puck.setAttribute("cy", String(coachBoardState.puck.y));
+  }
 }
 
 /* ── Open / Close ────────────────────────────────────────────────────────── */
@@ -946,6 +1002,10 @@ function _renderTacticsPanelInner() {
   const tactic = COACH_TACTICS[coachTacticIdx];
   const activeTool = _coachToolMeta(coachBoardState.tool);
   const savedPlays = _coachActiveSavedPlays();
+  const isFullscreen = Boolean(coachBoardState.fullscreen);
+  const mobileWarning = _coachIsPhoneLikeScreen()
+    ? `<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:11px 12px;font-size:12px;font-weight:700;line-height:1.4;margin-bottom:10px">Aquesta funció està pensada per pantalla horitzontal i més gran (tablet o ordinador). En mòbil pot no ser prou fluida ni precisa.</div>`
+    : "";
 
   const tacBtns = COACH_TACTICS.map((t, i) =>
     `<button onclick="coachSetTactic(${i})" style="background:${i === coachTacticIdx ? "#1a2035" : "#fff"};border:1.5px solid ${i === coachTacticIdx ? "#1a2035" : "#e2e6ef"};color:${i === coachTacticIdx ? "#fff" : "#334155"};font-weight:600;font-size:12px;padding:9px 13px;border-radius:10px;cursor:pointer;text-align:left;width:100%">
@@ -978,9 +1038,9 @@ function _renderTacticsPanelInner() {
     ? `<span style="display:inline-flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-weight:700;font-size:11px;padding:5px 9px;border-radius:999px">● Gravació ${coachBoardState.recordingFrames.length ? `(${coachBoardState.recordingFrames.length})` : ""}</span>`
     : "";
 
-  return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
+  const controlsPanel = `
+      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px;overflow:auto">
+        ${mobileWarning}
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Formacions base</div>
         <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">${tacBtns}</div>
         <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Eines habituals</div>
@@ -1000,8 +1060,21 @@ function _renderTacticsPanelInner() {
         <div style="font-size:11px;color:#64748b;line-height:1.5;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:10px">
           Opcions comunes afegides: moviment de jugadors, passades, xuts, conduccions, bloquejos, zones, jugadors rivals, gravació seqüencial i reproducció de jugades.
         </div>
-      </div>
+      </div>`;
 
+  if (isFullscreen) {
+    return `
+      <div style="position:fixed;inset:0;z-index:480;background:rgba(15,23,42,.78);padding:14px;display:flex;align-items:stretch;justify-content:center">
+        <div style="width:min(1500px,100%);height:100%;display:grid;grid-template-columns:minmax(250px,20%) minmax(0,80%);gap:12px;align-items:stretch">
+          ${controlsPanel}
+          <div style="min-height:0;display:flex;flex-direction:column;gap:10px">${boardCard}</div>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      ${controlsPanel}
       <div style="display:flex;flex-direction:column;gap:14px">
         ${boardCard}
         <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
@@ -1038,17 +1111,12 @@ function _renderInteractiveBoardCard(isFullscreen) {
         </div>
       </div>
       <div style="font-size:12px;color:${_coachToolMeta(coachBoardState.tool).color};font-weight:700;margin-bottom:10px">${_cesc(msg)}</div>
-      <div style="background:linear-gradient(180deg,#dbeafe 0%,#eff6ff 100%);border-radius:16px;padding:${isFullscreen ? "12px" : "10px"};border:1px solid #bfdbfe;min-height:${isFullscreen ? "calc(100vh - 170px)" : "320px"};display:flex;align-items:center;justify-content:center">
+      <div style="background:linear-gradient(180deg,#dbeafe 0%,#eff6ff 100%);border-radius:16px;padding:${isFullscreen ? "10px" : "10px"};border:1px solid #bfdbfe;min-height:${isFullscreen ? "calc(100vh - 130px)" : "320px"};height:${isFullscreen ? "100%" : "auto"};display:flex;align-items:center;justify-content:center">
         ${_tacticSVGInteractive(isFullscreen)}
       </div>
     </div>`;
 
-  if (!isFullscreen) return `<div>${inner}</div>`;
-
-  return `
-    <div style="position:fixed;inset:0;z-index:480;background:rgba(15,23,42,.78);padding:18px;display:flex;align-items:stretch;justify-content:center">
-      <div style="width:min(1400px,100%);height:100%;display:flex;align-items:stretch">${inner}</div>
-    </div>`;
+  return `<div style="height:100%">${inner}</div>`;
 }
 
 /* ── En Viu ─────────────────────────────────────────────────────────────── */
@@ -1248,20 +1316,18 @@ function _spiderSVG(data, size) {
 /** Interactive top-down roller hockey rink SVG for tactics board */
 function _tacticSVGInteractive(isFullscreen) {
   _coachEnsureBoardState();
-  const width = isFullscreen ? 1200 : 760;
-  const height = isFullscreen ? 720 : 460;
   const playerSvg = (coachBoardState.players || []).map(player => {
     const selected = coachBoardState.selectedEntity?.kind === "player" && coachBoardState.selectedEntity?.id === player.id;
     const fill = _coachBoardPlayerColor(player.team);
     const textColor = _coachBoardPlayerTextColor(player.team);
-    return `<g onclick="coachHandleBoardClick(event,'player','${_cesc(player.id)}');event.stopPropagation();" style="cursor:pointer">
+    return `<g data-coach-entity-kind="player" data-coach-entity-id="${_cesc(player.id)}" onclick="coachHandleBoardClick(event,'player','${_cesc(player.id)}');event.stopPropagation();" style="cursor:grab">
       <circle cx="${player.x}" cy="${player.y}" r="3.3" fill="${fill}" stroke="${selected ? "#fde68a" : "#0f172a"}" stroke-width="${selected ? "0.9" : "0.45"}" />
       <text x="${player.x}" y="${player.y + 0.3}" text-anchor="middle" dominant-baseline="middle" font-size="2.1" fill="${textColor}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${_cesc(player.label)}</text>
     </g>`;
   }).join("");
 
   const puckSelected = coachBoardState.selectedEntity?.kind === "puck";
-  const puckSvg = `<g onclick="coachHandleBoardClick(event,'puck','puck');event.stopPropagation();" style="cursor:pointer">
+  const puckSvg = `<g data-coach-entity-kind="puck" data-coach-entity-id="puck" onclick="coachHandleBoardClick(event,'puck','puck');event.stopPropagation();" style="cursor:grab">
     <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="1.25" fill="#0f172a" stroke="${puckSelected ? "#fde68a" : "#ffffff"}" stroke-width="0.55" />
   </g>`;
 
@@ -1301,7 +1367,7 @@ function _tacticSVGInteractive(isFullscreen) {
     ? `<circle cx="${pending.start.x}" cy="${pending.start.y}" r="1.6" fill="${_coachToolMeta(pending.tool).color}" opacity="0.35" />`
     : "";
 
-  return `<svg id="coach-tactics-board-svg" data-coach-board="1" width="100%" height="100%" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg" onclick="coachHandleBoardClick(event)">
+  return `<svg id="coach-tactics-board-svg" data-coach-board="1" width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;user-select:none;-webkit-user-select:none" onpointerdown="coachBoardPointerDown(event)" onpointermove="coachBoardPointerMove(event)" onpointerup="coachBoardPointerUp(event)" onpointercancel="coachBoardPointerUp(event)" onclick="coachHandleBoardClick(event)">
     <defs>
       <linearGradient id="coach-rink-bg" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#bfdbfe" />
@@ -1313,23 +1379,23 @@ function _tacticSVGInteractive(isFullscreen) {
       <marker id="coach-arrow-gold" markerWidth="5" markerHeight="5" refX="4.2" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="#d97706"/></marker>
     </defs>
 
-    <rect x="1" y="1" width="98" height="58" rx="8" fill="url(#coach-rink-bg)" stroke="#0f172a" stroke-width="0.35" />
-    <rect x="3.2" y="3.2" width="93.6" height="53.6" rx="6.5" fill="#dbeafe" stroke="#ffffff" stroke-width="0.45" />
-    <line x1="50" y1="3.2" x2="50" y2="56.8" stroke="#ef4444" stroke-width="0.38" />
-    <line x1="27" y1="3.2" x2="27" y2="56.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
-    <line x1="73" y1="3.2" x2="73" y2="56.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
-    <circle cx="50" cy="30" r="5.5" fill="none" stroke="#ef4444" stroke-width="0.3" />
-    <circle cx="17" cy="18" r="4.5" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="17" cy="42" r="4.5" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="83" cy="18" r="4.5" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="83" cy="42" r="4.5" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <line x1="7" y1="24" x2="7" y2="36" stroke="#dc2626" stroke-width="0.35" />
-    <line x1="93" y1="24" x2="93" y2="36" stroke="#dc2626" stroke-width="0.35" />
-    <path d="M7,24 Q13,30 7,36" fill="none" stroke="#60a5fa" stroke-width="0.32" />
-    <path d="M93,24 Q87,30 93,36" fill="none" stroke="#60a5fa" stroke-width="0.32" />
-    <rect x="4.7" y="21" width="2.3" height="18" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
-    <rect x="93" y="21" width="2.3" height="18" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
-    <rect x="3.2" y="3.2" width="93.6" height="53.6" rx="6.5" fill="transparent" />
+    <rect x="1" y="6" width="98" height="88" rx="8" fill="url(#coach-rink-bg)" stroke="#0f172a" stroke-width="0.35" />
+    <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="#dbeafe" stroke="#ffffff" stroke-width="0.45" />
+    <line x1="50" y1="8.2" x2="50" y2="91.8" stroke="#ef4444" stroke-width="0.38" />
+    <line x1="27" y1="8.2" x2="27" y2="91.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
+    <line x1="73" y1="8.2" x2="73" y2="91.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
+    <circle cx="50" cy="50" r="7.8" fill="none" stroke="#ef4444" stroke-width="0.32" />
+    <circle cx="17" cy="30" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
+    <circle cx="17" cy="70" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
+    <circle cx="83" cy="30" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
+    <circle cx="83" cy="70" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
+    <line x1="7" y1="42" x2="7" y2="58" stroke="#dc2626" stroke-width="0.35" />
+    <line x1="93" y1="42" x2="93" y2="58" stroke="#dc2626" stroke-width="0.35" />
+    <path d="M7,42 Q13,50 7,58" fill="none" stroke="#60a5fa" stroke-width="0.32" />
+    <path d="M93,42 Q87,50 93,58" fill="none" stroke="#60a5fa" stroke-width="0.32" />
+    <rect x="4.7" y="39" width="2.3" height="22" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
+    <rect x="93" y="39" width="2.3" height="22" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
+    <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="transparent" />
     ${annotationsSvg}
     ${pendingSvg}
     ${playerSvg}
@@ -1824,8 +1890,70 @@ function coachDeleteSavedPlay(playId) {
   _coachRenderTacticsTabRoot();
 }
 
+function _coachBoardEntityFromTarget(target) {
+  const node = target?.closest?.("[data-coach-entity-kind]");
+  if (!node) return null;
+  return {
+    kind: String(node.getAttribute("data-coach-entity-kind") || "").trim(),
+    id: String(node.getAttribute("data-coach-entity-id") || "").trim(),
+  };
+}
+
+function coachBoardPointerDown(evt) {
+  _coachEnsureBoardState();
+  if (coachBoardState.tool !== "move") return;
+
+  const entity = _coachBoardEntityFromTarget(evt.target);
+  if (!entity || !(entity.kind === "player" || entity.kind === "puck")) return;
+
+  evt.preventDefault();
+  coachBoardDragState = {
+    pointerId: evt.pointerId,
+    kind: entity.kind,
+    id: entity.id,
+    moved: false,
+  };
+  coachBoardState.selectedEntity = { kind: entity.kind, id: entity.id };
+
+  if (typeof evt.currentTarget?.setPointerCapture === "function") {
+    try { evt.currentTarget.setPointerCapture(evt.pointerId); } catch {}
+  }
+}
+
+function coachBoardPointerMove(evt) {
+  if (!coachBoardDragState) return;
+  if (evt.pointerId !== coachBoardDragState.pointerId) return;
+
+  evt.preventDefault();
+  const point = _coachBoardPointFromEvent(evt);
+  const moved = _coachUpdateBoardEntityPosition(coachBoardDragState.kind, coachBoardDragState.id, point);
+  if (!moved) return;
+  coachBoardDragState.moved = true;
+  _coachSyncDraggedEntityToDom(coachBoardDragState.kind, coachBoardDragState.id);
+}
+
+function coachBoardPointerUp(evt) {
+  if (!coachBoardDragState) return;
+  if (evt.pointerId !== coachBoardDragState.pointerId) return;
+
+  if (typeof evt.currentTarget?.releasePointerCapture === "function") {
+    try { evt.currentTarget.releasePointerCapture(evt.pointerId); } catch {}
+  }
+
+  if (coachBoardDragState.moved) {
+    _coachBoardRecordFrame("Moviment");
+    _coachBoardMessage("Element reposicionat.");
+    coachBoardSuppressClickUntil = Date.now() + 260;
+  }
+
+  coachBoardDragState = null;
+  _coachRenderTacticsTabRoot();
+}
+
 function coachHandleBoardClick(evt, kind, id) {
   _coachEnsureBoardState();
+  if (Date.now() < coachBoardSuppressClickUntil) return;
+  if (coachBoardDragState?.moved) return;
   const point = _coachBoardPointFromEvent(evt);
   const tool = coachBoardState.tool;
 
@@ -1926,6 +2054,9 @@ window.coachSaveBoardPlay      = coachSaveBoardPlay;
 window.coachLoadSavedPlay      = coachLoadSavedPlay;
 window.coachPlaySavedPlay      = coachPlaySavedPlay;
 window.coachDeleteSavedPlay    = coachDeleteSavedPlay;
+window.coachBoardPointerDown   = coachBoardPointerDown;
+window.coachBoardPointerMove   = coachBoardPointerMove;
+window.coachBoardPointerUp     = coachBoardPointerUp;
 window.coachHandleBoardClick   = coachHandleBoardClick;
 window.coachSaveMatchEvents    = coachSaveMatchEvents;
 window.renderCoachPanel        = renderCoachPanel;
