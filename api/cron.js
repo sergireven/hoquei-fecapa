@@ -4,6 +4,7 @@
 
 const { execSync } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 
 function runNodeStep(scriptName, timeoutMs) {
   const scriptPath = path.join(__dirname, scriptName);
@@ -43,10 +44,15 @@ module.exports = async (req, res) => {
     runNodeStep("build-classification-audit.js", 120000);
     steps.push("build-classification-audit.js");
 
-    // Genera el fitxer compacte per al Club Hoquei Ripollet
-    console.log("🔵 Pas 5/5: generant ripollet.json...");
-    runNodeStep("generate-ripollet.js", 10000);
-    steps.push("generate-ripollet.js");
+    // Genera el fitxer compacte per al Club Hoquei Ripollet (opcional)
+    const ripolletScript = path.join(__dirname, "generate-ripollet.js");
+    if (fs.existsSync(ripolletScript)) {
+      console.log("🔵 Pas 5/5: generant ripollet.json...");
+      runNodeStep("generate-ripollet.js", 10000);
+      steps.push("generate-ripollet.js");
+    } else {
+      console.log("⏭️ Pas 5/5 omès: generate-ripollet.js no existeix");
+    }
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
     console.log(`✅ Pipeline completat en ${elapsed}s (${steps.join(" -> ")})`);
