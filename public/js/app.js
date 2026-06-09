@@ -458,7 +458,14 @@ function hasRecoveryParamsInUrl() {
   const queryParams = new URLSearchParams(String(window.location.search || "").replace(/^\?/, ""));
   const hashType = String(hashParams.get("type") || "").toLowerCase();
   const queryType = String(queryParams.get("type") || "").toLowerCase();
-  return hashType === "recovery" || queryType === "recovery";
+  const queryAction = String(queryParams.get("auth_action") || "").toLowerCase();
+  return hashType === "recovery" || queryType === "recovery" || queryAction === "recovery";
+}
+
+function buildRecoveryRedirectUrl() {
+  const url = new URL(window.location.origin + window.location.pathname);
+  url.searchParams.set("auth_action", "recovery");
+  return url.toString();
 }
 
 async function initAuth() {
@@ -729,7 +736,7 @@ async function requestPasswordReset() {
   msg.style.color = "#64748b";
   msg.textContent = "Enviant e-mail de recuperació...";
   const { error } = await _sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname,
+    redirectTo: buildRecoveryRedirectUrl(),
   });
   if (error) {
     msg.style.color = "#e5001c";
