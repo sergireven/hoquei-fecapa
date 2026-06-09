@@ -84,6 +84,7 @@ const COACH_TACTIC_TOOLS = [
 const COACH_TACTIC_PLAYBOOK_KEY = "hoquei_coach_playbook_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
+const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
 
 /* ── State ───────────────────────────────────────────────────────────────── */
 let coachPanelTab        = "planning";
@@ -91,6 +92,7 @@ let coachClubInput       = "";
 let coachClubSearch      = "";
 let coachTeamInput       = "";   // overrides currentProfile.team_name when set
 let coachTabTeamValues   = { planning: "", objectives: "", match: "" };
+let coachSelectedClubLoaded = false;
 let coachFavoriteTeams   = [];
 let coachFavoriteTeamsLoaded = false;
 let coachTrainings       = [];
@@ -102,6 +104,7 @@ let coachPlanningNotes   = "";
 
 let coachPlayerObjs      = {};   // { player_name: { id, pillar_data, notes } }
 let coachPlayerObjsTeam  = null; // team used when last loaded
+let coachPlayerObjsClub  = null; // club used when last loaded
 let coachPlayerObjsLoaded = false;
 let coachEditingPlayer   = null; // name of player being edited in the form
 
@@ -326,6 +329,10 @@ function _coachFavoriteStorageKey(uid = "") {
   return `${COACH_FAVORITE_TEAMS_KEY}::${String(uid || "anon")}`;
 }
 
+function _coachSelectedClubStorageKey(uid = "") {
+  return `${COACH_SELECTED_CLUB_KEY}::${String(uid || "anon")}`;
+}
+
 function _coachLoadFavoritesLocal(uid = "") {
   try {
     const raw = localStorage.getItem(_coachFavoriteStorageKey(uid));
@@ -339,6 +346,86 @@ function _coachLoadFavoritesLocal(uid = "") {
 function _coachSaveFavoritesLocal(uid = "", favorites = []) {
   try {
     localStorage.setItem(_coachFavoriteStorageKey(uid), JSON.stringify(favorites || []));
+  } catch {}
+}
+
+function _coachLoadSelectedClubLocal(uid = "") {
+  try {
+    const raw = localStorage.getItem(_coachSelectedClubStorageKey(uid));
+    const parsed = JSON.parse(raw || "null");
+    if (typeof parsed === "string") return parsed.trim();
+    return String(parsed?.clubName || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function _coachSaveSelectedClubLocal(uid = "", clubName = "") {
+  try {
+    const key = _coachSelectedClubStorageKey(uid);
+    const normalizedClub = String(clubName || "").trim();
+    if (!normalizedClub) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify({
+      clubName: normalizedClub,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+async function _coachLoadSelectedClub(options = null) {
+  if (coachSelectedClubLoaded) return;
+
+  const sb = _csb();
+  const uid = await _cauthUid();
+  let clubName = "";
+
+  if (sb && uid) {
+    try {
+      const { data, error } = await sb
+        .from("coach_selected_clubs")
+        .select("club_name")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (!error && data?.club_name) clubName = String(data.club_name || "").trim();
+    } catch {}
+  }
+
+  if (!clubName) clubName = _coachLoadSelectedClubLocal(uid);
+
+  if (clubName) {
+    const source = Array.isArray(options) ? options : _coachBuildClubTeamOptions();
+    const match = source.find(o => _coachSearchNorm(o.clubName) === _coachSearchNorm(clubName)) || null;
+    coachClubInput = match?.clubName || clubName;
+    if (!coachClubSearch) coachClubSearch = coachClubInput;
+  }
+
+  coachSelectedClubLoaded = true;
+}
+
+async function _coachPersistSelectedClub(clubName) {
+  const normalizedClub = String(clubName || "").trim();
+  const sb = _csb();
+  const writeUid = await _coachAuthUidForWrite();
+  const readUid = writeUid || await _cauthUid();
+
+  _coachSaveSelectedClubLocal(readUid || "", normalizedClub);
+
+  if (!sb || !writeUid) return;
+
+  try {
+    if (!normalizedClub) {
+      await sb.from("coach_selected_clubs").delete().eq("user_id", writeUid);
+      return;
+    }
+
+    await sb.from("coach_selected_clubs").upsert({
+      user_id: writeUid,
+      club_name: normalizedClub,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
   } catch {}
 }
 
@@ -465,31 +552,31 @@ function _coachTabTeamHeader(tabKey, options = null) {
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}${favBtn}</div>`;
 }
 
-function _coachEnsureTeamSelection() {
-  const options = _coachBuildClubTeamOptions();
+function _coachEnsureTeamSelection(options = null) {
+  const sourceOptions = Array.isArray(options) ? options : _coachBuildClubTeamOptions();
   const profileTeam = String(typeof currentProfile !== "undefined" ? currentProfile?.team_name || "" : "").trim();
 
-  if (!options.length) {
+  if (!sourceOptions.length) {
     if (!coachTeamInput && profileTeam) coachTeamInput = profileTeam;
-    return options;
+    return sourceOptions;
   }
 
-  let selectedClub = options.find(o => String(o.clubName) === String(coachClubInput || "")) || null;
+  let selectedClub = sourceOptions.find(o => String(o.clubName) === String(coachClubInput || "")) || null;
   let selectedTeam = String(coachTeamInput || "").trim();
 
   if (!selectedClub && selectedTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam) || _coachTeamLoose(t?.teamName || "", selectedTeam))) || null;
+    selectedClub = sourceOptions.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam) || _coachTeamLoose(t?.teamName || "", selectedTeam))) || null;
   }
 
   if (!selectedClub && profileTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", profileTeam) || _coachTeamLoose(t?.teamName || "", profileTeam))) || null;
+    selectedClub = sourceOptions.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", profileTeam) || _coachTeamLoose(t?.teamName || "", profileTeam))) || null;
     if (selectedClub && !selectedTeam) {
       selectedTeam = ((selectedClub.teams || []).find(t => _coachTeamEq(t?.teamName || "", profileTeam))?.teamName) || profileTeam;
     }
   }
 
-  if (!selectedClub) selectedClub = options[0] || null;
-  if (!selectedClub) return options;
+  if (!selectedClub) selectedClub = sourceOptions[0] || null;
+  if (!selectedClub) return sourceOptions;
 
   const hasTeamInClub = selectedTeam
     ? (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam))
@@ -508,7 +595,7 @@ function _coachEnsureTeamSelection() {
       }
     }
   }
-  return options;
+  return sourceOptions;
 }
 
 function _coachFindLatestConvocatoria(clubName, teamName) {
@@ -574,8 +661,45 @@ function _coachRosterFromConvocatoria(clubName, teamName) {
     .filter((p, idx, arr) => arr.findIndex(x => teamMatchesCalendarExact(x.name, p.name)) === idx);
 }
 
-function _coachRosterFromTeam(teamName) {
+function _coachPlayerClubCandidates(player) {
+  const values = [
+    player?.clubName,
+    player?.club,
+    player?.club_name,
+    player?.registeredClub,
+    player?.teamClub,
+  ];
+
+  for (const stat of (player?.teamStats || [])) {
+    values.push(stat?.clubName, stat?.club, stat?.club_name, stat?.teamClub);
+  }
+
+  return [...new Set(values.map(v => String(v || "").trim()).filter(Boolean))];
+}
+
+function _coachMergeRosterPlayers(...lists) {
+  const deduped = [];
+  for (const list of lists) {
+    for (const player of (list || [])) {
+      const name = String(player?.name || "").trim();
+      if (!name) continue;
+      const exists = deduped.some(x => teamMatchesCalendarExact(x.name, name));
+      if (exists) continue;
+      deduped.push({
+        name,
+        pos: player?.pos || "MIG",
+        isStarter: player?.isStarter !== false,
+        side: player?.side || "D",
+      });
+    }
+  }
+
+  return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+}
+
+function _coachRosterFromTeam(teamName, clubName = "") {
   const wantedTeam = String(teamName || "").trim();
+  const wantedClub = String(clubName || "").trim();
   if (!wantedTeam) return [];
 
   const playerMap = (typeof DB !== "undefined" && DB?.jugadors) ? DB.jugadors : null;
@@ -597,6 +721,12 @@ function _coachRosterFromTeam(teamName) {
     const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam) || _coachTeamLoose(t, wantedTeam));
     if (!matchesTeam) continue;
 
+    const candidateClubs = _coachPlayerClubCandidates(p);
+    const matchesClub = !wantedClub
+      || !candidateClubs.length
+      || candidateClubs.some(c => _coachTeamEq(c, wantedClub) || _coachTeamLoose(c, wantedClub) || _coachSearchNorm(c) === _coachSearchNorm(wantedClub));
+    if (!matchesClub) continue;
+
     roster.push({
       name,
       pos: p?.isGK ? "PORT" : "MIG",
@@ -605,13 +735,14 @@ function _coachRosterFromTeam(teamName) {
     });
   }
 
-  const deduped = [];
-  for (const player of roster) {
-    const exists = deduped.some(x => teamMatchesCalendarExact(x.name, player.name));
-    if (!exists) deduped.push(player);
-  }
+  return _coachMergeRosterPlayers(roster);
+}
 
-  return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+function _coachRosterForSelection(clubName, teamName) {
+  return _coachMergeRosterPlayers(
+    _coachRosterFromTeam(teamName, clubName),
+    _coachRosterFromConvocatoria(clubName, teamName)
+  );
 }
 
 function _cclone(value) {
@@ -924,7 +1055,9 @@ async function renderCoachPanel(clubSearchCursor) {
         Sessio BD no activa - cal login OTP
       </div>`;
 
-  const options = _coachEnsureTeamSelection();
+  let options = _coachBuildClubTeamOptions();
+  await _coachLoadSelectedClub(options);
+  options = _coachEnsureTeamSelection(options);
   await _coachLoadFavoriteTeams(options);
   const team = _cteam();
   const club = _cclub();
@@ -1124,15 +1257,16 @@ async function _renderPlanningTab() {
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderObjectivesTab() {
   const team = _cteam("objectives");
+  const club = _cclub("objectives");
   if (!team) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
   }
 
-  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== team) {
-    await _loadPlayerObjectives(team);
+  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== team || coachPlayerObjsClub !== club) {
+    await _loadPlayerObjectives(team, club);
   }
 
-  const rosterNames = _coachRosterFromTeam(team).map(p => p.name);
+  const rosterNames = _coachRosterForSelection(club, team).map(p => p.name);
   const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
 
   /* Form — pre-fills from coachEditingPlayer if set */
@@ -1213,7 +1347,7 @@ async function _renderObjectivesTab() {
     : `<div style="background:#fff;border-radius:14px;border:1px dashed #e2e6ef;padding:28px;text-align:center;color:#94a3b8;font-size:13px">Afegeix jugadors amb el formulari per veure la seva evolució.</div>`;
 
   const rosterHint = team
-    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(team)}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
+    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(club ? `${club} · ${team}` : team)}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
     : "";
 
   return rosterHint + addForm + cards;
@@ -1825,10 +1959,11 @@ async function coachDeleteTraining(id) {
   renderCoachPanel();
 }
 
-async function _loadPlayerObjectives(team) {
+async function _loadPlayerObjectives(team, clubName = "") {
   const sb = _csb();
   coachPlayerObjs       = {};
   coachPlayerObjsTeam   = team || "";
+  coachPlayerObjsClub   = clubName || "";
   coachPlayerObjsLoaded = true;
   const uid = await _cauthUid();
   if (!sb || !uid) return;
@@ -1950,8 +2085,14 @@ async function coachSaveMatchEvents() {
 ══════════════════════════════════════════════════════════════════════════ */
 
 function coachSetTeam(val) {
+  const resolved = _coachResolveTeamChoiceByValue(val);
+  if (resolved?.clubName) {
+    coachClubInput = resolved.clubName;
+    coachClubSearch = resolved.clubName;
+    Promise.resolve(_coachPersistSelectedClub(resolved.clubName));
+  }
   coachTeamInput = _coachTeamFromOptionValue(val);
-  _coachApplyTabTeamValue(coachPanelTab, String(val || "").trim());
+  _coachApplyTabTeamValue(coachPanelTab, String(resolved?.optionValue || val || "").trim());
   renderCoachPanel();
 }
 
@@ -1975,6 +2116,7 @@ function coachSetClub(val) {
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
   coachEditingPlayer = null;
+  Promise.resolve(_coachPersistSelectedClub(coachClubInput));
   renderCoachPanel();
 }
 
