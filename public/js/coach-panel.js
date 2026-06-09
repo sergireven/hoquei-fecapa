@@ -513,9 +513,14 @@ function _coachEnsureTeamSelection() {
 
 function _coachFindLatestConvocatoria(clubName, teamName) {
   const store = _coachLoadConvocatoriaStore();
-  const prefix = `${String(clubName || "").trim()}::${String(teamName || "").trim()}::`;
+  const wantedClub = String(clubName || "").trim();
+  const wantedTeam = String(teamName || "").trim();
+  const prefix = `${wantedClub}::${wantedTeam}::`;
   let latest = null;
   let latestTs = 0;
+  const candidates = [];
+
+  // Fast path: exact key prefix (legacy behavior).
   for (const [key, convocatoria] of Object.entries(store || {})) {
     if (!String(key).startsWith(prefix)) continue;
     const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
@@ -524,7 +529,33 @@ function _coachFindLatestConvocatoria(clubName, teamName) {
       latest = convocatoria;
     }
   }
-  return latest;
+  if (latest) return latest;
+
+  // Fallback: tolerant club/team matching to support naming variants.
+  for (const [key, convocatoria] of Object.entries(store || {})) {
+    const parts = String(key || "").split("::");
+    if (parts.length < 2) continue;
+    const keyClub = String(parts[0] || "").trim();
+    const keyTeam = String(parts[1] || "").trim();
+
+    const teamMatches = _coachTeamEq(keyTeam, wantedTeam) || _coachTeamLoose(keyTeam, wantedTeam);
+    if (!teamMatches) continue;
+
+    const clubMatches = !wantedClub
+      || _coachTeamEq(keyClub, wantedClub)
+      || _coachTeamLoose(keyClub, wantedClub)
+      || _coachSearchNorm(keyClub) === _coachSearchNorm(wantedClub);
+
+    const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
+    candidates.push({ convocatoria, ts, clubMatches });
+  }
+
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => {
+    if (a.clubMatches !== b.clubMatches) return a.clubMatches ? -1 : 1;
+    return b.ts - a.ts;
+  });
+  return candidates[0].convocatoria || null;
 }
 
 function _coachRosterFromConvocatoria(clubName, teamName) {
