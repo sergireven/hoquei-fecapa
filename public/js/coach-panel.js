@@ -84,6 +84,19 @@ const COACH_TACTIC_TOOLS = [
 const COACH_TACTIC_PLAYBOOK_KEY = "hoquei_coach_playbook_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
+const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
+const COACH_ACTA_ARCHIVE_FILES = [
+  "./actes/alevi.json",
+  "./actes/altres.json",
+  "./actes/benjami.json",
+  "./actes/fem.json",
+  "./actes/infantil.json",
+  "./actes/junior.json",
+  "./actes/juvenil.json",
+  "./actes/nacional-catalana.json",
+  "./actes/prebenjami.json",
+  "./actes/veterans.json",
+];
 
 /* ── State ───────────────────────────────────────────────────────────────── */
 let coachPanelTab        = "planning";
@@ -91,10 +104,12 @@ let coachClubInput       = "";
 let coachClubSearch      = "";
 let coachTeamInput       = "";   // overrides currentProfile.team_name when set
 let coachTabTeamValues   = { planning: "", objectives: "", match: "" };
+let coachSelectedClubLoaded = false;
 let coachFavoriteTeams   = [];
 let coachFavoriteTeamsLoaded = false;
 let coachTrainings       = [];
 let coachTrainingsLoaded = false;
+let coachTrainingsTeamKey = "";
 let coachPlanningPillars = [];
 let coachPlanningDate    = new Date().toISOString().slice(0, 10);
 let coachPlanningDuration = 90;
@@ -102,8 +117,11 @@ let coachPlanningNotes   = "";
 
 let coachPlayerObjs      = {};   // { player_name: { id, pillar_data, notes } }
 let coachPlayerObjsTeam  = null; // team used when last loaded
+let coachPlayerObjsClub  = null; // club used when last loaded
 let coachPlayerObjsLoaded = false;
 let coachEditingPlayer   = null; // name of player being edited in the form
+let coachActaArchiveCache = null;
+let coachActaArchivePromise = null;
 
 let coachMatchState = {
   matchDate: new Date().toISOString().slice(0, 10),
@@ -172,6 +190,12 @@ function _cteam(tabKey = coachPanelTab) {
   return fromTab || coachTeamInput || "";
 }
 
+function _ccategory(tabKey = coachPanelTab) {
+  const resolved = _coachResolveTeamChoice(tabKey);
+  if (resolved?.category) return resolved.category;
+  return _coachCategoryFromOptionValue(coachTabTeamValues?.[tabKey] || "");
+}
+
 function _coachTeamEq(a, b) {
   if (typeof teamMatchesCalendarExact === "function") return teamMatchesCalendarExact(a, b);
   return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
@@ -192,20 +216,72 @@ function _coachSearchNorm(value) {
     .trim();
 }
 
+function _coachTeamKey(teamNameOrKey, category = "") {
+  const raw = String(teamNameOrKey || "").trim();
+  if (!raw) return `name:::cat:${normalizeCompKey(category || "altres")}`;
+  if (raw.includes("::cat:")) return raw;
+  const name = raw.toLowerCase().replace(/\s+/g, " ").trim();
+  return `name:${name}::cat:${normalizeCompKey(category || "altres")}`;
+}
+
 function _coachOptionValue(teamName, category = "", clubName = "") {
-  return `${String(teamName || "")}|||${String(category || "")}|||${String(clubName || "")}`;
+  return `${_coachSeasonKey()}|||${String(clubName || "")}|||${_coachTeamKey(teamName, category)}`;
 }
 
 function _coachTeamFromOptionValue(value) {
-  return String(value || "").split("|||")[0]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  const key = String(parts[2] || parts[0] || "").trim();
+  if (!key) return "";
+  if (key.startsWith("name:")) return key.slice(5).split("::cat:")[0].trim();
+  if (key.startsWith("id:")) return key.slice(3).split("::cat:")[0].trim();
+  if (key.includes("::cat:")) return key.split("::cat:")[0].replace(/^name:/, "").trim();
+  return key;
 }
 
 function _coachCategoryFromOptionValue(value) {
-  return String(value || "").split("|||")[1]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) {
+    const match = String(parts[2] || "").match(/::cat:([^:]+)$/);
+    return match?.[1]?.trim() || "";
+  }
+  return String(parts[1] || "").trim() || "";
 }
 
 function _coachClubFromOptionValue(value) {
-  return String(value || "").split("|||")[2]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[1] || "").trim() || "";
+  if (parts.length >= 3) return String(parts[2] || "").trim() || "";
+  return String(parts[1] || "").trim() || "";
+}
+
+function _coachSeasonKey() {
+  return String(typeof activeSeasonKey !== "undefined" ? activeSeasonKey || "current" : "current").trim() || "current";
+}
+
+function _coachSeasonFromOptionValue(value) {
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[0] || "").trim() || "";
+  return "";
+}
+
+function _coachSeasonLabel() {
+  if (typeof getSeasonLabelFromData === "function") {
+    const label = String(getSeasonLabelFromData(typeof DB !== "undefined" ? DB : null, "") || "").trim();
+    if (label) return label.replace(/-/g, "/");
+  }
+  const raw = _coachSeasonKey();
+  if (raw === "current") return "2025/26";
+  return raw.replace(/^(\d{4})-(\d{2,4})$/, (_, y, end) => `${y}/${String(end || "").slice(-2)}`);
+}
+
+function _coachTeamIdentityLabel(choice = null) {
+  const club = String(choice?.clubName || coachClubInput || "").trim();
+  const categoryKey = String(choice?.category || "").trim();
+  const categoryLabel = categoryKey
+    ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[categoryKey]) ? CAT_LABELS[categoryKey] : categoryKey)
+    : "";
+  const seasonLabel = _coachSeasonLabel();
+  return [club, categoryLabel, seasonLabel].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 }
 
 function _coachLoadConvocatoriaStore() {
@@ -239,7 +315,7 @@ function _coachBuildClubTeamOptions() {
     if (!teamKey) return;
     const prev = entry.teams.get(teamKey);
     if (!prev) {
-      entry.teams.set(teamKey, { teamName: team, category: cat, optionValue: _coachOptionValue(team, cat, club) });
+      entry.teams.set(teamKey, { teamName: team, category: cat, teamKey, seasonKey: _coachSeasonKey(), optionValue: _coachOptionValue(team, cat, club) });
       return;
     }
     if (!prev.category && cat) prev.category = cat;
@@ -282,7 +358,7 @@ function _coachFlattenTeamChoices(options = null) {
       const category = String(team?.category || "").trim();
       const clubName = String(club?.clubName || "").trim();
       const optionValue = String(team?.optionValue || _coachOptionValue(teamName, category, clubName));
-      out.push({ clubName, teamName, category, optionValue });
+      out.push({ clubName, teamName, category, teamKey: String(team?.teamKey || "").trim(), seasonKey: String(team?.seasonKey || _coachSeasonKey()).trim(), optionValue });
     }
   }
   return out;
@@ -294,15 +370,19 @@ function _coachResolveTeamChoiceByValue(optionValue, options = null) {
   const found = flat.find(x => String(x.optionValue) === wanted);
   if (found) return found;
 
+  const season = _coachSeasonFromOptionValue(wanted);
+  const club = _coachClubFromOptionValue(wanted);
+  const teamKey = _coachTeamFromOptionValue(wanted);
   const team = _coachTeamFromOptionValue(wanted);
   const category = _coachCategoryFromOptionValue(wanted);
-  const club = _coachClubFromOptionValue(wanted);
-  const byTeam = flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category && String(x.clubName || "") === club)
+  const byTeam = flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey && String(x.clubName || "") === club)
+    || flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey)
+    || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category && String(x.clubName || "") === club)
     || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category)
     || flat.find(x => _coachTeamEq(x.teamName, team));
   if (byTeam) return byTeam;
   if (!team) return null;
-  return { teamName: team, category, clubName: club, optionValue: _coachOptionValue(team, category, club) };
+  return { teamName: team, category, clubName: club, teamKey, seasonKey: season || _coachSeasonKey(), optionValue: _coachOptionValue(teamKey || team, category, club) };
 }
 
 function _coachResolveTeamChoice(tabKey = coachPanelTab, options = null) {
@@ -326,6 +406,10 @@ function _coachFavoriteStorageKey(uid = "") {
   return `${COACH_FAVORITE_TEAMS_KEY}::${String(uid || "anon")}`;
 }
 
+function _coachSelectedClubStorageKey(uid = "") {
+  return `${COACH_SELECTED_CLUB_KEY}::${String(uid || "anon")}`;
+}
+
 function _coachLoadFavoritesLocal(uid = "") {
   try {
     const raw = localStorage.getItem(_coachFavoriteStorageKey(uid));
@@ -339,6 +423,86 @@ function _coachLoadFavoritesLocal(uid = "") {
 function _coachSaveFavoritesLocal(uid = "", favorites = []) {
   try {
     localStorage.setItem(_coachFavoriteStorageKey(uid), JSON.stringify(favorites || []));
+  } catch {}
+}
+
+function _coachLoadSelectedClubLocal(uid = "") {
+  try {
+    const raw = localStorage.getItem(_coachSelectedClubStorageKey(uid));
+    const parsed = JSON.parse(raw || "null");
+    if (typeof parsed === "string") return parsed.trim();
+    return String(parsed?.clubName || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function _coachSaveSelectedClubLocal(uid = "", clubName = "") {
+  try {
+    const key = _coachSelectedClubStorageKey(uid);
+    const normalizedClub = String(clubName || "").trim();
+    if (!normalizedClub) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify({
+      clubName: normalizedClub,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch {}
+}
+
+async function _coachLoadSelectedClub(options = null) {
+  if (coachSelectedClubLoaded) return;
+
+  const sb = _csb();
+  const uid = await _cauthUid();
+  let clubName = "";
+
+  if (sb && uid) {
+    try {
+      const { data, error } = await sb
+        .from("coach_selected_clubs")
+        .select("club_name")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (!error && data?.club_name) clubName = String(data.club_name || "").trim();
+    } catch {}
+  }
+
+  if (!clubName) clubName = _coachLoadSelectedClubLocal(uid);
+
+  if (clubName) {
+    const source = Array.isArray(options) ? options : _coachBuildClubTeamOptions();
+    const match = source.find(o => _coachSearchNorm(o.clubName) === _coachSearchNorm(clubName)) || null;
+    coachClubInput = match?.clubName || clubName;
+    if (!coachClubSearch) coachClubSearch = coachClubInput;
+  }
+
+  coachSelectedClubLoaded = true;
+}
+
+async function _coachPersistSelectedClub(clubName) {
+  const normalizedClub = String(clubName || "").trim();
+  const sb = _csb();
+  const writeUid = await _coachAuthUidForWrite();
+  const readUid = writeUid || await _cauthUid();
+
+  _coachSaveSelectedClubLocal(readUid || "", normalizedClub);
+
+  if (!sb || !writeUid) return;
+
+  try {
+    if (!normalizedClub) {
+      await sb.from("coach_selected_clubs").delete().eq("user_id", writeUid);
+      return;
+    }
+
+    await sb.from("coach_selected_clubs").upsert({
+      user_id: writeUid,
+      club_name: normalizedClub,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
   } catch {}
 }
 
@@ -465,31 +629,31 @@ function _coachTabTeamHeader(tabKey, options = null) {
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}${favBtn}</div>`;
 }
 
-function _coachEnsureTeamSelection() {
-  const options = _coachBuildClubTeamOptions();
+function _coachEnsureTeamSelection(options = null) {
+  const sourceOptions = Array.isArray(options) ? options : _coachBuildClubTeamOptions();
   const profileTeam = String(typeof currentProfile !== "undefined" ? currentProfile?.team_name || "" : "").trim();
 
-  if (!options.length) {
+  if (!sourceOptions.length) {
     if (!coachTeamInput && profileTeam) coachTeamInput = profileTeam;
-    return options;
+    return sourceOptions;
   }
 
-  let selectedClub = options.find(o => String(o.clubName) === String(coachClubInput || "")) || null;
+  let selectedClub = sourceOptions.find(o => String(o.clubName) === String(coachClubInput || "")) || null;
   let selectedTeam = String(coachTeamInput || "").trim();
 
   if (!selectedClub && selectedTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam) || _coachTeamLoose(t?.teamName || "", selectedTeam))) || null;
+    selectedClub = sourceOptions.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam) || _coachTeamLoose(t?.teamName || "", selectedTeam))) || null;
   }
 
   if (!selectedClub && profileTeam) {
-    selectedClub = options.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", profileTeam) || _coachTeamLoose(t?.teamName || "", profileTeam))) || null;
+    selectedClub = sourceOptions.find(o => (o.teams || []).some(t => _coachTeamEq(t?.teamName || "", profileTeam) || _coachTeamLoose(t?.teamName || "", profileTeam))) || null;
     if (selectedClub && !selectedTeam) {
       selectedTeam = ((selectedClub.teams || []).find(t => _coachTeamEq(t?.teamName || "", profileTeam))?.teamName) || profileTeam;
     }
   }
 
-  if (!selectedClub) selectedClub = options[0] || null;
-  if (!selectedClub) return options;
+  if (!selectedClub) selectedClub = sourceOptions[0] || null;
+  if (!selectedClub) return sourceOptions;
 
   const hasTeamInClub = selectedTeam
     ? (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam))
@@ -508,7 +672,7 @@ function _coachEnsureTeamSelection() {
       }
     }
   }
-  return options;
+  return sourceOptions;
 }
 
 function _coachFindLatestConvocatoria(clubName, teamName) {
@@ -574,8 +738,125 @@ function _coachRosterFromConvocatoria(clubName, teamName) {
     .filter((p, idx, arr) => arr.findIndex(x => teamMatchesCalendarExact(x.name, p.name)) === idx);
 }
 
-function _coachRosterFromTeam(teamName) {
+function _coachPlayerClubCandidates(player) {
+  const values = [
+    player?.clubName,
+    player?.club,
+    player?.club_name,
+    player?.registeredClub,
+    player?.teamClub,
+  ];
+
+  for (const stat of (player?.teamStats || [])) {
+    values.push(stat?.clubName, stat?.club, stat?.club_name, stat?.teamClub);
+  }
+
+  return [...new Set(values.map(v => String(v || "").trim()).filter(Boolean))];
+}
+
+function _coachMergeRosterPlayers(...lists) {
+  const deduped = [];
+  for (const list of lists) {
+    for (const player of (list || [])) {
+      const name = String(player?.name || "").trim();
+      if (!name) continue;
+      const exists = deduped.some(x => teamMatchesCalendarExact(x.name, name));
+      if (exists) continue;
+      deduped.push({
+        name,
+        pos: player?.pos || "MIG",
+        isStarter: player?.isStarter !== false,
+        side: player?.side || "D",
+      });
+    }
+  }
+
+  return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+}
+
+async function _coachLoadActaArchive() {
+  if (Array.isArray(coachActaArchiveCache)) return coachActaArchiveCache;
+  if (coachActaArchivePromise) return coachActaArchivePromise;
+
+  coachActaArchivePromise = Promise.all(
+    COACH_ACTA_ARCHIVE_FILES.map(async file => {
+      try {
+        const res = await fetch(file, { cache: "no-store" });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : Object.values(data || {});
+      } catch {
+        return [];
+      }
+    })
+  ).then(chunks => {
+    coachActaArchiveCache = chunks.flat().filter(Boolean);
+    coachActaArchivePromise = null;
+    return coachActaArchiveCache;
+  }).catch(() => {
+    coachActaArchiveCache = [];
+    coachActaArchivePromise = null;
+    return coachActaArchiveCache;
+  });
+
+  return coachActaArchivePromise;
+}
+
+async function _coachRosterFromActaArchive(clubName, teamName, category = "") {
   const wantedTeam = String(teamName || "").trim();
+  const wantedClub = String(clubName || "").trim();
+  const wantedCategory = String(category || "").trim();
+  const wantedCategoryLabel = wantedCategory
+    ? String((typeof CAT_LABELS !== "undefined" && CAT_LABELS[wantedCategory]) ? CAT_LABELS[wantedCategory] : wantedCategory).trim()
+    : "";
+  if (!wantedTeam) return [];
+
+  const archive = await _coachLoadActaArchive();
+  const roster = [];
+
+  for (const acta of (archive || [])) {
+    const home = String(acta?.home || "").trim();
+    const away = String(acta?.away || "").trim();
+    const title = String(acta?.title || "").trim();
+    const homeMatches = _coachTeamEq(home, wantedTeam) || _coachTeamLoose(home, wantedTeam);
+    const awayMatches = _coachTeamEq(away, wantedTeam) || _coachTeamLoose(away, wantedTeam);
+    if (!homeMatches && !awayMatches) continue;
+
+    const clubMatches = !wantedClub
+      || _coachTeamLoose(title, wantedClub)
+      || _coachTeamLoose(home, wantedClub)
+      || _coachTeamLoose(away, wantedClub)
+      || _coachSearchNorm(title).includes(_coachSearchNorm(wantedClub));
+    if (!clubMatches) continue;
+
+    const compText = `${String(acta?.compName || "")} ${String(acta?.actaMeta?.compName || "")}`.trim();
+    const categoryMatches = !wantedCategory
+      || _coachSearchNorm(compText).includes(_coachSearchNorm(wantedCategory))
+      || _coachSearchNorm(compText).includes(_coachSearchNorm(wantedCategoryLabel));
+    if (!categoryMatches) continue;
+
+    const sidePlayers = homeMatches
+      ? (acta?.playerStats?.homePlayers || [])
+      : (acta?.playerStats?.awayPlayers || []);
+
+    for (const player of sidePlayers) {
+      const name = String(player?.name || "").trim();
+      if (!name) continue;
+      roster.push({
+        name,
+        pos: /porter|gk/i.test(String(player?.position || "")) ? "PORT" : "MIG",
+        isStarter: true,
+        side: "D",
+      });
+    }
+  }
+
+  return _coachMergeRosterPlayers(roster);
+}
+
+function _coachRosterFromTeam(teamName, clubName = "") {
+  const wantedTeam = String(teamName || "").trim();
+  const wantedClub = String(clubName || "").trim();
   if (!wantedTeam) return [];
 
   const playerMap = (typeof DB !== "undefined" && DB?.jugadors) ? DB.jugadors : null;
@@ -597,6 +878,12 @@ function _coachRosterFromTeam(teamName) {
     const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam) || _coachTeamLoose(t, wantedTeam));
     if (!matchesTeam) continue;
 
+    const candidateClubs = _coachPlayerClubCandidates(p);
+    const matchesClub = !wantedClub
+      || !candidateClubs.length
+      || candidateClubs.some(c => _coachTeamEq(c, wantedClub) || _coachTeamLoose(c, wantedClub) || _coachSearchNorm(c) === _coachSearchNorm(wantedClub));
+    if (!matchesClub) continue;
+
     roster.push({
       name,
       pos: p?.isGK ? "PORT" : "MIG",
@@ -605,13 +892,15 @@ function _coachRosterFromTeam(teamName) {
     });
   }
 
-  const deduped = [];
-  for (const player of roster) {
-    const exists = deduped.some(x => teamMatchesCalendarExact(x.name, player.name));
-    if (!exists) deduped.push(player);
-  }
+  return _coachMergeRosterPlayers(roster);
+}
 
-  return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+async function _coachRosterForSelection(clubName, teamName, category = "") {
+  return _coachMergeRosterPlayers(
+    _coachRosterFromTeam(teamName, clubName),
+    _coachRosterFromConvocatoria(clubName, teamName),
+    await _coachRosterFromActaArchive(clubName, teamName, category)
+  );
 }
 
 function _cclone(value) {
@@ -924,7 +1213,9 @@ async function renderCoachPanel(clubSearchCursor) {
         Sessio BD no activa - cal login OTP
       </div>`;
 
-  const options = _coachEnsureTeamSelection();
+  let options = _coachBuildClubTeamOptions();
+  await _coachLoadSelectedClub(options);
+  options = _coachEnsureTeamSelection(options);
   await _coachLoadFavoriteTeams(options);
   const team = _cteam();
   const club = _cclub();
@@ -1001,11 +1292,13 @@ async function renderCoachPanel(clubSearchCursor) {
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderPlanningTab() {
   const selectedTeam = _cteam("planning");
+  const selectedChoice = _coachResolveTeamChoice("planning");
+  const selectedTeamIdentity = _coachTeamIdentityLabel(selectedChoice) || selectedTeam;
   if (!selectedTeam) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per veure i crear entrenaments.</div>`;
   }
 
-  if (!coachTrainingsLoaded || coachPlayerObjsTeam !== _cteam()) {
+  if (!coachTrainingsLoaded || coachTrainingsTeamKey !== selectedTeamIdentity) {
     await _loadTrainings();
   }
 
@@ -1037,6 +1330,10 @@ async function _renderPlanningTab() {
         const dur = t.duration_minutes
           ? `${Math.floor(t.duration_minutes / 60)}h${t.duration_minutes % 60 ? String(t.duration_minutes % 60).padStart(2, "0") + "'" : ""}`
           : "";
+        const source = String(t?._source || "coach");
+        const sourceChip = source === "coordinator"
+          ? `<span style="background:#ede9fe;color:#5b21b6;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Coordinator</span>`
+          : `<span style="background:#ecfdf5;color:#166534;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Entrenador</span>`;
         const badges = (t.pillars || []).map(pid => {
           const p = COACH_PILLARS.find(x => x.id === pid);
           return p ? `<span style="background:${p.color};color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700">${p.short}</span>` : "";
@@ -1046,11 +1343,15 @@ async function _renderPlanningTab() {
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035">${_cesc(t.plan_date || "")}</span>
               <span style="font-size:12px;color:#64748b">${dur}</span>
+              ${sourceChip}
               <div style="display:flex;gap:3px;flex-wrap:wrap">${badges}</div>
             </div>
             ${t.notes ? `<div style="font-size:12px;color:#64748b;line-height:1.4">${_cesc(t.notes)}</div>` : ""}
           </div>
-          <button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0">✕</button>
+          <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+            ${source === "coordinator" ? `<button onclick="coachLoadCoordinatorTrainingToForm('${_cesc(t.id)}')" title="Carregar al formulari" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;cursor:pointer;font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px">Carregar</button>` : ""}
+            ${source === "coach" ? `<button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px">✕</button>` : ""}
+          </div>
         </div>`;
       }).join("")
     : `<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Cap entrenament registrat per a aquest equip.</div>`;
@@ -1124,16 +1425,24 @@ async function _renderPlanningTab() {
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderObjectivesTab() {
   const team = _cteam("objectives");
+  const club = _cclub("objectives");
+  const category = _ccategory("objectives");
+  const choice = _coachResolveTeamChoice("objectives");
+  const teamIdentity = _coachTeamIdentityLabel(choice) || team;
   if (!team) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
   }
 
-  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== team) {
-    await _loadPlayerObjectives(team);
+  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== teamIdentity || coachPlayerObjsClub !== club) {
+    await _loadPlayerObjectives(teamIdentity, club);
   }
 
-  const rosterNames = _coachRosterFromTeam(team).map(p => p.name);
+  const rosterNames = (await _coachRosterForSelection(club, team, category)).map(p => p.name);
   const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
+  const selectedPlayerName = String(coachEditingPlayer || "").trim();
+  const playerSelectOptions = players.map(name =>
+    `<option value="${_cesc(name)}" ${name === selectedPlayerName ? "selected" : ""}>${_cesc(name)}</option>`
+  ).join("");
 
   /* Form — pre-fills from coachEditingPlayer if set */
   const editObj = coachEditingPlayer ? coachPlayerObjs[coachEditingPlayer] : null;
@@ -1159,6 +1468,10 @@ async function _renderObjectivesTab() {
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">
         ${coachEditingPlayer ? `Editant: ${_cesc(coachEditingPlayer)}` : "Afegir / Editar jugador"}
       </div>
+      <select onchange="coachPickObjectivePlayer(this.value)" style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;background:#fff">
+        <option value="">Selecciona jugador trobat...</option>
+        ${playerSelectOptions}
+      </select>
       <input id="coach-new-player" type="text" placeholder="Nom del jugador..." value="${_cesc(coachEditingPlayer || "")}"
         style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px"/>
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Valors per pilar (0 – 10)</div>
@@ -1184,14 +1497,14 @@ async function _renderObjectivesTab() {
           const svg = _spiderSVG({
             labels: COACH_PILLARS.map(p => p.short),
             datasets: [
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.baseline || 0)) },
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.target || 0)) },
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.progress || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.baseline || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.target || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.progress || 0)) },
             ],
           }, 210);
           /* Forecast: avg distance target→progress */
           const deltas = COACH_PILLARS.map(p => {
-            const d = obj.pillar_data?.[p.id] || {};
+            const d = obj?.pillar_data?.[p.id] || {};
             return (d.target || 0) - (d.progress || 0);
           });
           const avgGap = (deltas.reduce((s, v) => s + v, 0) / deltas.length).toFixed(1);
@@ -1212,8 +1525,11 @@ async function _renderObjectivesTab() {
       </div>`
     : `<div style="background:#fff;border-radius:14px;border:1px dashed #e2e6ef;padding:28px;text-align:center;color:#94a3b8;font-size:13px">Afegeix jugadors amb el formulari per veure la seva evolució.</div>`;
 
+  const categoryLabel = category
+    ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[category]) ? CAT_LABELS[category] : category)
+    : "";
   const rosterHint = team
-    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(team)}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
+    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(teamIdentity || [club, team, categoryLabel].filter(Boolean).join(" "))}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
     : "";
 
   return rosterHint + addForm + cards;
@@ -1771,13 +2087,58 @@ async function _loadTrainings() {
   coachTrainingsLoaded = true;
   const uid = await _cauthUid();
   if (!sb || !uid) return;
-  const team = _cteam("planning");
+  const choice = _coachResolveTeamChoice("planning");
+  const team = _coachTeamIdentityLabel(choice) || _cteam("planning");
+  coachTrainingsTeamKey = team;
+  const legacyTeam = _cteam("planning");
   if (!team) return;
   let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
   if (team) q = q.eq("team_name", team);
   q = q.order("plan_date", { ascending: true });
-  const { data, error } = await q;
-  if (!error && data) coachTrainings = data;
+  let { data, error } = await q;
+  if ((!data || !data.length) && legacyTeam && legacyTeam !== team) {
+    const fallback = await sb.from("coach_training_plans").select("*").eq("coach_user_id", uid).eq("team_name", legacyTeam).order("plan_date", { ascending: true });
+    data = fallback.data;
+    error = fallback.error;
+  }
+  if (!error && data) {
+    coachTrainings = data.map(row => ({ ...row, _source: "coach" }));
+  }
+
+  const clubName = String(choice?.clubName || _cclub("planning") || "").trim();
+  if (clubName && typeof loadCoordinatorTrainings === "function") {
+    try {
+      const byClub = loadCoordinatorTrainings(clubName) || [];
+      const fromCoordinator = byClub
+        .filter(t => {
+          if (typeof coordinatorTrainingMatchesTeam === "function") {
+            return coordinatorTrainingMatchesTeam(t, legacyTeam);
+          }
+          const names = Array.isArray(t?.teamNames) ? t.teamNames : [t?.teamName];
+          return names.map(n => String(n || "").trim()).includes(String(legacyTeam || "").trim());
+        })
+        .map(t => ({
+          id: `coord::${String(t?.id || "")}`,
+          plan_date: String(t?.date || ""),
+          duration_minutes: Number(t?.duration || 0) || 0,
+          pillars: [],
+          notes: [
+            String(t?.notes || "").trim(),
+            String(t?.location || "").trim() ? `Ubicacio: ${String(t.location).trim()}` : "",
+            String(t?.time || "").trim() ? `Hora: ${String(t.time).trim()}` : "",
+          ].filter(Boolean).join(" · "),
+          _source: "coordinator",
+          _coordinatorRaw: t,
+        }))
+        .filter(t => t.plan_date);
+
+      const existingCoachDates = new Set(coachTrainings.map(t => `${String(t.plan_date || "")}::${Number(t.duration_minutes || 0)}`));
+      for (const t of fromCoordinator) {
+        const k = `${String(t.plan_date || "")}::${Number(t.duration_minutes || 0)}`;
+        if (!existingCoachDates.has(k)) coachTrainings.push(t);
+      }
+    } catch {}
+  }
 }
 
 async function coachSaveTraining() {
@@ -1787,7 +2148,8 @@ async function coachSaveTraining() {
 
   const uid = await _coachAuthUidForWrite();
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
   if (!team) { setMsg("Indica primer l'equip.", "#e5001c"); return; }
   const date = (document.getElementById("coach-plan-date")?.value || coachPlanningDate).trim();
   if (!date) { setMsg("Selecciona una data.", "#e5001c"); return; }
@@ -1825,17 +2187,43 @@ async function coachDeleteTraining(id) {
   renderCoachPanel();
 }
 
-async function _loadPlayerObjectives(team) {
+function coachLoadCoordinatorTrainingToForm(id) {
+  const targetId = String(id || "").trim();
+  const found = coachTrainings.find(t => String(t?.id || "") === targetId && String(t?._source || "") === "coordinator");
+  if (!found) return;
+
+  coachPlanningDate = String(found.plan_date || coachPlanningDate || "").trim() || coachPlanningDate;
+  coachPlanningDuration = Number(found.duration_minutes || coachPlanningDuration || 90) || 90;
+  const existing = String(coachPlanningNotes || "").trim();
+  const imported = String(found.notes || "").trim();
+  coachPlanningNotes = [existing, imported].filter(Boolean).join(existing && imported ? "\n" : "");
+
+  renderCoachPanel();
+  const msg = document.getElementById("coach-plan-msg");
+  if (msg) {
+    msg.style.color = "#1d4ed8";
+    msg.textContent = "Entrenament de coordinador carregat. Afegeix pilars/dimensions i desa.";
+  }
+}
+
+async function _loadPlayerObjectives(team, clubName = "") {
   const sb = _csb();
   coachPlayerObjs       = {};
   coachPlayerObjsTeam   = team || "";
+  coachPlayerObjsClub   = clubName || "";
   coachPlayerObjsLoaded = true;
   const uid = await _cauthUid();
   if (!sb || !uid) return;
   if (!team) return;
   let q = sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid);
   if (team !== null && team !== undefined) q = q.eq("team_name", team);
-  const { data, error } = await q;
+  let { data, error } = await q;
+  const legacyTeam = _cteam("objectives");
+  if ((!data || !data.length) && legacyTeam && legacyTeam !== team) {
+    const fallback = await sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid).eq("team_name", legacyTeam);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (!error && data) {
     for (const row of data) {
       coachPlayerObjs[row.player_name] = { id: row.id, pillar_data: row.pillar_data || {}, notes: row.notes };
@@ -1852,7 +2240,8 @@ async function coachSavePlayerObjective() {
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
   const name = (document.getElementById("coach-new-player")?.value || "").trim();
   if (!name) { setMsg("Introdueix el nom del jugador.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
 
   const pillarData = {};
   for (const p of COACH_PILLARS) {
@@ -1869,7 +2258,7 @@ async function coachSavePlayerObjective() {
 
   if (existing?.id) {
     ({ error } = await sb.from("coach_player_objectives")
-      .update({ pillar_data: pillarData, updated_at: new Date().toISOString() })
+      .update({ team_name: team, pillar_data: pillarData, updated_at: new Date().toISOString() })
       .eq("id", existing.id)
       .eq("coach_user_id", uid));
   } else {
@@ -1888,7 +2277,7 @@ async function coachSavePlayerObjective() {
     setMsg("✓ Objectius desats.", "#16a34a");
     coachEditingPlayer    = null;
     coachPlayerObjsLoaded = false;
-    await _loadPlayerObjectives(team);
+    await _loadPlayerObjectives(team, choice?.clubName || "");
     renderCoachPanel();
   }
 }
@@ -1905,7 +2294,9 @@ async function coachDeletePlayerObj(playerName) {
   }
   if (error) { alert("Error: " + error.message); return; }
   coachPlayerObjsLoaded = false;
-  await _loadPlayerObjectives(_cteam());
+  const choice = _coachResolveTeamChoice();
+  const teamIdentity = _coachTeamIdentityLabel(choice) || _cteam();
+  await _loadPlayerObjectives(teamIdentity, choice?.clubName || "");
   renderCoachPanel();
 }
 
@@ -1916,7 +2307,8 @@ async function coachSaveMatchEvents() {
 
   const uid = await _cauthUid();
   if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
   if (!team) { setMsg("Indica l'equip.", "#e5001c"); return; }
   setMsg("Desant...");
 
@@ -1950,8 +2342,14 @@ async function coachSaveMatchEvents() {
 ══════════════════════════════════════════════════════════════════════════ */
 
 function coachSetTeam(val) {
+  const resolved = _coachResolveTeamChoiceByValue(val);
+  if (resolved?.clubName) {
+    coachClubInput = resolved.clubName;
+    coachClubSearch = resolved.clubName;
+    Promise.resolve(_coachPersistSelectedClub(resolved.clubName));
+  }
   coachTeamInput = _coachTeamFromOptionValue(val);
-  _coachApplyTabTeamValue(coachPanelTab, String(val || "").trim());
+  _coachApplyTabTeamValue(coachPanelTab, String(resolved?.optionValue || val || "").trim());
   renderCoachPanel();
 }
 
@@ -1975,6 +2373,7 @@ function coachSetClub(val) {
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
   coachEditingPlayer = null;
+  Promise.resolve(_coachPersistSelectedClub(coachClubInput));
   renderCoachPanel();
 }
 
@@ -2054,6 +2453,17 @@ function coachEditPlayer(name) {
   coachEditingPlayer = name;
   renderCoachPanel();
   setTimeout(() => document.getElementById("coach-new-player")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
+}
+
+function coachPickObjectivePlayer(name) {
+  const picked = String(name || "").trim();
+  if (!picked) {
+    coachEditingPlayer = null;
+    renderCoachPanel();
+    return;
+  }
+  coachEditingPlayer = picked;
+  renderCoachPanel();
 }
 
 function coachClearEditingPlayer() {
@@ -2427,9 +2837,11 @@ window.coachToggleFavoriteSelectedTeam = coachToggleFavoriteSelectedTeam;
 window.coachTogglePillar       = coachTogglePillar;
 window.coachSaveTraining       = coachSaveTraining;
 window.coachDeleteTraining     = coachDeleteTraining;
+window.coachLoadCoordinatorTrainingToForm = coachLoadCoordinatorTrainingToForm;
 window.coachSavePlayerObjective  = coachSavePlayerObjective;
 window.coachDeletePlayerObj    = coachDeletePlayerObj;
 window.coachEditPlayer         = coachEditPlayer;
+window.coachPickObjectivePlayer = coachPickObjectivePlayer;
 window.coachClearEditingPlayer = coachClearEditingPlayer;
 window.coachAddPlayerToLineup  = coachAddPlayerToLineup;
 window.coachRemovePlayer       = coachRemovePlayer;
