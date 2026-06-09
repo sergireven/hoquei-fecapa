@@ -1478,14 +1478,14 @@ async function _renderObjectivesTab() {
           const svg = _spiderSVG({
             labels: COACH_PILLARS.map(p => p.short),
             datasets: [
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.baseline || 0)) },
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.target || 0)) },
-              { data: COACH_PILLARS.map(p => Number(obj.pillar_data?.[p.id]?.progress || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.baseline || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.target || 0)) },
+              { data: COACH_PILLARS.map(p => Number(obj?.pillar_data?.[p.id]?.progress || 0)) },
             ],
           }, 210);
           /* Forecast: avg distance target→progress */
           const deltas = COACH_PILLARS.map(p => {
-            const d = obj.pillar_data?.[p.id] || {};
+            const d = obj?.pillar_data?.[p.id] || {};
             return (d.target || 0) - (d.progress || 0);
           });
           const avgGap = (deltas.reduce((s, v) => s + v, 0) / deltas.length).toFixed(1);
