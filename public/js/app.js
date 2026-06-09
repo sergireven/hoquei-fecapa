@@ -114,6 +114,7 @@ const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
 let loginAuthMode = "signin";
+let pendingRecoveryFlow = false;
 
 const ROLE_OPTIONS = ["", "entrenador", "coordinador", "gestor_botiga", "admin"];
 const ROLE_LABELS = {
@@ -452,9 +453,18 @@ async function getAuthenticatedUser() {
   return data?.user || null;
 }
 
+function hasRecoveryParamsInUrl() {
+  const hashParams = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+  const queryParams = new URLSearchParams(String(window.location.search || "").replace(/^\?/, ""));
+  const hashType = String(hashParams.get("type") || "").toLowerCase();
+  const queryType = String(queryParams.get("type") || "").toLowerCase();
+  return hashType === "recovery" || queryType === "recovery";
+}
+
 async function initAuth() {
   if (!_sb) return;
   clearRememberedProfile();
+  pendingRecoveryFlow = hasRecoveryParamsInUrl();
   try {
     const user = await getAuthenticatedUser();
     if (user) await _loadProfile(user);
@@ -465,6 +475,7 @@ async function initAuth() {
 
   _sb.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
+      pendingRecoveryFlow = true;
       openLoginModal();
       setLoginMode("recovery");
       renderHome();
@@ -477,6 +488,11 @@ async function initAuth() {
     }
     renderHome();
   });
+
+  if (pendingRecoveryFlow) {
+    openLoginModal();
+    setLoginMode("recovery");
+  }
 }
 
 async function _loadProfile(user) {
@@ -652,6 +668,12 @@ async function submitAuthForm() {
   else msg.textContent = "Validant credencials...";
 
   if (loginAuthMode === "recovery") {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      msg.style.color = "#e5001c";
+      msg.textContent = "No s'ha detectat una sessió de recuperació vàlida. Torna a obrir l'enllaç del correu.";
+      return;
+    }
     const { error } = await _sb.auth.updateUser({ password });
     if (error) {
       msg.style.color = "#e5001c";
@@ -660,6 +682,7 @@ async function submitAuthForm() {
     }
     msg.style.color = "#16a34a";
     msg.textContent = "✓ Nova contrasenya desada. Ja pots entrar amb password.";
+    pendingRecoveryFlow = false;
     setLoginMode("signin");
     return;
   }
