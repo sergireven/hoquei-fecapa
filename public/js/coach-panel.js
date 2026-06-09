@@ -513,9 +513,14 @@ function _coachEnsureTeamSelection() {
 
 function _coachFindLatestConvocatoria(clubName, teamName) {
   const store = _coachLoadConvocatoriaStore();
-  const prefix = `${String(clubName || "").trim()}::${String(teamName || "").trim()}::`;
+  const wantedClub = String(clubName || "").trim();
+  const wantedTeam = String(teamName || "").trim();
+  const prefix = `${wantedClub}::${wantedTeam}::`;
   let latest = null;
   let latestTs = 0;
+  const candidates = [];
+
+  // Fast path: exact key prefix (legacy behavior).
   for (const [key, convocatoria] of Object.entries(store || {})) {
     if (!String(key).startsWith(prefix)) continue;
     const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
@@ -524,7 +529,33 @@ function _coachFindLatestConvocatoria(clubName, teamName) {
       latest = convocatoria;
     }
   }
-  return latest;
+  if (latest) return latest;
+
+  // Fallback: tolerant club/team matching to support naming variants.
+  for (const [key, convocatoria] of Object.entries(store || {})) {
+    const parts = String(key || "").split("::");
+    if (parts.length < 2) continue;
+    const keyClub = String(parts[0] || "").trim();
+    const keyTeam = String(parts[1] || "").trim();
+
+    const teamMatches = _coachTeamEq(keyTeam, wantedTeam) || _coachTeamLoose(keyTeam, wantedTeam);
+    if (!teamMatches) continue;
+
+    const clubMatches = !wantedClub
+      || _coachTeamEq(keyClub, wantedClub)
+      || _coachTeamLoose(keyClub, wantedClub)
+      || _coachSearchNorm(keyClub) === _coachSearchNorm(wantedClub);
+
+    const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
+    candidates.push({ convocatoria, ts, clubMatches });
+  }
+
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => {
+    if (a.clubMatches !== b.clubMatches) return a.clubMatches ? -1 : 1;
+    return b.ts - a.ts;
+  });
+  return candidates[0].convocatoria || null;
 }
 
 function _coachRosterFromConvocatoria(clubName, teamName) {
@@ -541,6 +572,46 @@ function _coachRosterFromConvocatoria(clubName, teamName) {
     }))
     .filter(p => p.name)
     .filter((p, idx, arr) => arr.findIndex(x => teamMatchesCalendarExact(x.name, p.name)) === idx);
+}
+
+function _coachRosterFromTeam(teamName) {
+  const wantedTeam = String(teamName || "").trim();
+  if (!wantedTeam) return [];
+
+  const playerMap = (typeof DB !== "undefined" && DB?.jugadors) ? DB.jugadors : null;
+  if (!playerMap || typeof playerMap !== "object") return [];
+
+  const roster = [];
+  for (const p of Object.values(playerMap)) {
+    const name = String(p?.name || "").trim();
+    if (!name) continue;
+
+    const candidateTeams = [];
+    const regTeam = String(p?.registeredTeam || "").trim();
+    if (regTeam) candidateTeams.push(regTeam);
+    for (const stat of (p?.teamStats || [])) {
+      const statTeam = String(stat?.team || "").trim();
+      if (statTeam) candidateTeams.push(statTeam);
+    }
+
+    const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam) || _coachTeamLoose(t, wantedTeam));
+    if (!matchesTeam) continue;
+
+    roster.push({
+      name,
+      pos: p?.isGK ? "PORT" : "MIG",
+      isStarter: true,
+      side: "D",
+    });
+  }
+
+  const deduped = [];
+  for (const player of roster) {
+    const exists = deduped.some(x => teamMatchesCalendarExact(x.name, player.name));
+    if (!exists) deduped.push(player);
+  }
+
+  return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 }
 
 function _cclone(value) {
@@ -1053,7 +1124,6 @@ async function _renderPlanningTab() {
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderObjectivesTab() {
   const team = _cteam("objectives");
-  const club = _cclub("objectives");
   if (!team) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
   }
@@ -1062,7 +1132,7 @@ async function _renderObjectivesTab() {
     await _loadPlayerObjectives(team);
   }
 
-  const rosterNames = _coachRosterFromConvocatoria(club, team).map(p => p.name);
+  const rosterNames = _coachRosterFromTeam(team).map(p => p.name);
   const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
 
   /* Form — pre-fills from coachEditingPlayer if set */
