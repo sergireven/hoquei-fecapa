@@ -215,20 +215,72 @@ function _coachSearchNorm(value) {
     .trim();
 }
 
+function _coachTeamKey(teamNameOrKey, category = "") {
+  const raw = String(teamNameOrKey || "").trim();
+  if (!raw) return `name:::cat:${normalizeCompKey(category || "altres")}`;
+  if (raw.includes("::cat:")) return raw;
+  const name = raw.toLowerCase().replace(/\s+/g, " ").trim();
+  return `name:${name}::cat:${normalizeCompKey(category || "altres")}`;
+}
+
 function _coachOptionValue(teamName, category = "", clubName = "") {
-  return `${String(teamName || "")}|||${String(category || "")}|||${String(clubName || "")}`;
+  return `${_coachSeasonKey()}|||${String(clubName || "")}|||${_coachTeamKey(teamName, category)}`;
 }
 
 function _coachTeamFromOptionValue(value) {
-  return String(value || "").split("|||")[0]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  const key = String(parts[2] || parts[0] || "").trim();
+  if (!key) return "";
+  if (key.startsWith("name:")) return key.slice(5).split("::cat:")[0].trim();
+  if (key.startsWith("id:")) return key.slice(3).split("::cat:")[0].trim();
+  if (key.includes("::cat:")) return key.split("::cat:")[0].replace(/^name:/, "").trim();
+  return key;
 }
 
 function _coachCategoryFromOptionValue(value) {
-  return String(value || "").split("|||")[1]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) {
+    const match = String(parts[2] || "").match(/::cat:([^:]+)$/);
+    return match?.[1]?.trim() || "";
+  }
+  return String(parts[1] || "").trim() || "";
 }
 
 function _coachClubFromOptionValue(value) {
-  return String(value || "").split("|||")[2]?.trim() || "";
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[1] || "").trim() || "";
+  if (parts.length >= 3) return String(parts[2] || "").trim() || "";
+  return String(parts[1] || "").trim() || "";
+}
+
+function _coachSeasonKey() {
+  return String(typeof activeSeasonKey !== "undefined" ? activeSeasonKey || "current" : "current").trim() || "current";
+}
+
+function _coachSeasonFromOptionValue(value) {
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[0] || "").trim() || "";
+  return "";
+}
+
+function _coachSeasonLabel() {
+  if (typeof getSeasonLabelFromData === "function") {
+    const label = String(getSeasonLabelFromData(typeof DB !== "undefined" ? DB : null, "") || "").trim();
+    if (label) return label.replace(/-/g, "/");
+  }
+  const raw = _coachSeasonKey();
+  if (raw === "current") return "2025/26";
+  return raw.replace(/^(\d{4})-(\d{2,4})$/, (_, y, end) => `${y}/${String(end || "").slice(-2)}`);
+}
+
+function _coachTeamIdentityLabel(choice = null) {
+  const club = String(choice?.clubName || coachClubInput || "").trim();
+  const categoryKey = String(choice?.category || "").trim();
+  const categoryLabel = categoryKey
+    ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[categoryKey]) ? CAT_LABELS[categoryKey] : categoryKey)
+    : "";
+  const seasonLabel = _coachSeasonLabel();
+  return [club, categoryLabel, seasonLabel].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 }
 
 function _coachLoadConvocatoriaStore() {
@@ -262,7 +314,7 @@ function _coachBuildClubTeamOptions() {
     if (!teamKey) return;
     const prev = entry.teams.get(teamKey);
     if (!prev) {
-      entry.teams.set(teamKey, { teamName: team, category: cat, optionValue: _coachOptionValue(team, cat, club) });
+      entry.teams.set(teamKey, { teamName: team, category: cat, teamKey, seasonKey: _coachSeasonKey(), optionValue: _coachOptionValue(team, cat, club) });
       return;
     }
     if (!prev.category && cat) prev.category = cat;
@@ -305,7 +357,7 @@ function _coachFlattenTeamChoices(options = null) {
       const category = String(team?.category || "").trim();
       const clubName = String(club?.clubName || "").trim();
       const optionValue = String(team?.optionValue || _coachOptionValue(teamName, category, clubName));
-      out.push({ clubName, teamName, category, optionValue });
+      out.push({ clubName, teamName, category, teamKey: String(team?.teamKey || "").trim(), seasonKey: String(team?.seasonKey || _coachSeasonKey()).trim(), optionValue });
     }
   }
   return out;
@@ -317,15 +369,19 @@ function _coachResolveTeamChoiceByValue(optionValue, options = null) {
   const found = flat.find(x => String(x.optionValue) === wanted);
   if (found) return found;
 
+  const season = _coachSeasonFromOptionValue(wanted);
+  const club = _coachClubFromOptionValue(wanted);
+  const teamKey = _coachTeamFromOptionValue(wanted);
   const team = _coachTeamFromOptionValue(wanted);
   const category = _coachCategoryFromOptionValue(wanted);
-  const club = _coachClubFromOptionValue(wanted);
-  const byTeam = flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category && String(x.clubName || "") === club)
+  const byTeam = flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey && String(x.clubName || "") === club)
+    || flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey)
+    || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category && String(x.clubName || "") === club)
     || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category)
     || flat.find(x => _coachTeamEq(x.teamName, team));
   if (byTeam) return byTeam;
   if (!team) return null;
-  return { teamName: team, category, clubName: club, optionValue: _coachOptionValue(team, category, club) };
+  return { teamName: team, category, clubName: club, teamKey, seasonKey: season || _coachSeasonKey(), optionValue: _coachOptionValue(teamKey || team, category, club) };
 }
 
 function _coachResolveTeamChoice(tabKey = coachPanelTab, options = null) {
@@ -1360,12 +1416,14 @@ async function _renderObjectivesTab() {
   const team = _cteam("objectives");
   const club = _cclub("objectives");
   const category = _ccategory("objectives");
+  const choice = _coachResolveTeamChoice("objectives");
+  const teamIdentity = _coachTeamIdentityLabel(choice) || team;
   if (!team) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
   }
 
-  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== team || coachPlayerObjsClub !== club) {
-    await _loadPlayerObjectives(team, club);
+  if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== teamIdentity || coachPlayerObjsClub !== club) {
+    await _loadPlayerObjectives(teamIdentity, club);
   }
 
   const rosterNames = (await _coachRosterForSelection(club, team, category)).map(p => p.name);
@@ -1452,7 +1510,7 @@ async function _renderObjectivesTab() {
     ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[category]) ? CAT_LABELS[category] : category)
     : "";
   const rosterHint = team
-    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc([club, team, categoryLabel].filter(Boolean).join(" · "))}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
+    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(teamIdentity || [club, team, categoryLabel].filter(Boolean).join(" "))}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
     : "";
 
   return rosterHint + addForm + cards;
@@ -2010,12 +2068,19 @@ async function _loadTrainings() {
   coachTrainingsLoaded = true;
   const uid = await _cauthUid();
   if (!sb || !uid) return;
-  const team = _cteam("planning");
+  const choice = _coachResolveTeamChoice("planning");
+  const team = _coachTeamIdentityLabel(choice) || _cteam("planning");
+  const legacyTeam = _cteam("planning");
   if (!team) return;
   let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
   if (team) q = q.eq("team_name", team);
   q = q.order("plan_date", { ascending: true });
-  const { data, error } = await q;
+  let { data, error } = await q;
+  if ((!data || !data.length) && legacyTeam && legacyTeam !== team) {
+    const fallback = await sb.from("coach_training_plans").select("*").eq("coach_user_id", uid).eq("team_name", legacyTeam).order("plan_date", { ascending: true });
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (!error && data) coachTrainings = data;
 }
 
@@ -2026,7 +2091,8 @@ async function coachSaveTraining() {
 
   const uid = await _coachAuthUidForWrite();
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
   if (!team) { setMsg("Indica primer l'equip.", "#e5001c"); return; }
   const date = (document.getElementById("coach-plan-date")?.value || coachPlanningDate).trim();
   if (!date) { setMsg("Selecciona una data.", "#e5001c"); return; }
@@ -2075,7 +2141,13 @@ async function _loadPlayerObjectives(team, clubName = "") {
   if (!team) return;
   let q = sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid);
   if (team !== null && team !== undefined) q = q.eq("team_name", team);
-  const { data, error } = await q;
+  let { data, error } = await q;
+  const legacyTeam = _cteam("objectives");
+  if ((!data || !data.length) && legacyTeam && legacyTeam !== team) {
+    const fallback = await sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid).eq("team_name", legacyTeam);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (!error && data) {
     for (const row of data) {
       coachPlayerObjs[row.player_name] = { id: row.id, pillar_data: row.pillar_data || {}, notes: row.notes };
@@ -2092,7 +2164,8 @@ async function coachSavePlayerObjective() {
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
   const name = (document.getElementById("coach-new-player")?.value || "").trim();
   if (!name) { setMsg("Introdueix el nom del jugador.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
 
   const pillarData = {};
   for (const p of COACH_PILLARS) {
@@ -2109,7 +2182,7 @@ async function coachSavePlayerObjective() {
 
   if (existing?.id) {
     ({ error } = await sb.from("coach_player_objectives")
-      .update({ pillar_data: pillarData, updated_at: new Date().toISOString() })
+      .update({ team_name: team, pillar_data: pillarData, updated_at: new Date().toISOString() })
       .eq("id", existing.id)
       .eq("coach_user_id", uid));
   } else {
@@ -2128,7 +2201,7 @@ async function coachSavePlayerObjective() {
     setMsg("✓ Objectius desats.", "#16a34a");
     coachEditingPlayer    = null;
     coachPlayerObjsLoaded = false;
-    await _loadPlayerObjectives(team);
+    await _loadPlayerObjectives(team, choice?.clubName || "");
     renderCoachPanel();
   }
 }
@@ -2145,7 +2218,9 @@ async function coachDeletePlayerObj(playerName) {
   }
   if (error) { alert("Error: " + error.message); return; }
   coachPlayerObjsLoaded = false;
-  await _loadPlayerObjectives(_cteam());
+  const choice = _coachResolveTeamChoice();
+  const teamIdentity = _coachTeamIdentityLabel(choice) || _cteam();
+  await _loadPlayerObjectives(teamIdentity, choice?.clubName || "");
   renderCoachPanel();
 }
 
@@ -2156,7 +2231,8 @@ async function coachSaveMatchEvents() {
 
   const uid = await _cauthUid();
   if (!sb || !uid) { setMsg("Sessió no activa. Torna a iniciar sessió.", "#e5001c"); return; }
-  const team = _cteam();
+  const choice = _coachResolveTeamChoice();
+  const team = _coachTeamIdentityLabel(choice) || _cteam();
   if (!team) { setMsg("Indica l'equip.", "#e5001c"); return; }
   setMsg("Desant...");
 
