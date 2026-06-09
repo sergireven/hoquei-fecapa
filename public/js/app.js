@@ -106,14 +106,14 @@ const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: "pkce",
+    detectSessionInUrl: false,
   },
 });
 const LOCAL_REMEMBER_PROFILE_KEY = "hoquei_user_v2";
 const USER_LOCATION_KEY = "hoquei_user_location_v1";
 let currentUser    = null;
 let currentProfile = null;
+let loginAuthMode = "signin";
 
 const ROLE_OPTIONS = ["", "entrenador", "coordinador", "gestor_botiga", "admin"];
 const ROLE_LABELS = {
@@ -437,70 +437,37 @@ function estimateTravelForDestination(destinationText) {
   };
 }
 
-function saveRememberedProfile(profile) {
-  try {
-    const payload = {
-      id: String(profile?.id || ""),
-      email: String(profile?.email || ""),
-      roles: getProfileRoles(profile),
-      role: String(profile?.role || ""),
-      team_name: String(profile?.team_name || ""),
-      savedAt: new Date().toISOString(),
-    };
-    if (!payload.id || !payload.email) return;
-    localStorage.setItem(LOCAL_REMEMBER_PROFILE_KEY, JSON.stringify(payload));
-  } catch {}
-}
-
-function loadRememberedProfile() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LOCAL_REMEMBER_PROFILE_KEY) || "null");
-    if (!parsed?.id || !parsed?.email) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 function clearRememberedProfile() {
   localStorage.removeItem(LOCAL_REMEMBER_PROFILE_KEY);
 }
 
+function clearAuthState() {
+  currentUser = null;
+  currentProfile = null;
+}
+
+async function getAuthenticatedUser() {
+  const { data, error } = await _sb.auth.getUser();
+  if (error) return null;
+  return data?.user || null;
+}
+
 async function initAuth() {
   if (!_sb) return;
+  clearRememberedProfile();
   try {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (session?.user) {
-      await _loadProfile(session.user);
-    } else {
-      const remembered = loadRememberedProfile();
-      if (remembered?.id && remembered?.email) {
-        const profile = await refreshProfileRoles(remembered);
-        currentProfile = profile;
-        currentUser = { id: profile.id, email: profile.email };
-      } else {
-        currentUser = null;
-        currentProfile = null;
-      }
-    }
+    const user = await getAuthenticatedUser();
+    if (user) await _loadProfile(user);
+    else clearAuthState();
   } catch {
-    currentUser = null;
-    currentProfile = null;
+    clearAuthState();
   }
 
   _sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       await _loadProfile(session.user);
     } else {
-      const remembered = loadRememberedProfile();
-      if (remembered?.id && remembered?.email) {
-        const profile = await refreshProfileRoles(remembered);
-        currentProfile = profile;
-        currentUser = { id: profile.id, email: profile.email };
-      } else {
-        currentUser = null;
-        currentProfile = null;
-      }
+      clearAuthState();
     }
     renderHome();
   });
@@ -514,11 +481,9 @@ async function _loadProfile(user) {
     currentProfile = profile;
     const profileLoc = getProfileLocation(profile);
     if (profileLoc) setCurrentUserLocation(profileLoc);
-    saveRememberedProfile(profile);
     await loadFavsFromCloud();
   } else {
     currentProfile = { id: user.id, email: user.email || "" };
-    saveRememberedProfile(currentProfile);
   }
 }
 
@@ -594,14 +559,22 @@ function openLoginModal() {
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#1a2035">Accés a l'app</div>
         <button onclick="closeLoginModal()" style="background:#f0f4f8;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px">✕</button>
       </div>
-      <p style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5">Introdueix el teu e-mail per accedir.</p>
-      <form onsubmit="event.preventDefault();loginWithEmail()">
+      <p id="login-mode-desc" style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5">Inicia sessió amb e-mail i contrasenya.</p>
+      <form onsubmit="event.preventDefault();submitAuthForm()">
         <input id="login-email-input" type="email" placeholder="el-teu@email.com" autocomplete="email"
           style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
-        <button type="submit" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Accedir</button>
+        <input id="login-password-input" type="password" placeholder="Contrasenya" autocomplete="current-password"
+          style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
+        <div id="login-password-confirm-wrap" style="display:none">
+          <input id="login-password-confirm-input" type="password" placeholder="Repeteix la contrasenya" autocomplete="new-password"
+            style="width:100%;padding:12px 14px;border:1.5px solid #e2e6ef;border-radius:12px;font-size:15px;margin-bottom:12px;outline:none"/>
+        </div>
+        <button id="login-submit-btn" type="submit" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Entrar</button>
       </form>
+      <button id="login-toggle-mode-btn" type="button" onclick="toggleAuthMode()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:14px;padding:11px;border-radius:12px;cursor:pointer">No tens compte? Crea'l</button>
       <div id="login-msg" style="margin-top:8px;text-align:center;font-size:13px;color:#64748b"></div>
     </div>`;
+  setLoginMode("signin");
   $("login-modal-bd").style.display = "block";
   $("login-modal").classList.add("lm-open");
   setTimeout(() => $("login-email-input")?.focus(), 300);
@@ -611,18 +584,83 @@ function closeLoginModal() {
   $("login-modal-bd").style.display = "none";
 }
 
-async function loginWithEmail() {
+function setLoginMode(mode) {
+  loginAuthMode = mode === "signup" ? "signup" : "signin";
+  const confirmWrap = $("login-password-confirm-wrap");
+  const submitBtn = $("login-submit-btn");
+  const toggleBtn = $("login-toggle-mode-btn");
+  const desc = $("login-mode-desc");
+  const pass = $("login-password-input");
+  const msg = $("login-msg");
+
+  if (confirmWrap) confirmWrap.style.display = loginAuthMode === "signup" ? "block" : "none";
+  if (submitBtn) submitBtn.textContent = loginAuthMode === "signup" ? "Crear compte" : "Entrar";
+  if (toggleBtn) toggleBtn.textContent = loginAuthMode === "signup" ? "Ja tens compte? Entra" : "No tens compte? Crea'l";
+  if (desc) {
+    desc.textContent = loginAuthMode === "signup"
+      ? "Crea un compte segur amb e-mail i contrasenya."
+      : "Inicia sessió amb e-mail i contrasenya.";
+  }
+  if (pass) pass.autocomplete = loginAuthMode === "signup" ? "new-password" : "current-password";
+  if (msg) { msg.style.color = "#64748b"; msg.textContent = ""; }
+}
+
+function toggleAuthMode() {
+  setLoginMode(loginAuthMode === "signin" ? "signup" : "signin");
+}
+
+async function submitAuthForm() {
   const email = $("login-email-input")?.value?.trim();
+  const password = $("login-password-input")?.value || "";
+  const passwordConfirm = $("login-password-confirm-input")?.value || "";
   const msg   = $("login-msg");
   if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
+  if (password.length < 8) { msg.style.color = "#e5001c"; msg.textContent = "La contrasenya ha de tenir almenys 8 caràcters."; return; }
 
-  msg.textContent = "Enviant enllaç d'accés...";
-  const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
-  if (error) { msg.style.color = "#e5001c"; msg.textContent = "Error: " + error.message; }
-  else       { msg.style.color = "#16a34a"; msg.textContent = "✓ T'hem enviat un enllaç. En obrir-lo, la sessió quedarà guardada automàticament."; }
+  if (loginAuthMode === "signup" && password !== passwordConfirm) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Les contrasenyes no coincideixen.";
+    return;
+  }
+
+  msg.style.color = "#64748b";
+  msg.textContent = loginAuthMode === "signup" ? "Creant compte..." : "Validant credencials...";
+
+  if (loginAuthMode === "signup") {
+    const { data, error } = await _sb.auth.signUp({ email, password });
+    if (error) {
+      msg.style.color = "#e5001c";
+      msg.textContent = "Error: " + error.message;
+      return;
+    }
+    if (data?.session) {
+      msg.style.color = "#16a34a";
+      msg.textContent = "✓ Compte creat i sessió iniciada.";
+      closeLoginModal();
+      return;
+    }
+    msg.style.color = "#16a34a";
+    msg.textContent = "✓ Compte creat. Revisa el teu e-mail per confirmar el registre.";
+    return;
+  }
+
+  const { error } = await _sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Error: " + error.message;
+    return;
+  }
+
+  msg.style.color = "#16a34a";
+  msg.textContent = "✓ Sessió iniciada.";
+  closeLoginModal();
 }
-window.loginWithEmail = loginWithEmail;
-window.sendMagicLink  = loginWithEmail; // alias
+
+window.submitAuthForm = submitAuthForm;
+window.setLoginMode = setLoginMode;
+window.toggleAuthMode = toggleAuthMode;
+window.loginWithEmail = submitAuthForm;
+window.sendMagicLink  = submitAuthForm;
 
 if (typeof window.openCoachPanel !== "function") {
   window.openCoachPanel = function () {
@@ -740,7 +778,7 @@ async function saveUserLocation() {
 async function signOut() {
   clearRememberedProfile();
   await _sb?.auth.signOut();
-  currentUser = null; currentProfile = null;
+  clearAuthState();
   closeUserModal();
   renderHome();
 }
