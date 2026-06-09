@@ -180,6 +180,16 @@ function _coachSearchNorm(value) {
     .trim();
 }
 
+function _coachOptionValue(teamName, category = "") {
+  return `${String(teamName || "")}|||${String(category || "")}`;
+}
+
+function _coachTeamFromOptionValue(value) {
+  const raw = String(value || "");
+  const idx = raw.indexOf("|||");
+  return idx >= 0 ? raw.slice(0, idx).trim() : raw.trim();
+}
+
 function _coachLoadConvocatoriaStore() {
   try {
     return JSON.parse(localStorage.getItem(COACH_CONVOCATORIA_CACHE_KEY) || "{}");
@@ -190,10 +200,11 @@ function _coachLoadConvocatoriaStore() {
 
 function _coachBuildClubTeamOptions() {
   const map = new Map();
-  const addPair = (clubName, teamName, category = "") => {
+  const addPair = (clubName, teamName, category = "", uniqueKey = "") => {
     const club = String(clubName || "").trim();
     const team = String(teamName || "").trim();
     const cat = String(category || "").trim();
+    const uniq = String(uniqueKey || "").trim();
     if (!club || !team) return;
 
     const clubKey = _coachSearchNorm(club);
@@ -206,11 +217,11 @@ function _coachBuildClubTeamOptions() {
       entry.clubName = club;
     }
 
-    const teamKey = _coachSearchNorm(team);
+    const teamKey = uniq || `${_coachSearchNorm(team)}::${_coachSearchNorm(cat)}`;
     if (!teamKey) return;
     const prev = entry.teams.get(teamKey);
     if (!prev) {
-      entry.teams.set(teamKey, { teamName: team, category: cat });
+      entry.teams.set(teamKey, { teamName: team, category: cat, optionValue: _coachOptionValue(team, cat) });
       return;
     }
     if (!prev.category && cat) prev.category = cat;
@@ -221,7 +232,7 @@ function _coachBuildClubTeamOptions() {
       const clubMap = buildClubMap();
       for (const [, club] of clubMap.entries()) {
         for (const t of (club?.teams || [])) {
-          addPair(club?.displayName || "", t?.teamName || "", t?.category || "");
+          addPair(club?.displayName || "", t?.teamName || "", t?.category || "", t?.teamKey || "");
         }
       }
     } catch {
@@ -633,7 +644,8 @@ async function renderCoachPanel(clubSearchCursor) {
       : "";
     const teamLabel = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(teamName) : teamName;
     const label = categoryLabel ? `${teamLabel} · ${categoryLabel}` : teamLabel;
-    return `<option value="${_cesc(teamName)}" ${teamMatchesCalendarExact(teamName, team) ? "selected" : ""}>${_cesc(label)}</option>`;
+    const value = String(t?.optionValue || _coachOptionValue(teamName, category));
+    return `<option value="${_cesc(value)}" ${teamMatchesCalendarExact(teamName, team) ? "selected" : ""}>${_cesc(label)}</option>`;
   }).join("");
 
   const teamRow = options.length
@@ -1621,7 +1633,7 @@ async function coachSaveMatchEvents() {
 ══════════════════════════════════════════════════════════════════════════ */
 
 function coachSetTeam(val) {
-  coachTeamInput        = (val || "").trim();
+  coachTeamInput        = _coachTeamFromOptionValue(val);
   coachTrainingsLoaded  = false;
   coachPlayerObjsLoaded = false;
   coachEditingPlayer    = null;
