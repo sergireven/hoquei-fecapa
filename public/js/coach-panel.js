@@ -1428,6 +1428,10 @@ async function _renderObjectivesTab() {
 
   const rosterNames = (await _coachRosterForSelection(club, team, category)).map(p => p.name);
   const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
+  const selectedPlayerName = String(coachEditingPlayer || "").trim();
+  const playerSelectOptions = players.map(name =>
+    `<option value="${_cesc(name)}" ${name === selectedPlayerName ? "selected" : ""}>${_cesc(name)}</option>`
+  ).join("");
 
   /* Form — pre-fills from coachEditingPlayer if set */
   const editObj = coachEditingPlayer ? coachPlayerObjs[coachEditingPlayer] : null;
@@ -1453,6 +1457,10 @@ async function _renderObjectivesTab() {
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">
         ${coachEditingPlayer ? `Editant: ${_cesc(coachEditingPlayer)}` : "Afegir / Editar jugador"}
       </div>
+      <select onchange="coachPickObjectivePlayer(this.value)" style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;background:#fff">
+        <option value="">Selecciona jugador trobat...</option>
+        ${playerSelectOptions}
+      </select>
       <input id="coach-new-player" type="text" placeholder="Nom del jugador..." value="${_cesc(coachEditingPlayer || "")}"
         style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px"/>
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Valors per pilar (0 – 10)</div>
@@ -2379,6 +2387,17 @@ function coachEditPlayer(name) {
   setTimeout(() => document.getElementById("coach-new-player")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
 }
 
+function coachPickObjectivePlayer(name) {
+  const picked = String(name || "").trim();
+  if (!picked) {
+    coachEditingPlayer = null;
+    renderCoachPanel();
+    return;
+  }
+  coachEditingPlayer = picked;
+  renderCoachPanel();
+}
+
 function coachClearEditingPlayer() {
   coachEditingPlayer = null;
   renderCoachPanel();
@@ -2753,6 +2772,7 @@ window.coachDeleteTraining     = coachDeleteTraining;
 window.coachSavePlayerObjective  = coachSavePlayerObjective;
 window.coachDeletePlayerObj    = coachDeletePlayerObj;
 window.coachEditPlayer         = coachEditPlayer;
+window.coachPickObjectivePlayer = coachPickObjectivePlayer;
 window.coachClearEditingPlayer = coachClearEditingPlayer;
 window.coachAddPlayerToLineup  = coachAddPlayerToLineup;
 window.coachRemovePlayer       = coachRemovePlayer;
