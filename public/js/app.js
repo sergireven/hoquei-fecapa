@@ -106,7 +106,7 @@ const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
   },
 });
 const LOCAL_REMEMBER_PROFILE_KEY = "hoquei_user_v2";
@@ -464,6 +464,12 @@ async function initAuth() {
   }
 
   _sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      openLoginModal();
+      setLoginMode("recovery");
+      renderHome();
+      return;
+    }
     if (session?.user) {
       await _loadProfile(session.user);
     } else {
@@ -572,6 +578,7 @@ function openLoginModal() {
         <button id="login-submit-btn" type="submit" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:8px">Entrar</button>
       </form>
       <button id="login-toggle-mode-btn" type="button" onclick="toggleAuthMode()" style="width:100%;background:#fff;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:14px;padding:11px;border-radius:12px;cursor:pointer">No tens compte? Crea'l</button>
+      <button id="login-forgot-btn" type="button" onclick="requestPasswordReset()" style="width:100%;background:transparent;border:none;color:#1a2035;font-weight:700;font-size:13px;padding:10px;cursor:pointer">He oblidat la contrasenya</button>
       <div id="login-msg" style="margin-top:8px;text-align:center;font-size:13px;color:#64748b"></div>
     </div>`;
   setLoginMode("signin");
@@ -585,23 +592,39 @@ function closeLoginModal() {
 }
 
 function setLoginMode(mode) {
-  loginAuthMode = mode === "signup" ? "signup" : "signin";
+  if (mode === "signup") loginAuthMode = "signup";
+  else if (mode === "recovery") loginAuthMode = "recovery";
+  else loginAuthMode = "signin";
+  const emailInput = $("login-email-input");
   const confirmWrap = $("login-password-confirm-wrap");
   const submitBtn = $("login-submit-btn");
   const toggleBtn = $("login-toggle-mode-btn");
+  const forgotBtn = $("login-forgot-btn");
   const desc = $("login-mode-desc");
   const pass = $("login-password-input");
   const msg = $("login-msg");
+  const isSignup = loginAuthMode === "signup";
+  const isRecovery = loginAuthMode === "recovery";
 
-  if (confirmWrap) confirmWrap.style.display = loginAuthMode === "signup" ? "block" : "none";
-  if (submitBtn) submitBtn.textContent = loginAuthMode === "signup" ? "Crear compte" : "Entrar";
-  if (toggleBtn) toggleBtn.textContent = loginAuthMode === "signup" ? "Ja tens compte? Entra" : "No tens compte? Crea'l";
-  if (desc) {
-    desc.textContent = loginAuthMode === "signup"
-      ? "Crea un compte segur amb e-mail i contrasenya."
-      : "Inicia sessió amb e-mail i contrasenya.";
+  if (confirmWrap) confirmWrap.style.display = (isSignup || isRecovery) ? "block" : "none";
+  if (submitBtn) {
+    submitBtn.textContent = isSignup ? "Crear compte" : (isRecovery ? "Desar nova contrasenya" : "Entrar");
   }
-  if (pass) pass.autocomplete = loginAuthMode === "signup" ? "new-password" : "current-password";
+  if (toggleBtn) {
+    toggleBtn.style.display = isRecovery ? "none" : "block";
+    toggleBtn.textContent = isSignup ? "Ja tens compte? Entra" : "No tens compte? Crea'l";
+  }
+  if (forgotBtn) forgotBtn.style.display = isRecovery ? "none" : "block";
+  if (emailInput) {
+    emailInput.disabled = isRecovery;
+    emailInput.style.display = isRecovery ? "none" : "block";
+  }
+  if (desc) {
+    if (isSignup) desc.textContent = "Crea un compte segur amb e-mail i contrasenya.";
+    else if (isRecovery) desc.textContent = "Defineix una nova contrasenya per al teu compte.";
+    else desc.textContent = "Inicia sessió amb e-mail i contrasenya.";
+  }
+  if (pass) pass.autocomplete = (isSignup || isRecovery) ? "new-password" : "current-password";
   if (msg) { msg.style.color = "#64748b"; msg.textContent = ""; }
 }
 
@@ -614,17 +637,32 @@ async function submitAuthForm() {
   const password = $("login-password-input")?.value || "";
   const passwordConfirm = $("login-password-confirm-input")?.value || "";
   const msg   = $("login-msg");
-  if (!email || !email.includes("@")) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
+  if (loginAuthMode !== "recovery" && (!email || !email.includes("@"))) { msg.textContent = "Introdueix un e-mail vàlid."; return; }
   if (password.length < 8) { msg.style.color = "#e5001c"; msg.textContent = "La contrasenya ha de tenir almenys 8 caràcters."; return; }
 
-  if (loginAuthMode === "signup" && password !== passwordConfirm) {
+  if ((loginAuthMode === "signup" || loginAuthMode === "recovery") && password !== passwordConfirm) {
     msg.style.color = "#e5001c";
     msg.textContent = "Les contrasenyes no coincideixen.";
     return;
   }
 
   msg.style.color = "#64748b";
-  msg.textContent = loginAuthMode === "signup" ? "Creant compte..." : "Validant credencials...";
+  if (loginAuthMode === "signup") msg.textContent = "Creant compte...";
+  else if (loginAuthMode === "recovery") msg.textContent = "Desant nova contrasenya...";
+  else msg.textContent = "Validant credencials...";
+
+  if (loginAuthMode === "recovery") {
+    const { error } = await _sb.auth.updateUser({ password });
+    if (error) {
+      msg.style.color = "#e5001c";
+      msg.textContent = "Error: " + error.message;
+      return;
+    }
+    msg.style.color = "#16a34a";
+    msg.textContent = "✓ Nova contrasenya desada. Ja pots entrar amb password.";
+    setLoginMode("signin");
+    return;
+  }
 
   if (loginAuthMode === "signup") {
     const { data, error } = await _sb.auth.signUp({ email, password });
@@ -656,9 +694,33 @@ async function submitAuthForm() {
   closeLoginModal();
 }
 
+async function requestPasswordReset() {
+  const email = $("login-email-input")?.value?.trim();
+  const msg = $("login-msg");
+  if (!email || !email.includes("@")) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Escriu el teu e-mail per enviar la recuperació.";
+    return;
+  }
+
+  msg.style.color = "#64748b";
+  msg.textContent = "Enviant e-mail de recuperació...";
+  const { error } = await _sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  if (error) {
+    msg.style.color = "#e5001c";
+    msg.textContent = "Error: " + error.message;
+    return;
+  }
+  msg.style.color = "#16a34a";
+  msg.textContent = "✓ T'hem enviat un e-mail per definir la contrasenya.";
+}
+
 window.submitAuthForm = submitAuthForm;
 window.setLoginMode = setLoginMode;
 window.toggleAuthMode = toggleAuthMode;
+window.requestPasswordReset = requestPasswordReset;
 window.loginWithEmail = submitAuthForm;
 window.sendMagicLink  = submitAuthForm;
 
