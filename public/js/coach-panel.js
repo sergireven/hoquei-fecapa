@@ -85,6 +85,18 @@ const COACH_TACTIC_PLAYBOOK_KEY = "hoquei_coach_playbook_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
+const COACH_ACTA_ARCHIVE_FILES = [
+  "./actes/alevi.json",
+  "./actes/altres.json",
+  "./actes/benjami.json",
+  "./actes/fem.json",
+  "./actes/infantil.json",
+  "./actes/junior.json",
+  "./actes/juvenil.json",
+  "./actes/nacional-catalana.json",
+  "./actes/prebenjami.json",
+  "./actes/veterans.json",
+];
 
 /* ── State ───────────────────────────────────────────────────────────────── */
 let coachPanelTab        = "planning";
@@ -107,6 +119,8 @@ let coachPlayerObjsTeam  = null; // team used when last loaded
 let coachPlayerObjsClub  = null; // club used when last loaded
 let coachPlayerObjsLoaded = false;
 let coachEditingPlayer   = null; // name of player being edited in the form
+let coachActaArchiveCache = null;
+let coachActaArchivePromise = null;
 
 let coachMatchState = {
   matchDate: new Date().toISOString().slice(0, 10),
@@ -173,6 +187,12 @@ function _cteam(tabKey = coachPanelTab) {
   if (resolved?.teamName) return resolved.teamName;
   const fromTab = _coachTeamFromOptionValue(coachTabTeamValues?.[tabKey] || "");
   return fromTab || coachTeamInput || "";
+}
+
+function _ccategory(tabKey = coachPanelTab) {
+  const resolved = _coachResolveTeamChoice(tabKey);
+  if (resolved?.category) return resolved.category;
+  return _coachCategoryFromOptionValue(coachTabTeamValues?.[tabKey] || "");
 }
 
 function _coachTeamEq(a, b) {
@@ -697,6 +717,86 @@ function _coachMergeRosterPlayers(...lists) {
   return deduped.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 }
 
+async function _coachLoadActaArchive() {
+  if (Array.isArray(coachActaArchiveCache)) return coachActaArchiveCache;
+  if (coachActaArchivePromise) return coachActaArchivePromise;
+
+  coachActaArchivePromise = Promise.all(
+    COACH_ACTA_ARCHIVE_FILES.map(async file => {
+      try {
+        const res = await fetch(file, { cache: "no-store" });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : Object.values(data || {});
+      } catch {
+        return [];
+      }
+    })
+  ).then(chunks => {
+    coachActaArchiveCache = chunks.flat().filter(Boolean);
+    coachActaArchivePromise = null;
+    return coachActaArchiveCache;
+  }).catch(() => {
+    coachActaArchiveCache = [];
+    coachActaArchivePromise = null;
+    return coachActaArchiveCache;
+  });
+
+  return coachActaArchivePromise;
+}
+
+async function _coachRosterFromActaArchive(clubName, teamName, category = "") {
+  const wantedTeam = String(teamName || "").trim();
+  const wantedClub = String(clubName || "").trim();
+  const wantedCategory = String(category || "").trim();
+  const wantedCategoryLabel = wantedCategory
+    ? String((typeof CAT_LABELS !== "undefined" && CAT_LABELS[wantedCategory]) ? CAT_LABELS[wantedCategory] : wantedCategory).trim()
+    : "";
+  if (!wantedTeam) return [];
+
+  const archive = await _coachLoadActaArchive();
+  const roster = [];
+
+  for (const acta of (archive || [])) {
+    const home = String(acta?.home || "").trim();
+    const away = String(acta?.away || "").trim();
+    const title = String(acta?.title || "").trim();
+    const homeMatches = _coachTeamEq(home, wantedTeam) || _coachTeamLoose(home, wantedTeam);
+    const awayMatches = _coachTeamEq(away, wantedTeam) || _coachTeamLoose(away, wantedTeam);
+    if (!homeMatches && !awayMatches) continue;
+
+    const clubMatches = !wantedClub
+      || _coachTeamLoose(title, wantedClub)
+      || _coachTeamLoose(home, wantedClub)
+      || _coachTeamLoose(away, wantedClub)
+      || _coachSearchNorm(title).includes(_coachSearchNorm(wantedClub));
+    if (!clubMatches) continue;
+
+    const compText = `${String(acta?.compName || "")} ${String(acta?.actaMeta?.compName || "")}`.trim();
+    const categoryMatches = !wantedCategory
+      || _coachSearchNorm(compText).includes(_coachSearchNorm(wantedCategory))
+      || _coachSearchNorm(compText).includes(_coachSearchNorm(wantedCategoryLabel));
+    if (!categoryMatches) continue;
+
+    const sidePlayers = homeMatches
+      ? (acta?.playerStats?.homePlayers || [])
+      : (acta?.playerStats?.awayPlayers || []);
+
+    for (const player of sidePlayers) {
+      const name = String(player?.name || "").trim();
+      if (!name) continue;
+      roster.push({
+        name,
+        pos: /porter|gk/i.test(String(player?.position || "")) ? "PORT" : "MIG",
+        isStarter: true,
+        side: "D",
+      });
+    }
+  }
+
+  return _coachMergeRosterPlayers(roster);
+}
+
 function _coachRosterFromTeam(teamName, clubName = "") {
   const wantedTeam = String(teamName || "").trim();
   const wantedClub = String(clubName || "").trim();
@@ -738,10 +838,11 @@ function _coachRosterFromTeam(teamName, clubName = "") {
   return _coachMergeRosterPlayers(roster);
 }
 
-function _coachRosterForSelection(clubName, teamName) {
+async function _coachRosterForSelection(clubName, teamName, category = "") {
   return _coachMergeRosterPlayers(
     _coachRosterFromTeam(teamName, clubName),
-    _coachRosterFromConvocatoria(clubName, teamName)
+    _coachRosterFromConvocatoria(clubName, teamName),
+    await _coachRosterFromActaArchive(clubName, teamName, category)
   );
 }
 
@@ -1258,6 +1359,7 @@ async function _renderPlanningTab() {
 async function _renderObjectivesTab() {
   const team = _cteam("objectives");
   const club = _cclub("objectives");
+  const category = _ccategory("objectives");
   if (!team) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
   }
@@ -1266,7 +1368,7 @@ async function _renderObjectivesTab() {
     await _loadPlayerObjectives(team, club);
   }
 
-  const rosterNames = _coachRosterForSelection(club, team).map(p => p.name);
+  const rosterNames = (await _coachRosterForSelection(club, team, category)).map(p => p.name);
   const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
 
   /* Form — pre-fills from coachEditingPlayer if set */
@@ -1346,8 +1448,11 @@ async function _renderObjectivesTab() {
       </div>`
     : `<div style="background:#fff;border-radius:14px;border:1px dashed #e2e6ef;padding:28px;text-align:center;color:#94a3b8;font-size:13px">Afegeix jugadors amb el formulari per veure la seva evolució.</div>`;
 
+  const categoryLabel = category
+    ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[category]) ? CAT_LABELS[category] : category)
+    : "";
   const rosterHint = team
-    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(club ? `${club} · ${team}` : team)}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
+    ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc([club, team, categoryLabel].filter(Boolean).join(" · "))}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
     : "";
 
   return rosterHint + addForm + cards;
