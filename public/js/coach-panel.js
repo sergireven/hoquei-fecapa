@@ -169,7 +169,7 @@ function _cteam(tabKey = coachPanelTab) {
   const resolved = _coachResolveTeamChoice(tabKey);
   if (resolved?.teamName) return resolved.teamName;
   const fromTab = _coachTeamFromOptionValue(coachTabTeamValues?.[tabKey] || "");
-  return fromTab || coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || "";
+  return fromTab || coachTeamInput || "";
 }
 
 function _coachTeamEq(a, b) {
@@ -319,8 +319,7 @@ function _coachResolveTeamChoice(tabKey = coachPanelTab, options = null) {
     if (byGlobal) return byGlobal;
   }
 
-  const flat = _coachFlattenTeamChoices(options);
-  return flat[0] || null;
+  return null;
 }
 
 function _coachFavoriteStorageKey(uid = "") {
@@ -444,7 +443,9 @@ function _coachTabTeamHeader(tabKey, options = null) {
   const flat = _coachFlattenTeamChoices(options);
   if (!flat.length) return "";
 
-  const current = _coachResolveTeamChoice(tabKey, options) || flat[0];
+  const resolved = _coachResolveTeamChoice(tabKey, options);
+  if (!resolved) return "";
+  const current = resolved;
   const currentValue = String(current.optionValue || "");
   const favorites = coachFavoriteTeams.length ? coachFavoriteTeams : [current];
 
@@ -459,7 +460,7 @@ function _coachTabTeamHeader(tabKey, options = null) {
   }).join("");
 
   const isFav = _coachIsFavorite(currentValue);
-  const favBtn = `<button onclick="coachToggleFavoriteSelectedTeam('${_cesc(tabKey)}')" style="background:${isFav ? "#fef3c7" : "#fff"};border:1.5px solid ${isFav ? "#f59e0b" : "#dbe3f0"};color:${isFav ? "#92400e" : "#334155"};font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;cursor:pointer">${isFav ? "★" : "☆"} Equip vinculat</button>`;
+  const favBtn = `<button onclick="coachToggleFavoriteSelectedTeam('${_cesc(tabKey)}')" style="background:${isFav ? "#fef3c7" : "#fff"};border:1.5px solid ${isFav ? "#f59e0b" : "#dbe3f0"};color:${isFav ? "#92400e" : "#334155"};font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;cursor:pointer">${isFav ? "★ Treure de favorits" : "☆ Guardar com favorit"}</button>`;
 
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">${chips}${favBtn}</div>`;
 }
@@ -490,17 +491,21 @@ function _coachEnsureTeamSelection() {
   if (!selectedClub) selectedClub = options[0] || null;
   if (!selectedClub) return options;
 
-  const hasTeamInClub = (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam));
-  if (!selectedTeam || !hasTeamInClub) selectedTeam = selectedClub.teams?.[0]?.teamName || "";
+  const hasTeamInClub = selectedTeam
+    ? (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam))
+    : false;
+  if (selectedTeam && !hasTeamInClub) selectedTeam = "";
 
   coachClubInput = selectedClub.clubName;
   coachTeamInput = selectedTeam;
 
-  const selectedMeta = (selectedClub.teams || []).find(t => _coachTeamEq(t?.teamName || "", selectedTeam)) || null;
-  const selectedValue = String(selectedMeta?.optionValue || _coachOptionValue(selectedTeam, selectedMeta?.category || "", selectedClub.clubName));
-  for (const tab of ["planning", "objectives", "match"]) {
-    if (!String(coachTabTeamValues?.[tab] || "").trim()) {
-      coachTabTeamValues[tab] = selectedValue;
+  if (selectedTeam) {
+    const selectedMeta = (selectedClub.teams || []).find(t => _coachTeamEq(t?.teamName || "", selectedTeam)) || null;
+    const selectedValue = String(selectedMeta?.optionValue || _coachOptionValue(selectedTeam, selectedMeta?.category || "", selectedClub.clubName));
+    for (const tab of ["planning", "objectives", "match"]) {
+      if (!String(coachTabTeamValues?.[tab] || "").trim()) {
+        coachTabTeamValues[tab] = selectedValue;
+      }
     }
   }
   return options;
@@ -804,7 +809,6 @@ function openCoachPanel() {
     const el = document.getElementById(id);
     if (el) el.style.display = "none";
   });
-  coachTeamInput = coachTeamInput || (typeof currentProfile !== "undefined" ? currentProfile?.team_name : "") || "";
   const el = document.getElementById("screen-coach");
   if (el) el.style.display = "flex";
   Promise.resolve(renderCoachPanel()).catch(err => {
@@ -859,6 +863,8 @@ async function renderCoachPanel(clubSearchCursor) {
     : options;
   const visibleClubOptions = filteredClubOptions.length ? filteredClubOptions : options;
   const selectedClub = options.find(o => o.clubName === club) || null;
+  const selectedChoice = _coachResolveTeamChoice(coachPanelTab, options);
+  const selectedTeamOptionValue = String(selectedChoice?.optionValue || "");
   const teamOptions = (selectedClub?.teams || []).map(t => {
     const teamName = String(t?.teamName || "").trim();
     const category = String(t?.category || "").trim();
@@ -868,7 +874,7 @@ async function renderCoachPanel(clubSearchCursor) {
     const teamLabel = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(teamName) : teamName;
     const label = categoryLabel ? `${teamLabel} · ${categoryLabel}` : teamLabel;
     const value = String(t?.optionValue || _coachOptionValue(teamName, category, selectedClub?.clubName || ""));
-    return `<option value="${_cesc(value)}" ${teamMatchesCalendarExact(teamName, team) ? "selected" : ""}>${_cesc(label)}</option>`;
+    return `<option value="${_cesc(value)}" ${value === selectedTeamOptionValue ? "selected" : ""}>${_cesc(label)}</option>`;
   }).join("");
 
   const teamRow = options.length
@@ -880,6 +886,7 @@ async function renderCoachPanel(clubSearchCursor) {
         </select>
         <label style="font-size:13px;font-weight:700;color:#64748b;white-space:nowrap">Equip:</label>
         <select onchange="coachSetTeam(this.value)" style="min-width:220px;flex:1;max-width:380px;padding:9px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff">
+          <option value="" ${selectedTeamOptionValue ? "" : "selected"}>Selecciona equip...</option>
           ${teamOptions}
         </select>
       </div>`
@@ -922,6 +929,11 @@ async function renderCoachPanel(clubSearchCursor) {
    PLANNING TAB
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderPlanningTab() {
+  const selectedTeam = _cteam("planning");
+  if (!selectedTeam) {
+    return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per veure i crear entrenaments.</div>`;
+  }
+
   if (!coachTrainingsLoaded || coachPlayerObjsTeam !== _cteam()) {
     await _loadTrainings();
   }
@@ -1040,8 +1052,12 @@ async function _renderPlanningTab() {
    OBJECTIVES TAB
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderObjectivesTab() {
-  const team = _cteam();
-  const club = _cclub();
+  const team = _cteam("objectives");
+  const club = _cclub("objectives");
+  if (!team) {
+    return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per carregar jugadors i objectius.</div>`;
+  }
+
   if (!coachPlayerObjsLoaded || coachPlayerObjsTeam !== team) {
     await _loadPlayerObjectives(team);
   }
@@ -1137,6 +1153,11 @@ async function _renderObjectivesTab() {
    MATCH TAB
 ══════════════════════════════════════════════════════════════════════════ */
 function _renderMatchTab() {
+  const selectedTeam = _cteam("match");
+  if (!selectedTeam) {
+    return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per preparar i gestionar el partit.</div>`;
+  }
+
   const subTabs = [
     { key: "lineup",  label: "🧾 Pre-Partit" },
     { key: "live",    label: "⏱ En Viu" },
@@ -1681,6 +1702,7 @@ async function _loadTrainings() {
   const uid = await _cauthUid();
   if (!sb || !uid) return;
   const team = _cteam("planning");
+  if (!team) return;
   let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
   if (team) q = q.eq("team_name", team);
   q = q.order("plan_date", { ascending: true });
@@ -1740,6 +1762,7 @@ async function _loadPlayerObjectives(team) {
   coachPlayerObjsLoaded = true;
   const uid = await _cauthUid();
   if (!sb || !uid) return;
+  if (!team) return;
   let q = sb.from("coach_player_objectives").select("*").eq("coach_user_id", uid);
   if (team !== null && team !== undefined) q = q.eq("team_name", team);
   const { data, error } = await q;
@@ -1857,11 +1880,9 @@ async function coachSaveMatchEvents() {
 ══════════════════════════════════════════════════════════════════════════ */
 
 function coachSetTeam(val) {
-  coachTeamInput        = _coachTeamFromOptionValue(val);
-  coachTabTeamValues[coachPanelTab] = String(val || "").trim();
-  coachTrainingsLoaded  = false;
-  coachPlayerObjsLoaded = false;
-  coachEditingPlayer    = null;
+  coachTeamInput = _coachTeamFromOptionValue(val);
+  _coachApplyTabTeamValue(coachPanelTab, String(val || "").trim());
+  renderCoachPanel();
 }
 
 function coachSelectTabTeam(tabKey, optionValue) {
@@ -1879,11 +1900,8 @@ async function coachToggleFavoriteSelectedTeam(tabKey) {
 function coachSetClub(val) {
   coachClubInput = (val || "").trim();
   coachClubSearch = coachClubInput;
-  const options = _coachBuildClubTeamOptions();
-  const selected = options.find(o => o.clubName === coachClubInput) || null;
-  if (selected && selected.teams.length) {
-    coachTeamInput = selected.teams[0].teamName || "";
-  }
+  coachTeamInput = "";
+  coachTabTeamValues[coachPanelTab] = "";
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
   coachEditingPlayer = null;
@@ -1910,9 +1928,11 @@ function coachSetClubSearch(value, cursor) {
 
     if (nextClub) {
       coachClubInput = nextClub.clubName;
-      const firstTeam = nextClub.teams?.[0]?.teamName || "";
       const hasCurrentTeam = (nextClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", coachTeamInput));
-      if (!hasCurrentTeam) coachTeamInput = firstTeam;
+      if (!hasCurrentTeam) {
+        coachTeamInput = "";
+        coachTabTeamValues[coachPanelTab] = "";
+      }
     }
   }
 
