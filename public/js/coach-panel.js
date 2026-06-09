@@ -109,6 +109,7 @@ let coachFavoriteTeams   = [];
 let coachFavoriteTeamsLoaded = false;
 let coachTrainings       = [];
 let coachTrainingsLoaded = false;
+let coachTrainingsTeamKey = "";
 let coachPlanningPillars = [];
 let coachPlanningDate    = new Date().toISOString().slice(0, 10);
 let coachPlanningDuration = 90;
@@ -1291,11 +1292,13 @@ async function renderCoachPanel(clubSearchCursor) {
 ══════════════════════════════════════════════════════════════════════════ */
 async function _renderPlanningTab() {
   const selectedTeam = _cteam("planning");
+  const selectedChoice = _coachResolveTeamChoice("planning");
+  const selectedTeamIdentity = _coachTeamIdentityLabel(selectedChoice) || selectedTeam;
   if (!selectedTeam) {
     return `<div style="background:#fff;border:1.5px dashed #dbe3f0;border-radius:14px;padding:24px;text-align:center;color:#64748b;font-size:14px">Selecciona un equip per veure i crear entrenaments.</div>`;
   }
 
-  if (!coachTrainingsLoaded || coachPlayerObjsTeam !== _cteam()) {
+  if (!coachTrainingsLoaded || coachTrainingsTeamKey !== selectedTeamIdentity) {
     await _loadTrainings();
   }
 
@@ -1327,6 +1330,10 @@ async function _renderPlanningTab() {
         const dur = t.duration_minutes
           ? `${Math.floor(t.duration_minutes / 60)}h${t.duration_minutes % 60 ? String(t.duration_minutes % 60).padStart(2, "0") + "'" : ""}`
           : "";
+        const source = String(t?._source || "coach");
+        const sourceChip = source === "coordinator"
+          ? `<span style="background:#ede9fe;color:#5b21b6;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Coordinator</span>`
+          : `<span style="background:#ecfdf5;color:#166534;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Entrenador</span>`;
         const badges = (t.pillars || []).map(pid => {
           const p = COACH_PILLARS.find(x => x.id === pid);
           return p ? `<span style="background:${p.color};color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700">${p.short}</span>` : "";
@@ -1336,11 +1343,15 @@ async function _renderPlanningTab() {
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035">${_cesc(t.plan_date || "")}</span>
               <span style="font-size:12px;color:#64748b">${dur}</span>
+              ${sourceChip}
               <div style="display:flex;gap:3px;flex-wrap:wrap">${badges}</div>
             </div>
             ${t.notes ? `<div style="font-size:12px;color:#64748b;line-height:1.4">${_cesc(t.notes)}</div>` : ""}
           </div>
-          <button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0">✕</button>
+          <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+            ${source === "coordinator" ? `<button onclick="coachLoadCoordinatorTrainingToForm('${_cesc(t.id)}')" title="Carregar al formulari" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;cursor:pointer;font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px">Carregar</button>` : ""}
+            ${source === "coach" ? `<button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px">✕</button>` : ""}
+          </div>
         </div>`;
       }).join("")
     : `<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Cap entrenament registrat per a aquest equip.</div>`;
@@ -2078,6 +2089,7 @@ async function _loadTrainings() {
   if (!sb || !uid) return;
   const choice = _coachResolveTeamChoice("planning");
   const team = _coachTeamIdentityLabel(choice) || _cteam("planning");
+  coachTrainingsTeamKey = team;
   const legacyTeam = _cteam("planning");
   if (!team) return;
   let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
@@ -2089,7 +2101,44 @@ async function _loadTrainings() {
     data = fallback.data;
     error = fallback.error;
   }
-  if (!error && data) coachTrainings = data;
+  if (!error && data) {
+    coachTrainings = data.map(row => ({ ...row, _source: "coach" }));
+  }
+
+  const clubName = String(choice?.clubName || _cclub("planning") || "").trim();
+  if (clubName && typeof loadCoordinatorTrainings === "function") {
+    try {
+      const byClub = loadCoordinatorTrainings(clubName) || [];
+      const fromCoordinator = byClub
+        .filter(t => {
+          if (typeof coordinatorTrainingMatchesTeam === "function") {
+            return coordinatorTrainingMatchesTeam(t, legacyTeam);
+          }
+          const names = Array.isArray(t?.teamNames) ? t.teamNames : [t?.teamName];
+          return names.map(n => String(n || "").trim()).includes(String(legacyTeam || "").trim());
+        })
+        .map(t => ({
+          id: `coord::${String(t?.id || "")}`,
+          plan_date: String(t?.date || ""),
+          duration_minutes: Number(t?.duration || 0) || 0,
+          pillars: [],
+          notes: [
+            String(t?.notes || "").trim(),
+            String(t?.location || "").trim() ? `Ubicacio: ${String(t.location).trim()}` : "",
+            String(t?.time || "").trim() ? `Hora: ${String(t.time).trim()}` : "",
+          ].filter(Boolean).join(" · "),
+          _source: "coordinator",
+          _coordinatorRaw: t,
+        }))
+        .filter(t => t.plan_date);
+
+      const existingCoachDates = new Set(coachTrainings.map(t => `${String(t.plan_date || "")}::${Number(t.duration_minutes || 0)}`));
+      for (const t of fromCoordinator) {
+        const k = `${String(t.plan_date || "")}::${Number(t.duration_minutes || 0)}`;
+        if (!existingCoachDates.has(k)) coachTrainings.push(t);
+      }
+    } catch {}
+  }
 }
 
 async function coachSaveTraining() {
@@ -2136,6 +2185,25 @@ async function coachDeleteTraining(id) {
   if (error) { alert("Error: " + error.message); return; }
   coachTrainings = coachTrainings.filter(t => t.id !== id);
   renderCoachPanel();
+}
+
+function coachLoadCoordinatorTrainingToForm(id) {
+  const targetId = String(id || "").trim();
+  const found = coachTrainings.find(t => String(t?.id || "") === targetId && String(t?._source || "") === "coordinator");
+  if (!found) return;
+
+  coachPlanningDate = String(found.plan_date || coachPlanningDate || "").trim() || coachPlanningDate;
+  coachPlanningDuration = Number(found.duration_minutes || coachPlanningDuration || 90) || 90;
+  const existing = String(coachPlanningNotes || "").trim();
+  const imported = String(found.notes || "").trim();
+  coachPlanningNotes = [existing, imported].filter(Boolean).join(existing && imported ? "\n" : "");
+
+  renderCoachPanel();
+  const msg = document.getElementById("coach-plan-msg");
+  if (msg) {
+    msg.style.color = "#1d4ed8";
+    msg.textContent = "Entrenament de coordinador carregat. Afegeix pilars/dimensions i desa.";
+  }
 }
 
 async function _loadPlayerObjectives(team, clubName = "") {
@@ -2769,6 +2837,7 @@ window.coachToggleFavoriteSelectedTeam = coachToggleFavoriteSelectedTeam;
 window.coachTogglePillar       = coachTogglePillar;
 window.coachSaveTraining       = coachSaveTraining;
 window.coachDeleteTraining     = coachDeleteTraining;
+window.coachLoadCoordinatorTrainingToForm = coachLoadCoordinatorTrainingToForm;
 window.coachSavePlayerObjective  = coachSavePlayerObjective;
 window.coachDeletePlayerObj    = coachDeletePlayerObj;
 window.coachEditPlayer         = coachEditPlayer;
