@@ -109,8 +109,8 @@ const COACH_TACTICS = [
   },
   {
     name: "4 vs 3+PORT",
-    desc: "Situació especial: 4 de camp contra 3 de camp + porter.",
-    homeGoalie: false,
+    desc: "Situació especial: 4 de camp + porter contra 3 de camp + porter.",
+    homeGoalie: true,
     awayGoalie: true,
     homePositions: [{ x: 28, y: 50 }, { x: 48, y: 30 }, { x: 48, y: 70 }, { x: 68, y: 50 }],
     awayPositions: [{ x: 69, y: 32 }, { x: 77, y: 50 }, { x: 69, y: 68 }],
@@ -133,8 +133,8 @@ const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
 const COACH_GOALIE_AREAS = {
-  home: { xMin: 4.8, xMax: 15.8, yMin: 38, yMax: 62 },
-  away: { xMin: 84.2, xMax: 95.2, yMin: 38, yMax: 62 },
+  home: { xMin: 8.8, xMax: 20.5, yMin: 35.5, yMax: 64.5 },
+  away: { xMin: 79.5, xMax: 91.2, yMin: 35.5, yMax: 64.5 },
 };
 const COACH_ACTA_ARCHIVE_FILES = [
   "./actes/alevi.json",
@@ -193,6 +193,7 @@ let coachBoardSuppressClickUntil = 0;
 let coachBoardRemoteLoadedKey = "";
 let coachBoardRemoteSaveTimer = null;
 let coachBoardRemoteSaveNonce = 0;
+let coachBoardFullscreenFormationsCollapsed = false;
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -466,13 +467,19 @@ function _coachFavoriteStorageKey(uid = "") {
   return `${COACH_FAVORITE_TEAMS_KEY}::${String(uid || "anon")}`;
 }
 
+function _coachFavoriteStorageLegacyKey() {
+  return COACH_FAVORITE_TEAMS_KEY;
+}
+
 function _coachSelectedClubStorageKey(uid = "") {
   return `${COACH_SELECTED_CLUB_KEY}::${String(uid || "anon")}`;
 }
 
 function _coachLoadFavoritesLocal(uid = "") {
   try {
-    const raw = localStorage.getItem(_coachFavoriteStorageKey(uid));
+    const scopedRaw = localStorage.getItem(_coachFavoriteStorageKey(uid));
+    const legacyRaw = localStorage.getItem(_coachFavoriteStorageLegacyKey());
+    const raw = scopedRaw || legacyRaw;
     const arr = JSON.parse(raw || "[]");
     return Array.isArray(arr) ? arr : [];
   } catch {
@@ -482,7 +489,9 @@ function _coachLoadFavoritesLocal(uid = "") {
 
 function _coachSaveFavoritesLocal(uid = "", favorites = []) {
   try {
-    localStorage.setItem(_coachFavoriteStorageKey(uid), JSON.stringify(favorites || []));
+    const serialized = JSON.stringify(favorites || []);
+    localStorage.setItem(_coachFavoriteStorageKey(uid), serialized);
+    localStorage.setItem(_coachFavoriteStorageLegacyKey(), serialized);
   } catch {}
 }
 
@@ -597,7 +606,7 @@ async function _coachLoadFavoriteTeams(options = null) {
     try {
       const { data, error } = await sb
         .from("coach_favorite_teams")
-        .select("club_name, team_name, team_category")
+        .select("club_name, team_name, team_category, saved_at, updated_at")
         .eq("user_id", uid)
         .order("saved_at", { ascending: true });
       if (!error && Array.isArray(data)) loaded = data.map(mapChoice).filter(Boolean);
@@ -608,9 +617,13 @@ async function _coachLoadFavoriteTeams(options = null) {
     loaded = _coachLoadFavoritesLocal(uid).map(mapChoice).filter(Boolean);
   }
 
-  const uniq = new Map();
-  for (const item of loaded) uniq.set(String(item.optionValue), item);
-  coachFavoriteTeams = [...uniq.values()];
+  const uniqByClub = new Map();
+  for (const item of loaded) {
+    const clubKey = _coachSearchNorm(item?.clubName || "");
+    if (!clubKey) continue;
+    uniqByClub.set(clubKey, item);
+  }
+  coachFavoriteTeams = [...uniqByClub.values()];
   coachFavoriteTeamsLoaded = true;
 }
 
@@ -700,6 +713,15 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
+}
+
+function _coachShouldRenderInteractivePuck() {
+  return coachBoardState?.ballMode !== "attached";
+}
+
+function _coachMovePlayerForCarry(action, destination) {
+  if (action?.startKind !== "player" || !action?.startId) return false;
+  return _coachUpdateBoardEntityPosition("player", action.startId, destination);
 }
 
 function _coachTabTeamHeader(tabKey, options = null) {
@@ -2104,6 +2126,7 @@ function _renderTacticsPanelInner() {
   const ballMode = coachBoardState.ballMode === "free" ? "free" : "attached";
   const savedPlays = _coachActiveSavedPlays();
   const isFullscreen = Boolean(coachBoardState.fullscreen);
+  const formationsCollapsed = Boolean(isFullscreen && coachBoardFullscreenFormationsCollapsed);
   const mobileWarning = _coachIsPhoneLikeScreen()
     ? `<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:11px 12px;font-size:12px;font-weight:700;line-height:1.4;margin-bottom:10px">Aquesta funció està pensada per pantalla horitzontal i més gran (tablet o ordinador). En mòbil pot no ser prou fluida ni precisa.</div>`
     : "";
@@ -2142,8 +2165,11 @@ function _renderTacticsPanelInner() {
   const controlsPanel = `
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px;overflow:auto">
         ${mobileWarning}
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Formacions base</div>
-        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">${tacBtns}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em">Formacions base</div>
+          ${isFullscreen ? `<button onclick="coachToggleFullscreenFormationsCollapsed()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:800;font-size:12px;padding:7px 10px;border-radius:999px;cursor:pointer">${formationsCollapsed ? "▾" : "▴"}</button>` : ""}
+        </div>
+        <div style="display:${formationsCollapsed ? "none" : "flex"};flex-direction:column;gap:7px;margin-bottom:16px">${tacBtns}</div>
         <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Eines habituals</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${toolButtons}</div>
         <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Gestió de la bola</div>
@@ -2434,10 +2460,14 @@ function _tacticSVGInteractive(isFullscreen) {
   }).join("");
 
   const puckSelected = coachBoardState.selectedEntity?.kind === "puck";
-  const puckSvg = `<g data-coach-entity-kind="puck" data-coach-entity-id="puck" onclick="coachHandleBoardClick(event,'puck','puck');event.stopPropagation();" style="cursor:grab">
-    <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="2.5" fill="transparent" stroke="transparent" />
-    <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="1.25" fill="#0f172a" stroke="${puckSelected ? "#fde68a" : "#ffffff"}" stroke-width="0.55" />
-  </g>`;
+  const puckSvg = _coachShouldRenderInteractivePuck()
+    ? `<g data-coach-entity-kind="puck" data-coach-entity-id="puck" onclick="coachHandleBoardClick(event,'puck','puck');event.stopPropagation();" style="cursor:grab">
+        <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="2.5" fill="transparent" stroke="transparent" />
+        <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="1.25" fill="#0f172a" stroke="${puckSelected ? "#fde68a" : "#ffffff"}" stroke-width="0.55" />
+      </g>`
+    : `<g style="pointer-events:none">
+        <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="1.15" fill="#0f172a" stroke="#ffffff" stroke-width="0.5" />
+      </g>`;
 
   const annotationsSvg = (coachBoardState.annotations || []).map(annotation => {
     const a = annotation.start || { x: 50, y: 50 };
@@ -2491,12 +2521,12 @@ function _tacticSVGInteractive(isFullscreen) {
     <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="#dbeafe" stroke="#ffffff" stroke-width="0.45" />
     <line x1="50" y1="8.2" x2="50" y2="91.8" stroke="#ef4444" stroke-width="0.4" />
     <circle cx="50" cy="50" r="6.6" fill="none" stroke="#ef4444" stroke-width="0.3" />
-    <path d="M15,39 Q24,50 15,61" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
-    <path d="M85,39 Q76,50 85,61" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
-    <rect x="5.6" y="46" width="1.7" height="8" fill="rgba(239,68,68,.7)" stroke="#ef4444" stroke-width="0.25" />
-    <rect x="92.7" y="46" width="1.7" height="8" fill="rgba(239,68,68,.7)" stroke="#ef4444" stroke-width="0.25" />
-    <rect x="4.8" y="39" width="10.2" height="22" rx="2.2" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
-    <rect x="85" y="39" width="10.2" height="22" rx="2.2" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
+    <path d="M18.2,35.5 Q28.8,50 18.2,64.5" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
+    <path d="M81.8,35.5 Q71.2,50 81.8,64.5" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
+    <rect x="8.8" y="45" width="2.2" height="10" fill="rgba(239,68,68,.72)" stroke="#ef4444" stroke-width="0.25" />
+    <rect x="89" y="45" width="2.2" height="10" fill="rgba(239,68,68,.72)" stroke="#ef4444" stroke-width="0.25" />
+    <rect x="8.8" y="35.5" width="11.7" height="29" rx="2.6" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
+    <rect x="79.5" y="35.5" width="11.7" height="29" rx="2.6" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
     <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="transparent" />
     ${annotationsSvg}
     ${pendingSvg}
@@ -2961,7 +2991,13 @@ function coachSetBoardTool(toolId) {
 function coachToggleBoardFullscreen() {
   _coachEnsureBoardState();
   coachBoardState.fullscreen = !coachBoardState.fullscreen;
+  coachBoardFullscreenFormationsCollapsed = coachBoardState.fullscreen;
   _coachPersistBoardState();
+  _coachRenderTacticsTabRoot();
+}
+
+function coachToggleFullscreenFormationsCollapsed() {
+  coachBoardFullscreenFormationsCollapsed = !coachBoardFullscreenFormationsCollapsed;
   _coachRenderTacticsTabRoot();
 }
 
@@ -3177,6 +3213,7 @@ function coachBoardPointerDown(evt) {
   if (coachBoardState.tool !== "move") return;
 
   const entity = _coachBoardEntityFromTarget(evt.target);
+  if (entity?.kind === "puck" && coachBoardState.ballMode === "attached") return;
   if (!entity || !(entity.kind === "player" || entity.kind === "puck")) return;
 
   evt.preventDefault();
@@ -3246,6 +3283,11 @@ function coachHandleBoardClick(evt, kind, id) {
   }
 
   if (tool === "move") {
+    if (kind === "puck" && coachBoardState.ballMode === "attached") {
+      _coachBoardMessage("En mode enganxat, la bola segueix el jugador i no es pot seleccionar directament.");
+      _coachRenderTacticsTabRoot();
+      return;
+    }
     if (kind === "player" || kind === "puck") {
       coachBoardState.selectedEntity = { kind, id };
       _coachBoardMessage(kind === "puck" ? "Pilota seleccionada. Toca el camp per moure-la." : "Jugador seleccionat. Toca el camp per moure'l.");
@@ -3281,9 +3323,20 @@ function coachHandleBoardClick(evt, kind, id) {
   const actionTools = ["pass", "shot", "carry", "screen", "zone"];
   if (!actionTools.includes(tool)) return;
 
+  if (tool === "carry" && !coachBoardState.pendingAction && kind !== "player") {
+    _coachBoardMessage("Per conduir, selecciona primer un jugador i després marca el destí.");
+    _coachRenderTacticsTabRoot();
+    return;
+  }
+
   const entityPoint = _coachBoardEntityPoint(kind, id, point);
   if (!coachBoardState.pendingAction) {
-    coachBoardState.pendingAction = { tool, start: { x: entityPoint.x, y: entityPoint.y } };
+    coachBoardState.pendingAction = {
+      tool,
+      start: { x: entityPoint.x, y: entityPoint.y },
+      startKind: kind || "field",
+      startId: id || "",
+    };
     _coachBoardMessage(`Origen marcat per ${_coachToolMeta(tool).label.toLowerCase()}. Tria el destí.`);
     _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
@@ -3291,6 +3344,9 @@ function coachHandleBoardClick(evt, kind, id) {
   }
 
   coachBoardState.annotations.push(_coachCreateAnnotation(tool, coachBoardState.pendingAction.start, entityPoint));
+  if (tool === "carry") {
+    _coachMovePlayerForCarry(coachBoardState.pendingAction, entityPoint);
+  }
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
   _coachBoardRecordFrame(`Acció ${tool}`);
@@ -3331,6 +3387,7 @@ window.coachSetTactic          = coachSetTactic;
 window.coachSetBoardTool       = coachSetBoardTool;
 window.coachToggleBallMode     = _coachToggleBallMode;
 window.coachToggleBoardFullscreen = coachToggleBoardFullscreen;
+window.coachToggleFullscreenFormationsCollapsed = coachToggleFullscreenFormationsCollapsed;
 window.coachAddBoardPlayer     = coachAddBoardPlayer;
 window.coachResetBoard         = coachResetBoard;
 window.coachClearBoardActions  = coachClearBoardActions;
