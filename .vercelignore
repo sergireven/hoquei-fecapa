@@ -1,3 +1,11 @@
 # Exclude heavy historical archive from Vercel upload package.
 # These files are generated and can be refreshed by automation.
 public/season-archive/**
+public/actes/**
+public/data.json
+public/entity-mapping.json
+public/fecapa-categories.json
+public/classification-audit.json
+public/competicions-sidgad.json
+public/jugadors-sidgad.json
+public/jugadors-sidgad-index.json
