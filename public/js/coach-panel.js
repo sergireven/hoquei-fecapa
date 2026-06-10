@@ -318,6 +318,12 @@ function _coachSeasonFromOptionValue(value) {
   return "";
 }
 
+function _coachTeamKeyFromOptionValue(value) {
+  const parts = String(value || "").split("|||");
+  if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[2] || "").trim() || "";
+  return String(parts[0] || "").trim() || "";
+}
+
 function _coachSeasonLabel() {
   if (typeof getSeasonLabelFromData === "function") {
     const label = String(getSeasonLabelFromData(typeof DB !== "undefined" ? DB : null, "") || "").trim();
@@ -426,14 +432,14 @@ function _coachResolveTeamChoiceByValue(optionValue, options = null) {
 
   const season = _coachSeasonFromOptionValue(wanted);
   const club = _coachClubFromOptionValue(wanted);
-  const teamKey = _coachTeamFromOptionValue(wanted);
+  const teamKey = _coachTeamKeyFromOptionValue(wanted);
   const team = _coachTeamFromOptionValue(wanted);
   const category = _coachCategoryFromOptionValue(wanted);
   const byTeam = flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey && String(x.clubName || "") === club)
     || flat.find(x => String(x.seasonKey || "") === season && String(x.teamKey || "") === teamKey)
     || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category && String(x.clubName || "") === club)
-    || flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category)
-    || flat.find(x => _coachTeamEq(x.teamName, team));
+    || (!club ? flat.find(x => _coachTeamEq(x.teamName, team) && String(x.category || "") === category) : null)
+    || (!club && !category ? flat.find(x => _coachTeamEq(x.teamName, team)) : null);
   if (byTeam) return byTeam;
   if (!team) return null;
   return { teamName: team, category, clubName: club, teamKey, seasonKey: season || _coachSeasonKey(), optionValue: _coachOptionValue(teamKey || team, category, club) };
@@ -629,9 +635,15 @@ async function _coachToggleFavoriteTeam(optionValue) {
       } catch {}
     }
   } else {
+    const targetClubNorm = _coachSearchNorm(choice.clubName || "");
+    coachFavoriteTeams = coachFavoriteTeams.filter(x => _coachSearchNorm(x?.clubName || "") !== targetClubNorm);
     coachFavoriteTeams.push(choice);
     if (sb && writeUid) {
       try {
+        await sb.from("coach_favorite_teams")
+          .delete()
+          .eq("user_id", writeUid)
+          .eq("club_name", choice.clubName || "");
         await sb.from("coach_favorite_teams").upsert({
           user_id: writeUid,
           club_name: choice.clubName || "",
@@ -3175,10 +3187,6 @@ function coachBoardPointerDown(evt) {
     moved: false,
   };
   coachBoardState.selectedEntity = { kind: entity.kind, id: entity.id };
-  if (entity.kind === "player" && coachBoardState.ballMode === "attached") {
-    const player = coachBoardState.players.find(item => item.id === entity.id && !item.isGoalie);
-    if (player) coachBoardState.puckAttachedTo = player.id;
-  }
 
   if (typeof evt.currentTarget?.setPointerCapture === "function") {
     try { evt.currentTarget.setPointerCapture(evt.pointerId); } catch {}
@@ -3241,10 +3249,6 @@ function coachHandleBoardClick(evt, kind, id) {
     if (kind === "player" || kind === "puck") {
       coachBoardState.selectedEntity = { kind, id };
       _coachBoardMessage(kind === "puck" ? "Pilota seleccionada. Toca el camp per moure-la." : "Jugador seleccionat. Toca el camp per moure'l.");
-      if (kind === "player" && coachBoardState.ballMode === "attached") {
-        const player = coachBoardState.players.find(item => item.id === id && !item.isGoalie);
-        if (player) coachBoardState.puckAttachedTo = player.id;
-      }
       _coachPersistBoardState();
       _coachRenderTacticsTabRoot();
       return;
