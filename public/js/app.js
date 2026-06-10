@@ -2742,6 +2742,21 @@ function coordinatorMatchKey(match) {
     .join("::");
 }
 
+function coordinatorConvocatoriaDedupKey(match) {
+  const dateKey = coordinatorDateKey(match?.dateKey || match?.date || "", match?.compName || "");
+  const time = String(match?.time || "").trim();
+  const home = normalizeTeamName(match?.home || "");
+  const away = normalizeTeamName(match?.away || "");
+  return [dateKey, time, home, away].join("::");
+}
+
+function coordinatorStrictTeamMatch(match, teamPool) {
+  return teamPool.some(team =>
+    teamMatchesCalendarExact(match?.home || "", team)
+    || teamMatchesCalendarExact(match?.away || "", team)
+  );
+}
+
 function loadConvocatoria(clubName, teamName, matchKey) {
   try {
     const cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
@@ -2763,18 +2778,17 @@ function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
 
 function getUpcomingMatchesForConvocatoria(clubName, teamName) {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
-  const strictMatch = (match) => teamPool.some(team =>
-    teamMatchesCalendarExact(match?.home || "", team)
-    || teamMatchesCalendarExact(match?.away || "", team)
-  );
-  const looseMatch = (match) => matchBelongsToCoordinatorPool(match, teamPool);
+  const useStrictFilter = Boolean(String(teamName || "").trim());
   const nowTs = Date.now();
   const pastToleranceMs = 2 * 60 * 60 * 1000;
   const matches = [];
 
   for (const comp of Object.values(DB?.categories || {}).flat()) {
     for (const match of (comp?.calendar || [])) {
-      if (!(strictMatch(match) || looseMatch(match))) continue;
+      const belongs = useStrictFilter
+        ? coordinatorStrictTeamMatch(match, teamPool)
+        : matchBelongsToCoordinatorPool(match, teamPool);
+      if (!belongs) continue;
       const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
       if (!ts || ts < (nowTs - pastToleranceMs)) continue;
       matches.push({
@@ -2813,8 +2827,15 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName) {
 
   const unique = new Map();
   for (const match of matches) {
-    const key = coordinatorMatchKey(match);
-    if (!unique.has(key)) unique.set(key, match);
+    const key = coordinatorConvocatoriaDedupKey(match);
+    const existing = unique.get(key);
+    if (!existing) {
+      unique.set(key, match);
+      continue;
+    }
+    if (existing.isAdHoc && !match.isAdHoc) {
+      unique.set(key, match);
+    }
   }
 
   return [...unique.values()]
@@ -2824,11 +2845,15 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName) {
 
 function getPreviousPlayedMatchesForTeam(clubName, teamName, beforeTs = Number.POSITIVE_INFINITY) {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
+  const useStrictFilter = Boolean(String(teamName || "").trim());
   const played = [];
   for (const comp of Object.values(DB?.categories || {}).flat()) {
     for (const match of (comp?.calendar || [])) {
       if (match?.homeScore == null || match?.awayScore == null) continue;
-      if (!matchBelongsToCoordinatorPool(match, teamPool)) continue;
+      const belongs = useStrictFilter
+        ? coordinatorStrictTeamMatch(match, teamPool)
+        : matchBelongsToCoordinatorPool(match, teamPool);
+      if (!belongs) continue;
       const ts = parseMatchTimestamp(match?.date || "", comp?.name || "");
       if (!ts || ts >= beforeTs) continue;
       played.push({
@@ -2847,7 +2872,12 @@ function getPreviousPlayedMatchesForTeam(clubName, teamName, beforeTs = Number.P
       });
     }
   }
-  return played
+  const unique = new Map();
+  for (const match of played.sort((a, b) => b.ts - a.ts)) {
+    const key = coordinatorConvocatoriaDedupKey(match);
+    if (!unique.has(key)) unique.set(key, match);
+  }
+  return [...unique.values()]
     .sort((a, b) => b.ts - a.ts)
     .map(match => ({ ...match, key: coordinatorMatchKey(match) }));
 }
