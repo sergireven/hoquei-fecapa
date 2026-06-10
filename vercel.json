@@ -27,10 +27,10 @@
   ],
   "functions": {
     "api/cron.js": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "api/fecapa-categories.js": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   }
 }
