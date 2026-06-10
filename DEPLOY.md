@@ -1,6 +1,6 @@
 # 🏒 FECAPA Hoquei Patins — Guia de Desplegament
 
-_Redeploy trigger: 2026-06-10_
+_Redeploy trigger: 2026-06-10 (attempt 4)_
 
 ## Arquitectura
 
