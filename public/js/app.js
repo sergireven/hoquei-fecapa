@@ -560,11 +560,9 @@ async function _removeFavFromCloud(type, key) {
 
 function renderLoginButton() {
   if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
-  const roleBadge = getProfileRolesLabel(currentProfile, "");
   const loginBtn = currentUser
-    ? `<button onclick="openUserModal()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+    ? `<button onclick="openUserModal()" title="El meu compte" aria-label="El meu compte" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 10px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:40px">
         <span style="background:#e5001c;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${(currentUser.email||"?")[0].toUpperCase()}</span>
-        ${esc(roleBadge)}
        </button>`
     : `<button onclick="openLoginModal()" style="background:#f0f4f8;border:1.5px solid #e2e6ef;color:#334155;font-weight:700;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer">👤 Login</button>`;
   const adminBtn = profileHasRole(currentProfile, "admin")
