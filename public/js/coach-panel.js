@@ -1479,8 +1479,17 @@ function _coachToggleBallMode(mode) {
 }
 
 function _coachBallActionFollow(tool, kind, id, point) {
-  if (!coachBoardState || coachBoardState.ballMode !== "attached") return;
-  if (tool !== "pass" && tool !== "shot") return;
+  if (!coachBoardState) return;
+
+  if (tool === "shot") {
+    coachBoardState.puckAttachedTo = null;
+    coachBoardState.puck.x = point.x;
+    coachBoardState.puck.y = point.y;
+    return;
+  }
+
+  if (coachBoardState.ballMode !== "attached") return;
+  if (tool !== "pass") return;
 
   if (kind === "player") {
     const player = coachBoardState.players.find(p => p.id === id && !p.isGoalie);
@@ -1494,6 +1503,15 @@ function _coachBallActionFollow(tool, kind, id, point) {
   coachBoardState.puckAttachedTo = null;
   coachBoardState.puck.x = point.x;
   coachBoardState.puck.y = point.y;
+}
+
+function _coachPointInsideGoal(point) {
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  const inHomeGoal = x >= 8.8 && x <= 11.0 && y >= 45 && y <= 55;
+  const inAwayGoal = x >= 89 && x <= 91.2 && y >= 45 && y <= 55;
+  return inHomeGoal || inAwayGoal;
 }
 
 function _coachStopPlayback() {
@@ -3350,7 +3368,9 @@ function coachHandleBoardClick(evt, kind, id) {
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
   _coachBoardRecordFrame(`Acció ${tool}`);
-  _coachBoardMessage(`${_coachToolMeta(tool).label} afegida a la pissarra.`);
+  _coachBoardMessage(tool === "shot" && _coachPointInsideGoal(entityPoint)
+    ? "Gol!!!"
+    : `${_coachToolMeta(tool).label} afegida a la pissarra.`);
   _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
