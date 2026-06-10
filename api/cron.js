@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("fs");
 
 function runNodeStep(scriptName, timeoutMs) {
-  const scriptPath = path.join(__dirname, scriptName);
+  const scriptPath = path.join(__dirname, "../jobs", scriptName);
   execSync(`node ${scriptPath}`, {
     timeout: timeoutMs,
     stdio: "pipe",
