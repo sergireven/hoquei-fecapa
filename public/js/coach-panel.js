@@ -59,32 +59,83 @@ const COACH_EXERCISES = {
 };
 
 const COACH_TACTICS = [
-  { name: "1-2-1  Estàndard", desc: "Formació equilibrada. 1 defensa, 2 migs, 1 davanter.",
-    positions: [{ x: 28, y: 50 }, { x: 50, y: 30 }, { x: 50, y: 70 }, { x: 72, y: 50 }] },
-  { name: "2-2  Defensiu",    desc: "2 defenses, 2 davanters. Solidesa darrere.",
-    positions: [{ x: 30, y: 35 }, { x: 30, y: 65 }, { x: 65, y: 35 }, { x: 65, y: 65 }] },
-  { name: "3-1  Ofensiu",     desc: "Pressió alta: 1 defensa, 3 davanters.",
-    positions: [{ x: 28, y: 50 }, { x: 62, y: 25 }, { x: 68, y: 50 }, { x: 62, y: 75 }] },
-  { name: "1-3  Contratac",   desc: "Tanca i surt ràpid: 3 defenses, 1 davanter.",
-    positions: [{ x: 30, y: 25 }, { x: 35, y: 50 }, { x: 30, y: 75 }, { x: 72, y: 50 }] },
-  { name: "Diamant",          desc: "Diamant clàssic. Pivot central.",
-    positions: [{ x: 28, y: 50 }, { x: 50, y: 68 }, { x: 50, y: 32 }, { x: 72, y: 50 }] },
+  {
+    name: "1-2-1  Estàndard",
+    desc: "Formació equilibrada amb 4 de camp + porter contra 4 + porter.",
+    homeGoalie: true,
+    awayGoalie: true,
+    homePositions: [{ x: 28, y: 50 }, { x: 50, y: 30 }, { x: 50, y: 70 }, { x: 72, y: 50 }],
+    awayPositions: [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }],
+  },
+  {
+    name: "2-2  Defensiu",
+    desc: "2 defenses + 2 davanters amb estructura completa als dos equips.",
+    homeGoalie: true,
+    awayGoalie: true,
+    homePositions: [{ x: 30, y: 35 }, { x: 30, y: 65 }, { x: 65, y: 35 }, { x: 65, y: 65 }],
+    awayPositions: [{ x: 64, y: 26 }, { x: 72, y: 42 }, { x: 72, y: 58 }, { x: 64, y: 74 }],
+  },
+  {
+    name: "3-1  Ofensiu",
+    desc: "Pressió alta: 4 de camp + porter contra 4 + porter.",
+    homeGoalie: true,
+    awayGoalie: true,
+    homePositions: [{ x: 28, y: 50 }, { x: 62, y: 25 }, { x: 68, y: 50 }, { x: 62, y: 75 }],
+    awayPositions: [{ x: 58, y: 22 }, { x: 74, y: 38 }, { x: 74, y: 62 }, { x: 58, y: 78 }],
+  },
+  {
+    name: "1-3  Contratac",
+    desc: "Replegament i sortida ràpida amb 4 de camp + porter.",
+    homeGoalie: true,
+    awayGoalie: true,
+    homePositions: [{ x: 30, y: 25 }, { x: 35, y: 50 }, { x: 30, y: 75 }, { x: 72, y: 50 }],
+    awayPositions: [{ x: 61, y: 24 }, { x: 71, y: 41 }, { x: 71, y: 59 }, { x: 61, y: 76 }],
+  },
+  {
+    name: "Diamant",
+    desc: "Diamant clàssic amb pivot central i rival complet.",
+    homeGoalie: true,
+    awayGoalie: true,
+    homePositions: [{ x: 28, y: 50 }, { x: 50, y: 68 }, { x: 50, y: 32 }, { x: 72, y: 50 }],
+    awayPositions: [{ x: 62, y: 26 }, { x: 74, y: 40 }, { x: 74, y: 60 }, { x: 62, y: 74 }],
+  },
+  {
+    name: "5 vs 4+PORT",
+    desc: "Equip local sense porter: 5 de camp contra 4 de camp + porter rival.",
+    homeGoalie: false,
+    awayGoalie: true,
+    homePositions: [{ x: 25, y: 50 }, { x: 42, y: 28 }, { x: 42, y: 72 }, { x: 60, y: 38 }, { x: 60, y: 62 }],
+    awayPositions: [{ x: 67, y: 24 }, { x: 74, y: 40 }, { x: 74, y: 60 }, { x: 67, y: 76 }],
+  },
+  {
+    name: "4 vs 3+PORT",
+    desc: "Situació especial: 4 de camp contra 3 de camp + porter.",
+    homeGoalie: false,
+    awayGoalie: true,
+    homePositions: [{ x: 28, y: 50 }, { x: 48, y: 30 }, { x: 48, y: 70 }, { x: 68, y: 50 }],
+    awayPositions: [{ x: 69, y: 32 }, { x: 77, y: 50 }, { x: 69, y: 68 }],
+  },
 ];
 
 const COACH_TACTIC_TOOLS = [
-  { id: "move",  label: "Moure",       color: "#1a2035", hint: "Selecciona jugador o pilota i toca el camp per reposicionar." },
-  { id: "pass",  label: "Passada",     color: "#2563eb", hint: "Marca origen i destí per dibuixar una passada." },
-  { id: "shot",  label: "Xut",         color: "#dc2626", hint: "Marca origen i final per indicar un tir." },
-  { id: "carry", label: "Conducció",   color: "#0891b2", hint: "Traça la conducció o patinada amb pilota." },
-  { id: "screen",label: "Bloqueig",    color: "#d97706", hint: "Indica un bloqueig o pantalla entre dos punts." },
-  { id: "zone",  label: "Zona",        color: "#7c3aed", hint: "Defineix una zona o espai ocupat en dues pulsacions." },
-  { id: "erase", label: "Esborrar",    color: "#64748b", hint: "Toca una acció dibuixada per eliminar-la." },
+  { id: "move",  icon: "✋", label: "Moure",       color: "#1a2035", hint: "Selecciona jugador o pilota i toca el camp per reposicionar." },
+  { id: "pass",  icon: "➜", label: "Passada",     color: "#2563eb", hint: "Marca origen i destí per dibuixar una passada." },
+  { id: "shot",  icon: "🎯", label: "Xut",         color: "#dc2626", hint: "Marca origen i final per indicar un tir." },
+  { id: "carry", icon: "⤳", label: "Conducció",   color: "#0891b2", hint: "Traça la conducció o patinada amb pilota." },
+  { id: "screen",icon: "⛔", label: "Bloqueig",    color: "#d97706", hint: "Indica un bloqueig o pantalla entre dos punts." },
+  { id: "zone",  icon: "▧", label: "Zona",        color: "#7c3aed", hint: "Defineix una zona o espai ocupat en dues pulsacions." },
+  { id: "erase", icon: "⌫", label: "Esborrar",    color: "#64748b", hint: "Toca una acció dibuixada per eliminar-la." },
 ];
 
 const COACH_TACTIC_PLAYBOOK_KEY = "hoquei_coach_playbook_v1";
+const COACH_TACTIC_BOARD_STATE_KEY = "hoquei_coach_tactic_board_state_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
+const COACH_GOALIE_AREAS = {
+  home: { xMin: 4.8, xMax: 15.8, yMin: 38, yMax: 62 },
+  away: { xMin: 84.2, xMax: 95.2, yMin: 38, yMax: 62 },
+};
 const COACH_ACTA_ARCHIVE_FILES = [
   "./actes/alevi.json",
   "./actes/altres.json",
@@ -139,6 +190,9 @@ let coachTacticsMsg  = "";
 let coachPlaybackTimer = null;
 let coachBoardDragState = null;
 let coachBoardSuppressClickUntil = 0;
+let coachBoardRemoteLoadedKey = "";
+let coachBoardRemoteSaveTimer = null;
+let coachBoardRemoteSaveNonce = 0;
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -605,6 +659,7 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
     return;
   }
   if (tabKey === "match") {
+    coachBoardRemoteLoadedKey = "";
     const club = _cclub("match");
     const team = _cteam("match");
     coachMatchState.players = _coachRosterFromConvocatoria(club, team);
@@ -629,6 +684,7 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   }
   const matchClub = _cclub("match");
   const matchTeam = _cteam("match");
+  coachBoardRemoteLoadedKey = "";
   coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
@@ -963,53 +1019,310 @@ function _coachPersistSavedPlays() {
   } catch {}
 }
 
-function _coachBoardPlayerColor(team) {
-  if (team === "away") return "#ffffff";
-  if (team === "goalie") return "#fbbf24";
+function _coachBoardPlayerColor(player) {
+  if (player?.isGoalie) return "#fbbf24";
+  if ((player?.side || player?.team) === "away") return "#ffffff";
   return "#ef4444";
 }
 
-function _coachBoardPlayerTextColor(team) {
-  return team === "away" ? "#0f172a" : "#ffffff";
+function _coachBoardPlayerTextColor(player) {
+  return (player?.side || player?.team) === "away" ? "#0f172a" : "#ffffff";
+}
+
+function _coachBoardTeamKey() {
+  return String(_cteam() || "sense-equip").trim().toLowerCase();
+}
+
+function _coachLoadBoardStateStore() {
+  try {
+    const raw = localStorage.getItem(COACH_TACTIC_BOARD_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function _coachCurrentBoardStoragePayload() {
+  return {
+    tool: coachBoardState?.tool || "move",
+    ballMode: coachBoardState?.ballMode || "attached",
+    puckAttachedTo: coachBoardState?.puckAttachedTo || null,
+    recording: Boolean(coachBoardState?.recording),
+    recordingFrames: Array.isArray(coachBoardState?.recordingFrames) ? coachBoardState.recordingFrames : [],
+    board: {
+      tacticIdx: coachTacticIdx,
+      players: _cclone(coachBoardState?.players || []),
+      puck: _cclone(coachBoardState?.puck || { x: 22, y: 50 }),
+      annotations: _cclone(coachBoardState?.annotations || []),
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function _coachLoadBoardStateForTeam(teamKey) {
+  const store = _coachLoadBoardStateStore();
+  const key = String(teamKey || "").trim();
+  if (!key) return null;
+  return store[key] || null;
+}
+
+function _coachPersistBoardState() {
+  try {
+    if (!coachBoardState) return;
+    const key = _coachBoardTeamKey();
+    if (!key) return;
+    const store = _coachLoadBoardStateStore();
+    const payload = _coachCurrentBoardStoragePayload();
+    store[key] = payload;
+    localStorage.setItem(COACH_TACTIC_BOARD_STATE_KEY, JSON.stringify(store));
+    _coachScheduleBoardStateRemoteSave(payload);
+  } catch {}
+}
+
+async function _coachLoadBoardStateRemote() {
+  const sb = _csb();
+  const uid = await _cauthUid();
+  const team = String(_cteam("match") || "").trim();
+  if (!sb || !uid || !team) return;
+
+  const season = _coachSeasonKey();
+  const loadKey = `${uid}::${season}::${team.toLowerCase()}`;
+  if (coachBoardRemoteLoadedKey === loadKey) return;
+
+  try {
+    const { data, error } = await sb
+      .from("coach_tactic_board_states")
+      .select("board_state, updated_at")
+      .eq("user_id", uid)
+      .eq("team_name", team)
+      .eq("season", season)
+      .maybeSingle();
+    if (error) {
+      coachBoardRemoteLoadedKey = loadKey;
+      return;
+    }
+
+    if (data?.board_state && typeof data.board_state === "object") {
+      const payload = data.board_state;
+      if (payload?.board) {
+        _coachApplyBoardSnapshot(payload.board);
+        coachBoardState.tool = payload.tool || coachBoardState.tool;
+        coachBoardState.ballMode = payload.ballMode === "free" ? "free" : "attached";
+        coachBoardState.puckAttachedTo = payload.puckAttachedTo || coachBoardState.puckAttachedTo;
+        coachBoardState.recording = Boolean(payload.recording);
+        coachBoardState.recordingFrames = Array.isArray(payload.recordingFrames) ? payload.recordingFrames : [];
+        _coachResolveAttachedPuckPosition();
+      }
+    }
+  } catch {
+  } finally {
+    coachBoardRemoteLoadedKey = loadKey;
+  }
+}
+
+function _coachScheduleBoardStateRemoteSave(payload) {
+  if (coachBoardRemoteSaveTimer) clearTimeout(coachBoardRemoteSaveTimer);
+  const nonce = ++coachBoardRemoteSaveNonce;
+  coachBoardRemoteSaveTimer = setTimeout(() => {
+    void _coachPersistBoardStateRemote(payload, nonce);
+  }, 700);
+}
+
+async function _coachPersistBoardStateRemote(payload, nonce) {
+  if (nonce !== coachBoardRemoteSaveNonce) return;
+
+  const sb = _csb();
+  const uid = await _coachAuthUidForWrite();
+  const team = String(_cteam("match") || _cteam() || "").trim();
+  if (!sb || !uid || !team) return;
+
+  const season = _coachSeasonKey();
+  try {
+    await sb.from("coach_tactic_board_states").upsert({
+      user_id: uid,
+      team_name: team,
+      season,
+      board_state: payload,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,team_name,season" });
+  } catch {}
+}
+
+function _coachPlayerInitials(name) {
+  const clean = String(name || "").trim();
+  if (!clean) return "";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return clean.slice(0, 2).toUpperCase();
+}
+
+function _coachLineupForBoard() {
+  const all = Array.isArray(coachMatchState?.players) ? coachMatchState.players : [];
+  const starters = all.filter(p => p?.isStarter);
+  return starters.length ? starters : all;
+}
+
+function _coachHomeFieldLabels(maxCount) {
+  const lineup = _coachLineupForBoard().filter(p => String(p?.pos || "").toUpperCase() !== "PORT");
+  const labels = lineup.slice(0, maxCount).map(p => _coachPlayerInitials(p?.name || "")).filter(Boolean);
+  const fallback = ["D", "M1", "M2", "A", "A2"];
+  while (labels.length < maxCount) labels.push(fallback[labels.length] || `P${labels.length + 1}`);
+  return labels;
+}
+
+function _coachHomeGoalieLabel() {
+  const gk = _coachLineupForBoard().find(p => String(p?.pos || "").toUpperCase() === "PORT");
+  return _coachPlayerInitials(gk?.name || "") || "GK";
+}
+
+function _coachGoalieAreaBounds(side) {
+  const area = (side === "away" ? COACH_GOALIE_AREAS.away : COACH_GOALIE_AREAS.home) || COACH_GOALIE_AREAS.home;
+  return {
+    minX: area.xMin,
+    maxX: area.xMax,
+    minY: area.yMin,
+    maxY: area.yMax,
+  };
+}
+
+function _coachConstrainPlayerPoint(player, point) {
+  const x = _clamp(point.x, 4, 96);
+  const y = _clamp(point.y, 8.5, 91.5);
+  if (!player?.isGoalie) return { x, y };
+  const b = _coachGoalieAreaBounds(player.side || player.team || "home");
+  return { x: _clamp(x, b.minX, b.maxX), y: _clamp(y, b.minY, b.maxY) };
+}
+
+function _coachResolveAttachedPuckPosition() {
+  if (!coachBoardState || coachBoardState.ballMode !== "attached") return;
+  const attached = (coachBoardState.players || []).find(p => p.id === coachBoardState.puckAttachedTo && !p.isGoalie)
+    || (coachBoardState.players || []).find(p => !p.isGoalie && (p.side || p.team) === "home")
+    || (coachBoardState.players || []).find(p => !p.isGoalie)
+    || null;
+  if (!attached) return;
+  coachBoardState.puckAttachedTo = attached.id;
+  coachBoardState.puck.x = attached.x;
+  coachBoardState.puck.y = attached.y;
+}
+
+function _coachTeamCounts(side) {
+  const sidePlayers = (coachBoardState?.players || []).filter(p => (p.side || p.team) === side);
+  const goalies = sidePlayers.filter(p => p.isGoalie).length;
+  const field = sidePlayers.length - goalies;
+  return { total: sidePlayers.length, goalies, field, maxField: goalies > 0 ? 4 : 5 };
+}
+
+function _coachNormalizeBoardPlayers(players, tacticIdx) {
+  const tactic = COACH_TACTICS[tacticIdx] || COACH_TACTICS[0];
+  const hasHomeGoalie = tactic.homeGoalie !== false;
+  const hasAwayGoalie = tactic.awayGoalie !== false;
+  const awayMinField = Array.isArray(tactic.awayPositions) ? tactic.awayPositions.length : 4;
+
+  let out = (players || []).map(raw => {
+    const side = String(raw?.side || raw?.team || "home") === "away" ? "away" : "home";
+    const isGoalie = Boolean(raw?.isGoalie || /gk/i.test(String(raw?.id || "")));
+    return {
+      id: String(raw?.id || "").trim(),
+      label: String(raw?.label || "").trim() || (isGoalie ? "GK" : (side === "away" ? "R" : "P")),
+      team: side,
+      side,
+      isGoalie,
+      x: Number(raw?.x),
+      y: Number(raw?.y),
+    };
+  }).filter(p => p.id);
+
+  out = out.filter(p => {
+    if (p.side === "home" && p.isGoalie && !hasHomeGoalie) return false;
+    if (p.side === "away" && p.isGoalie && !hasAwayGoalie) return false;
+    return true;
+  });
+
+  for (const side of ["home", "away"]) {
+    const sidePlayers = out.filter(p => p.side === side);
+    const goalies = sidePlayers.filter(p => p.isGoalie);
+    const field = sidePlayers.filter(p => !p.isGoalie);
+    const maxField = goalies.length > 0 ? 4 : 5;
+    const keepField = field.slice(0, maxField);
+    const minField = side === "away" ? awayMinField : 0;
+    const defaults = side === "away"
+      ? (Array.isArray(tactic.awayPositions) ? tactic.awayPositions : [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }])
+      : (Array.isArray(tactic.homePositions) ? tactic.homePositions : (tactic.positions || []));
+    while (keepField.length < Math.min(minField, maxField)) {
+      const pos = defaults[keepField.length] || { x: side === "away" ? 70 : 35, y: _clamp(25 + keepField.length * 12, 14, 86) };
+      keepField.push({
+        id: `${side}_auto_${keepField.length + 1}`,
+        label: side === "away" ? `R${keepField.length + 1}` : `A${keepField.length + 1}`,
+        team: side,
+        side,
+        isGoalie: false,
+        x: pos.x,
+        y: pos.y,
+      });
+    }
+    const keep = [...goalies.slice(0, 1), ...keepField].slice(0, 5);
+    out = out.filter(p => p.side !== side).concat(keep);
+  }
+
+  return out.map(player => {
+    const constrained = _coachConstrainPlayerPoint(player, { x: player.x, y: player.y });
+    return { ...player, x: constrained.x, y: constrained.y };
+  });
 }
 
 function _coachBuildBoardPlayers(tacticIdx) {
   const tactic = COACH_TACTICS[tacticIdx] || COACH_TACTICS[0];
-  const labels = ["D", "M1", "M2", "A"];
-  const players = [{
-    id: "gk_home",
-    label: "GK",
-    team: "goalie",
-    x: 9,
-    y: 50,
-  }];
+  const homePositions = Array.isArray(tactic.homePositions) ? tactic.homePositions : (tactic.positions || []);
+  const awayPositions = Array.isArray(tactic.awayPositions) ? tactic.awayPositions : [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }];
+  const homeLabels = _coachHomeFieldLabels(homePositions.length);
+  const players = [];
 
-  (tactic.positions || []).forEach((pos, idx) => {
+  if (tactic.homeGoalie !== false) {
+    players.push({ id: "gk_home", label: _coachHomeGoalieLabel(), team: "home", side: "home", isGoalie: true, x: 9, y: 50 });
+  }
+
+  homePositions.forEach((pos, idx) => {
     players.push({
       id: `home_${idx + 1}`,
-      label: labels[idx] || `P${idx + 1}`,
+      label: homeLabels[idx] || `P${idx + 1}`,
       team: "home",
+      side: "home",
+      isGoalie: false,
       x: pos.x,
       y: pos.y,
     });
   });
 
-  players.push(
-    { id: "away_1", label: "R1", team: "away", x: 66, y: 26 },
-    { id: "away_2", label: "R2", team: "away", x: 71, y: 50 },
-    { id: "away_3", label: "R3", team: "away", x: 66, y: 74 },
-    { id: "away_gk", label: "GK", team: "away", x: 91, y: 50 }
-  );
+  awayPositions.forEach((pos, idx) => {
+    players.push({
+      id: `away_${idx + 1}`,
+      label: `R${idx + 1}`,
+      team: "away",
+      side: "away",
+      isGoalie: false,
+      x: pos.x,
+      y: pos.y,
+    });
+  });
 
-  return players;
+  if (tactic.awayGoalie !== false) {
+    players.push({ id: "away_gk", label: "GK", team: "away", side: "away", isGoalie: true, x: 91, y: 50 });
+  }
+
+  return _coachNormalizeBoardPlayers(players, tacticIdx);
 }
 
 function _coachDefaultBoardState(tacticIdx = coachTacticIdx) {
+  const players = _coachBuildBoardPlayers(tacticIdx);
+  const firstCarrier = players.find(p => !p.isGoalie && (p.side || p.team) === "home") || players.find(p => !p.isGoalie) || null;
   return {
     tacticIdx,
     tool: "move",
-    players: _coachBuildBoardPlayers(tacticIdx),
-    puck: { x: 22, y: 50 },
+    ballMode: "attached",
+    puckAttachedTo: firstCarrier?.id || null,
+    players,
+    puck: firstCarrier ? { x: firstCarrier.x, y: firstCarrier.y } : { x: 22, y: 50 },
     annotations: [],
     selectedEntity: null,
     pendingAction: null,
@@ -1023,13 +1336,29 @@ function _coachEnsureBoardState(forceReset = false) {
   if (!coachSavedPlays.length) coachSavedPlays = _coachLoadSavedPlays();
   if (forceReset || !coachBoardState || coachBoardState.tacticIdx !== coachTacticIdx) {
     const fullscreen = coachBoardState?.fullscreen || false;
-    coachBoardState = _coachDefaultBoardState(coachTacticIdx);
+    const persisted = !forceReset ? _coachLoadBoardStateForTeam(_coachBoardTeamKey()) : null;
+    if (persisted?.board) {
+      coachTacticIdx = _clamp(Number(persisted.board?.tacticIdx ?? coachTacticIdx), 0, COACH_TACTICS.length - 1);
+      coachBoardState = _coachDefaultBoardState(coachTacticIdx);
+      coachBoardState.players = _coachNormalizeBoardPlayers(persisted.board.players || coachBoardState.players, coachTacticIdx);
+      coachBoardState.puck = persisted.board.puck ? _cclone(persisted.board.puck) : coachBoardState.puck;
+      coachBoardState.annotations = Array.isArray(persisted.board.annotations) ? _cclone(persisted.board.annotations) : [];
+      coachBoardState.tool = persisted.tool || coachBoardState.tool;
+      coachBoardState.ballMode = persisted.ballMode === "free" ? "free" : "attached";
+      coachBoardState.puckAttachedTo = persisted.puckAttachedTo || coachBoardState.puckAttachedTo;
+      coachBoardState.recording = Boolean(persisted.recording);
+      coachBoardState.recordingFrames = Array.isArray(persisted.recordingFrames) ? persisted.recordingFrames : [];
+      _coachResolveAttachedPuckPosition();
+    } else {
+      coachBoardState = _coachDefaultBoardState(coachTacticIdx);
+    }
     coachBoardState.fullscreen = fullscreen;
   }
 }
 
 function _coachCurrentBoardSnapshot() {
   _coachEnsureBoardState();
+  _coachResolveAttachedPuckPosition();
   return {
     tacticIdx: coachTacticIdx,
     players: _cclone(coachBoardState.players),
@@ -1043,20 +1372,25 @@ function _coachApplyBoardSnapshot(snapshot) {
   const nextTacticIdx = Number.isFinite(Number(snapshot?.tacticIdx)) ? Number(snapshot.tacticIdx) : coachTacticIdx;
   const fullscreen = coachBoardState?.fullscreen || false;
   const tool = coachBoardState?.tool || "move";
+  const ballMode = coachBoardState?.ballMode || "attached";
+  const puckAttachedTo = coachBoardState?.puckAttachedTo || null;
   const recording = coachBoardState?.recording || false;
   const recordingFrames = recording ? (coachBoardState?.recordingFrames || []) : [];
 
   coachTacticIdx = _clamp(nextTacticIdx, 0, COACH_TACTICS.length - 1);
   coachBoardState = _coachDefaultBoardState(coachTacticIdx);
   coachBoardState.players = Array.isArray(snapshot?.players) && snapshot.players.length
-    ? _cclone(snapshot.players)
+    ? _coachNormalizeBoardPlayers(snapshot.players, coachTacticIdx)
     : coachBoardState.players;
   coachBoardState.puck = snapshot?.puck ? _cclone(snapshot.puck) : coachBoardState.puck;
   coachBoardState.annotations = Array.isArray(snapshot?.annotations) ? _cclone(snapshot.annotations) : [];
   coachBoardState.fullscreen = fullscreen;
   coachBoardState.tool = tool;
+  coachBoardState.ballMode = ballMode === "free" ? "free" : "attached";
+  coachBoardState.puckAttachedTo = puckAttachedTo;
   coachBoardState.recording = recording;
   coachBoardState.recordingFrames = recordingFrames;
+  _coachResolveAttachedPuckPosition();
 }
 
 function _coachBoardMessage(msg) {
@@ -1076,6 +1410,7 @@ function _coachBoardRecordFrame(label) {
     capturedAt: new Date().toISOString(),
   });
   coachBoardState.recordingFrames = frames;
+  _coachPersistBoardState();
 }
 
 function _coachActiveSavedPlays() {
@@ -1090,6 +1425,41 @@ function _coachBoardPayload() {
     board: _coachCurrentBoardSnapshot(),
     savedPlayIds: _coachActiveSavedPlays().map(play => play.id),
   };
+}
+
+function _coachToggleBallMode(mode) {
+  _coachEnsureBoardState();
+  coachBoardState.ballMode = mode === "free" ? "free" : "attached";
+  if (coachBoardState.ballMode === "attached") {
+    const selected = coachBoardState.selectedEntity?.kind === "player"
+      ? coachBoardState.players.find(p => p.id === coachBoardState.selectedEntity.id && !p.isGoalie)
+      : null;
+    if (selected) coachBoardState.puckAttachedTo = selected.id;
+    _coachResolveAttachedPuckPosition();
+  }
+  _coachBoardMessage(coachBoardState.ballMode === "attached"
+    ? "Mode bola: enganxada a un jugador."
+    : "Mode bola: objecte lliure en primer pla.");
+  _coachPersistBoardState();
+  _coachRenderTacticsTabRoot();
+}
+
+function _coachBallActionFollow(tool, kind, id, point) {
+  if (!coachBoardState || coachBoardState.ballMode !== "attached") return;
+  if (tool !== "pass" && tool !== "shot") return;
+
+  if (kind === "player") {
+    const player = coachBoardState.players.find(p => p.id === id && !p.isGoalie);
+    if (player) {
+      coachBoardState.puckAttachedTo = player.id;
+      coachBoardState.puck.x = player.x;
+      coachBoardState.puck.y = player.y;
+      return;
+    }
+  }
+  coachBoardState.puckAttachedTo = null;
+  coachBoardState.puck.x = point.x;
+  coachBoardState.puck.y = point.y;
 }
 
 function _coachStopPlayback() {
@@ -1133,6 +1503,7 @@ function _coachCreateAnnotation(tool, start, end) {
 
 function _coachRenderTacticsTabRoot() {
   const root = document.getElementById("coach-tactics-root");
+  _coachPersistBoardState();
   if (root) root.innerHTML = _renderTacticsPanelInner();
 }
 
@@ -1148,11 +1519,17 @@ function _coachUpdateBoardEntityPosition(kind, id, point) {
   if (kind === "player") {
     const player = coachBoardState.players.find(item => item.id === id);
     if (!player) return false;
-    player.x = point.x;
-    player.y = point.y;
+    const next = _coachConstrainPlayerPoint(player, point);
+    player.x = next.x;
+    player.y = next.y;
+    if (coachBoardState.ballMode === "attached" && coachBoardState.puckAttachedTo === player.id) {
+      coachBoardState.puck.x = player.x;
+      coachBoardState.puck.y = player.y;
+    }
     return true;
   }
   if (kind === "puck") {
+    if (coachBoardState.ballMode === "attached") return false;
     coachBoardState.puck.x = point.x;
     coachBoardState.puck.y = point.y;
     return true;
@@ -1183,10 +1560,12 @@ function _coachSyncDraggedEntityToDom(kind, id) {
   }
 
   if (kind === "puck") {
-    const puck = svg.querySelector("[data-coach-entity-kind='puck'] circle");
-    if (!puck) return;
-    puck.setAttribute("cx", String(coachBoardState.puck.x));
-    puck.setAttribute("cy", String(coachBoardState.puck.y));
+    const circles = svg.querySelectorAll("[data-coach-entity-kind='puck'] circle");
+    if (!circles?.length) return;
+    for (const puck of circles) {
+      puck.setAttribute("cx", String(coachBoardState.puck.x));
+      puck.setAttribute("cy", String(coachBoardState.puck.y));
+    }
   }
 }
 
@@ -1306,7 +1685,10 @@ async function renderCoachPanel(clubSearchCursor) {
   let content = "";
   if (coachPanelTab === "planning")   content = await _renderPlanningTab();
   else if (coachPanelTab === "objectives") content = await _renderObjectivesTab();
-  else if (coachPanelTab === "match") content = _renderMatchTab();
+  else if (coachPanelTab === "match") {
+    if (coachMatchSubTab === "tactics") await _coachLoadBoardStateRemote();
+    content = _renderMatchTab();
+  }
 
   const tabHeader = _coachTabTeamHeader(coachPanelTab, options);
   body.innerHTML = teamRow + `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${authBadge}</div>` + tabsHtml + tabHeader + content;
@@ -1707,6 +2089,7 @@ function _renderTacticsPanelInner() {
   _coachEnsureBoardState();
   const tactic = COACH_TACTICS[coachTacticIdx];
   const activeTool = _coachToolMeta(coachBoardState.tool);
+  const ballMode = coachBoardState.ballMode === "free" ? "free" : "attached";
   const savedPlays = _coachActiveSavedPlays();
   const isFullscreen = Boolean(coachBoardState.fullscreen);
   const mobileWarning = _coachIsPhoneLikeScreen()
@@ -1722,7 +2105,7 @@ function _renderTacticsPanelInner() {
 
   const toolButtons = COACH_TACTIC_TOOLS.map(tool => {
     const on = coachBoardState.tool === tool.id;
-    return `<button onclick="coachSetBoardTool('${tool.id}')" style="background:${on ? tool.color : "#fff"};border:1.5px solid ${on ? tool.color : "#dbe3f0"};color:${on ? "#fff" : "#334155"};font-weight:700;font-size:12px;padding:8px 11px;border-radius:999px;cursor:pointer">${_cesc(tool.label)}</button>`;
+    return `<button onclick="coachSetBoardTool('${tool.id}')" style="display:inline-flex;align-items:center;gap:7px;background:${on ? tool.color : "#fff"};border:1.5px solid ${on ? tool.color : "#dbe3f0"};color:${on ? "#fff" : "#334155"};font-weight:800;font-size:14px;padding:10px 14px;border-radius:12px;cursor:pointer;min-height:44px"><span style="font-size:16px;line-height:1">${_cesc(tool.icon || "")}</span><span>${_cesc(tool.label)}</span></button>`;
   }).join("");
 
   const savedRows = savedPlays.length
@@ -1750,13 +2133,18 @@ function _renderTacticsPanelInner() {
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Formacions base</div>
         <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">${tacBtns}</div>
         <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Eines habituals</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${toolButtons}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${toolButtons}</div>
+        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Gestió de la bola</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button onclick="coachToggleBallMode('attached')" style="background:${ballMode === "attached" ? "#0f766e" : "#fff"};border:1.5px solid ${ballMode === "attached" ? "#0f766e" : "#99f6e4"};color:${ballMode === "attached" ? "#fff" : "#0f766e"};font-weight:800;font-size:13px;padding:9px 12px;border-radius:11px;cursor:pointer;min-height:42px">🔗 Enganxada a jugador</button>
+          <button onclick="coachToggleBallMode('free')" style="background:${ballMode === "free" ? "#1d4ed8" : "#fff"};border:1.5px solid ${ballMode === "free" ? "#1d4ed8" : "#bfdbfe"};color:${ballMode === "free" ? "#fff" : "#1d4ed8"};font-weight:800;font-size:13px;padding:9px 12px;border-radius:11px;cursor:pointer;min-height:42px">⚪ Bola lliure</button>
+        </div>
         <div style="font-size:12px;color:${activeTool.color};font-weight:700;margin-bottom:10px">${_cesc(activeTool.hint)}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <button onclick="coachAddBoardPlayer('home')" style="background:#fee2e2;border:1px solid #fecaca;color:#b91c1c;font-weight:700;font-size:12px;padding:8px 10px;border-radius:9px;cursor:pointer">+ Atacant</button>
-          <button onclick="coachAddBoardPlayer('away')" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;font-weight:700;font-size:12px;padding:8px 10px;border-radius:9px;cursor:pointer">+ Rival</button>
-          <button onclick="coachResetBoard()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:8px 10px;border-radius:9px;cursor:pointer">Reset formació</button>
-          <button onclick="coachClearBoardActions()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:8px 10px;border-radius:9px;cursor:pointer">Netejar accions</button>
+          <button onclick="coachAddBoardPlayer('home')" style="background:#fee2e2;border:1px solid #fecaca;color:#b91c1c;font-weight:800;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">+ Jugador local</button>
+          <button onclick="coachAddBoardPlayer('away')" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;font-weight:800;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">+ Jugador rival</button>
+          <button onclick="coachResetBoard()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:800;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Reset formació</button>
+          <button onclick="coachClearBoardActions()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:800;font-size:13px;padding:10px 12px;border-radius:10px;cursor:pointer">Netejar accions</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
           <button onclick="coachToggleBoardRecording()" style="background:${coachBoardState.recording ? "#b91c1c" : "#fff"};border:1.5px solid ${coachBoardState.recording ? "#b91c1c" : "#fecaca"};color:${coachBoardState.recording ? "#fff" : "#b91c1c"};font-weight:800;font-size:12px;padding:8px 11px;border-radius:999px;cursor:pointer">${coachBoardState.recording ? "Aturar gravació" : "Gravar jugada"}</button>
@@ -2022,10 +2410,11 @@ function _spiderSVG(data, size) {
 /** Interactive top-down roller hockey rink SVG for tactics board */
 function _tacticSVGInteractive(isFullscreen) {
   _coachEnsureBoardState();
+  _coachResolveAttachedPuckPosition();
   const playerSvg = (coachBoardState.players || []).map(player => {
     const selected = coachBoardState.selectedEntity?.kind === "player" && coachBoardState.selectedEntity?.id === player.id;
-    const fill = _coachBoardPlayerColor(player.team);
-    const textColor = _coachBoardPlayerTextColor(player.team);
+    const fill = _coachBoardPlayerColor(player);
+    const textColor = _coachBoardPlayerTextColor(player);
     return `<g data-coach-entity-kind="player" data-coach-entity-id="${_cesc(player.id)}" onclick="coachHandleBoardClick(event,'player','${_cesc(player.id)}');event.stopPropagation();" style="cursor:grab">
       <circle cx="${player.x}" cy="${player.y}" r="3.3" fill="${fill}" stroke="${selected ? "#fde68a" : "#0f172a"}" stroke-width="${selected ? "0.9" : "0.45"}" />
       <text x="${player.x}" y="${player.y + 0.3}" text-anchor="middle" dominant-baseline="middle" font-size="2.1" fill="${textColor}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${_cesc(player.label)}</text>
@@ -2034,6 +2423,7 @@ function _tacticSVGInteractive(isFullscreen) {
 
   const puckSelected = coachBoardState.selectedEntity?.kind === "puck";
   const puckSvg = `<g data-coach-entity-kind="puck" data-coach-entity-id="puck" onclick="coachHandleBoardClick(event,'puck','puck');event.stopPropagation();" style="cursor:grab">
+    <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="2.5" fill="transparent" stroke="transparent" />
     <circle cx="${coachBoardState.puck.x}" cy="${coachBoardState.puck.y}" r="1.25" fill="#0f172a" stroke="${puckSelected ? "#fde68a" : "#ffffff"}" stroke-width="0.55" />
   </g>`;
 
@@ -2087,20 +2477,14 @@ function _tacticSVGInteractive(isFullscreen) {
 
     <rect x="1" y="6" width="98" height="88" rx="8" fill="url(#coach-rink-bg)" stroke="#0f172a" stroke-width="0.35" />
     <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="#dbeafe" stroke="#ffffff" stroke-width="0.45" />
-    <line x1="50" y1="8.2" x2="50" y2="91.8" stroke="#ef4444" stroke-width="0.38" />
-    <line x1="27" y1="8.2" x2="27" y2="91.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
-    <line x1="73" y1="8.2" x2="73" y2="91.8" stroke="#2563eb" stroke-width="0.34" opacity="0.85" />
-    <circle cx="50" cy="50" r="7.8" fill="none" stroke="#ef4444" stroke-width="0.32" />
-    <circle cx="17" cy="30" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="17" cy="70" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="83" cy="30" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <circle cx="83" cy="70" r="5.2" fill="none" stroke="#ef4444" stroke-width="0.25" opacity="0.9" />
-    <line x1="7" y1="42" x2="7" y2="58" stroke="#dc2626" stroke-width="0.35" />
-    <line x1="93" y1="42" x2="93" y2="58" stroke="#dc2626" stroke-width="0.35" />
-    <path d="M7,42 Q13,50 7,58" fill="none" stroke="#60a5fa" stroke-width="0.32" />
-    <path d="M93,42 Q87,50 93,58" fill="none" stroke="#60a5fa" stroke-width="0.32" />
-    <rect x="4.7" y="39" width="2.3" height="22" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
-    <rect x="93" y="39" width="2.3" height="22" fill="rgba(255,255,255,.25)" stroke="#ffffff" stroke-width="0.3" />
+    <line x1="50" y1="8.2" x2="50" y2="91.8" stroke="#ef4444" stroke-width="0.4" />
+    <circle cx="50" cy="50" r="6.6" fill="none" stroke="#ef4444" stroke-width="0.3" />
+    <path d="M15,39 Q24,50 15,61" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
+    <path d="M85,39 Q76,50 85,61" fill="none" stroke="#1d4ed8" stroke-width="0.38" />
+    <rect x="5.6" y="46" width="1.7" height="8" fill="rgba(239,68,68,.7)" stroke="#ef4444" stroke-width="0.25" />
+    <rect x="92.7" y="46" width="1.7" height="8" fill="rgba(239,68,68,.7)" stroke="#ef4444" stroke-width="0.25" />
+    <rect x="4.8" y="39" width="10.2" height="22" rx="2.2" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
+    <rect x="85" y="39" width="10.2" height="22" rx="2.2" fill="rgba(255,255,255,.12)" stroke="#93c5fd" stroke-width="0.28" />
     <rect x="3.2" y="8.2" width="93.6" height="83.6" rx="6.5" fill="transparent" />
     ${annotationsSvg}
     ${pendingSvg}
@@ -2548,6 +2932,7 @@ function coachSetTactic(idx) {
   coachTacticIdx = idx;
   _coachEnsureBoardState(true);
   _coachBoardMessage(`Formació ${COACH_TACTICS[idx]?.name || ""} carregada.`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2557,29 +2942,42 @@ function coachSetBoardTool(toolId) {
   coachBoardState.selectedEntity = null;
   coachBoardState.pendingAction = null;
   _coachBoardMessage(_coachToolMeta(toolId).hint);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
 function coachToggleBoardFullscreen() {
   _coachEnsureBoardState();
   coachBoardState.fullscreen = !coachBoardState.fullscreen;
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
 function coachAddBoardPlayer(team) {
   _coachEnsureBoardState();
   const isAway = team === "away";
-  const sameTeam = coachBoardState.players.filter(player => player.team === (isAway ? "away" : "home") && player.team !== "goalie");
+  const side = isAway ? "away" : "home";
+  const counts = _coachTeamCounts(side);
+  if (counts.total >= 5 || counts.field >= counts.maxField) {
+    _coachBoardMessage(`Límit assolit: ${side === "away" ? "rival" : "local"} amb màxim de 5 jugadors.`);
+    _coachRenderTacticsTabRoot();
+    return;
+  }
+  const sameTeam = coachBoardState.players.filter(player => (player.side || player.team) === side && !player.isGoalie);
   const nextIdx = sameTeam.length + 1;
   coachBoardState.players.push({
     id: `${isAway ? "away" : "home"}_extra_${Date.now()}`,
     label: `${isAway ? "R" : "A"}${nextIdx}`,
-    team: isAway ? "away" : "home",
+    team: side,
+    side,
+    isGoalie: false,
     x: isAway ? 64 : 36,
     y: _clamp(18 + nextIdx * 6, 12, 88),
   });
+  coachBoardState.players = _coachNormalizeBoardPlayers(coachBoardState.players, coachTacticIdx);
   _coachBoardRecordFrame(isAway ? "Afegit rival" : "Afegit atacant");
   _coachBoardMessage(isAway ? "Rival afegit al camp." : "Jugador propi afegit al camp.");
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2587,6 +2985,7 @@ function coachResetBoard() {
   _coachStopPlayback();
   _coachEnsureBoardState(true);
   _coachBoardMessage("Pissarra reiniciada a la formació base.");
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2597,6 +2996,7 @@ function coachClearBoardActions() {
   coachBoardState.selectedEntity = null;
   _coachBoardRecordFrame("Neteja d'accions");
   _coachBoardMessage("Accions esborrades.");
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2604,11 +3004,24 @@ function coachRemoveSelectedBoardItem() {
   _coachEnsureBoardState();
   if (coachBoardState.selectedEntity?.kind === "player") {
     const idx = coachBoardState.players.findIndex(player => player.id === coachBoardState.selectedEntity.id);
-    if (idx >= 0 && coachBoardState.players[idx].team !== "goalie") {
+    if (idx >= 0 && !coachBoardState.players[idx].isGoalie) {
+      const target = coachBoardState.players[idx];
+      if ((target.side || target.team) === "away") {
+        const tactic = COACH_TACTICS[coachTacticIdx] || COACH_TACTICS[0];
+        const minAway = Array.isArray(tactic.awayPositions) ? tactic.awayPositions.length : 4;
+        const awayField = coachBoardState.players.filter(player => (player.side || player.team) === "away" && !player.isGoalie).length;
+        if (awayField <= minAway) {
+          _coachBoardMessage(`El rival ha de mantenir com a mínim ${minAway} jugadors de camp en aquesta formació.`);
+          _coachRenderTacticsTabRoot();
+          return;
+        }
+      }
       coachBoardState.players.splice(idx, 1);
+      coachBoardState.players = _coachNormalizeBoardPlayers(coachBoardState.players, coachTacticIdx);
       coachBoardState.selectedEntity = null;
       _coachBoardRecordFrame("Jugador eliminat");
       _coachBoardMessage("Jugador eliminat de la pissarra.");
+      _coachPersistBoardState();
       _coachRenderTacticsTabRoot();
       return;
     }
@@ -2618,6 +3031,7 @@ function coachRemoveSelectedBoardItem() {
     coachBoardState.selectedEntity = null;
     _coachBoardRecordFrame("Acció eliminada");
     _coachBoardMessage("Acció eliminada.");
+    _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
     return;
   }
@@ -2640,6 +3054,7 @@ function coachToggleBoardRecording() {
     }];
     _coachBoardMessage("Gravació iniciada. Cada moviment i acció quedarà guardat.");
   }
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2684,6 +3099,7 @@ function coachSaveBoardPlay() {
   coachBoardState.recording = false;
   coachBoardState.recordingFrames = [];
   _coachBoardMessage(`Jugada guardada: ${playName.trim()}`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2696,6 +3112,7 @@ function coachLoadSavedPlay(playId) {
   if (!lastFrame) return;
   _coachApplyBoardSnapshot(lastFrame);
   _coachBoardMessage(`Jugada carregada: ${play.name}`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2707,6 +3124,7 @@ function coachPlaySavedPlay(playId) {
   let frameIdx = 0;
   _coachApplyBoardSnapshot(play.frames[0].snapshot);
   _coachBoardMessage(`Reproduint: ${play.name}`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
   coachPlaybackTimer = setInterval(() => {
     frameIdx += 1;
@@ -2717,6 +3135,7 @@ function coachPlaySavedPlay(playId) {
       return;
     }
     _coachApplyBoardSnapshot(play.frames[frameIdx].snapshot);
+    _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
   }, 650);
 }
@@ -2728,6 +3147,7 @@ function coachDeleteSavedPlay(playId) {
   coachSavedPlays = coachSavedPlays.filter(item => item.id !== playId);
   _coachPersistSavedPlays();
   _coachBoardMessage(`Jugada eliminada: ${play.name}`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2755,6 +3175,10 @@ function coachBoardPointerDown(evt) {
     moved: false,
   };
   coachBoardState.selectedEntity = { kind: entity.kind, id: entity.id };
+  if (entity.kind === "player" && coachBoardState.ballMode === "attached") {
+    const player = coachBoardState.players.find(item => item.id === entity.id && !item.isGoalie);
+    if (player) coachBoardState.puckAttachedTo = player.id;
+  }
 
   if (typeof evt.currentTarget?.setPointerCapture === "function") {
     try { evt.currentTarget.setPointerCapture(evt.pointerId); } catch {}
@@ -2785,6 +3209,7 @@ function coachBoardPointerUp(evt) {
     _coachBoardRecordFrame("Moviment");
     _coachBoardMessage("Element reposicionat.");
     coachBoardSuppressClickUntil = Date.now() + 260;
+    _coachPersistBoardState();
   }
 
   coachBoardDragState = null;
@@ -2807,6 +3232,7 @@ function coachHandleBoardClick(evt, kind, id) {
     } else {
       _coachBoardMessage("Selecciona una acció dibuixada per esborrar-la.");
     }
+    _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
     return;
   }
@@ -2815,6 +3241,11 @@ function coachHandleBoardClick(evt, kind, id) {
     if (kind === "player" || kind === "puck") {
       coachBoardState.selectedEntity = { kind, id };
       _coachBoardMessage(kind === "puck" ? "Pilota seleccionada. Toca el camp per moure-la." : "Jugador seleccionat. Toca el camp per moure'l.");
+      if (kind === "player" && coachBoardState.ballMode === "attached") {
+        const player = coachBoardState.players.find(item => item.id === id && !item.isGoalie);
+        if (player) coachBoardState.puckAttachedTo = player.id;
+      }
+      _coachPersistBoardState();
       _coachRenderTacticsTabRoot();
       return;
     }
@@ -2826,18 +3257,19 @@ function coachHandleBoardClick(evt, kind, id) {
     }
 
     if (coachBoardState.selectedEntity.kind === "player") {
-      const player = coachBoardState.players.find(item => item.id === coachBoardState.selectedEntity.id);
-      if (player) {
-        player.x = point.x;
-        player.y = point.y;
-      }
+      _coachUpdateBoardEntityPosition("player", coachBoardState.selectedEntity.id, point);
     } else {
-      coachBoardState.puck.x = point.x;
-      coachBoardState.puck.y = point.y;
+      if (coachBoardState.ballMode === "attached") {
+        _coachBoardMessage("En mode enganxat, la bola segueix un jugador. Canvia a bola lliure per moure-la manualment.");
+        _coachRenderTacticsTabRoot();
+        return;
+      }
+      _coachUpdateBoardEntityPosition("puck", "puck", point);
     }
     coachBoardState.selectedEntity = null;
     _coachBoardRecordFrame("Moviment");
     _coachBoardMessage("Element reposicionat.");
+    _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
     return;
   }
@@ -2849,14 +3281,17 @@ function coachHandleBoardClick(evt, kind, id) {
   if (!coachBoardState.pendingAction) {
     coachBoardState.pendingAction = { tool, start: { x: entityPoint.x, y: entityPoint.y } };
     _coachBoardMessage(`Origen marcat per ${_coachToolMeta(tool).label.toLowerCase()}. Tria el destí.`);
+    _coachPersistBoardState();
     _coachRenderTacticsTabRoot();
     return;
   }
 
   coachBoardState.annotations.push(_coachCreateAnnotation(tool, coachBoardState.pendingAction.start, entityPoint));
+  _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
   _coachBoardRecordFrame(`Acció ${tool}`);
   _coachBoardMessage(`${_coachToolMeta(tool).label} afegida a la pissarra.`);
+  _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
 
@@ -2890,6 +3325,7 @@ window.coachAddEvent           = coachAddEvent;
 window.coachRemoveEvent        = coachRemoveEvent;
 window.coachSetTactic          = coachSetTactic;
 window.coachSetBoardTool       = coachSetBoardTool;
+window.coachToggleBallMode     = _coachToggleBallMode;
 window.coachToggleBoardFullscreen = coachToggleBoardFullscreen;
 window.coachAddBoardPlayer     = coachAddBoardPlayer;
 window.coachResetBoard         = coachResetBoard;
