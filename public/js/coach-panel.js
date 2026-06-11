@@ -647,13 +647,14 @@ async function _coachLoadFavoriteTeams(options = null) {
     loaded = _coachLoadFavoritesLocal(uid).map(mapChoice).filter(Boolean);
   }
 
-  const uniqByClub = new Map();
-  for (const item of loaded) {
-    const clubKey = _coachSearchNorm(item?.clubName || "");
-    if (!clubKey) continue;
-    uniqByClub.set(clubKey, item);
-  }
-  coachFavoriteTeams = [...uniqByClub.values()];
+  // Allow multiple favorites (no dedup by club)
+  const seen = new Set();
+  coachFavoriteTeams = loaded.filter(item => {
+    const key = String(item?.optionValue || "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   coachFavoriteTeamsLoaded = true;
 }
 
@@ -682,15 +683,11 @@ async function _coachToggleFavoriteTeam(optionValue) {
     }
     _coachSetFavoritePersistStatus("ok", "Favorit eliminat.");
   } else {
-    const targetClubNorm = _coachSearchNorm(choice.clubName || "");
-    coachFavoriteTeams = coachFavoriteTeams.filter(x => _coachSearchNorm(x?.clubName || "") !== targetClubNorm);
+    // Add without removing other favorites of the same club
+    coachFavoriteTeams = coachFavoriteTeams.filter(x => String(x?.optionValue || "") !== String(choice.optionValue));
     coachFavoriteTeams.push(choice);
     if (sb && writeUid) {
       try {
-        await sb.from("coach_favorite_teams")
-          .delete()
-          .eq("user_id", writeUid)
-          .eq("club_name", choice.clubName || "");
         await sb.from("coach_favorite_teams").upsert({
           user_id: writeUid,
           club_name: choice.clubName || "",
@@ -704,7 +701,7 @@ async function _coachToggleFavoriteTeam(optionValue) {
       }
       const exists = await _coachFavoriteExistsRemote(choice, writeUid);
       _coachSetFavoritePersistStatus(exists ? "ok" : "error", exists
-        ? "Favorit desat i verificat a la BD."
+        ? "Favorit ★ desat i verificat a la BD."
         : "No s'ha pogut verificar el favorit a la BD.");
     } else {
       _coachSetFavoritePersistStatus("warn", "Favorit desat en local (sessio BD no activa).");
@@ -828,7 +825,6 @@ function _coachTabTeamHeader(tabKey, options = null) {
   const label = catLabel ? `${teamLabel} · ${catLabel}` : teamLabel;
 
   const favoriteChips = coachFavoriteTeams
-    .filter(item => _coachSearchNorm(item?.clubName || "") === _coachSearchNorm(current.clubName || ""))
     .filter(item => String(item?.optionValue || "") !== currentValue)
     .map(item => {
       const itemCat = item.category
@@ -1735,6 +1731,8 @@ function openCoachPanel() {
   });
   const el = document.getElementById("screen-coach");
   if (el) el.style.display = "flex";
+  // Force reload favorites from DB every time panel opens
+  coachFavoriteTeamsLoaded = false;
   Promise.resolve(renderCoachPanel()).catch(err => {
     console.error("[coach-panel] open error", err);
     alert("No s'ha pogut obrir el panell entrenador. Recarrega la pàgina.");
@@ -3033,13 +3031,11 @@ async function coachSetTeam(val) {
     Promise.resolve(_coachPersistSelectedClub(resolved.clubName));
   }
   _coachApplyTeamSelectionAllTabs(String(resolved?.optionValue || val || "").trim());
-  await _coachEnsureFavoriteTeam(String(resolved?.optionValue || val || "").trim());
   renderCoachPanel();
 }
 
-async function coachSelectTabTeam(tabKey, optionValue) {
+function coachSelectTabTeam(tabKey, optionValue) {
   _coachApplyTeamSelectionAllTabs(optionValue);
-  await _coachEnsureFavoriteTeam(optionValue);
   renderCoachPanel();
 }
 
