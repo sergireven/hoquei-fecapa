@@ -1161,9 +1161,39 @@ function _coachRosterFromTeam(teamName, clubName = "", category = "") {
     if (regTeam) candidateTeams.push(regTeam);
     const stats = Array.isArray(p?.teamStats) ? p.teamStats : [];
     let statTeamMatch = false;
+    let hasCategoryEvidence = false;
+
+    if (wantedCategory) {
+      const directCategoryText = [
+        p?.category,
+        p?.cat,
+        p?.teamCategory,
+        p?.registeredCategory,
+        p?.comp,
+        p?.compName,
+      ].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+      if (_coachCategoryMatchesAny(directCategoryText, wantedCategory)) {
+        hasCategoryEvidence = true;
+      }
+    }
+
     for (const stat of stats) {
       const statTeam = String(stat?.team || "").trim();
       if (statTeam) candidateTeams.push(statTeam);
+
+      if (wantedCategory && !hasCategoryEvidence) {
+        const statCategoryText = [
+          stat?.cat,
+          stat?.category,
+          stat?.comp,
+          stat?.compName,
+          stat?.teamCategory,
+        ].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+        if (_coachCategoryMatchesAny(statCategoryText, wantedCategory)) {
+          hasCategoryEvidence = true;
+        }
+      }
+
       if (!statTeam || !_coachTeamEq(statTeam, wantedTeam)) continue;
       if (!wantedCategory) {
         statTeamMatch = true;
@@ -1186,6 +1216,7 @@ function _coachRosterFromTeam(teamName, clubName = "", category = "") {
       matchesTeam = statTeamMatch;
     }
     if (!matchesTeam) continue;
+    if (wantedCategory && !hasCategoryEvidence) continue;
 
     const candidateClubs = _coachPlayerClubCandidates(p);
     const matchesClub = !wantedClub
@@ -2971,13 +3002,25 @@ async function _loadTrainings() {
   if (clubName && typeof loadCoordinatorTrainings === "function") {
     try {
       const byClub = loadCoordinatorTrainings(clubName) || [];
+      const choiceCategory = String(choice?.category || "").trim();
       const fromCoordinator = byClub
         .filter(t => {
           if (typeof coordinatorTrainingMatchesTeam === "function") {
-            return coordinatorTrainingMatchesTeam(t, legacyTeam);
+            return coordinatorTrainingMatchesTeam(t, legacyTeam, choiceCategory);
           }
-          const names = Array.isArray(t?.teamNames) ? t.teamNames : [t?.teamName];
-          return names.map(n => String(n || "").trim()).includes(String(legacyTeam || "").trim());
+          const refs = Array.isArray(t?.teamRefs) ? t.teamRefs : [];
+          const names = refs.length
+            ? refs.map(ref => String(ref?.teamName || "").trim())
+            : (Array.isArray(t?.teamNames) ? t.teamNames.map(n => String(n || "").trim()) : [String(t?.teamName || "").trim()]);
+          const categories = refs.length
+            ? refs.map(ref => String(ref?.category || "").trim())
+            : (Array.isArray(t?.teamCategories) ? t.teamCategories.map(c => String(c || "").trim()) : []);
+          return names.some((name, idx) => {
+            const nameMatches = _coachTeamEq(name, legacyTeam) || _coachTeamLoose(name, legacyTeam);
+            if (!nameMatches) return false;
+            if (!choiceCategory) return true;
+            return String(categories[idx] || "").trim() === choiceCategory;
+          });
         })
         .map(t => ({
           id: `coord::${String(t?.id || "")}`,

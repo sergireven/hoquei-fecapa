@@ -1920,7 +1920,10 @@ function renderCoordinatorTrainingsTab(currentFav) {
   }
   const teams = getCoordinatorClubTeams(currentFav.clubName);
   const settings = getCoordinatorClubSettings(currentFav.clubName);
-  const teamOptions = teams.map(team => `<option value="${esc(team.teamName)}">${esc(formatCoordinatorTeamLabel(team))}</option>`).join("");
+  const teamOptions = teams.map(team => {
+    const token = String(team?.teamKey || team?.teamName || "").trim();
+    return `<option value="${esc(token)}">${esc(formatCoordinatorTeamLabel(team))}</option>`;
+  }).join("");
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px">
@@ -2108,6 +2111,10 @@ function coordinatorFormatDate(input, compName = "") {
 }
 
 function coordinatorGetTrainingTeamNames(training) {
+  const refs = Array.isArray(training?.teamRefs) ? training.teamRefs : [];
+  if (refs.length) {
+    return refs.map(ref => String(ref?.teamName || "").trim()).filter(Boolean);
+  }
   if (Array.isArray(training?.teamNames) && training.teamNames.length) {
     return training.teamNames.map(name => String(name || "").trim()).filter(Boolean);
   }
@@ -2115,23 +2122,56 @@ function coordinatorGetTrainingTeamNames(training) {
   return single ? [single] : [];
 }
 
-function coordinatorTrainingMatchesTeam(training, teamName = "") {
+function coordinatorGetTrainingTeamRefs(training) {
+  const explicit = Array.isArray(training?.teamRefs) ? training.teamRefs : [];
+  if (explicit.length) {
+    return explicit.map(ref => ({
+      teamName: String(ref?.teamName || "").trim(),
+      category: String(ref?.category || "").trim(),
+      teamKey: String(ref?.teamKey || "").trim(),
+    })).filter(ref => ref.teamName);
+  }
+  const names = coordinatorGetTrainingTeamNames(training);
+  if (!names.length) return [];
+  const cats = Array.isArray(training?.teamCategories) ? training.teamCategories : [];
+  return names.map((teamName, idx) => ({
+    teamName: String(teamName || "").trim(),
+    category: String(cats[idx] || "").trim(),
+    teamKey: "",
+  })).filter(ref => ref.teamName);
+}
+
+function coordinatorTrainingMatchesTeam(training, teamName = "", teamCategory = "") {
   const wanted = String(teamName || "").trim();
-  if (!wanted) return true;
-  return coordinatorGetTrainingTeamNames(training).includes(wanted);
+  const wantedCategory = String(teamCategory || "").trim();
+  if (!wanted && !wantedCategory) return true;
+  const refs = coordinatorGetTrainingTeamRefs(training);
+  return refs.some(ref => {
+    const nameMatches = !wanted
+      || teamMatchesCalendarExact(ref.teamName || "", wanted)
+      || teamMatchesLoose(ref.teamName || "", wanted);
+    if (!nameMatches) return false;
+    if (!wantedCategory) return true;
+    return String(ref.category || "").trim() === wantedCategory;
+  });
 }
 
 function coordinatorFormatTrainingTeamNames(training) {
-  const names = coordinatorGetTrainingTeamNames(training);
-  if (!names.length) return "Equip";
+  const refs = coordinatorGetTrainingTeamRefs(training);
+  if (!refs.length) return "Equip";
   const clubName = String(training?.clubId || loadCoordinatorFavorite()?.clubName || "").trim();
   const teams = clubName ? getCoordinatorClubTeams(clubName) : [];
-  return names.map(name => {
-    const match = teams.find(team =>
-      teamMatchesCalendarExact(team?.teamName || "", name)
-      || teamMatchesLoose(team?.teamName || "", name)
-    ) || null;
-    return match ? formatCoordinatorTeamLabel(match) : shortTeamDisplayName(name);
+  return refs.map(ref => {
+    const match = teams.find(team => {
+      const keyMatches = ref.teamKey && String(team?.teamKey || "").trim() === String(ref.teamKey || "").trim();
+      const nameMatches = teamMatchesCalendarExact(team?.teamName || "", ref.teamName || "") || teamMatchesLoose(team?.teamName || "", ref.teamName || "");
+      const categoryMatches = !String(ref.category || "").trim() || String(team?.category || "").trim() === String(ref.category || "").trim();
+      return keyMatches || (nameMatches && categoryMatches);
+    }) || null;
+    if (match) return formatCoordinatorTeamLabel(match);
+    const raw = shortTeamDisplayName(ref.teamName || "");
+    const catLabel = ref.category ? (CAT_LABELS[ref.category] || ref.category) : "";
+    return catLabel ? `${raw} · ${catLabel}` : raw;
   }).join(" + ");
 }
 
@@ -2229,9 +2269,20 @@ async function syncTrainingToCloud(action, training, clubId) {
 }
 
 async function createTraining(clubId, payload) {
-  const teamNames = [...new Set((Array.isArray(payload?.teamNames) ? payload.teamNames : [payload?.teamName])
+  const payloadRefs = Array.isArray(payload?.teamRefs) ? payload.teamRefs : [];
+  const refsFromPayload = payloadRefs.map(ref => ({
+    teamName: String(ref?.teamName || "").trim(),
+    category: String(ref?.category || "").trim(),
+    teamKey: String(ref?.teamKey || "").trim(),
+  })).filter(ref => ref.teamName);
+  const fallbackTeamNames = [...new Set((Array.isArray(payload?.teamNames) ? payload.teamNames : [payload?.teamName])
     .map(name => String(name || "").trim())
     .filter(Boolean))];
+  const teamRefs = refsFromPayload.length
+    ? refsFromPayload
+    : fallbackTeamNames.map(name => ({ teamName: name, category: "", teamKey: "" }));
+  const teamNames = teamRefs.map(ref => ref.teamName);
+  const teamCategories = teamRefs.map(ref => ref.category);
   const time = String(payload?.time || "").trim();
   const location = String(payload?.location || "").trim();
   const lockerRoom = String(payload?.lockerRoom || "").trim();
@@ -2241,7 +2292,7 @@ async function createTraining(clubId, payload) {
   const firstDate = String(payload?.date || "").trim();
   const periodEnd = String(payload?.periodEnd || "").trim();
 
-  if (!clubId || !teamNames.length || !firstDate || !time || !location || !duration) {
+  if (!clubId || !teamRefs.length || !firstDate || !time || !location || !duration) {
     return { ok: false, message: "Completa equips, data, hora, ubicacio i durada." };
   }
   if (recurrence !== "none" && !periodEnd) {
@@ -2259,11 +2310,13 @@ async function createTraining(clubId, payload) {
   const trainings = loadCoordinatorTrainings(clubId);
   const created = [];
   let skipped = 0;
-  const sortedTeamNames = [...teamNames].sort();
+  const sortedTeamRefs = [...teamRefs]
+    .map(ref => `${String(ref.teamName || "").trim()}::${String(ref.category || "").trim()}`)
+    .sort();
 
   for (const date of dates) {
     const duplicate = trainings.some(t =>
-      JSON.stringify(coordinatorGetTrainingTeamNames(t).sort()) === JSON.stringify(sortedTeamNames)
+      JSON.stringify(coordinatorGetTrainingTeamRefs(t).map(ref => `${String(ref.teamName || "").trim()}::${String(ref.category || "").trim()}`).sort()) === JSON.stringify(sortedTeamRefs)
       && String(t?.date || "") === date
       && String(t?.time || "") === time
       && normalizeTeamName(t?.location || "") === normalizeTeamName(location)
@@ -2279,6 +2332,8 @@ async function createTraining(clubId, payload) {
       clubId,
       teamName: teamNames[0],
       teamNames,
+      teamCategories,
+      teamRefs,
       teamLabel: teamNames.map(name => shortTeamDisplayName(name)).join(" + "),
       date,
       time,
@@ -2345,8 +2400,18 @@ async function coordinatorAddTraining() {
     alert("Selecciona primer un club.");
     return;
   }
-  const teamNames = Array.from($("training-team-select")?.selectedOptions || [])
-    .map(opt => String(opt?.value || "").trim())
+  const teams = getCoordinatorClubTeams(fav.clubName);
+  const teamRefs = Array.from($("training-team-select")?.selectedOptions || [])
+    .map(opt => {
+      const token = String(opt?.value || "").trim();
+      const team = teams.find(t => String(t?.teamKey || t?.teamName || "").trim() === token) || null;
+      if (!team) return null;
+      return {
+        teamName: String(team?.teamName || "").trim(),
+        category: String(team?.category || "").trim(),
+        teamKey: String(team?.teamKey || "").trim(),
+      };
+    })
     .filter(Boolean);
   const date = $("training-date")?.value || "";
   const time = $("training-time")?.value || "";
@@ -2370,7 +2435,7 @@ async function coordinatorAddTraining() {
     : (periodStart && periodStart > date ? periodStart : date);
 
   const result = await createTraining(fav.clubName, {
-    teamNames,
+    teamRefs,
     date: startDate,
     time,
     location,
