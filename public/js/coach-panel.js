@@ -701,7 +701,7 @@ async function _coachToggleFavoriteTeam(optionValue) {
       }
       const exists = await _coachFavoriteExistsRemote(choice, writeUid);
       _coachSetFavoritePersistStatus(exists ? "ok" : "error", exists
-        ? "Favorit desat i verificat a la BD."
+        ? "Favorit ★ desat i verificat a la BD."
         : "No s'ha pogut verificar el favorit a la BD.");
     } else {
       _coachSetFavoritePersistStatus("warn", "Favorit desat en local (sessio BD no activa).");
