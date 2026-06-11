@@ -132,6 +132,7 @@ const COACH_TACTIC_BOARD_STATE_KEY = "hoquei_coach_tactic_board_state_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
+const COACH_MAX_FAVORITES = 2;
 const COACH_GOALIE_AREAS = {
   home: { xMin: 8.8, xMax: 20.5, yMin: 35.5, yMax: 64.5 },
   away: { xMin: 79.5, xMax: 91.2, yMin: 35.5, yMax: 64.5 },
@@ -638,7 +639,7 @@ async function _coachLoadFavoriteTeams(options = null) {
         .from("coach_favorite_teams")
         .select("club_name, team_name, team_category, saved_at, updated_at")
         .eq("user_id", uid)
-        .order("saved_at", { ascending: true });
+        .order("updated_at", { ascending: false });
       if (!error && Array.isArray(data)) loaded = data.map(mapChoice).filter(Boolean);
     } catch {}
   }
@@ -654,7 +655,7 @@ async function _coachLoadFavoriteTeams(options = null) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
-  });
+  }).slice(0, COACH_MAX_FAVORITES);
   coachFavoriteTeamsLoaded = true;
 }
 
@@ -683,6 +684,10 @@ async function _coachToggleFavoriteTeam(optionValue) {
     }
     _coachSetFavoritePersistStatus("ok", "Favorit eliminat.");
   } else {
+    if (coachFavoriteTeams.length >= COACH_MAX_FAVORITES) {
+      _coachSetFavoritePersistStatus("warn", `Maxim ${COACH_MAX_FAVORITES} favorits. Treu-ne un abans d'afegir-ne un altre.`);
+      return;
+    }
     // Add without removing other favorites of the same club
     coachFavoriteTeams = coachFavoriteTeams.filter(x => String(x?.optionValue || "") !== String(choice.optionValue));
     coachFavoriteTeams.push(choice);
@@ -715,21 +720,17 @@ async function _coachEnsureFavoriteTeam(optionValue) {
   const choice = _coachResolveTeamChoiceByValue(optionValue);
   if (!choice?.optionValue) return;
   if (_coachIsFavorite(choice.optionValue)) return;
+  if (coachFavoriteTeams.length >= COACH_MAX_FAVORITES) return;
 
   const sb = _csb();
   const writeUid = await _coachAuthUidForWrite();
   const readUid = writeUid || await _cauthUid();
-  const targetClubNorm = _coachSearchNorm(choice.clubName || "");
 
-  coachFavoriteTeams = coachFavoriteTeams.filter(x => _coachSearchNorm(x?.clubName || "") !== targetClubNorm);
+  coachFavoriteTeams = coachFavoriteTeams.filter(x => String(x?.optionValue || "") !== String(choice.optionValue));
   coachFavoriteTeams.push(choice);
 
   if (sb && writeUid) {
     try {
-      await sb.from("coach_favorite_teams")
-        .delete()
-        .eq("user_id", writeUid)
-        .eq("club_name", choice.clubName || "");
       await sb.from("coach_favorite_teams").upsert({
         user_id: writeUid,
         club_name: choice.clubName || "",
@@ -768,7 +769,8 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
     coachBoardRemoteLoadedKey = "";
     const club = _cclub("match");
     const team = _cteam("match");
-    coachMatchState.players = _coachRosterFromConvocatoria(club, team);
+    const category = _ccategory("match");
+    coachMatchState.players = _coachRosterFromConvocatoria(club, team, category);
     coachMatchState.events = [];
     coachMatchState.savedId = null;
     coachMatchState.linkedMatchId = "";
@@ -792,8 +794,9 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   }
   const matchClub = _cclub("match");
   const matchTeam = _cteam("match");
+  const matchCategory = _ccategory("match");
   coachBoardRemoteLoadedKey = "";
-  coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam);
+  coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam, matchCategory);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
   coachMatchState.linkedMatchId = "";
@@ -881,10 +884,51 @@ function _coachEnsureTeamSelection(options = null) {
   return sourceOptions;
 }
 
-function _coachFindLatestConvocatoria(clubName, teamName) {
+function _coachCategoryTokenSet(category = "") {
+  const out = new Set();
+  const raw = String(category || "").trim();
+  if (!raw) return out;
+
+  const normRaw = _coachSearchNorm(raw);
+  if (normRaw) out.add(normRaw);
+
+  try {
+    const key = String(typeof normalizeCompKey === "function" ? normalizeCompKey(raw) : raw).trim();
+    const normKey = _coachSearchNorm(key);
+    if (normKey) out.add(normKey);
+    const label = String((typeof CAT_LABELS !== "undefined" && CAT_LABELS[key]) ? CAT_LABELS[key] : "").trim();
+    const normLabel = _coachSearchNorm(label);
+    if (normLabel) out.add(normLabel);
+  } catch {}
+
+  return out;
+}
+
+function _coachCategoryMatchesAny(text, wantedCategory = "") {
+  const wanted = _coachCategoryTokenSet(wantedCategory);
+  if (!wanted.size) return true;
+  const source = _coachSearchNorm(text || "");
+  if (!source) return false;
+  for (const token of wanted) {
+    if (token && source.includes(token)) return true;
+  }
+  return false;
+}
+
+function _coachConvocatoriaMatchesCategory(convocatoria, wantedCategory = "") {
+  const wanted = _coachCategoryTokenSet(wantedCategory);
+  if (!wanted.size) return true;
+
+  const comp = String(convocatoria?.matchCompetition || convocatoria?.compName || convocatoria?.category || "").trim();
+  if (!comp) return false;
+  return _coachCategoryMatchesAny(comp, wantedCategory);
+}
+
+function _coachFindLatestConvocatoria(clubName, teamName, category = "") {
   const store = _coachLoadConvocatoriaStore();
   const wantedClub = String(clubName || "").trim();
   const wantedTeam = String(teamName || "").trim();
+  const wantedCategory = String(category || "").trim();
   const prefix = `${wantedClub}::${wantedTeam}::`;
   let latest = null;
   let latestTs = 0;
@@ -893,6 +937,7 @@ function _coachFindLatestConvocatoria(clubName, teamName) {
   // Fast path: exact key prefix (legacy behavior).
   for (const [key, convocatoria] of Object.entries(store || {})) {
     if (!String(key).startsWith(prefix)) continue;
+    if (!_coachConvocatoriaMatchesCategory(convocatoria, wantedCategory)) continue;
     const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
     if (ts >= latestTs) {
       latestTs = ts;
@@ -916,6 +961,8 @@ function _coachFindLatestConvocatoria(clubName, teamName) {
       || _coachTeamLoose(keyClub, wantedClub)
       || _coachSearchNorm(keyClub) === _coachSearchNorm(wantedClub);
 
+    if (!_coachConvocatoriaMatchesCategory(convocatoria, wantedCategory)) continue;
+
     const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
     candidates.push({ convocatoria, ts, clubMatches });
   }
@@ -928,8 +975,8 @@ function _coachFindLatestConvocatoria(clubName, teamName) {
   return candidates[0].convocatoria || null;
 }
 
-function _coachRosterFromConvocatoria(clubName, teamName) {
-  const convocatoria = _coachFindLatestConvocatoria(clubName, teamName);
+function _coachRosterFromConvocatoria(clubName, teamName, category = "") {
+  const convocatoria = _coachFindLatestConvocatoria(clubName, teamName, category);
   if (!convocatoria || !Array.isArray(convocatoria.players)) return [];
   const included = convocatoria.players.filter(p => p?.checked !== false && p?.status !== "baixa");
   const source = included.length ? included : convocatoria.players;
@@ -1065,9 +1112,10 @@ async function _coachRosterFromActaArchive(clubName, teamName, category = "") {
   return _coachMergeRosterPlayers(roster);
 }
 
-function _coachRosterFromTeam(teamName, clubName = "") {
+function _coachRosterFromTeam(teamName, clubName = "", category = "") {
   const wantedTeam = String(teamName || "").trim();
   const wantedClub = String(clubName || "").trim();
+  const wantedCategory = String(category || "").trim();
   if (!wantedTeam) return [];
 
   const playerMap = (typeof DB !== "undefined" && DB?.jugadors) ? DB.jugadors : null;
@@ -1081,12 +1129,32 @@ function _coachRosterFromTeam(teamName, clubName = "") {
     const candidateTeams = [];
     const regTeam = String(p?.registeredTeam || "").trim();
     if (regTeam) candidateTeams.push(regTeam);
-    for (const stat of (p?.teamStats || [])) {
+    const stats = Array.isArray(p?.teamStats) ? p.teamStats : [];
+    let statTeamMatch = false;
+    for (const stat of stats) {
       const statTeam = String(stat?.team || "").trim();
       if (statTeam) candidateTeams.push(statTeam);
+      if (!statTeam || !_coachTeamEq(statTeam, wantedTeam)) continue;
+      if (!wantedCategory) {
+        statTeamMatch = true;
+        continue;
+      }
+
+      const statCatText = [
+        stat?.cat,
+        stat?.category,
+        stat?.comp,
+        stat?.compName,
+      ].map(x => String(x || "").trim()).filter(Boolean).join(" ");
+      if (_coachCategoryMatchesAny(statCatText, wantedCategory)) {
+        statTeamMatch = true;
+      }
     }
 
-    const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam));
+    let matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam));
+    if (wantedCategory && stats.length) {
+      matchesTeam = statTeamMatch;
+    }
     if (!matchesTeam) continue;
 
     const candidateClubs = _coachPlayerClubCandidates(p);
@@ -1112,8 +1180,8 @@ async function _coachRosterForSelection(clubName, teamName, category = "") {
   if (coachRosterSelectionCache.has(cacheKey)) return _cclone(coachRosterSelectionCache.get(cacheKey));
 
   const merged = _coachMergeRosterPlayers(
-    _coachRosterFromTeam(teamName, clubName),
-    _coachRosterFromConvocatoria(clubName, teamName),
+    _coachRosterFromTeam(teamName, clubName, category),
+    _coachRosterFromConvocatoria(clubName, teamName, category),
     await _coachRosterFromActaArchive(clubName, teamName, category)
   );
   coachRosterSelectionCache.set(cacheKey, _cclone(merged));
@@ -3097,12 +3165,13 @@ function coachSetClubSearch(value, cursor) {
 function coachLoadLineupFromConvocatoria() {
   const club = _cclub();
   const team = _cteam();
+  const category = _ccategory();
   if (!club || !team) {
     alert("Selecciona club i equip.");
     return;
   }
 
-  const players = _coachRosterFromConvocatoria(club, team);
+  const players = _coachRosterFromConvocatoria(club, team, category);
   if (!players.length) {
     alert("No hi ha convocatòries disponibles per aquest equip.");
     return;
@@ -3110,7 +3179,7 @@ function coachLoadLineupFromConvocatoria() {
 
   const rivals = (coachMatchState.players || []).filter(p => String(p?.squad || "") === "rival");
   coachMatchState.players = _coachMergeRosterPlayers(players, rivals);
-  const convocatoria = _coachFindLatestConvocatoria(club, team);
+  const convocatoria = _coachFindLatestConvocatoria(club, team, category);
   if (convocatoria) {
     coachMatchState.matchDate = String(convocatoria.matchDate || coachMatchState.matchDate || "").slice(0, 10) || coachMatchState.matchDate;
     const isHome = teamMatchesLoose(convocatoria.matchHome || "", team) || teamMatchesCalendarExact(convocatoria.matchHome || "", team);
