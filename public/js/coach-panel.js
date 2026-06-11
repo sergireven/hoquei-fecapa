@@ -178,6 +178,8 @@ let coachMatchState = {
   matchDate: new Date().toISOString().slice(0, 10),
   opponent:  "",
   isHome:    true,
+  linkedMatchId: "",
+  linkedMatchLabel: "",
   players:   [],   // [{name, isStarter, side:"D"|"E", pos:"DEF"|"MIG"|"DAV"|"PORT"}]
   events:    [],   // [{player, type, minute, ts}]
   savedId:   null,
@@ -194,6 +196,9 @@ let coachBoardRemoteLoadedKey = "";
 let coachBoardRemoteSaveTimer = null;
 let coachBoardRemoteSaveNonce = 0;
 let coachBoardFullscreenFormationsCollapsed = false;
+let coachLiveFullscreen = false;
+const coachRosterSelectionCache = new Map();
+let coachFavoritePersistStatus = { type: "idle", text: "" };
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -261,6 +266,31 @@ function _coachTeamLoose(a, b) {
   const aa = String(a || "").trim().toLowerCase();
   const bb = String(b || "").trim().toLowerCase();
   return !!aa && !!bb && (aa.includes(bb) || bb.includes(aa));
+}
+
+function _coachSetFavoritePersistStatus(type = "idle", text = "") {
+  coachFavoritePersistStatus = { type: String(type || "idle"), text: String(text || "") };
+}
+
+async function _coachFavoriteExistsRemote(choice, writeUid = "") {
+  const sb = _csb();
+  const uid = writeUid || await _coachAuthUidForWrite();
+  if (!sb || !uid || !choice) return true;
+  try {
+    const { data, error } = await sb
+      .from("coach_favorite_teams")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("club_name", choice.clubName || "")
+      .eq("team_name", choice.teamName || "")
+      .eq("team_category", choice.category || "")
+      .limit(1)
+      .maybeSingle();
+    if (error) return false;
+    return Boolean(data?.id);
+  } catch {
+    return false;
+  }
 }
 
 function _coachSearchNorm(value) {
@@ -645,8 +675,12 @@ async function _coachToggleFavoriteTeam(optionValue) {
           .eq("user_id", writeUid)
           .eq("club_name", choice.clubName || "")
           .eq("team_name", choice.teamName || "");
-      } catch {}
+      } catch (err) {
+        console.warn("[coach] favorite delete failed", err);
+        _coachSetFavoritePersistStatus("error", "No s'ha pogut treure el favorit de la BD.");
+      }
     }
+    _coachSetFavoritePersistStatus("ok", "Favorit eliminat.");
   } else {
     const targetClubNorm = _coachSearchNorm(choice.clubName || "");
     coachFavoriteTeams = coachFavoriteTeams.filter(x => _coachSearchNorm(x?.clubName || "") !== targetClubNorm);
@@ -664,8 +698,58 @@ async function _coachToggleFavoriteTeam(optionValue) {
           team_category: choice.category || "",
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id,club_name,team_name,team_category" });
-      } catch {}
+      } catch (err) {
+        console.warn("[coach] favorite upsert failed", err);
+        _coachSetFavoritePersistStatus("error", "No s'ha pogut desar el favorit a la BD.");
+      }
+      const exists = await _coachFavoriteExistsRemote(choice, writeUid);
+      _coachSetFavoritePersistStatus(exists ? "ok" : "error", exists
+        ? "Favorit desat i verificat a la BD."
+        : "No s'ha pogut verificar el favorit a la BD.");
+    } else {
+      _coachSetFavoritePersistStatus("warn", "Favorit desat en local (sessio BD no activa).");
     }
+  }
+
+  _coachSaveFavoritesLocal(readUid || "", coachFavoriteTeams);
+}
+
+async function _coachEnsureFavoriteTeam(optionValue) {
+  const choice = _coachResolveTeamChoiceByValue(optionValue);
+  if (!choice?.optionValue) return;
+  if (_coachIsFavorite(choice.optionValue)) return;
+
+  const sb = _csb();
+  const writeUid = await _coachAuthUidForWrite();
+  const readUid = writeUid || await _cauthUid();
+  const targetClubNorm = _coachSearchNorm(choice.clubName || "");
+
+  coachFavoriteTeams = coachFavoriteTeams.filter(x => _coachSearchNorm(x?.clubName || "") !== targetClubNorm);
+  coachFavoriteTeams.push(choice);
+
+  if (sb && writeUid) {
+    try {
+      await sb.from("coach_favorite_teams")
+        .delete()
+        .eq("user_id", writeUid)
+        .eq("club_name", choice.clubName || "");
+      await sb.from("coach_favorite_teams").upsert({
+        user_id: writeUid,
+        club_name: choice.clubName || "",
+        team_name: choice.teamName || "",
+        team_category: choice.category || "",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,club_name,team_name,team_category" });
+    } catch (err) {
+      console.warn("[coach] favorite upsert failed", err);
+      _coachSetFavoritePersistStatus("error", "No s'ha pogut desar automàticament el favorit.");
+    }
+    const exists = await _coachFavoriteExistsRemote(choice, writeUid);
+    _coachSetFavoritePersistStatus(exists ? "ok" : "error", exists
+      ? "Equip favorit desat i verificat a la BD."
+      : "No s'ha pogut verificar el favorit a la BD.");
+  } else {
+    _coachSetFavoritePersistStatus("warn", "Equip favorit desat en local (sessio BD no activa).");
   }
 
   _coachSaveFavoritesLocal(readUid || "", coachFavoriteTeams);
@@ -690,6 +774,8 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
     coachMatchState.players = _coachRosterFromConvocatoria(club, team);
     coachMatchState.events = [];
     coachMatchState.savedId = null;
+    coachMatchState.linkedMatchId = "";
+    coachMatchState.linkedMatchLabel = "";
   }
 }
 
@@ -713,6 +799,8 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
+  coachMatchState.linkedMatchId = "";
+  coachMatchState.linkedMatchLabel = "";
 }
 
 function _coachShouldRenderInteractivePuck() {
@@ -852,9 +940,11 @@ function _coachRosterFromConvocatoria(clubName, teamName) {
   return source
     .map(p => ({
       name: String(p?.name || "").trim(),
+      number: String(p?.number ?? p?.dorsal ?? "").trim(),
       pos: /porter|gk/i.test(String(p?.position || "")) ? "PORT" : "MIG",
       isStarter: p?.checked !== false,
       side: "D",
+      squad: "favorite",
     }))
     .filter(p => p.name)
     .filter((p, idx, arr) => arr.findIndex(x => teamMatchesCalendarExact(x.name, p.name)) === idx);
@@ -886,9 +976,11 @@ function _coachMergeRosterPlayers(...lists) {
       if (exists) continue;
       deduped.push({
         name,
+        number: String(player?.number || "").trim(),
         pos: player?.pos || "MIG",
         isStarter: player?.isStarter !== false,
         side: player?.side || "D",
+        squad: player?.squad || "favorite",
       });
     }
   }
@@ -940,8 +1032,8 @@ async function _coachRosterFromActaArchive(clubName, teamName, category = "") {
     const home = String(acta?.home || "").trim();
     const away = String(acta?.away || "").trim();
     const title = String(acta?.title || "").trim();
-    const homeMatches = _coachTeamEq(home, wantedTeam) || _coachTeamLoose(home, wantedTeam);
-    const awayMatches = _coachTeamEq(away, wantedTeam) || _coachTeamLoose(away, wantedTeam);
+    const homeMatches = _coachTeamEq(home, wantedTeam);
+    const awayMatches = _coachTeamEq(away, wantedTeam);
     if (!homeMatches && !awayMatches) continue;
 
     const clubMatches = !wantedClub
@@ -969,6 +1061,7 @@ async function _coachRosterFromActaArchive(clubName, teamName, category = "") {
         pos: /porter|gk/i.test(String(player?.position || "")) ? "PORT" : "MIG",
         isStarter: true,
         side: "D",
+        squad: "favorite",
       });
     }
   }
@@ -997,7 +1090,7 @@ function _coachRosterFromTeam(teamName, clubName = "") {
       if (statTeam) candidateTeams.push(statTeam);
     }
 
-    const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam) || _coachTeamLoose(t, wantedTeam));
+    const matchesTeam = candidateTeams.some(t => _coachTeamEq(t, wantedTeam));
     if (!matchesTeam) continue;
 
     const candidateClubs = _coachPlayerClubCandidates(p);
@@ -1011,6 +1104,7 @@ function _coachRosterFromTeam(teamName, clubName = "") {
       pos: p?.isGK ? "PORT" : "MIG",
       isStarter: true,
       side: "D",
+      squad: "favorite",
     });
   }
 
@@ -1018,11 +1112,16 @@ function _coachRosterFromTeam(teamName, clubName = "") {
 }
 
 async function _coachRosterForSelection(clubName, teamName, category = "") {
-  return _coachMergeRosterPlayers(
+  const cacheKey = `${_coachSearchNorm(clubName)}::${_coachSearchNorm(teamName)}::${_coachSearchNorm(category)}`;
+  if (coachRosterSelectionCache.has(cacheKey)) return _cclone(coachRosterSelectionCache.get(cacheKey));
+
+  const merged = _coachMergeRosterPlayers(
     _coachRosterFromTeam(teamName, clubName),
     _coachRosterFromConvocatoria(clubName, teamName),
     await _coachRosterFromActaArchive(clubName, teamName, category)
   );
+  coachRosterSelectionCache.set(cacheKey, _cclone(merged));
+  return merged;
 }
 
 function _cclone(value) {
@@ -1192,7 +1291,9 @@ function _coachPlayerInitials(name) {
 }
 
 function _coachLineupForBoard() {
-  const all = Array.isArray(coachMatchState?.players) ? coachMatchState.players : [];
+  const all = Array.isArray(coachMatchState?.players)
+    ? coachMatchState.players.filter(p => String(p?.squad || "favorite") !== "rival")
+    : [];
   const starters = all.filter(p => p?.isStarter);
   return starters.length ? starters : all;
 }
@@ -1743,7 +1844,10 @@ async function renderCoachPanel(clubSearchCursor) {
   }
 
   const tabHeader = _coachTabTeamHeader(coachPanelTab, options);
-  body.innerHTML = teamRow + `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${authBadge}</div>` + tabsHtml + tabHeader + content;
+  const favoriteStatus = coachFavoritePersistStatus?.text
+    ? `<div style="margin:-2px 0 10px 0;padding:9px 11px;border-radius:10px;font-size:12px;font-weight:700;color:${coachFavoritePersistStatus.type === "error" ? "#b91c1c" : coachFavoritePersistStatus.type === "warn" ? "#9a3412" : "#166534"};background:${coachFavoritePersistStatus.type === "error" ? "#fef2f2" : coachFavoritePersistStatus.type === "warn" ? "#fff7ed" : "#ecfdf5"};border:1px solid ${coachFavoritePersistStatus.type === "error" ? "#fecaca" : coachFavoritePersistStatus.type === "warn" ? "#fed7aa" : "#86efac"}">${_cesc(coachFavoritePersistStatus.text)}</div>`
+    : "";
+  body.innerHTML = teamRow + `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${authBadge}</div>` + favoriteStatus + tabsHtml + tabHeader + content;
   if (clubSearchCursor !== undefined) {
     const input = document.getElementById("coach-club-search");
     if (input) {
@@ -1903,8 +2007,12 @@ async function _renderObjectivesTab() {
     await _loadPlayerObjectives(teamIdentity, club);
   }
 
-  const rosterNames = (await _coachRosterForSelection(club, team, category)).map(p => p.name);
-  const players = [...new Set([...Object.keys(coachPlayerObjs), ...rosterNames])].sort((a, b) => String(a).localeCompare(String(b)));
+  const rosterNames = [...new Set((await _coachRosterForSelection(club, team, category)).map(p => p.name))].sort((a, b) => String(a).localeCompare(String(b)));
+  const staleObjectivePlayers = Object.keys(coachPlayerObjs).filter(name => !rosterNames.some(r => _coachTeamEq(r, name)));
+  const players = rosterNames;
+  if (coachEditingPlayer && !players.some(name => _coachTeamEq(name, coachEditingPlayer))) {
+    coachEditingPlayer = null;
+  }
   const selectedPlayerName = String(coachEditingPlayer || "").trim();
   const playerSelectOptions = players.map(name =>
     `<option value="${_cesc(name)}" ${name === selectedPlayerName ? "selected" : ""}>${_cesc(name)}</option>`
@@ -1934,12 +2042,11 @@ async function _renderObjectivesTab() {
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">
         ${coachEditingPlayer ? `Editant: ${_cesc(coachEditingPlayer)}` : "Afegir / Editar jugador"}
       </div>
-      <select onchange="coachPickObjectivePlayer(this.value)" style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;background:#fff">
+      <select id="coach-objective-player-select" onchange="coachPickObjectivePlayer(this.value)" style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;background:#fff">
         <option value="">Selecciona jugador trobat...</option>
         ${playerSelectOptions}
       </select>
-      <input id="coach-new-player" type="text" placeholder="Nom del jugador..." value="${_cesc(coachEditingPlayer || "")}"
-        style="width:100%;padding:10px 13px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px"/>
+      <div style="font-size:12px;color:#64748b;margin-bottom:12px">El nom del jugador no es pot entrar manualment. Selecciona'l des del desplegable.</div>
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Valors per pilar (0 – 10)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:12px">${pillarInputs}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1998,7 +2105,11 @@ async function _renderObjectivesTab() {
     ? `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#475569">Jugadors carregats per l'equip seleccionat (${_cesc(teamIdentity || [club, team, categoryLabel].filter(Boolean).join(" "))}): <b style="color:#1a2035">${rosterNames.length}</b></div>`
     : "";
 
-  return rosterHint + addForm + cards;
+  const staleHint = staleObjectivePlayers.length
+    ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;color:#9a3412">S'han detectat <b>${staleObjectivePlayers.length}</b> objectius antics fora del roster actiu. Ja no es mostren a Objectius.</div>`
+    : "";
+
+  return rosterHint + staleHint + addForm + cards;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2035,11 +2146,15 @@ function _renderLineupTab() {
   const { matchDate, opponent, isHome, players } = coachMatchState;
   const team = _cteam();
   const club = _cclub();
-  const starters = players.filter(p => p.isStarter);
+  const favoritePlayers = players.filter(p => String(p?.squad || "favorite") !== "rival");
+  const rivalPlayers = players.filter(p => String(p?.squad || "favorite") === "rival");
+  const starters = favoritePlayers.filter(p => p.isStarter);
   const byPos = pos => starters.filter(p => p.pos === pos).map(p => _cesc(p.name)).join(", ") || "—";
 
-  const playerRows = players.map((p, i) =>
-    `<tr style="border-bottom:1px solid #f0f4f8">
+  const favoriteRows = favoritePlayers.map(p => {
+    const i = players.findIndex(x => x === p);
+    return `<tr style="border-bottom:1px solid #f0f4f8">
+      <td style="padding:8px 8px;text-align:center;font-size:12px;font-weight:700;color:#334155">${_cesc(String(p.number || "—"))}</td>
       <td style="padding:8px 10px;font-size:13px;font-weight:600;color:#1a2035">${_cesc(p.name)}</td>
       <td style="padding:8px 6px;text-align:center">
         <button onclick="coachToggleStarter(${i})" style="background:${p.isStarter ? "#16a34a" : "#f0f4f8"};border:none;color:${p.isStarter ? "#fff" : "#94a3b8"};border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer">${p.isStarter ? "TITULAR" : "SUPLENT"}</button>
@@ -2058,8 +2173,27 @@ function _renderLineupTab() {
       <td style="padding:8px 6px;text-align:center">
         <button onclick="coachRemovePlayer(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;line-height:1">✕</button>
       </td>
-    </tr>`
-  ).join("");
+    </tr>`;
+  }).join("");
+
+  const rivalRows = rivalPlayers.map(p => {
+    const i = players.findIndex(x => x === p);
+    return `<tr style="border-bottom:1px solid #f0f4f8">
+      <td style="padding:8px 8px;text-align:center;font-size:12px;font-weight:700;color:#334155">${_cesc(String(p.number || "—"))}</td>
+      <td style="padding:8px 10px;font-size:13px;font-weight:600;color:#1a2035">${_cesc(p.name)}</td>
+      <td style="padding:8px 6px;text-align:center">
+        <button onclick="coachToggleStarter(${i})" style="background:${p.isStarter ? "#16a34a" : "#f0f4f8"};border:none;color:${p.isStarter ? "#fff" : "#94a3b8"};border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer">${p.isStarter ? "ACTIU" : "BANQUETA"}</button>
+      </td>
+      <td style="padding:8px 6px;text-align:center">
+        <select onchange="coachSetPlayerPos(${i},this.value)" style="padding:4px 6px;border:1.5px solid #e2e6ef;border-radius:6px;font-size:12px;font-family:inherit;background:#fff">
+          ${["PORT","DEF","MIG","DAV"].map(v => `<option value="${v}" ${p.pos === v ? "selected" : ""}>${v}</option>`).join("")}
+        </select>
+      </td>
+      <td style="padding:8px 6px;text-align:center">
+        <button onclick="coachRemovePlayer(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;line-height:1">✕</button>
+      </td>
+    </tr>`;
+  }).join("");
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
@@ -2069,13 +2203,13 @@ function _renderLineupTab() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
             <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Data</div>
-            <input type="date" value="${matchDate}" onchange="coachMatchState.matchDate=this.value"
+            <input type="date" value="${matchDate}" onchange="coachMatchState.matchDate=this.value;_coachSyncLinkedMatchFromState()"
               style="width:100%;padding:9px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;outline:none"/>
           </div>
           <div>
             <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Rival</div>
             <input type="text" value="${_cesc(opponent)}" placeholder="Nom rival..."
-              onchange="coachMatchState.opponent=this.value"
+              onchange="coachMatchState.opponent=this.value;_coachSyncLinkedMatchFromState()"
               style="width:100%;padding:9px 10px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;outline:none"/>
           </div>
         </div>
@@ -2092,8 +2226,11 @@ function _renderLineupTab() {
       </div>
 
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Afegir Jugador</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Equip favorit</div>
         <button onclick="coachLoadLineupFromConvocatoria()" style="width:100%;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:pointer;margin-bottom:8px">Carregar jugadors de convocatòries (${_cesc(club || "club")}${team ? ` · ${_cesc(team)}` : ""})</button>
+        <div style="font-size:12px;color:#64748b;line-height:1.45;margin-bottom:10px">Blocs separats per evitar confusions: favorit i rival.</div>
+        <input id="coach-add-number" type="text" placeholder="Dorsal (opcional)..."
+          style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
         <input id="coach-add-name" type="text" placeholder="Nom del jugador..."
           style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -2113,20 +2250,60 @@ function _renderLineupTab() {
         </label>
         <button onclick="coachAddPlayerToLineup()" style="width:100%;background:#0891b2;border:none;color:#fff;font-weight:700;font-size:14px;padding:11px;border-radius:10px;cursor:pointer">+ Afegir a la plantilla</button>
       </div>
+
+      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Equip rival</div>
+        <input id="coach-rival-number" type="text" placeholder="Dorsal rival (obligatori)..."
+          style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
+        <input id="coach-rival-name" type="text" placeholder="Nom rival (opcional)..."
+          style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <select id="coach-rival-side" style="padding:9px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;background:#fff">
+            <option value="D">Mà dreta</option>
+            <option value="E">Mà esquerra</option>
+          </select>
+          <select id="coach-rival-pos" style="padding:9px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;background:#fff">
+            <option value="MIG">MIG</option>
+            <option value="DEF">DEF</option>
+            <option value="DAV">DAV</option>
+            <option value="PORT">PORT</option>
+          </select>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#334155;margin-bottom:12px">
+          <input type="checkbox" id="coach-rival-starter" checked/> Actiu a l'inici
+        </label>
+        <button onclick="coachAddRivalPlayer()" style="width:100%;background:#334155;border:none;color:#fff;font-weight:700;font-size:14px;padding:11px;border-radius:10px;cursor:pointer">+ Afegir rival</button>
+      </div>
     </div>
 
-    ${players.length ? `
+    ${favoritePlayers.length ? `
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px;margin-top:14px;overflow-x:auto">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Plantilla — ${players.length} jugadors · ${starters.length} titulars</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Equip favorit — ${favoritePlayers.length} jugadors · ${starters.length} titulars</div>
       <table style="width:100%;border-collapse:collapse;min-width:380px">
         <thead><tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</th>
           <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</th>
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Estat</th>
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Mà</th>
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Pos</th>
           <th style="padding:8px;"></th>
         </tr></thead>
-        <tbody>${playerRows}</tbody>
+        <tbody>${favoriteRows}</tbody>
+      </table>
+    </div>` : ""}
+
+    ${rivalPlayers.length ? `
+    <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px;margin-top:14px;overflow-x:auto">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Equip rival — ${rivalPlayers.length} jugadors</div>
+      <table style="width:100%;border-collapse:collapse;min-width:380px">
+        <thead><tr style="border-bottom:2px solid #e2e6ef">
+          <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</th>
+          <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</th>
+          <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Estat</th>
+          <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Pos</th>
+          <th style="padding:8px;"></th>
+        </tr></thead>
+        <tbody>${rivalRows}</tbody>
       </table>
     </div>` : ""}`;
 }
@@ -2305,9 +2482,11 @@ const _FIELD_EVT_TYPES = [
 
 function _renderLiveTab() {
   const { players, events, opponent } = coachMatchState;
-  const activePlayers = players.filter(p => p.isStarter).length > 0
-    ? players.filter(p => p.isStarter)
-    : players;
+  _coachSyncLinkedMatchFromState();
+  const starters = players.filter(p => p.isStarter);
+  const activePlayers = starters.length > 0 ? starters : players;
+  const favoriteActivePlayers = activePlayers.filter(p => String(p?.squad || "favorite") !== "rival");
+  const rivalActivePlayers = activePlayers.filter(p => String(p?.squad || "favorite") === "rival");
 
   /* Per-player stats */
   const pStats = {};
@@ -2335,7 +2514,12 @@ function _renderLiveTab() {
       }).join("")
     : `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px">Cap acció registrada.</div>`;
 
-  const playerBtns = activePlayers.map(p => {
+  const playerButtonsByGroup = (groupPlayers, title, accent) => {
+    if (!groupPlayers.length) {
+      return `<div style="background:#fff;border:1px dashed #dbe3f0;border-radius:12px;padding:14px;color:#94a3b8;font-size:12px">No hi ha jugadors actius a ${_cesc(title)}.</div>`;
+    }
+
+    const cards = groupPlayers.map(p => {
     const s = pStats[p.name] || {};
     const isGoalie = String(p.pos || "").toUpperCase() === "PORT";
     const eventButtons = isGoalie ? _GOALIE_EVT_TYPES : _FIELD_EVT_TYPES;
@@ -2351,7 +2535,7 @@ function _renderLiveTab() {
     const gk1v1L = s.gk_1v1_lost || 0;
     return `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px">
       <div style="font-size:12px;font-weight:700;color:#1a2035;margin-bottom:7px;display:flex;justify-content:space-between">
-        <span>${_cesc(p.name)}</span>
+        <span>${_cesc(p.name)}${p.number ? ` · #${_cesc(p.number)}` : ""}</span>
         <span style="font-size:10px;color:#94a3b8;font-weight:600">${p.pos || ""}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(${isGoalie ? 2 : 4},1fr);gap:3px;margin-bottom:3px">
@@ -2375,9 +2559,24 @@ function _renderLiveTab() {
              ${(gl || bll) ? `<span style="background:#eff6ff;color:#2563eb;border-radius:4px;padding:2px 5px;font-size:10px;font-weight:700">±${gl}/${bll}</span>` : ""}`}
       </div>
     </div>`;
-  }).join("");
+    }).join("");
 
-  return `
+    return `<div style="margin-bottom:12px">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:${accent};color:#1a2035;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;margin-bottom:8px">${_cesc(title)} · ${groupPlayers.length}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">${cards}</div>
+    </div>`;
+  };
+
+  const playerBtns = playerButtonsByGroup(favoriteActivePlayers, "Equip favorit", "#fee2e2")
+    + playerButtonsByGroup(rivalActivePlayers, "Equip rival", "#e2e8f0");
+
+  const linkedMatchCard = `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;padding:10px 12px;font-size:12px;color:#334155;line-height:1.5;margin-bottom:10px">
+    <div style="font-weight:800;color:#1a2035;margin-bottom:4px">Partit vinculat a les accions</div>
+    <div>${_cesc(coachMatchState.linkedMatchLabel || "Sense partit vinculat")}</div>
+    <div style="font-size:11px;color:#64748b;margin-top:4px">ID: ${_cesc(coachMatchState.linkedMatchId || "—")}</div>
+  </div>`;
+
+  const liveInner = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-bottom:14px">
       <!-- Summary -->
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
@@ -2396,7 +2595,11 @@ function _renderLiveTab() {
           ).join("")}
         </div>
         ${topByAct ? `<div style="background:#fefce8;border:1px solid #fef08a;border-radius:10px;padding:10px;font-size:13px;margin-bottom:12px">🏆 <b>Més actiu:</b> ${_cesc(topByAct)}</div>` : ""}
-        <button onclick="coachSaveMatchEvents()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer">💾 Desar dades</button>
+        ${linkedMatchCard}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="coachSaveMatchEvents()" style="flex:1;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer">💾 Desar dades</button>
+          <button onclick="coachToggleLiveFullscreen()" style="background:#0f172a;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px 13px;border-radius:10px;cursor:pointer">${coachLiveFullscreen ? "Sortir pantalla completa" : "Pantalla completa"}</button>
+        </div>
         <div id="coach-match-msg" style="font-size:12px;color:#64748b;text-align:center;margin-top:6px;min-height:16px"></div>
       </div>
 
@@ -2411,9 +2614,14 @@ function _renderLiveTab() {
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Captura d'accions</div>
       ${activePlayers.length
-        ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">${playerBtns}</div>`
+        ? `${playerBtns}`
         : `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px">Afegeix jugadors a la plantilla (Pre-Partit) per registrar accions.</div>`}
     </div>`;
+
+  if (!coachLiveFullscreen) return liveInner;
+  return `<div style="position:fixed;inset:0;z-index:490;background:rgba(15,23,42,.78);padding:14px;overflow:auto">
+    <div style="max-width:1500px;margin:0 auto;background:#fff;border-radius:16px;padding:14px">${liveInner}</div>
+  </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2714,8 +2922,8 @@ async function coachSavePlayerObjective() {
 
   const uid = await _coachAuthUidForWrite();
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
-  const name = (document.getElementById("coach-new-player")?.value || "").trim();
-  if (!name) { setMsg("Introdueix el nom del jugador.", "#e5001c"); return; }
+  const name = String(coachEditingPlayer || "").trim();
+  if (!name) { setMsg("Selecciona un jugador del desplegable.", "#e5001c"); return; }
   const choice = _coachResolveTeamChoice();
   const team = _coachTeamIdentityLabel(choice) || _cteam();
 
@@ -2817,7 +3025,7 @@ async function coachSaveMatchEvents() {
    UI EVENT HANDLERS
 ══════════════════════════════════════════════════════════════════════════ */
 
-function coachSetTeam(val) {
+async function coachSetTeam(val) {
   const resolved = _coachResolveTeamChoiceByValue(val);
   if (resolved?.clubName) {
     coachClubInput = resolved.clubName;
@@ -2825,11 +3033,13 @@ function coachSetTeam(val) {
     Promise.resolve(_coachPersistSelectedClub(resolved.clubName));
   }
   _coachApplyTeamSelectionAllTabs(String(resolved?.optionValue || val || "").trim());
+  await _coachEnsureFavoriteTeam(String(resolved?.optionValue || val || "").trim());
   renderCoachPanel();
 }
 
-function coachSelectTabTeam(tabKey, optionValue) {
+async function coachSelectTabTeam(tabKey, optionValue) {
   _coachApplyTeamSelectionAllTabs(optionValue);
+  await _coachEnsureFavoriteTeam(optionValue);
   renderCoachPanel();
 }
 
@@ -2902,7 +3112,8 @@ function coachLoadLineupFromConvocatoria() {
     return;
   }
 
-  coachMatchState.players = players;
+  const rivals = (coachMatchState.players || []).filter(p => String(p?.squad || "") === "rival");
+  coachMatchState.players = _coachMergeRosterPlayers(players, rivals);
   const convocatoria = _coachFindLatestConvocatoria(club, team);
   if (convocatoria) {
     coachMatchState.matchDate = String(convocatoria.matchDate || coachMatchState.matchDate || "").slice(0, 10) || coachMatchState.matchDate;
@@ -2910,6 +3121,7 @@ function coachLoadLineupFromConvocatoria() {
     coachMatchState.isHome = !!isHome;
     coachMatchState.opponent = isHome ? String(convocatoria.matchAway || "") : String(convocatoria.matchHome || "");
   }
+  _coachSyncLinkedMatchFromState();
   renderCoachPanel();
 }
 
@@ -2932,7 +3144,7 @@ function _getSuggestions(pillars) {
 function coachEditPlayer(name) {
   coachEditingPlayer = name;
   renderCoachPanel();
-  setTimeout(() => document.getElementById("coach-new-player")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
+  setTimeout(() => document.getElementById("coach-objective-player-select")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
 }
 
 function coachPickObjectivePlayer(name) {
@@ -2957,10 +3169,39 @@ function coachAddPlayerToLineup() {
   if (coachMatchState.players.find(p => p.name === name)) { alert("Jugador ja afegit."); return; }
   coachMatchState.players.push({
     name,
+    number: String(document.getElementById("coach-add-number")?.value || "").trim(),
     isStarter: document.getElementById("coach-add-starter")?.checked ?? true,
     side:      document.getElementById("coach-add-side")?.value || "D",
     pos:       document.getElementById("coach-add-pos")?.value  || "MIG",
+    squad:     "favorite",
   });
+  _coachSyncLinkedMatchFromState();
+  renderCoachPanel();
+}
+
+function coachAddRivalPlayer() {
+  const dorsal = String(document.getElementById("coach-rival-number")?.value || "").trim();
+  const rawName = String(document.getElementById("coach-rival-name")?.value || "").trim();
+  if (!dorsal) {
+    alert("El dorsal del rival es obligatori.");
+    return;
+  }
+
+  const duplicate = coachMatchState.players.find(p => String(p?.squad || "favorite") === "rival" && String(p?.number || "") === dorsal);
+  if (duplicate) {
+    alert("Ja existeix un rival amb aquest dorsal.");
+    return;
+  }
+
+  coachMatchState.players.push({
+    name: rawName || `Rival #${dorsal}`,
+    number: dorsal,
+    isStarter: document.getElementById("coach-rival-starter")?.checked ?? true,
+    side: document.getElementById("coach-rival-side")?.value || "D",
+    pos: document.getElementById("coach-rival-pos")?.value || "MIG",
+    squad: "rival",
+  });
+  _coachSyncLinkedMatchFromState();
   renderCoachPanel();
 }
 
@@ -2978,7 +3219,35 @@ function coachSetPlayerSide(idx, val) { coachMatchState.players[idx].side = val;
 function coachSetPlayerPos(idx, val)  { coachMatchState.players[idx].pos  = val; }
 
 function coachAddEvent(playerName, eventType) {
-  coachMatchState.events.push({ player: playerName, type: eventType, minute: null, ts: Date.now() });
+  _coachSyncLinkedMatchFromState();
+  const playerMeta = (coachMatchState.players || []).find(p => String(p?.name || "") === String(playerName || ""));
+  coachMatchState.events.push({
+    player: playerName,
+    player_squad: String(playerMeta?.squad || "favorite"),
+    type: eventType,
+    minute: null,
+    ts: Date.now(),
+    match_id: coachMatchState.linkedMatchId || "",
+  });
+  renderCoachPanel();
+}
+
+function _coachSyncLinkedMatchFromState() {
+  const team = String(_cteam("match") || _cteam() || "").trim();
+  const date = String(coachMatchState.matchDate || "").trim();
+  const opp = String(coachMatchState.opponent || "").trim();
+  if (!team || !date) {
+    coachMatchState.linkedMatchId = "";
+    coachMatchState.linkedMatchLabel = "";
+    return;
+  }
+  const id = `${_coachSeasonKey()}::${team}::${date}::${opp}`;
+  coachMatchState.linkedMatchId = id;
+  coachMatchState.linkedMatchLabel = `${date} · ${team} vs ${opp || "Rival per definir"}`;
+}
+
+function coachToggleLiveFullscreen() {
+  coachLiveFullscreen = !coachLiveFullscreen;
   renderCoachPanel();
 }
 
@@ -3367,10 +3636,13 @@ function coachHandleBoardClick(evt, kind, id) {
   }
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
+  if (tool === "shot" || tool === "carry") {
+    coachBoardState.tool = "move";
+  }
   _coachBoardRecordFrame(`Acció ${tool}`);
   _coachBoardMessage(tool === "shot" && _coachPointInsideGoal(entityPoint)
     ? "Gol!!!"
-    : `${_coachToolMeta(tool).label} afegida a la pissarra.`);
+    : `${_coachToolMeta(tool).label} afegida a la pissarra.${(tool === "shot" || tool === "carry") ? " Mode Moure activat." : ""}`);
   _coachPersistBoardState();
   _coachRenderTacticsTabRoot();
 }
@@ -3396,11 +3668,13 @@ window.coachEditPlayer         = coachEditPlayer;
 window.coachPickObjectivePlayer = coachPickObjectivePlayer;
 window.coachClearEditingPlayer = coachClearEditingPlayer;
 window.coachAddPlayerToLineup  = coachAddPlayerToLineup;
+window.coachAddRivalPlayer     = coachAddRivalPlayer;
 window.coachRemovePlayer       = coachRemovePlayer;
 window.coachToggleStarter      = coachToggleStarter;
 window.coachSetPlayerSide      = coachSetPlayerSide;
 window.coachSetPlayerPos       = coachSetPlayerPos;
 window.coachLoadLineupFromConvocatoria = coachLoadLineupFromConvocatoria;
+window.coachToggleLiveFullscreen = coachToggleLiveFullscreen;
 window.coachAddEvent           = coachAddEvent;
 window.coachRemoveEvent        = coachRemoveEvent;
 window.coachSetTactic          = coachSetTactic;
