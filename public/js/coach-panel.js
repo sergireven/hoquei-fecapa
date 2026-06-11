@@ -123,7 +123,7 @@ const COACH_TACTIC_TOOLS = [
   { id: "shot",  icon: "🎯", label: "Xut",         color: "#dc2626", hint: "Marca origen i final per indicar un tir." },
   { id: "carry", icon: "⤳", label: "Conducció",   color: "#0891b2", hint: "Traça la conducció o patinada amb pilota." },
   { id: "screen",icon: "⛔", label: "Bloqueig",    color: "#d97706", hint: "Indica un bloqueig o pantalla entre dos punts." },
-  { id: "zone",  icon: "▧", label: "Zona",        color: "#7c3aed", hint: "Defineix una zona o espai ocupat en dues pulsacions." },
+  { id: "zone",  icon: "▧", label: "Zona",        color: "#7c3aed", hint: "Defineix una zona en dues pulsacions. Clic dret sobre la zona per canviar color." },
   { id: "erase", icon: "⌫", label: "Esborrar",    color: "#64748b", hint: "Toca una acció dibuixada per eliminar-la." },
 ];
 
@@ -133,6 +133,8 @@ const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
 const COACH_MAX_FAVORITES = 2;
+const COACH_DEFAULT_TACTIC_IDX = 1; // 2-2 Defensiu
+const COACH_ZONE_COLORS = ["#7c3aed", "#2563eb", "#0891b2", "#16a34a", "#d97706", "#dc2626"];
 const COACH_GOALIE_AREAS = {
   home: { xMin: 8.8, xMax: 20.5, yMin: 35.5, yMax: 64.5 },
   away: { xMin: 79.5, xMax: 91.2, yMin: 35.5, yMax: 64.5 },
@@ -186,7 +188,7 @@ let coachMatchState = {
   savedId:   null,
 };
 let coachMatchSubTab = "lineup";
-let coachTacticIdx   = 0;
+let coachTacticIdx   = COACH_DEFAULT_TACTIC_IDX;
 let coachBoardState  = null;
 let coachSavedPlays  = [];
 let coachTacticsMsg  = "";
@@ -773,6 +775,7 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
     coachMatchState.players = _coachRosterFromConvocatoria(club, team, category);
     coachMatchState.events = [];
     coachMatchState.savedId = null;
+    coachMatchState.opponent = "";
     coachMatchState.linkedMatchId = "";
     coachMatchState.linkedMatchLabel = "";
   }
@@ -799,6 +802,7 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam, matchCategory);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
+  coachMatchState.opponent = "";
   coachMatchState.linkedMatchId = "";
   coachMatchState.linkedMatchLabel = "";
 }
@@ -864,10 +868,36 @@ function _coachEnsureTeamSelection(options = null) {
   if (!selectedClub) selectedClub = sourceOptions[0] || null;
   if (!selectedClub) return sourceOptions;
 
+  if (!selectedTeam) {
+    const favoriteValue = String(coachFavoriteTeams?.[0]?.optionValue || "").trim();
+    if (favoriteValue) {
+      const favChoice = _coachResolveTeamChoiceByValue(favoriteValue, sourceOptions);
+      if (favChoice?.teamName) {
+        selectedClub = sourceOptions.find(o => String(o.clubName) === String(favChoice.clubName || "")) || selectedClub;
+        selectedTeam = String(favChoice.teamName || "").trim();
+        const selectedValue = String(favChoice.optionValue || "");
+        for (const tab of ["planning", "objectives", "match"]) {
+          coachTabTeamValues[tab] = selectedValue;
+        }
+      }
+    }
+  }
+
   const hasTeamInClub = selectedTeam
     ? (selectedClub.teams || []).some(t => _coachTeamEq(t?.teamName || "", selectedTeam))
     : false;
   if (selectedTeam && !hasTeamInClub) selectedTeam = "";
+
+  if (!selectedTeam) {
+    const firstTeam = (selectedClub.teams || [])[0] || null;
+    if (firstTeam?.teamName) {
+      selectedTeam = String(firstTeam.teamName || "").trim();
+      const selectedValue = String(firstTeam.optionValue || _coachOptionValue(selectedTeam, firstTeam?.category || "", selectedClub.clubName));
+      for (const tab of ["planning", "objectives", "match"]) {
+        if (!String(coachTabTeamValues?.[tab] || "").trim()) coachTabTeamValues[tab] = selectedValue;
+      }
+    }
+  }
 
   coachClubInput = selectedClub.clubName;
   coachTeamInput = selectedTeam;
@@ -1179,11 +1209,15 @@ async function _coachRosterForSelection(clubName, teamName, category = "") {
   const cacheKey = `${_coachSearchNorm(clubName)}::${_coachSearchNorm(teamName)}::${_coachSearchNorm(category)}`;
   if (coachRosterSelectionCache.has(cacheKey)) return _cclone(coachRosterSelectionCache.get(cacheKey));
 
-  const merged = _coachMergeRosterPlayers(
-    _coachRosterFromTeam(teamName, clubName, category),
-    _coachRosterFromConvocatoria(clubName, teamName, category),
-    await _coachRosterFromActaArchive(clubName, teamName, category)
-  );
+  const fromConv = _coachRosterFromConvocatoria(clubName, teamName, category);
+  const fromActa = await _coachRosterFromActaArchive(clubName, teamName, category);
+  const fromDb = _coachRosterFromTeam(teamName, clubName, category);
+
+  const merged = fromConv.length
+    ? _coachMergeRosterPlayers(fromConv)
+    : (fromActa.length
+      ? _coachMergeRosterPlayers(fromActa)
+      : _coachMergeRosterPlayers(fromDb));
   coachRosterSelectionCache.set(cacheKey, _cclone(merged));
   return merged;
 }
@@ -1416,7 +1450,7 @@ function _coachNormalizeBoardPlayers(players, tacticIdx) {
   const tactic = COACH_TACTICS[tacticIdx] || COACH_TACTICS[0];
   const hasHomeGoalie = tactic.homeGoalie !== false;
   const hasAwayGoalie = tactic.awayGoalie !== false;
-  const awayMinField = Array.isArray(tactic.awayPositions) ? tactic.awayPositions.length : 4;
+  const awayMinField = 4;
 
   let out = (players || []).map(raw => {
     const side = String(raw?.side || raw?.team || "home") === "away" ? "away" : "home";
@@ -1446,7 +1480,7 @@ function _coachNormalizeBoardPlayers(players, tacticIdx) {
     const keepField = field.slice(0, maxField);
     const minField = side === "away" ? awayMinField : 0;
     const defaults = side === "away"
-      ? (Array.isArray(tactic.awayPositions) ? tactic.awayPositions : [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }])
+      ? [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }]
       : (Array.isArray(tactic.homePositions) ? tactic.homePositions : (tactic.positions || []));
     while (keepField.length < Math.min(minField, maxField)) {
       const pos = defaults[keepField.length] || { x: side === "away" ? 70 : 35, y: _clamp(25 + keepField.length * 12, 14, 86) };
@@ -1473,7 +1507,7 @@ function _coachNormalizeBoardPlayers(players, tacticIdx) {
 function _coachBuildBoardPlayers(tacticIdx) {
   const tactic = COACH_TACTICS[tacticIdx] || COACH_TACTICS[0];
   const homePositions = Array.isArray(tactic.homePositions) ? tactic.homePositions : (tactic.positions || []);
-  const awayPositions = Array.isArray(tactic.awayPositions) ? tactic.awayPositions : [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }];
+  const awayPositions = [{ x: 62, y: 25 }, { x: 70, y: 40 }, { x: 70, y: 60 }, { x: 62, y: 75 }];
   const homeLabels = _coachHomeFieldLabels(homePositions.length);
   const players = [];
 
@@ -1647,6 +1681,7 @@ function _coachBallActionFollow(tool, kind, id, point) {
   if (!coachBoardState) return;
 
   if (tool === "shot") {
+    coachBoardState.ballMode = "free";
     coachBoardState.puckAttachedTo = null;
     coachBoardState.puck.x = point.x;
     coachBoardState.puck.y = point.y;
@@ -1709,13 +1744,60 @@ function _coachBoardEntityPoint(kind, id, fallbackPoint) {
   return { x: fallbackPoint.x, y: fallbackPoint.y, label: "Camp" };
 }
 
-function _coachCreateAnnotation(tool, start, end) {
-  return {
+function _coachBoardPlayerById(playerId) {
+  const pid = String(playerId || "").trim();
+  if (!pid) return null;
+  return (coachBoardState?.players || []).find(p => String(p?.id || "") === pid) || null;
+}
+
+function _coachHexToRgba(hex, alpha = 0.16) {
+  const clean = String(hex || "").replace("#", "").trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return `rgba(124,58,237,${alpha})`;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function _coachZigzagPathPoints(a, b, segments = 6, amplitude = 0.9) {
+  const ax = Number(a?.x || 0);
+  const ay = Number(a?.y || 0);
+  const bx = Number(b?.x || 0);
+  const by = Number(b?.y || 0);
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.max(0.001, Math.hypot(dx, dy));
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+
+  const pts = [`${ax},${ay}`];
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = ax + dx * t + px * amplitude * side;
+    const y = ay + dy * t + py * amplitude * side;
+    pts.push(`${x},${y}`);
+  }
+  pts.push(`${bx},${by}`);
+  return pts.join(" ");
+}
+
+function _coachCreateAnnotation(tool, start, end, options = {}) {
+  const ann = {
     id: `ann_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     type: tool,
     start: { x: start.x, y: start.y },
     end: { x: end.x, y: end.y },
   };
+  if (tool === "zone") {
+    ann.zoneColor = String(options?.zoneColor || COACH_ZONE_COLORS[0]);
+  }
+  if (tool === "screen") {
+    ann.blockedPlayerId = String(options?.blockedPlayerId || "");
+  }
+  return ann;
 }
 
 function _coachRenderTacticsTabRoot() {
@@ -1801,6 +1883,12 @@ function openCoachPanel() {
   if (el) el.style.display = "flex";
   // Force reload favorites from DB every time panel opens
   coachFavoriteTeamsLoaded = false;
+  coachMatchState.opponent = "";
+  if (coachPanelTab === "match" && coachMatchSubTab === "tactics") {
+    _coachStopPlayback();
+    coachTacticIdx = COACH_DEFAULT_TACTIC_IDX;
+    _coachEnsureBoardState(true);
+  }
   Promise.resolve(renderCoachPanel()).catch(err => {
     console.error("[coach-panel] open error", err);
     alert("No s'ha pogut obrir el panell entrenador. Recarrega la pàgina.");
@@ -1824,6 +1912,12 @@ function coachSetTab(tab) {
 
 function coachSetMatchSubTab(tab) {
   coachMatchSubTab = tab;
+  if (tab === "tactics") {
+    _coachStopPlayback();
+    coachTacticIdx = COACH_DEFAULT_TACTIC_IDX;
+    _coachEnsureBoardState(true);
+    _coachBoardMessage("Pissarra neta (2-2) carregada.");
+  }
   renderCoachPanel();
 }
 
@@ -1905,7 +1999,6 @@ async function renderCoachPanel(clubSearchCursor) {
   if (coachPanelTab === "planning")   content = await _renderPlanningTab();
   else if (coachPanelTab === "objectives") content = await _renderObjectivesTab();
   else if (coachPanelTab === "match") {
-    if (coachMatchSubTab === "tactics") await _coachLoadBoardStateRemote();
     content = _renderMatchTab();
   }
 
@@ -2500,7 +2593,6 @@ function _renderInteractiveBoardCard(isFullscreen) {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="coachToggleBoardFullscreen()" style="background:#1a2035;border:none;color:#fff;font-weight:800;font-size:12px;padding:9px 12px;border-radius:10px;cursor:pointer">${isFullscreen ? "Tornar a mida normal" : "Pantalla completa"}</button>
-          <button onclick="coachRemoveSelectedBoardItem()" style="background:#f8fafc;border:1px solid #e2e6ef;color:#475569;font-weight:700;font-size:12px;padding:9px 12px;border-radius:10px;cursor:pointer">Eliminar seleccionat</button>
         </div>
       </div>
       <div style="font-size:12px;color:${_coachToolMeta(coachBoardState.tool).color};font-weight:700;margin-bottom:10px">${_cesc(msg)}</div>
@@ -2767,7 +2859,7 @@ function _tacticSVGInteractive(isFullscreen) {
     const meta = {
       pass:   { stroke: "#2563eb", dash: "2.3 1.6", marker: "url(#coach-arrow-blue)", label: "PASS" },
       shot:   { stroke: "#dc2626", dash: "",        marker: "url(#coach-arrow-red)",  label: "XUT" },
-      carry:  { stroke: "#0891b2", dash: "1.6 1.1", marker: "url(#coach-arrow-cyan)", label: "COND" },
+      carry:  { stroke: "#0891b2", dash: "",        marker: "url(#coach-arrow-cyan)", label: "COND" },
       screen: { stroke: "#d97706", dash: "0.7 1.1", marker: "url(#coach-arrow-gold)", label: "BLQ" },
       zone:   { stroke: "#7c3aed", dash: "1.4 1.2", marker: "",                       label: "ZONA" },
     }[annotation.type] || { stroke: "#64748b", dash: "", marker: "", label: "ACC" };
@@ -2777,17 +2869,37 @@ function _tacticSVGInteractive(isFullscreen) {
       const y = Math.min(a.y, b.y);
       const w = Math.max(2, Math.abs(a.x - b.x));
       const h = Math.max(2, Math.abs(a.y - b.y));
+      const zoneColor = String(annotation?.zoneColor || meta.stroke || "#7c3aed");
+      return `<g onclick="coachHandleBoardClick(event,'annotation','${_cesc(annotation.id)}');event.stopPropagation();" oncontextmenu="coachHandleBoardContextMenu(event,'annotation','${_cesc(annotation.id)}');" style="cursor:pointer">
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.8" fill="${_coachHexToRgba(zoneColor, 0.16)}" stroke="${zoneColor}" stroke-width="0.55" stroke-dasharray="${meta.dash}" />
+        <text x="${x + w / 2}" y="${y - 1.4}" text-anchor="middle" font-size="2" fill="${zoneColor}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${meta.label}</text>
+      </g>`;
+    }
+
+    if (annotation.type === "carry") {
+      const zigzag = _coachZigzagPathPoints(a, b, 7, 0.9);
+      const midX = (a.x + b.x) / 2;
+      const midY = (a.y + b.y) / 2;
       return `<g onclick="coachHandleBoardClick(event,'annotation','${_cesc(annotation.id)}');event.stopPropagation();" style="cursor:pointer">
-        <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.8" fill="rgba(124,58,237,0.12)" stroke="${meta.stroke}" stroke-width="0.55" stroke-dasharray="${meta.dash}" />
-        <text x="${x + w / 2}" y="${y - 1.4}" text-anchor="middle" font-size="2" fill="${meta.stroke}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${meta.label}</text>
+        <polyline points="${zigzag}" fill="none" stroke="${meta.stroke}" stroke-width="0.7" marker-end="${meta.marker}" />
+        <polyline points="${zigzag}" fill="none" stroke="transparent" stroke-width="4" />
+        <text x="${midX}" y="${midY - 1.7}" text-anchor="middle" font-size="2" fill="${meta.stroke}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${meta.label}</text>
       </g>`;
     }
 
     const midX = (a.x + b.x) / 2;
     const midY = (a.y + b.y) / 2;
+    const blocked = annotation.type === "screen" ? _coachBoardPlayerById(annotation?.blockedPlayerId) : null;
+    const crossX = blocked ? blocked.x : b.x;
+    const crossY = blocked ? blocked.y : b.y;
+    const cross = annotation.type === "screen"
+      ? `<line x1="${crossX - 1.25}" y1="${crossY - 1.25}" x2="${crossX + 1.25}" y2="${crossY + 1.25}" stroke="#dc2626" stroke-width="0.55" />
+         <line x1="${crossX + 1.25}" y1="${crossY - 1.25}" x2="${crossX - 1.25}" y2="${crossY + 1.25}" stroke="#dc2626" stroke-width="0.55" />`
+      : "";
     return `<g onclick="coachHandleBoardClick(event,'annotation','${_cesc(annotation.id)}');event.stopPropagation();" style="cursor:pointer">
       <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${meta.stroke}" stroke-width="0.6" stroke-dasharray="${meta.dash}" marker-end="${meta.marker}" />
       <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="transparent" stroke-width="4" />
+      ${cross}
       <text x="${midX}" y="${midY - 1.7}" text-anchor="middle" font-size="2" fill="${meta.stroke}" font-family="'Barlow Condensed',sans-serif" font-weight="700">${meta.label}</text>
     </g>`;
   }).join("");
@@ -3182,9 +3294,7 @@ function coachLoadLineupFromConvocatoria() {
   const convocatoria = _coachFindLatestConvocatoria(club, team, category);
   if (convocatoria) {
     coachMatchState.matchDate = String(convocatoria.matchDate || coachMatchState.matchDate || "").slice(0, 10) || coachMatchState.matchDate;
-    const isHome = teamMatchesLoose(convocatoria.matchHome || "", team) || teamMatchesCalendarExact(convocatoria.matchHome || "", team);
-    coachMatchState.isHome = !!isHome;
-    coachMatchState.opponent = isHome ? String(convocatoria.matchAway || "") : String(convocatoria.matchHome || "");
+    coachMatchState.opponent = "";
   }
   _coachSyncLinkedMatchFromState();
   renderCoachPanel();
@@ -3613,6 +3723,24 @@ function coachBoardPointerUp(evt) {
   _coachRenderTacticsTabRoot();
 }
 
+function coachHandleBoardContextMenu(evt, kind, id) {
+  evt?.preventDefault?.();
+  evt?.stopPropagation?.();
+  _coachEnsureBoardState();
+  if (kind !== "annotation") return;
+  const annotation = (coachBoardState.annotations || []).find(item => String(item?.id || "") === String(id || ""));
+  if (!annotation || annotation.type !== "zone") return;
+
+  const current = String(annotation.zoneColor || COACH_ZONE_COLORS[0]);
+  const idx = COACH_ZONE_COLORS.findIndex(c => c === current);
+  const next = COACH_ZONE_COLORS[(idx + 1 + COACH_ZONE_COLORS.length) % COACH_ZONE_COLORS.length] || COACH_ZONE_COLORS[0];
+  annotation.zoneColor = next;
+  _coachBoardRecordFrame("Color zona");
+  _coachBoardMessage("Color de zona actualitzat.");
+  _coachPersistBoardState();
+  _coachRenderTacticsTabRoot();
+}
+
 function coachHandleBoardClick(evt, kind, id) {
   _coachEnsureBoardState();
   if (Date.now() < coachBoardSuppressClickUntil) return;
@@ -3681,6 +3809,12 @@ function coachHandleBoardClick(evt, kind, id) {
     return;
   }
 
+  if (tool === "screen" && !coachBoardState.pendingAction && kind !== "player") {
+    _coachBoardMessage("Per bloquejar, selecciona primer un jugador i despres un rival.");
+    _coachRenderTacticsTabRoot();
+    return;
+  }
+
   const entityPoint = _coachBoardEntityPoint(kind, id, point);
   if (!coachBoardState.pendingAction) {
     coachBoardState.pendingAction = {
@@ -3695,9 +3829,28 @@ function coachHandleBoardClick(evt, kind, id) {
     return;
   }
 
-  coachBoardState.annotations.push(_coachCreateAnnotation(tool, coachBoardState.pendingAction.start, entityPoint));
+  const pending = coachBoardState.pendingAction;
+  const annOpts = {};
+  if (tool === "zone") {
+    annOpts.zoneColor = COACH_ZONE_COLORS[0];
+  }
+
+  if (tool === "screen") {
+    const p1 = pending?.startKind === "player" ? _coachBoardPlayerById(pending.startId) : null;
+    const p2 = kind === "player" ? _coachBoardPlayerById(id) : null;
+    const s1 = String(p1?.side || p1?.team || "");
+    const s2 = String(p2?.side || p2?.team || "");
+    if (!p1 || !p2 || !s1 || !s2 || s1 === s2) {
+      _coachBoardMessage("El bloqueig ha de ser entre jugadors d'equips contraris.");
+      _coachRenderTacticsTabRoot();
+      return;
+    }
+    annOpts.blockedPlayerId = String(id || "");
+  }
+
+  coachBoardState.annotations.push(_coachCreateAnnotation(tool, pending.start, entityPoint, annOpts));
   if (tool === "carry") {
-    _coachMovePlayerForCarry(coachBoardState.pendingAction, entityPoint);
+    _coachMovePlayerForCarry(pending, entityPoint);
   }
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
@@ -3760,5 +3913,6 @@ window.coachBoardPointerDown   = coachBoardPointerDown;
 window.coachBoardPointerMove   = coachBoardPointerMove;
 window.coachBoardPointerUp     = coachBoardPointerUp;
 window.coachHandleBoardClick   = coachHandleBoardClick;
+window.coachHandleBoardContextMenu = coachHandleBoardContextMenu;
 window.coachSaveMatchEvents    = coachSaveMatchEvents;
 window.renderCoachPanel        = renderCoachPanel;

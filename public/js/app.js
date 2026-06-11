@@ -1314,6 +1314,7 @@ let coordinatorClubSearch = "";
 let coordinatorWeekCalendarDate = new Date();
 let coordinatorCalendarTeamFilter = "";
 let coordinatorConvTeamFilter = "";
+let coordinatorConvTeamCategoryFilter = "";
 let coordinatorConvMatchKey = "";
 let coordinatorConvPreviousMatchKey = "";
 let coordinatorConvAdHocFormOpen = false;
@@ -1504,6 +1505,42 @@ function coordinatorResolveTeamName(clubName, selectedValue) {
   const byName = teams.find(team => String(team?.teamName || "").trim() === wanted);
   if (byName?.teamName) return String(byName.teamName).trim();
   return wanted;
+}
+
+function coordinatorResolveTeamSelection(clubName, selectedValue) {
+  const wanted = String(selectedValue || "").trim();
+  if (!wanted) return { teamName: "", category: "", teamKey: "" };
+  const teams = getCoordinatorClubTeams(clubName);
+  const byKey = teams.find(team => String(team?.teamKey || "").trim() === wanted) || null;
+  if (byKey) {
+    return {
+      teamName: String(byKey.teamName || "").trim(),
+      category: String(byKey.category || "").trim(),
+      teamKey: String(byKey.teamKey || "").trim(),
+    };
+  }
+  const byName = teams.find(team => String(team?.teamName || "").trim() === wanted) || null;
+  if (byName) {
+    return {
+      teamName: String(byName.teamName || "").trim(),
+      category: String(byName.category || "").trim(),
+      teamKey: String(byName.teamKey || "").trim(),
+    };
+  }
+  return { teamName: wanted, category: "", teamKey: "" };
+}
+
+function coordinatorCompMatchesTeamCategory(compName, teamCategory = "") {
+  const cat = String(teamCategory || "").trim();
+  if (!cat) return true;
+  const textNorm = normalizeTeamName(String(compName || ""));
+  if (!textNorm) return false;
+  const keyNorm = normalizeTeamName(typeof normalizeCompKey === "function" ? normalizeCompKey(cat) : cat);
+  const labelNorm = normalizeTeamName((typeof CAT_LABELS !== "undefined" ? CAT_LABELS?.[cat] : "") || "");
+  return Boolean(
+    (keyNorm && textNorm.includes(keyNorm))
+    || (labelNorm && textNorm.includes(labelNorm))
+  );
 }
 
 function getCoordinatorClubEntries() {
@@ -1958,7 +1995,10 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     return `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:22px;text-align:center;color:#64748b">Selecciona primer un club a la pestanya de gestió club.</div>`;
   }
   const teams = getCoordinatorClubTeams(currentFav.clubName);
-  const selectedToken = teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter)?.teamKey || coordinatorConvTeamFilter;
+  const selectedToken = (
+    teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter && String(team?.category || "") === coordinatorConvTeamCategoryFilter)
+    || teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter)
+  )?.teamKey || coordinatorConvTeamFilter;
   const teamOptions = teams.map(team => {
     const teamToken = String(team?.teamKey || team?.teamName || "");
     return `<option value="${esc(teamToken)}" ${selectedToken === teamToken ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`;
@@ -2115,15 +2155,22 @@ function coordinatorTrainingLockerRoomLabel(training) {
 function coordinatorEnsureValidConvTeam(currentFav) {
   if (!currentFav?.clubName) {
     coordinatorConvTeamFilter = "";
+    coordinatorConvTeamCategoryFilter = "";
     return;
   }
-  const teams = getCoordinatorClubTeams(currentFav.clubName).map(team => String(team?.teamName || "").trim()).filter(Boolean);
+  const teams = getCoordinatorClubTeams(currentFav.clubName);
   if (!teams.length) {
     coordinatorConvTeamFilter = "";
+    coordinatorConvTeamCategoryFilter = "";
     return;
   }
-  if (!coordinatorConvTeamFilter || !teams.includes(coordinatorConvTeamFilter)) {
-    coordinatorConvTeamFilter = teams[0];
+  const exists = teams.some(team =>
+    String(team?.teamName || "").trim() === String(coordinatorConvTeamFilter || "").trim()
+    && String(team?.category || "").trim() === String(coordinatorConvTeamCategoryFilter || "").trim()
+  );
+  if (!coordinatorConvTeamFilter || !exists) {
+    coordinatorConvTeamFilter = String(teams[0]?.teamName || "").trim();
+    coordinatorConvTeamCategoryFilter = String(teams[0]?.category || "").trim();
   }
 }
 
@@ -2776,7 +2823,7 @@ function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
   }
 }
 
-function getUpcomingMatchesForConvocatoria(clubName, teamName) {
+function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = "") {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
   const useStrictFilter = Boolean(String(teamName || "").trim());
   const nowTs = Date.now();
@@ -2789,6 +2836,7 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName) {
         ? coordinatorStrictTeamMatch(match, teamPool)
         : matchBelongsToCoordinatorPool(match, teamPool);
       if (!belongs) continue;
+      if (!coordinatorCompMatchesTeamCategory(comp?.name || "", teamCategory)) continue;
       const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
       if (!ts || ts < (nowTs - pastToleranceMs)) continue;
       matches.push({
@@ -2843,7 +2891,7 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName) {
     .map(match => ({ ...match, key: coordinatorMatchKey(match) }));
 }
 
-function getPreviousPlayedMatchesForTeam(clubName, teamName, beforeTs = Number.POSITIVE_INFINITY) {
+function getPreviousPlayedMatchesForTeam(clubName, teamName, beforeTs = Number.POSITIVE_INFINITY, teamCategory = "") {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
   const useStrictFilter = Boolean(String(teamName || "").trim());
   const played = [];
@@ -2854,6 +2902,7 @@ function getPreviousPlayedMatchesForTeam(clubName, teamName, beforeTs = Number.P
         ? coordinatorStrictTeamMatch(match, teamPool)
         : matchBelongsToCoordinatorPool(match, teamPool);
       if (!belongs) continue;
+      if (!coordinatorCompMatchesTeamCategory(comp?.name || "", teamCategory)) continue;
       const ts = parseMatchTimestamp(match?.date || "", comp?.name || "");
       if (!ts || ts >= beforeTs) continue;
       played.push({
@@ -3018,7 +3067,7 @@ function coordinatorPopulatePreviousMatchSelector(referenceTs = Number.POSITIVE_
     return;
   }
 
-  const previousMatches = getPreviousPlayedMatchesForTeam(fav.clubName, coordinatorConvTeamFilter, referenceTs);
+  const previousMatches = getPreviousPlayedMatchesForTeam(fav.clubName, coordinatorConvTeamFilter, referenceTs, coordinatorConvTeamCategoryFilter);
   selector.innerHTML = previousMatches.length
     ? previousMatches.map(match => `<option value="${match.key}">${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(shortTeamDisplayName(match.home))} ${esc(String(match.homeScore ?? ""))} - ${esc(String(match.awayScore ?? ""))} ${esc(shortTeamDisplayName(match.away))}</option>`).join("")
     : `<option value="">No hi ha partits anteriors</option>`;
@@ -3042,7 +3091,7 @@ function renderCoordinatorConvMatchSummary() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter);
+  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || matches[0] || null;
   if (!selected) {
     container.innerHTML = `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px;color:#64748b">No hi ha cap partit pendent per aquest equip.</div>`;
@@ -3091,8 +3140,9 @@ function renderCoordinatorConvMatchSummary() {
 
 function coordinatorSetConvTeam(teamName) {
   const fav = loadCoordinatorFavorite();
-  const nextTeamName = coordinatorResolveTeamName(fav?.clubName || "", teamName);
-  coordinatorConvTeamFilter = String(nextTeamName || "");
+  const resolved = coordinatorResolveTeamSelection(fav?.clubName || "", teamName);
+  coordinatorConvTeamFilter = String(resolved?.teamName || "");
+  coordinatorConvTeamCategoryFilter = String(resolved?.category || "");
   coordinatorConvMatchKey = "";
   coordinatorConvPreviousMatchKey = "";
   coordinatorClearConvocatoria();
@@ -3117,7 +3167,7 @@ function coordinatorPopulateMatchSelector() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter);
+  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
   const prevMatchKey = coordinatorConvMatchKey;
   selector.innerHTML = matches.length
     ? matches.map(match => `<option value="${match.key}">${match.isAdHoc ? "[Ad-hoc] " : ""}${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(shortTeamDisplayName(match.home))} vs ${esc(shortTeamDisplayName(match.away))}</option>`).join("")
@@ -3144,7 +3194,7 @@ function coordinatorOnMatchSelected() {
   coordinatorConvMatchKey = $("convocatoria-match-select")?.value || "";
   const fav = loadCoordinatorFavorite();
   const matches = fav?.clubName && coordinatorConvTeamFilter
-    ? getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter)
+    ? getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter)
     : [];
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || null;
   coordinatorPopulatePreviousMatchSelector(selected?.ts || Number.POSITIVE_INFINITY);
@@ -3222,14 +3272,14 @@ async function coordinatorGenerateConvocatoria() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter);
+  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || matches[0] || null;
   if (!selected) {
     alert("No hi ha cap partit pendent per aquest equip.");
     return;
   }
 
-  const previousMatches = getPreviousPlayedMatchesForTeam(fav.clubName, coordinatorConvTeamFilter, selected.ts);
+  const previousMatches = getPreviousPlayedMatchesForTeam(fav.clubName, coordinatorConvTeamFilter, selected.ts, coordinatorConvTeamCategoryFilter);
   const selectedPrevious = previousMatches.find(match => match.key === coordinatorConvPreviousMatchKey) || previousMatches[0] || null;
   if (selectedPrevious?.key && !coordinatorConvPreviousMatchKey) {
     coordinatorConvPreviousMatchKey = selectedPrevious.key;
