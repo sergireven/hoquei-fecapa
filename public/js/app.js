@@ -7898,9 +7898,10 @@ function getUserConvMatchMeta(match) {
 function getUserConvAvailabilitySummary(players, availabilityByMatch = {}) {
   const summary = { selected: players.length, convocats: 0, dubtes: 0, baixes: 0 };
   for (const player of players) {
-    const status = String(availabilityByMatch?.[player.id]?.status || "disponible");
+    // Support both new model (player.status) and old model (availabilityByMatch[player.id])
+    const status = String(player?.status || availabilityByMatch?.[player.id]?.status || "disponible");
     if (status === "dubte") summary.dubtes += 1;
-    else if (status === "no_disponible") summary.baixes += 1;
+    else if (status === "no_disponible" || status === "baixa") summary.baixes += 1;
     else summary.convocats += 1;
   }
   return summary;

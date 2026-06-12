@@ -202,6 +202,7 @@ let coachBoardFullscreenFormationsCollapsed = false;
 let coachLiveFullscreen = false;
 const coachRosterSelectionCache = new Map();
 let coachFavoritePersistStatus = { type: "idle", text: "" };
+let coachEditingSharedTrainingId = null; // UUID of shared_trainings row being enriched
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -760,6 +761,7 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
 
   if (tabKey === "planning") {
     coachTrainingsLoaded = false;
+    coachEditingSharedTrainingId = null;
     return;
   }
   if (tabKey === "objectives") {
@@ -3129,6 +3131,29 @@ async function coachSaveTraining() {
   setMsg("Desant...");
 
   // ── Try shared_trainings first (unified object) ──────────────────────────
+  // If editing an existing shared training, UPDATE instead of INSERT
+  if (coachEditingSharedTrainingId) {
+    const { error: updErr } = await sb.from("shared_trainings")
+      .update({
+        duration_minutes: duration,
+        pillars:          coachPlanningPillars,
+        coach_notes:      notes,
+        enriched_by:      uid,
+        updated_at:       new Date().toISOString(),
+      })
+      .eq("id", coachEditingSharedTrainingId);
+    if (!updErr) {
+      setMsg("✓ Entrenament compartit actualitzat.", "#16a34a");
+      coachEditingSharedTrainingId = null;
+      coachPlanningPillars = [];
+      coachPlanningNotes   = "";
+      coachTrainingsLoaded = false;
+      await _loadTrainings();
+      renderCoachPanel();
+      return;
+    }
+  }
+
   const { data: sharedData, error: sharedError } = await sb.from("shared_trainings")
     .insert({
       club_name:        clubName,
@@ -3236,8 +3261,17 @@ function coachLoadCoordinatorTrainingToForm(id) {
   const found = coachTrainings.find(t => String(t?.id || "") === targetId && (String(t?._source || "") === "coordinator" || String(t?._source || "") === "shared"));
   if (!found) return;
 
+  // Track which shared training we're enriching so coachSaveTraining can UPDATE
+  coachEditingSharedTrainingId = (found._source === "shared" && found.sharedTrainingId)
+    ? String(found.sharedTrainingId)
+    : null;
+
   coachPlanningDate = String(found.plan_date || coachPlanningDate || "").trim() || coachPlanningDate;
   coachPlanningDuration = Number(found.duration_minutes || coachPlanningDuration || 90) || 90;
+  // Pre-load existing pillars so user can see and adjust them
+  if (found._source === "shared" && Array.isArray(found._sharedRaw?.pillars) && found._sharedRaw.pillars.length) {
+    coachPlanningPillars = [...found._sharedRaw.pillars];
+  }
   const existing = String(coachPlanningNotes || "").trim();
   const imported = String(found._sharedRaw?.coach_notes || found.notes || "").trim();
   coachPlanningNotes = [existing, imported].filter(Boolean).join(existing && imported ? "\n" : "");
@@ -3247,7 +3281,7 @@ function coachLoadCoordinatorTrainingToForm(id) {
   if (msg) {
     msg.style.color = "#1d4ed8";
     msg.textContent = found._source === "shared"
-      ? "Entrenament compartit carregat. Afegeix pilars i desa per enriquir-lo."
+      ? "Entrenament compartit carregat. Modifica els pilars i clica '+ Afegir' per desar-ho."
       : "Entrenament de coordinador carregat. Afegeix pilars/dimensions i desa.";
   }
 }
