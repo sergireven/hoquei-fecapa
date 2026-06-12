@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.convocatorias (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   coordinator_id   UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   team_id          UUID        REFERENCES public.teams(id) ON DELETE SET NULL,
+  competition_id   UUID        REFERENCES public.competitions(id) ON DELETE SET NULL,
   club_name        TEXT        NOT NULL DEFAULT '',
   team_name        TEXT        NOT NULL DEFAULT '',
   match_key        TEXT        NOT NULL DEFAULT '',  -- JS coordinator match key
@@ -87,7 +88,7 @@ CREATE TABLE IF NOT EXISTS public.convocatorias (
   match_time       TIME,
   match_home       TEXT        NOT NULL DEFAULT '',
   match_away       TEXT        NOT NULL DEFAULT '',
-  match_competition TEXT       NOT NULL DEFAULT '',
+  match_competition TEXT       NOT NULL DEFAULT '',  -- display name (now also has FK)
   match_location   TEXT        NOT NULL DEFAULT '',
   match_type       TEXT        NOT NULL DEFAULT 'federat',
   is_ad_hoc        BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -100,8 +101,34 @@ CREATE TABLE IF NOT EXISTS public.convocatorias (
   UNIQUE (coordinator_id, club_name, team_name, match_key)
 );
 
+-- Backward-compatible migration path: if convocatorias already existed
+-- before competition_id was introduced, add the column and FK safely.
+ALTER TABLE public.convocatorias
+  ADD COLUMN IF NOT EXISTS competition_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'convocatorias_competition_id_fkey'
+      AND conrelid = 'public.convocatorias'::regclass
+  ) THEN
+    ALTER TABLE public.convocatorias
+      ADD CONSTRAINT convocatorias_competition_id_fkey
+      FOREIGN KEY (competition_id)
+      REFERENCES public.competitions(id)
+      ON DELETE SET NULL;
+  END IF;
+EXCEPTION
+  WHEN undefined_table THEN
+    -- competitions may be created in a later migration file.
+    RAISE NOTICE 'public.competitions not found yet; FK will be created when competitions exists.';
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_convocatorias_coordinator ON public.convocatorias (coordinator_id);
 CREATE INDEX IF NOT EXISTS idx_convocatorias_team        ON public.convocatorias (team_id);
+CREATE INDEX IF NOT EXISTS idx_convocatorias_competition ON public.convocatorias (competition_id);
 CREATE INDEX IF NOT EXISTS idx_convocatorias_date        ON public.convocatorias (match_date);
 CREATE INDEX IF NOT EXISTS idx_convocatorias_club_team   ON public.convocatorias (club_name, team_name);
 
@@ -130,9 +157,10 @@ CREATE POLICY "conv: authenticated read"
   ON public.convocatorias FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
-COMMENT ON TABLE  public.convocatorias IS 'Match call-ups created by coordinators. Players JSONB holds per-player status/notes.';
+COMMENT ON TABLE  public.convocatorias IS 'Match call-ups created by coordinators. Players JSONB holds per-player status/notes. Links to competitions table.';
 COMMENT ON COLUMN public.convocatorias.match_key         IS 'Encoded coordinator match key from the JS app (compId::dateKey::time::home::away)';
 COMMENT ON COLUMN public.convocatorias.players           IS 'Array of {name, dorsal, position, checked, status, notes} objects';
+COMMENT ON COLUMN public.convocatorias.competition_id    IS 'FK to competitions table — links match to its league/tournament';
 
 
 -- ─── 5. shared_trainings ──────────────────────────────────────────────────
