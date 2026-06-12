@@ -5,6 +5,18 @@
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const { createClient } = require("@supabase/supabase-js");
+const { syncAllSeasonsToDatabase } = require("./sync-db-from-json");
+
+function createSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  if (!url || !key) {
+    console.warn("[cron] Supabase credentials not available — skipping DB sync");
+    return null;
+  }
+  return createClient(url, key);
+}
 
 function runNodeStep(scriptName, timeoutMs) {
   const scriptPath = path.join(__dirname, "../jobs", scriptName);
@@ -52,6 +64,20 @@ module.exports = async (req, res) => {
       steps.push("generate-ripollet.js");
     } else {
       console.log("⏭️ Pas 5/5 omès: generate-ripollet.js no existeix");
+    }
+
+    // Sincronitza JSON → Supabase (clubs, teams, players des de totes les temporades)
+    console.log("📊 Pas 6: sincronitzant dades JSON a Supabase...");
+    const sb = createSupabaseClient();
+    if (sb) {
+      try {
+        const syncResults = await syncAllSeasonsToDatabase(sb, path.join(__dirname, "../public"));
+        console.log("[cron] DB sync results:", JSON.stringify(syncResults, null, 2));
+        steps.push("sync-db-from-json");
+      } catch (syncErr) {
+        console.error("[cron] DB sync error:", syncErr.message);
+        // No failing the whole cron if DB sync fails — els JSON scripts ja van OK
+      }
     }
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
