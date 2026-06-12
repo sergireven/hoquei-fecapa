@@ -2059,10 +2059,21 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em">Checklist de convocatoria</div>
           <div style="font-size:12px;color:#64748b">La proposta es basa en el roster del partit anterior seleccionat.</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="downloadConvocatoriaMarkdown()" style="background:#8b5cf6;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">Descarregar convocatoria</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div id="convocatoria-save-status" style="font-size:12px;font-weight:700;color:#64748b"></div>
+          <button onclick="coordinatorSaveConvocatoria()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">💾 Guardar</button>
+          <button onclick="downloadConvocatoriaMarkdown()" style="background:#8b5cf6;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">Descarregar</button>
+          <button onclick="coordinatorToggleAddPlayerSearch()" style="background:#f0f9ff;border:1.5px solid #bfdbfe;color:#1d4ed8;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">+ Afegir jugador</button>
           <button onclick="coordinatorClearConvocatoria()" style="background:#6b7280;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">Tancar</button>
         </div>
+      </div>
+      <div id="convocatoria-add-player-panel" style="display:none;background:#f0f9ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:800;color:#1d4ed8;margin-bottom:8px">Cerca jugadors (categories veïnes o inferiors)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <input id="convocatoria-player-search-input" type="search" placeholder="Cerca per nom..." oninput="coordinatorFilterPlayerSearch(this.value)" style="flex:1;min-width:180px;padding:9px 11px;border:1.5px solid #bfdbfe;border-radius:8px;font-size:13px;font-family:inherit"/>
+          <button onclick="coordinatorToggleAddPlayerSearch()" style="background:#fff;border:1.5px solid #e2e6ef;color:#64748b;font-weight:700;font-size:12px;padding:9px 10px;border-radius:8px;cursor:pointer">Tancar</button>
+        </div>
+        <div id="convocatoria-player-search-results" style="max-height:220px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px"></div>
       </div>
       <div id="convocatoria-players-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px"></div>
     </div>`;
@@ -2890,6 +2901,79 @@ function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
   }
 }
 
+// ── Supabase persistence for convocatories ──────────────────────────────
+
+async function syncConvocatoriaToSupabase(convocatoria) {
+  if (!_sb || !currentProfile?.id) return { ok: false, error: "No session" };
+  const row = {
+    coordinator_id:    currentProfile.id,
+    club_name:         String(convocatoria.clubName || ""),
+    team_name:         String(convocatoria.teamName || ""),
+    match_key:         String(convocatoria.matchKey || ""),
+    match_date:        convocatoria.matchDate || null,
+    match_time:        convocatoria.matchTime || null,
+    match_home:        String(convocatoria.matchHome || ""),
+    match_away:        String(convocatoria.matchAway || ""),
+    match_competition: String(convocatoria.matchCompetition || ""),
+    match_location:    String(convocatoria.matchLocation || ""),
+    match_type:        String(convocatoria.matchType || "federat"),
+    is_ad_hoc:         Boolean(convocatoria.isAdHoc),
+    previous_match:    convocatoria.previousMatch || null,
+    previous_match_key: String(convocatoria.previousMatchKey || ""),
+    players:           Array.isArray(convocatoria.players) ? convocatoria.players : [],
+    updated_at:        new Date().toISOString(),
+  };
+  // Preserve db id if already saved
+  if (convocatoria.supabaseId) {
+    const { error } = await _sb.from("convocatorias")
+      .update({ ...row, updated_at: new Date().toISOString() })
+      .eq("id", convocatoria.supabaseId)
+      .eq("coordinator_id", currentProfile.id);
+    if (error) { console.warn("[conv] update error", error); return { ok: false, error }; }
+    return { ok: true };
+  }
+  const { data, error } = await _sb.from("convocatorias")
+    .upsert(row, { onConflict: "coordinator_id,club_name,team_name,match_key" })
+    .select("id")
+    .maybeSingle();
+  if (error) { console.warn("[conv] upsert error", error); return { ok: false, error }; }
+  return { ok: true, id: data?.id || null };
+}
+
+async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey) {
+  if (!_sb || !currentProfile?.id) return null;
+  const { data, error } = await _sb.from("convocatorias")
+    .select("*")
+    .eq("coordinator_id", currentProfile.id)
+    .eq("club_name", clubName)
+    .eq("team_name", teamName)
+    .eq("match_key", matchKey)
+    .maybeSingle();
+  if (error || !data) return null;
+  const conv = {
+    supabaseId:        data.id,
+    clubName:          data.club_name,
+    teamName:          data.team_name,
+    matchKey:          data.match_key,
+    matchDate:         data.match_date || "",
+    matchTime:         data.match_time || "",
+    matchHome:         data.match_home,
+    matchAway:         data.match_away,
+    matchCompetition:  data.match_competition,
+    matchLocation:     data.match_location,
+    matchType:         data.match_type,
+    isAdHoc:           data.is_ad_hoc,
+    previousMatch:     data.previous_match,
+    previousMatchKey:  data.previous_match_key || "",
+    players:           Array.isArray(data.players) ? data.players : [],
+    createdAt:         data.created_at,
+    updatedAt:         data.updated_at,
+  };
+  // Also push to localStorage so existing local paths work
+  saveConvocatoria(clubName, teamName, matchKey, conv);
+  return conv;
+}
+
 function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = "") {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
   const useStrictFilter = Boolean(String(teamName || "").trim());
@@ -3498,6 +3582,105 @@ function downloadConvocatoriaMarkdown() {
   document.body.removeChild(element);
 }
 
+// ── Coordinator convocatoria save + player search ───────────
+
+async function coordinatorSaveConvocatoria() {
+  const fav = loadCoordinatorFavorite();
+  const statusEl = $("convocatoria-save-status");
+  const setMsg = (text, color = "#64748b") => { if (statusEl) { statusEl.style.color = color; statusEl.textContent = text; } };
+  if (!fav?.clubName || !coordinatorConvTeamFilter || !coordinatorConvMatchKey) {
+    setMsg("No hi ha cap convocatoria activa.", "#dc2626");
+    return;
+  }
+  const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
+  if (!convocatoria) { setMsg("Genera primer la convocatoria.", "#dc2626"); return; }
+  setMsg("Desant...");
+  // Always save to localStorage
+  saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
+  // Try Supabase
+  const result = await syncConvocatoriaToSupabase(convocatoria);
+  if (result.ok) {
+    if (result.id && !convocatoria.supabaseId) {
+      convocatoria.supabaseId = result.id;
+      saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
+    }
+    setMsg("✓ Convocatoria desada.", "#16a34a");
+  } else {
+    setMsg("✓ Desat localment (BD no disponible).", "#d97706");
+  }
+}
+
+let coordinatorPlayerSearchOpen = false;
+
+function coordinatorToggleAddPlayerSearch() {
+  coordinatorPlayerSearchOpen = !coordinatorPlayerSearchOpen;
+  const panel = $("convocatoria-add-player-panel");
+  if (!panel) return;
+  panel.style.display = coordinatorPlayerSearchOpen ? "block" : "none";
+  if (coordinatorPlayerSearchOpen) {
+    const input = $("convocatoria-player-search-input");
+    if (input) { input.value = ""; coordinatorFilterPlayerSearch(""); input.focus(); }
+  }
+}
+
+function coordinatorFilterPlayerSearch(query) {
+  const resultsEl = $("convocatoria-player-search-results");
+  if (!resultsEl) return;
+  const fav = loadCoordinatorFavorite();
+  const currentConvocatoria = fav?.clubName && coordinatorConvTeamFilter && coordinatorConvMatchKey
+    ? loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey)
+    : null;
+  const existingNames = new Set((currentConvocatoria?.players || []).map(p => normalizeTeamName(p?.name || "")));
+
+  const q = normalizeTeamName(String(query || "").trim());
+  const candidates = [];
+  for (const player of Object.values(DB?.jugadors || {})) {
+    const rawName = player?.slug
+      ? formatPlayerDisplayName(decodeURIComponent(String(player.slug).replace(/\+/g, " ")))
+      : (player?.name || "");
+    if (!rawName) continue;
+    if (existingNames.has(normalizeTeamName(rawName))) continue;
+    if (q && !normalizeTeamName(rawName).includes(q)) continue;
+    const teamStats = normalizePlayerTeamStatsForDisplay(player) || [];
+    const team = teamStats[0]?.team || "";
+    const cat = teamStats[0]?.cat || "";
+    candidates.push({ name: rawName, team, cat, isGK: player?.isGK || false });
+    if (candidates.length >= 50) break;
+  }
+
+  if (!candidates.length) {
+    resultsEl.innerHTML = `<div style="font-size:12px;color:#94a3b8;padding:8px">Sense resultats.</div>`;
+    return;
+  }
+  resultsEl.innerHTML = candidates.map(player => {
+    const catLabel = player.cat ? (CAT_LABELS[player.cat] || player.cat) : "";
+    const posLabel = player.isGK ? "Porter" : "Jugador";
+    return `<div style="background:#fff;border:1px solid #e2e6ef;border-radius:8px;padding:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#1a2035">${esc(player.name)}</div>
+        <div style="font-size:10px;color:#64748b">${esc(player.team)}${catLabel ? ` · ${esc(catLabel)}` : ""} · ${esc(posLabel)}</div>
+      </div>
+      <button onclick="coordinatorAddPlayerToConvocatoria('${encodeURIComponent(player.name)}','${encodeURIComponent(player.team)}','${encodeURIComponent(posLabel)}')" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:11px;padding:6px 8px;border-radius:6px;cursor:pointer;white-space:nowrap">+ Afegir</button>
+    </div>`;
+  }).join("");
+}
+
+function coordinatorAddPlayerToConvocatoria(encodedName, encodedTeam, encodedPosition) {
+  const name = decodeURIComponent(encodedName || "");
+  const position = decodeURIComponent(encodedPosition || "Jugador");
+  const fav = loadCoordinatorFavorite();
+  if (!fav?.clubName || !coordinatorConvTeamFilter || !coordinatorConvMatchKey) return;
+  const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
+  if (!convocatoria) return;
+  if (convocatoria.players.some(p => teamMatchesCalendarExact(p?.name || "", name))) return;
+  convocatoria.players.push({ name, dorsal: "", position, checked: true, status: "convocat", notes: "Cat. inferior" });
+  saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
+  const statusEl = $("convocatoria-save-status");
+  if (statusEl) { statusEl.style.color = "#0891b2"; statusEl.textContent = `${esc(name)} afegit.`; }
+  renderConvocatoriaPlayers(convocatoria);
+  coordinatorFilterPlayerSearch($("convocatoria-player-search-input")?.value || "");
+}
+
 window.coordinatorSetTab = coordinatorSetTab;
 window.coordinatorSetClubSearch = coordinatorSetClubSearch;
 window.coordinatorChooseClub = coordinatorChooseClub;
@@ -3522,6 +3705,10 @@ window.coordinatorToggleAdHocForm = coordinatorToggleAdHocForm;
 window.coordinatorCreateAdHocMatch = coordinatorCreateAdHocMatch;
 window.coordinatorSaveConvocationLeadMinutes = coordinatorSaveConvocationLeadMinutes;
 window.coordinatorGenerateConvocatoria = coordinatorGenerateConvocatoria;
+window.coordinatorSaveConvocatoria = coordinatorSaveConvocatoria;
+window.coordinatorToggleAddPlayerSearch = coordinatorToggleAddPlayerSearch;
+window.coordinatorFilterPlayerSearch = coordinatorFilterPlayerSearch;
+window.coordinatorAddPlayerToConvocatoria = coordinatorAddPlayerToConvocatoria;
 window.coordinatorToggleConvPlayer = coordinatorToggleConvPlayer;
 window.coordinatorSetConvPlayerStatus = coordinatorSetConvPlayerStatus;
 window.coordinatorSetConvPlayerNotes = coordinatorSetConvPlayerNotes;
@@ -7711,9 +7898,10 @@ function getUserConvMatchMeta(match) {
 function getUserConvAvailabilitySummary(players, availabilityByMatch = {}) {
   const summary = { selected: players.length, convocats: 0, dubtes: 0, baixes: 0 };
   for (const player of players) {
-    const status = String(availabilityByMatch?.[player.id]?.status || "disponible");
+    // Support both new model (player.status) and old model (availabilityByMatch[player.id])
+    const status = String(player?.status || availabilityByMatch?.[player.id]?.status || "disponible");
     if (status === "dubte") summary.dubtes += 1;
-    else if (status === "no_disponible") summary.baixes += 1;
+    else if (status === "no_disponible" || status === "baixa") summary.baixes += 1;
     else summary.convocats += 1;
   }
   return summary;

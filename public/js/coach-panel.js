@@ -202,6 +202,7 @@ let coachBoardFullscreenFormationsCollapsed = false;
 let coachLiveFullscreen = false;
 const coachRosterSelectionCache = new Map();
 let coachFavoritePersistStatus = { type: "idle", text: "" };
+let coachEditingSharedTrainingId = null; // UUID of shared_trainings row being enriched
 
 /* ── Internal helpers ────────────────────────────────────────────────────── */
 function _cesc(s) {
@@ -760,6 +761,7 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
 
   if (tabKey === "planning") {
     coachTrainingsLoaded = false;
+    coachEditingSharedTrainingId = null;
     return;
   }
   if (tabKey === "objectives") {
@@ -831,23 +833,32 @@ function _coachTabTeamHeader(tabKey, options = null) {
   const teamLabel = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(current.teamName || "") : (current.teamName || "");
   const label = catLabel ? `${teamLabel} · ${catLabel}` : teamLabel;
 
-  const favoriteChips = coachFavoriteTeams
-    .filter(item => String(item?.optionValue || "") !== currentValue)
-    .map(item => {
-      const itemCat = item.category
-        ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[item.category]) ? CAT_LABELS[item.category] : item.category)
-        : "";
-      const itemTeam = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(item.teamName || "") : (item.teamName || "");
-      const itemLabel = itemCat ? `${itemTeam} · ${itemCat}` : itemTeam;
-      return `<button onclick="coachSelectTabTeam('${_cesc(tabKey)}','${_cesc(item.optionValue)}')" style="background:#fff;border:1.5px solid #dbe3f0;color:#334155;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;cursor:pointer">${_cesc(itemLabel)}</button>`;
-    }).join("");
+  // Show ALL favorites, always at fixed positions. The active one is highlighted differently.
+  const allChips = coachFavoriteTeams.map(item => {
+    const isActive = String(item?.optionValue || "") === currentValue;
+    const itemCat = item.category
+      ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[item.category]) ? CAT_LABELS[item.category] : item.category)
+      : "";
+    const itemTeam = typeof shortTeamDisplayName === "function" ? shortTeamDisplayName(item.teamName || "") : (item.teamName || "");
+    const itemLabel = itemCat ? `${itemTeam} · ${itemCat}` : itemTeam;
+    if (isActive) {
+      return `<div style="background:#1a2035;border:1.5px solid #1a2035;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:7px">
+        <span>${_cesc(itemLabel)}</span>
+        <span onclick="coachToggleFavoriteTeamChip('${_cesc(item.optionValue)}')" title="${fav ? "Treure favorit" : "Afegir favorit"}" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:${fav ? "rgba(245,158,11,.25)" : "rgba(255,255,255,.2)"};color:${fav ? "#f59e0b" : "#fff"};font-size:13px;font-weight:800;line-height:1;cursor:pointer">${_coachFavoriteIcon(item.optionValue)}</span>
+      </div>`;
+    }
+    return `<button onclick="coachSelectTabTeam('${_cesc(tabKey)}','${_cesc(item.optionValue)}')" style="background:#fff;border:1.5px solid #dbe3f0;color:#334155;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;cursor:pointer">${_cesc(itemLabel)}</button>`;
+  }).join("");
+
+  // If current team is not in favorites, add its chip at the start too
+  const currentInFavs = coachFavoriteTeams.some(item => String(item?.optionValue || "") === currentValue);
+  const currentChip = currentInFavs ? "" : `<div style="background:#1a2035;border:1.5px solid #1a2035;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:7px">
+      <span>${_cesc(label)}</span>
+      <span onclick="coachToggleFavoriteTeamChip('${_cesc(currentValue)}')" title="Afegir favorit" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:800;line-height:1;cursor:pointer">☆</span>
+    </div>`;
 
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-    <div style="background:#1a2035;border:1.5px solid #1a2035;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:7px">
-      <span>${_cesc(label)}</span>
-      <span onclick="coachToggleFavoriteTeamChip('${_cesc(currentValue)}')" title="${fav ? "Treure favorit" : "Afegir favorit"}" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:${fav ? "rgba(245,158,11,.25)" : "rgba(255,255,255,.2)"};color:${fav ? "#f59e0b" : "#fff"};font-size:13px;font-weight:800;line-height:1;cursor:pointer">${_coachFavoriteIcon(currentValue)}</span>
-    </div>
-    ${favoriteChips}
+    ${currentChip}${allChips}
   </div>`;
 }
 
@@ -2101,10 +2112,18 @@ async function _renderPlanningTab() {
           ? `${Math.floor(t.duration_minutes / 60)}h${t.duration_minutes % 60 ? String(t.duration_minutes % 60).padStart(2, "0") + "'" : ""}`
           : "";
         const source = String(t?._source || "coach");
-        const sourceChip = source === "coordinator"
-          ? `<span style="background:#ede9fe;color:#5b21b6;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Coordinator</span>`
-          : `<span style="background:#ecfdf5;color:#166534;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Entrenador</span>`;
-        const badges = (t.pillars || []).map(pid => {
+        const sourceChip = source === "shared"
+          ? `<span style="background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Compartit</span>`
+          : source === "coordinator"
+            ? `<span style="background:#ede9fe;color:#5b21b6;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Coordinator</span>`
+            : `<span style="background:#ecfdf5;color:#166534;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Entrenador</span>`;
+        const sharedMeta = source === "shared" ? t?._sharedRaw : null;
+        const locationNote = sharedMeta?.location ? `📍 ${sharedMeta.location}` : "";
+        const timeNote = sharedMeta?.training_time ? `🕐 ${sharedMeta.training_time}` : "";
+        const pillarsFromShared = source === "shared" && Array.isArray(sharedMeta?.pillars) && sharedMeta.pillars.length
+          ? sharedMeta.pillars
+          : (t.pillars || []);
+        const badges = pillarsFromShared.map(pid => {
           const p = COACH_PILLARS.find(x => x.id === pid);
           return p ? `<span style="background:${p.color};color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700">${p.short}</span>` : "";
         }).join(" ");
@@ -2113,14 +2132,17 @@ async function _renderPlanningTab() {
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:#1a2035">${_cesc(t.plan_date || "")}</span>
               <span style="font-size:12px;color:#64748b">${dur}</span>
+              ${timeNote ? `<span style="font-size:11px;color:#475569">${_cesc(timeNote)}</span>` : ""}
+              ${locationNote ? `<span style="font-size:11px;color:#475569">${_cesc(locationNote)}</span>` : ""}
               ${sourceChip}
               <div style="display:flex;gap:3px;flex-wrap:wrap">${badges}</div>
             </div>
             ${t.notes ? `<div style="font-size:12px;color:#64748b;line-height:1.4">${_cesc(t.notes)}</div>` : ""}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+            ${source === "shared" ? `<button onclick="coachLoadCoordinatorTrainingToForm('${_cesc(t.id)}')" title="Carregar i enriquir" style="background:#fef3c7;border:1px solid #fbbf24;color:#92400e;cursor:pointer;font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px">Enriquir</button>` : ""}
             ${source === "coordinator" ? `<button onclick="coachLoadCoordinatorTrainingToForm('${_cesc(t.id)}')" title="Carregar al formulari" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;cursor:pointer;font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px">Carregar</button>` : ""}
-            ${source === "coach" ? `<button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px">✕</button>` : ""}
+            ${source === "coach" || source === "shared" ? `<button onclick="coachDeleteTraining('${t.id}')" title="Eliminar" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px 4px">✕</button>` : ""}
           </div>
         </div>`;
       }).join("")
@@ -2994,7 +3016,41 @@ async function _loadTrainings() {
   const team = _coachTeamIdentityLabel(choice) || _cteam("planning");
   coachTrainingsTeamKey = team;
   const legacyTeam = _cteam("planning");
+  const clubName = String(choice?.clubName || _cclub("planning") || "").trim();
+  const choiceCategory = String(choice?.category || "").trim();
   if (!team) return;
+
+  // ── 1. Load from shared_trainings (unified object, coordinator + coach) ──
+  try {
+    let sq = sb.from("shared_trainings").select("*");
+    if (clubName) sq = sq.eq("club_name", clubName);
+    if (legacyTeam) sq = sq.eq("team_name", legacyTeam);
+    sq = sq.order("training_date", { ascending: true });
+    const { data: sharedData, error: sharedError } = await sq;
+    if (!sharedError && Array.isArray(sharedData) && sharedData.length) {
+      for (const row of sharedData) {
+        coachTrainings.push({
+          id: String(row.id),
+          sharedTrainingId: String(row.id),
+          plan_date: String(row.training_date || ""),
+          duration_minutes: Number(row.duration_minutes || 0) || 0,
+          pillars: Array.isArray(row.pillars) ? row.pillars : [],
+          notes: [
+            String(row.coach_notes || row.notes || "").trim(),
+            String(row.location || "").trim() ? `Ubicació: ${row.location.trim()}` : "",
+            String(row.locker_room || "").trim() ? `Vestidor: ${row.locker_room.trim()}` : "",
+            row.training_time ? `Hora: ${String(row.training_time || "")}` : "",
+          ].filter(Boolean).join(" · "),
+          _source: "shared",
+          _sharedRaw: row,
+        });
+      }
+      // If we got shared trainings, return early — no need to load legacy tables
+      return;
+    }
+  } catch {}
+
+  // ── 2. Fallback: legacy coach_training_plans ──────────────────────────────
   let q = sb.from("coach_training_plans").select("*").eq("coach_user_id", uid);
   if (team) q = q.eq("team_name", team);
   q = q.order("plan_date", { ascending: true });
@@ -3008,11 +3064,10 @@ async function _loadTrainings() {
     coachTrainings = data.map(row => ({ ...row, _source: "coach" }));
   }
 
-  const clubName = String(choice?.clubName || _cclub("planning") || "").trim();
+  // ── 3. Also merge legacy coordinator localStorage trainings ───────────────
   if (clubName && typeof loadCoordinatorTrainings === "function") {
     try {
       const byClub = loadCoordinatorTrainings(clubName) || [];
-      const choiceCategory = String(choice?.category || "").trim();
       const fromCoordinator = byClub
         .filter(t => {
           if (typeof coordinatorTrainingMatchesTeam === "function") {
@@ -3065,18 +3120,77 @@ async function coachSaveTraining() {
   if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP per desar a la BD.", "#e5001c"); return; }
   const choice = _coachResolveTeamChoice();
   const team = _coachTeamIdentityLabel(choice) || _cteam();
+  const clubName = String(choice?.clubName || _cclub() || "").trim();
+  const category = String(choice?.category || "").trim();
   if (!team) { setMsg("Indica primer l'equip.", "#e5001c"); return; }
   const date = (document.getElementById("coach-plan-date")?.value || coachPlanningDate).trim();
   if (!date) { setMsg("Selecciona una data.", "#e5001c"); return; }
+  const duration = Number(document.getElementById("coach-plan-dur")?.value || coachPlanningDuration) || 90;
+  const notes = (document.getElementById("coach-plan-notes")?.value || coachPlanningNotes).trim() || null;
 
   setMsg("Desant...");
+
+  // ── Try shared_trainings first (unified object) ──────────────────────────
+  // If editing an existing shared training, UPDATE instead of INSERT
+  if (coachEditingSharedTrainingId) {
+    const { error: updErr } = await sb.from("shared_trainings")
+      .update({
+        duration_minutes: duration,
+        pillars:          coachPlanningPillars,
+        coach_notes:      notes,
+        enriched_by:      uid,
+        updated_at:       new Date().toISOString(),
+      })
+      .eq("id", coachEditingSharedTrainingId);
+    if (!updErr) {
+      setMsg("✓ Entrenament compartit actualitzat.", "#16a34a");
+      coachEditingSharedTrainingId = null;
+      coachPlanningPillars = [];
+      coachPlanningNotes   = "";
+      coachTrainingsLoaded = false;
+      await _loadTrainings();
+      renderCoachPanel();
+      return;
+    }
+  }
+
+  const { data: sharedData, error: sharedError } = await sb.from("shared_trainings")
+    .insert({
+      club_name:        clubName,
+      team_name:        team,
+      team_category:    category,
+      training_date:    date,
+      training_time:    "00:00",  // coach doesn't set time — coordinator enriches later
+      location:         "",
+      locker_room:      "",
+      duration_minutes: duration,
+      pillars:          coachPlanningPillars,
+      coach_notes:      notes,
+      notes:            notes,
+      created_by:       uid,
+      enriched_by:      uid,
+    })
+    .select("id")
+    .single();
+
+  if (!sharedError && sharedData?.id) {
+    setMsg("✓ Entrenament desat (shared_trainings).", "#16a34a");
+    coachPlanningPillars  = [];
+    coachPlanningNotes    = "";
+    coachTrainingsLoaded  = false;
+    await _loadTrainings();
+    renderCoachPanel();
+    return;
+  }
+
+  // ── Fallback: legacy coach_training_plans ────────────────────────────────
   const { error } = await sb.from("coach_training_plans").insert({
     coach_user_id:    uid,
     team_name:        team,
     plan_date:        date,
-    duration_minutes: Number(document.getElementById("coach-plan-dur")?.value || coachPlanningDuration) || 90,
+    duration_minutes: duration,
     pillars:          coachPlanningPillars,
-    notes:            (document.getElementById("coach-plan-notes")?.value || coachPlanningNotes).trim() || null,
+    notes,
   });
 
   if (error) {
@@ -3088,36 +3202,87 @@ async function coachSaveTraining() {
     coachTrainingsLoaded  = false;
     await _loadTrainings();
     renderCoachPanel();
+  } else {
+    setMsg("✓ Entrenament desat.", "#16a34a");
+    coachPlanningPillars  = [];
+    coachPlanningNotes    = "";
+    coachTrainingsLoaded  = false;
+    await _loadTrainings();
+    renderCoachPanel();
   }
 }
+
+async function coachDeleteTraining(id) {
 
 async function coachDeleteTraining(id) {
   if (!confirm("Eliminar aquest entrenament?")) return;
   const sb = _csb();
   const uid = await _cauthUid();
   if (!sb || !uid) return;
-  const { error } = await sb.from("coach_training_plans").delete().eq("id", id).eq("coach_user_id", uid);
-  if (error) { alert("Error: " + error.message); return; }
+  const target = coachTrainings.find(t => String(t?.id || "") === String(id || ""));
+  // Shared training: delete from shared_trainings
+  if (target?._source === "shared" && target?.sharedTrainingId) {
+    const { error } = await sb.from("shared_trainings").delete().eq("id", target.sharedTrainingId).eq("created_by", uid);
+    if (error) { alert("Error: " + error.message); return; }
+  } else {
+    const { error } = await sb.from("coach_training_plans").delete().eq("id", id).eq("coach_user_id", uid);
+    if (error) { alert("Error: " + error.message); return; }
+  }
   coachTrainings = coachTrainings.filter(t => t.id !== id);
+  renderCoachPanel();
+}
+
+// Enrich a shared training from the coach side (add pillars / notes)
+async function coachEnrichSharedTraining(id) {
+  const sb = _csb();
+  const uid = await _coachAuthUidForWrite();
+  const msg = document.getElementById("coach-plan-msg");
+  const setMsg = (txt, color) => { if (msg) { msg.style.color = color || "#64748b"; msg.textContent = txt; } };
+  if (!sb || !uid) { setMsg("Cal iniciar sessió amb email/OTP.", "#e5001c"); return; }
+  const target = coachTrainings.find(t => String(t?.id || "") === String(id || ""));
+  if (!target?.sharedTrainingId) { setMsg("Entrenament no compartit.", "#e5001c"); return; }
+  const { error } = await sb.from("shared_trainings")
+    .update({
+      pillars:      coachPlanningPillars,
+      coach_notes:  (document.getElementById("coach-plan-notes")?.value || coachPlanningNotes).trim() || null,
+      enriched_by:  uid,
+      updated_at:   new Date().toISOString(),
+    })
+    .eq("id", target.sharedTrainingId);
+  if (error) { setMsg("Error: " + error.message, "#e5001c"); return; }
+  setMsg("✓ Entrenament enriquit.", "#16a34a");
+  coachTrainingsLoaded = false;
+  await _loadTrainings();
   renderCoachPanel();
 }
 
 function coachLoadCoordinatorTrainingToForm(id) {
   const targetId = String(id || "").trim();
-  const found = coachTrainings.find(t => String(t?.id || "") === targetId && String(t?._source || "") === "coordinator");
+  const found = coachTrainings.find(t => String(t?.id || "") === targetId && (String(t?._source || "") === "coordinator" || String(t?._source || "") === "shared"));
   if (!found) return;
+
+  // Track which shared training we're enriching so coachSaveTraining can UPDATE
+  coachEditingSharedTrainingId = (found._source === "shared" && found.sharedTrainingId)
+    ? String(found.sharedTrainingId)
+    : null;
 
   coachPlanningDate = String(found.plan_date || coachPlanningDate || "").trim() || coachPlanningDate;
   coachPlanningDuration = Number(found.duration_minutes || coachPlanningDuration || 90) || 90;
+  // Pre-load existing pillars so user can see and adjust them
+  if (found._source === "shared" && Array.isArray(found._sharedRaw?.pillars) && found._sharedRaw.pillars.length) {
+    coachPlanningPillars = [...found._sharedRaw.pillars];
+  }
   const existing = String(coachPlanningNotes || "").trim();
-  const imported = String(found.notes || "").trim();
+  const imported = String(found._sharedRaw?.coach_notes || found.notes || "").trim();
   coachPlanningNotes = [existing, imported].filter(Boolean).join(existing && imported ? "\n" : "");
 
   renderCoachPanel();
   const msg = document.getElementById("coach-plan-msg");
   if (msg) {
     msg.style.color = "#1d4ed8";
-    msg.textContent = "Entrenament de coordinador carregat. Afegeix pilars/dimensions i desa.";
+    msg.textContent = found._source === "shared"
+      ? "Entrenament compartit carregat. Modifica els pilars i clica '+ Afegir' per desar-ho."
+      : "Entrenament de coordinador carregat. Afegeix pilars/dimensions i desa.";
   }
 }
 
@@ -3932,6 +4097,7 @@ window.coachToggleFavoriteTeamChip = coachToggleFavoriteTeamChip;
 window.coachTogglePillar       = coachTogglePillar;
 window.coachSaveTraining       = coachSaveTraining;
 window.coachDeleteTraining     = coachDeleteTraining;
+window.coachEnrichSharedTraining = coachEnrichSharedTraining;
 window.coachLoadCoordinatorTrainingToForm = coachLoadCoordinatorTrainingToForm;
 window.coachSavePlayerObjective  = coachSavePlayerObjective;
 window.coachDeletePlayerObj    = coachDeletePlayerObj;
