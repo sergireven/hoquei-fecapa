@@ -1241,14 +1241,24 @@ async function _coachRosterForSelection(clubName, teamName, category = "") {
   if (coachRosterSelectionCache.has(cacheKey)) return _cclone(coachRosterSelectionCache.get(cacheKey));
 
   const fromConv = _coachRosterFromConvocatoria(clubName, teamName, category);
-  const fromActa = await _coachRosterFromActaArchive(clubName, teamName, category);
-  const fromDb = _coachRosterFromTeam(teamName, clubName, category);
+  if (fromConv.length) {
+    const mergedConv = _coachMergeRosterPlayers(fromConv);
+    coachRosterSelectionCache.set(cacheKey, _cclone(mergedConv));
+    return mergedConv;
+  }
 
-  const merged = fromConv.length
-    ? _coachMergeRosterPlayers(fromConv)
-    : (fromActa.length
-      ? _coachMergeRosterPlayers(fromActa)
-      : _coachMergeRosterPlayers(fromDb));
+  const fromDb = _coachRosterFromTeam(teamName, clubName, category);
+  if (fromDb.length) {
+    const mergedDb = _coachMergeRosterPlayers(fromDb);
+    coachRosterSelectionCache.set(cacheKey, _cclone(mergedDb));
+    return mergedDb;
+  }
+
+  const fromActa = await _coachRosterFromActaArchive(clubName, teamName, category);
+
+  const merged = fromActa.length
+    ? _coachMergeRosterPlayers(fromActa)
+    : [];
   coachRosterSelectionCache.set(cacheKey, _cclone(merged));
   return merged;
 }

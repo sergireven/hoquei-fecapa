@@ -2264,8 +2264,10 @@ function saveCoordinatorTrainings(clubId, trainings) {
 }
 
 async function syncTrainingToCloud(action, training, clubId) {
-  if (!currentProfile) return false;
-  return _syncFavToCloud("coordinator_training", `${clubId}_${action}`, training);
+  // Trainings are currently stored locally in TRAININGS_CACHE_KEY.
+  // The generic user_favorites RPC only accepts team/club/player/level,
+  // so sending coordinator_training causes DB constraint failures and stalls.
+  return false;
 }
 
 async function createTraining(clubId, payload) {
