@@ -753,24 +753,48 @@ window.loginWithEmail = submitAuthForm;
 window.sendMagicLink  = submitAuthForm;
 
 if (typeof window.openCoachPanel !== "function") {
+  console.warn("[app.js] openCoachPanel not found on startup. Will attempt to load coach-panel.js on first use.");
   let _coachPanelLoaderPromise = null;
   const ensureCoachPanelLoaded = async () => {
-    if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) return true;
-    if (_coachPanelLoaderPromise) return _coachPanelLoaderPromise;
+    console.log("[ensureCoachPanelLoaded] Checking if coach panel already loaded...");
+    if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
+      console.log("[ensureCoachPanelLoaded] Coach panel already loaded!");
+      return true;
+    }
+    if (_coachPanelLoaderPromise) {
+      console.log("[ensureCoachPanelLoaded] Already loading, waiting for result...");
+      return _coachPanelLoaderPromise;
+    }
     _coachPanelLoaderPromise = new Promise(resolve => {
+      console.log("[ensureCoachPanelLoaded] Starting dynamic load...");
       const existing = document.querySelector('script[data-coach-panel="1"]');
       if (existing) {
-        existing.addEventListener("load", () => resolve(true), { once: true });
-        existing.addEventListener("error", () => resolve(false), { once: true });
+        console.log("[ensureCoachPanelLoaded] Script tag already exists, attaching listeners...");
+        existing.addEventListener("load", () => {
+          console.log("[ensureCoachPanelLoaded] Existing script loaded!");
+          resolve(true);
+        }, { once: true });
+        existing.addEventListener("error", (err) => {
+          console.error("[ensureCoachPanelLoaded] Existing script error:", err);
+          resolve(false);
+        }, { once: true });
         return;
       }
       const script = document.createElement("script");
       script.src = `js/coach-panel.js?v=${Date.now()}`;
       script.async = true;
       script.dataset.coachPanel = "1";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        console.log("[ensureCoachPanelLoaded] Script loaded successfully!");
+        console.log("[ensureCoachPanelLoaded] window.openCoachPanel type:", typeof window.openCoachPanel);
+        resolve(true);
+      };
+      script.onerror = (err) => {
+        console.error("[ensureCoachPanelLoaded] Script load error:", err);
+        resolve(false);
+      };
       document.body.appendChild(script);
+      console.log("[ensureCoachPanelLoaded] Script tag appended to body");
     }).finally(() => {
       _coachPanelLoaderPromise = null;
     });
@@ -778,10 +802,14 @@ if (typeof window.openCoachPanel !== "function") {
   };
 
   const fallbackOpenCoachPanel = async function () {
+    console.log("[fallbackOpenCoachPanel] Called");
     const loaded = await ensureCoachPanelLoaded();
+    console.log("[fallbackOpenCoachPanel] Load result:", loaded, "openCoachPanel type:", typeof window.openCoachPanel);
     if (loaded && typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
+      console.log("[fallbackOpenCoachPanel] Calling real openCoachPanel");
       return window.openCoachPanel();
     }
+    console.error("[fallbackOpenCoachPanel] Failed to load coach panel or function not found");
     alert("El panell d'entrenador no s'ha pogut carregar. Torna-ho a provar o recarrega la pàgina.");
   };
 
@@ -1348,6 +1376,7 @@ let coordinatorConvTeamCategoryFilter = "";
 let coordinatorConvMatchKey = "";
 let coordinatorConvPreviousMatchKey = "";
 let coordinatorConvAdHocFormOpen = false;
+let coordinatorConvAdHocEditingId = null;
 
 function getGlobalConvocationLeadMinutes() {
   const raw = Number(localStorage.getItem(CONVOCATION_GLOBAL_LEAD_MINUTES_KEY));
@@ -1623,13 +1652,36 @@ function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
   const exists = list.some(item => normalizeTeamName(item?.teamName || "") === normalizeTeamName(nextTeamName));
   if (exists) return { ok: false, message: "Aquest equip ja existeix al club." };
 
-  list.push({
+  const item = {
     teamName: nextTeamName,
     category: nextCategory,
     createdAt: new Date().toISOString(),
-  });
+  };
+  
+  list.push(item);
   cache[name] = list;
   saveCoordinatorExtraTeamsCache(cache);
+  
+  // Guardar a Supabase de fons
+  (async () => {
+    try {
+      const sb = _csb();
+      if (!sb) return;
+      const uid = await _cauthUid();
+      if (!uid) return;
+      
+      await sb.from("extra_teams").insert({
+        club_name: name,
+        team_name: nextTeamName,
+        category: nextCategory,
+        coach_user_id: uid,
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[extra-team] Error saving to BD:", err);
+    }
+  })();
+  
   return { ok: true };
 }
 
@@ -1641,6 +1693,20 @@ function removeCoordinatorExtraTeam(clubName, teamName) {
   const list = Array.isArray(cache[name]) ? cache[name] : [];
   cache[name] = list.filter(item => normalizeTeamName(item?.teamName || "") !== normalizeTeamName(wanted));
   saveCoordinatorExtraTeamsCache(cache);
+  
+  // Eliminar de Supabase de fons
+  (async () => {
+    try {
+      const sb = _csb();
+      if (!sb) return;
+      const uid = await _cauthUid();
+      if (!uid) return;
+      
+      await sb.from("extra_teams").delete().eq("club_name", name).eq("team_name", wanted).eq("coach_user_id", uid);
+    } catch (err) {
+      console.error("[extra-team] Error deleting from BD:", err);
+    }
+  })();
 }
 
 function getCoordinatorAdHocMatches(clubName, teamName = "") {
@@ -1726,7 +1792,130 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   list.push(item);
   cache[club] = list;
   saveCoordinatorAdHocMatchesCache(cache);
+  
+  // Guardar a Supabase de fons (sense bloquear)
+  (async () => {
+    try {
+      const sb = _csb();
+      if (!sb) return;
+      const uid = await _cauthUid();
+      if (!uid) return;
+      
+      await sb.from("ad_hoc_matches").insert({
+        id,
+        club_name: club,
+        team_name: team,
+        type,
+        location,
+        match_date: date,
+        match_time: time,
+        opponent,
+        coach_user_id: uid,
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[ad-hoc-match] Error saving to BD:", err);
+    }
+  })();
+  
   return { ok: true, match: item };
+}
+
+function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
+  const club = String(clubName || "").trim();
+  const team = String(teamName || "").trim();
+  const id = String(matchId || "").trim();
+  
+  if (!club || !team || !id) return { ok: false, message: "Dades insuficients." };
+
+  const cache = loadCoordinatorAdHocMatchesCache();
+  const list = Array.isArray(cache[club]) ? cache[club] : [];
+  const itemIdx = list.findIndex(item => item.id === id);
+  
+  if (itemIdx === -1) return { ok: false, message: "Partit no trobat." };
+
+  const type = String(payload?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos";
+  const location = String(payload?.location || "").trim();
+  const date = String(payload?.date || "").trim();
+  const time = String(payload?.time || "").trim();
+  const opponent = String(payload?.opponent || "").trim();
+
+  if (!location || !date || !time) return { ok: false, message: "Completa ubicacio, data i hora." };
+
+  const ts = parseMatchKickoffTimestamp({ date, time }, "");
+  if (!Number.isFinite(ts)) return { ok: false, message: "Data o hora no valides." };
+
+  const updatedItem = {
+    ...list[itemIdx],
+    teamName: team,
+    type,
+    location,
+    date,
+    time,
+    opponent,
+    updatedAt: new Date().toISOString(),
+  };
+  
+  list[itemIdx] = updatedItem;
+  cache[club] = list;
+  saveCoordinatorAdHocMatchesCache(cache);
+  
+  // Actualizar a Supabase de fons
+  (async () => {
+    try {
+      const sb = _csb();
+      if (!sb) return;
+      const uid = await _cauthUid();
+      if (!uid) return;
+      
+      await sb.from("ad_hoc_matches").update({
+        team_name: team,
+        type,
+        location,
+        match_date: date,
+        match_time: time,
+        opponent,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id).eq("coach_user_id", uid);
+    } catch (err) {
+      console.error("[ad-hoc-match] Error updating in BD:", err);
+    }
+  })();
+  
+  return { ok: true, match: updatedItem };
+}
+
+function deleteCoordinatorAdHocMatch(clubName, matchId) {
+  const club = String(clubName || "").trim();
+  const id = String(matchId || "").trim();
+  
+  if (!club || !id) return { ok: false, message: "Dades insuficients." };
+
+  const cache = loadCoordinatorAdHocMatchesCache();
+  const list = Array.isArray(cache[club]) ? cache[club] : [];
+  const itemIdx = list.findIndex(item => item.id === id);
+  
+  if (itemIdx === -1) return { ok: false, message: "Partit no trobat." };
+
+  list.splice(itemIdx, 1);
+  cache[club] = list;
+  saveCoordinatorAdHocMatchesCache(cache);
+  
+  // Eliminar de Supabase de fons
+  (async () => {
+    try {
+      const sb = _csb();
+      if (!sb) return;
+      const uid = await _cauthUid();
+      if (!uid) return;
+      
+      await sb.from("ad_hoc_matches").delete().eq("id", id).eq("coach_user_id", uid);
+    } catch (err) {
+      console.error("[ad-hoc-match] Error deleting from BD:", err);
+    }
+  })();
+  
+  return { ok: true, message: "Partit cancel·lat." };
 }
 
 function findCoordinatorClubEntry(clubName) {
@@ -2069,9 +2258,37 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <div id="coordinator-adhoc-feedback" style="font-size:12px;color:#64748b"></div>
-            <button onclick="coordinatorCreateAdHocMatch()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;cursor:pointer">Crear partit</button>
+            <div style="display:flex;gap:8px">
+              ${coordinatorConvAdHocEditingId ? `
+                <button onclick="coordinatorEditAdHocMatch()" style="background:#f59e0b;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;cursor:pointer">Guardar canvis</button>
+                <button onclick="coordinatorConvAdHocEditingId=null;renderCoordinatorPanel()" style="background:#9ca3af;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;cursor:pointer">Cancel·lar</button>
+              ` : `
+                <button onclick="coordinatorCreateAdHocMatch()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;cursor:pointer">Crear partit</button>
+              `}
+            </div>
           </div>
         </div>
+        ${(() => {
+          const fav = loadCoordinatorFavorite();
+          if (!fav?.clubName) return "";
+          const cache = loadCoordinatorAdHocMatchesCache();
+          const list = Array.isArray(cache[fav.clubName]) ? cache[fav.clubName] : [];
+          const filtered = list.filter(m => !coordinatorConvTeamFilter || m.teamName === coordinatorConvTeamFilter);
+          if (!filtered.length) return "";
+          return `<div style="margin-top:10px;padding:10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px">
+            <div style="font-weight:700;color:#92400e;margin-bottom:6px">Partits ad-hoc creats:</div>
+            ${filtered.map(m => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;background:#fff;border-radius:8px;margin-bottom:4px">
+              <div>
+                <div style="font-weight:700;color:#1a2035">${esc(m.opponent || (m.type === "torneig" ? "Rival torneig" : "Rival amistos"))}</div>
+                <div style="color:#64748b;font-size:11px">${esc(m.date)} · ${esc(m.time)} · ${esc(m.location)}</div>
+              </div>
+              <div style="display:flex;gap:4px">
+                <button onclick="coordinatorShowEditAdHocForm('${esc(m.id)}')" style="background:#3b82f6;border:none;color:#fff;font-weight:700;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer">Editar</button>
+                <button onclick="coordinatorConfirmDeleteAdHocMatch('${esc(m.id)}')" style="background:#ef4444;border:none;color:#fff;font-weight:700;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer">Eliminar</button>
+              </div>
+            </div>`).join("")}
+          </div>`;
+        })()}
       </div>
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Partits anteriors</div>
@@ -3442,6 +3659,74 @@ function coordinatorCreateAdHocMatch() {
   renderCoordinatorPanel();
 }
 
+function coordinatorShowEditAdHocForm(matchId) {
+  const fav = loadCoordinatorFavorite();
+  if (!fav?.clubName) return;
+  
+  const cache = loadCoordinatorAdHocMatchesCache();
+  const list = Array.isArray(cache[fav.clubName]) ? cache[fav.clubName] : [];
+  const match = list.find(item => item.id === matchId);
+  if (!match) return;
+
+  $("coordinator-adhoc-type").value = match.type || "amistos";
+  $("coordinator-adhoc-opponent").value = match.opponent || "";
+  $("coordinator-adhoc-location").value = match.location || "";
+  $("coordinator-adhoc-date").value = match.date || "";
+  $("coordinator-adhoc-time").value = match.time || "";
+  
+  coordinatorConvAdHocEditingId = matchId;
+  coordinatorConvAdHocFormOpen = true;
+  renderCoordinatorPanel();
+}
+
+function coordinatorEditAdHocMatch() {
+  const fav = loadCoordinatorFavorite();
+  if (!fav?.clubName) {
+    alert("Selecciona primer un club.");
+    return;
+  }
+  if (!coordinatorConvAdHocEditingId) {
+    alert("No hi ha partit per editar.");
+    return;
+  }
+
+  const result = editCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, coordinatorConvAdHocEditingId, {
+    type: $("coordinator-adhoc-type")?.value || "amistos",
+    opponent: $("coordinator-adhoc-opponent")?.value || "",
+    location: $("coordinator-adhoc-location")?.value || "",
+    date: $("coordinator-adhoc-date")?.value || "",
+    time: $("coordinator-adhoc-time")?.value || "",
+  });
+  if (!result.ok) {
+    coordinatorAdHocFeedback(result.message || "No s'ha pogut editar el partit.", "#dc2626");
+    return;
+  }
+
+  coordinatorAdHocFeedback("Partit ad-hoc actualitzat.", "#0f766e");
+  coordinatorConvAdHocEditingId = null;
+  coordinatorConvAdHocFormOpen = false;
+  coordinatorClearConvocatoria();
+  renderCoordinatorPanel();
+}
+
+function coordinatorConfirmDeleteAdHocMatch(matchId) {
+  const fav = loadCoordinatorFavorite();
+  if (!fav?.clubName) return;
+
+  if (!confirm("Estàs segur que vols cancel·lar aquest partit ad-hoc?")) return;
+
+  const result = deleteCoordinatorAdHocMatch(fav.clubName, matchId);
+  if (!result.ok) {
+    alert(result.message || "No s'ha pogut eliminar el partit.");
+    return;
+  }
+
+  coordinatorAdHocFeedback(result.message, "#0f766e");
+  coordinatorConvAdHocEditingId = null;
+  coordinatorClearConvocatoria();
+  renderCoordinatorPanel();
+}
+
 async function coordinatorGenerateConvocatoria() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
@@ -3733,6 +4018,11 @@ window.coordinatorOnMatchSelected = coordinatorOnMatchSelected;
 window.coordinatorOnPreviousMatchSelected = coordinatorOnPreviousMatchSelected;
 window.coordinatorToggleAdHocForm = coordinatorToggleAdHocForm;
 window.coordinatorCreateAdHocMatch = coordinatorCreateAdHocMatch;
+window.coordinatorShowEditAdHocForm = coordinatorShowEditAdHocForm;
+window.coordinatorEditAdHocMatch = coordinatorEditAdHocMatch;
+window.coordinatorConfirmDeleteAdHocMatch = coordinatorConfirmDeleteAdHocMatch;
+window.editCoordinatorAdHocMatch = editCoordinatorAdHocMatch;
+window.deleteCoordinatorAdHocMatch = deleteCoordinatorAdHocMatch;
 window.coordinatorSaveConvocationLeadMinutes = coordinatorSaveConvocationLeadMinutes;
 window.coordinatorGenerateConvocatoria = coordinatorGenerateConvocatoria;
 window.coordinatorSaveConvocatoria = coordinatorSaveConvocatoria;
@@ -7892,8 +8182,9 @@ function getUserFavoriteTeamFilterOptions() {
     });
 }
 
-function getUserFavoritePlayersForTeam(teamName = "") {
+function getUserFavoritePlayersForTeam(teamName = "", categoryName = "") {
   const selectedTeam = String(teamName || "").trim();
+  const selectedCategory = String(categoryName || "").trim();
   const all = (playerFavs || []).map(id => {
     const player = getPlayerById(id);
     const meta = playerFavMeta?.[String(id)] || {};
@@ -7901,10 +8192,15 @@ function getUserFavoritePlayersForTeam(teamName = "") {
       ? formatPlayerDisplayName(decodeURIComponent(String(player.slug).replace(/\+/g, " ")))
       : (meta.name || `Jugador ${id}`);
     const team = String(meta?.team || normalizePlayerTeamStatsForDisplay(player)?.[0]?.team || "").trim();
-    return { id: String(id), name: display, team };
+    const category = String(meta?.cat || "").trim();
+    return { id: String(id), name: display, team, category };
   });
-  if (!selectedTeam) return all;
-  const filtered = all.filter(p => p.team && (teamMatchesCalendarExact(p.team, selectedTeam) || teamMatchesLoose(p.team, selectedTeam)));
+  if (!selectedTeam && !selectedCategory) return all;
+  const filtered = all.filter(p => {
+    const teamMatches = !selectedTeam || (p.team && (teamMatchesCalendarExact(p.team, selectedTeam) || teamMatchesLoose(p.team, selectedTeam)));
+    const categoryMatches = !selectedCategory || p.category === selectedCategory;
+    return teamMatches && categoryMatches;
+  });
   return filtered;
 }
 
@@ -8020,20 +8316,23 @@ function getUserFavoriteUpcomingMatches(teamFilter = "") {
   const teamPool = selectedTeam ? [selectedTeam] : getUserFavoriteTeamNames();
   const nowTs = Date.now();
   const matches = [];
-  for (const comp of Object.values(DB?.categories || {}).flat()) {
-    for (const match of (comp?.calendar || [])) {
-      if (!matchBelongsToCoordinatorPool(match, teamPool)) continue;
-      const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
-      if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
-      matches.push({
-        compName: comp?.name || "",
-        date: match?.date || "",
-        time: match?.time || "",
-        home: match?.home || "",
-        away: match?.away || "",
-        ts,
-        matchedTeam: findCoordinatorMatchedTeam(match, teamPool) || selectedTeam || "",
-      });
+  for (const [categoryName, comps] of Object.entries(DB?.categories || {})) {
+    for (const comp of (Array.isArray(comps) ? comps : [comps])) {
+      for (const match of (comp?.calendar || [])) {
+        if (!matchBelongsToCoordinatorPool(match, teamPool)) continue;
+        const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
+        if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
+        matches.push({
+          compName: comp?.name || "",
+          category: String(categoryName).trim(),
+          date: match?.date || "",
+          time: match?.time || "",
+          home: match?.home || "",
+          away: match?.away || "",
+          ts,
+          matchedTeam: findCoordinatorMatchedTeam(match, teamPool) || selectedTeam || "",
+        });
+      }
     }
   }
 
@@ -8176,7 +8475,7 @@ function renderUserFavConvocatoriesPanel() {
         const convDateTime = formatConvocationDateTime(match, leadMinutes);
         const matchMeta = getUserConvMatchMeta(match);
         const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
-        const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam);
+        const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam, match.category || "");
         const summary = getUserConvAvailabilitySummary(players, availabilityStore?.[mKey] || {});
         const savedState = userFavConvSavedAtByMatch?.[mKey] || null;
         const savedLabel = savedState?.text || "";
