@@ -753,9 +753,39 @@ window.loginWithEmail = submitAuthForm;
 window.sendMagicLink  = submitAuthForm;
 
 if (typeof window.openCoachPanel !== "function") {
-  window.openCoachPanel = function () {
+  let _coachPanelLoaderPromise = null;
+  const ensureCoachPanelLoaded = async () => {
+    if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) return true;
+    if (_coachPanelLoaderPromise) return _coachPanelLoaderPromise;
+    _coachPanelLoaderPromise = new Promise(resolve => {
+      const existing = document.querySelector('script[data-coach-panel="1"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => resolve(false), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = `js/coach-panel.js?v=${Date.now()}`;
+      script.async = true;
+      script.dataset.coachPanel = "1";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    }).finally(() => {
+      _coachPanelLoaderPromise = null;
+    });
+    return _coachPanelLoaderPromise;
+  };
+
+  const fallbackOpenCoachPanel = async function () {
+    const loaded = await ensureCoachPanelLoaded();
+    if (loaded && typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
+      return window.openCoachPanel();
+    }
     alert("El panell d'entrenador no s'ha pogut carregar. Torna-ho a provar o recarrega la pàgina.");
   };
+
+  window.openCoachPanel = fallbackOpenCoachPanel;
 }
 
 if (typeof window.closeCoachPanel !== "function") {
@@ -5045,6 +5075,7 @@ let userFavWeekCalendarDate = new Date();
 let userFavCalendarTeamFilter = "";
 let userFavConvTeamFilter = "";
 let userFavConvSelectedMatchKey = "";
+let userFavConvSavedAtByMatch = {};
 const seasonDataCache = new Map();
 const globalJugadorsIndex = new Map();
 let allSearch     = "";
@@ -7877,6 +7908,24 @@ function getUserFavoritePlayersForTeam(teamName = "") {
   return filtered;
 }
 
+function resolveUserFavoriteTeamForMatch(match, fallbackTeam = "") {
+  const fallback = String(fallbackTeam || "").trim();
+  const favTeams = getUserFavoriteTeamNames();
+  const home = String(match?.home || "").trim();
+  const away = String(match?.away || "").trim();
+
+  if (fallback) {
+    const fallbackMatch = favTeams.find(t => teamMatchesCalendarExact(t, fallback) || teamMatchesLoose(t, fallback));
+    if (fallbackMatch) return fallbackMatch;
+  }
+
+  const exact = favTeams.find(t => teamMatchesCalendarExact(home, t) || teamMatchesCalendarExact(away, t));
+  if (exact) return exact;
+
+  const loose = favTeams.find(t => teamMatchesLoose(home, t) || teamMatchesLoose(away, t));
+  return loose || fallback || "";
+}
+
 function getUserConvMatchMeta(match) {
   if (!match) return { venueLabel: "", mapUrl: "", travel: null };
   if (match.isAdHoc) {
@@ -8126,8 +8175,16 @@ function renderUserFavConvocatoriesPanel() {
         const isOpen = mKey === userFavConvSelectedMatchKey;
         const convDateTime = formatConvocationDateTime(match, leadMinutes);
         const matchMeta = getUserConvMatchMeta(match);
-        const players = getUserFavoritePlayersForTeam(match.matchedTeam || userFavConvTeamFilter || "");
+        const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
+        const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam);
         const summary = getUserConvAvailabilitySummary(players, availabilityStore?.[mKey] || {});
+        const savedState = userFavConvSavedAtByMatch?.[mKey] || null;
+        const savedLabel = savedState?.text || "";
+        const savedColor = savedState?.tone === "error"
+          ? "#b91c1c"
+          : savedState?.tone === "saving"
+            ? "#334155"
+            : "#0f766e";
         return `<div onclick="userToggleConvMatchDetail('${mKey}')" style="border:1.5px solid ${isOpen ? "#1a2035" : "#e2e6ef"};border-radius:12px;padding:10px;margin-bottom:10px;background:${isOpen ? "#eef2ff" : "#f8fafc"};cursor:pointer">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px">
             <div>
@@ -8135,7 +8192,7 @@ function renderUserFavConvocatoriesPanel() {
               <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(match.compName)}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-              <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(match.matchedTeam || ""))}</div>
+              <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(matchedFavoriteTeam || ""))}</div>
               <div style="font-size:11px;color:${isOpen ? "#1a2035" : "#64748b"};font-weight:800">${isOpen ? "▼" : "►"} Detall</div>
             </div>
           </div>
@@ -8163,7 +8220,11 @@ function renderUserFavConvocatoriesPanel() {
               </select>
               <input type="text" value="${esc(stored.note || "")}" onchange="userSetConvPlayerNote('${mKey}','${esc(player.id)}', this.value)" placeholder="Nota tutor" style="width:100%;padding:7px 8px;border:1px solid #dbe3f0;border-radius:8px;font-size:12px"/>
             </div>`;
-          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">No hi ha jugadors adscrits a aquest equip.</div>`}
+          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">No hi ha jugadors favorits vinculats a aquest equip.</div>`}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button onclick="userSaveConvocatoria('${mKey}');event.stopPropagation();" style="background:#1a2035;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer">💾 Guardar</button>
+            <div style="font-size:11px;color:${savedColor};font-weight:700">${esc(savedLabel)}</div>
+          </div>
           </div>` : ""}
         </div>`;
       }).join("")}
@@ -8235,6 +8296,81 @@ function userSetConvPlayerStatus(matchKey, playerId, status) {
 
 function userSetConvPlayerNote(matchKey, playerId, note) {
   setUserConvPlayerAvailability(matchKey, playerId, { note: String(note || "") });
+}
+
+async function saveTutorConvocatoriaToSupabase(payload) {
+  if (!_sb || !currentProfile?.id) return { ok: false, reason: "no_session" };
+  const row = {
+    user_id: currentProfile.id,
+    match_key: String(payload?.matchKey || ""),
+    team_name: String(payload?.teamName || ""),
+    competition_name: String(payload?.competitionName || ""),
+    match_home: String(payload?.matchHome || ""),
+    match_away: String(payload?.matchAway || ""),
+    responses: Array.isArray(payload?.responses) ? payload.responses : [],
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await _sb
+    .from("convocatoria_tutor_responses")
+    .upsert(row, { onConflict: "user_id,match_key,team_name" });
+  if (error) return { ok: false, reason: "supabase_error", error };
+  return { ok: true };
+}
+
+async function userSaveConvocatoria(matchKey) {
+  const key = String(matchKey || "");
+  if (!key) return;
+
+  const match = getUserFavoriteUpcomingMatches(userFavConvTeamFilter || "")
+    .slice(0, 18)
+    .find(m => userConvocationMatchKey(m) === key);
+
+  if (!match) {
+    userFavConvSavedAtByMatch[key] = { text: "Partit no trobat", tone: "error" };
+    renderUserFavConvocatoriesPanel();
+    return;
+  }
+
+  const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
+  const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam);
+  const store = loadUserConvAvailabilityStore();
+  const byPlayer = store?.[key] || {};
+  const responses = players.map(player => ({
+    player_id: String(player.id || ""),
+    player_name: String(player.name || ""),
+    team_name: String(matchedFavoriteTeam || ""),
+    status: String(byPlayer?.[player.id]?.status || "disponible"),
+    note: String(byPlayer?.[player.id]?.note || ""),
+  }));
+
+  userFavConvSavedAtByMatch[key] = { text: "Guardant...", tone: "saving" };
+  renderUserFavConvocatoriesPanel();
+
+  const result = await saveTutorConvocatoriaToSupabase({
+    matchKey: key,
+    teamName: matchedFavoriteTeam,
+    competitionName: match.compName,
+    matchHome: match.home,
+    matchAway: match.away,
+    responses,
+  });
+
+  if (!result.ok) {
+    if (result.reason === "no_session") {
+      userFavConvSavedAtByMatch[key] = { text: "Guardat local (sense sessió)", tone: "ok" };
+    } else {
+      console.warn("[tutor-conv] save error", result.error);
+      userFavConvSavedAtByMatch[key] = { text: "Error guardant a Supabase", tone: "error" };
+    }
+    renderUserFavConvocatoriesPanel();
+    return;
+  }
+
+  userFavConvSavedAtByMatch[key] = {
+    text: `Guardat ${new Date().toLocaleTimeString("ca-ES", { hour: "2-digit", minute: "2-digit" })}`,
+    tone: "ok",
+  };
+  renderUserFavConvocatoriesPanel();
 }
 
 function userToggleConvMatchDetail(matchKey) {
@@ -8429,6 +8565,7 @@ window.setUserFavConvTeamFilter = setUserFavConvTeamFilter;
 window.saveUserGlobalConvocationLeadMinutes = saveUserGlobalConvocationLeadMinutes;
 window.userSetConvPlayerStatus = userSetConvPlayerStatus;
 window.userSetConvPlayerNote = userSetConvPlayerNote;
+window.userSaveConvocatoria = userSaveConvocatoria;
 window.userToggleConvMatchDetail = userToggleConvMatchDetail;
 
 window.openLevelFav = nodeKey => {
