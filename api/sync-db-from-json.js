@@ -13,6 +13,16 @@ const normalizeClubName = (name) => String(name || "").toLowerCase().trim().repl
 
 const normalizeTeamName = (name) => String(name || "").toLowerCase().trim();
 
+// Construeix team_name harmonitzat: Club + Equip + Temporada
+// Exemple: "Club Hoquei Ripollet Prebenjamí B 2025-26"
+const buildFullTeamName = (clubName, teamName, season = "2025-26") => {
+  const club = String(clubName || "").trim();
+  const team = String(teamName || "").trim();
+  const s = String(season || "2025-26").trim();
+  if (!club || !team) return "";
+  return `${club} ${team} ${s}`;
+};
+
 // Llegeix JSON del sistema de fitxers
 async function readJsonFile(filePath) {
   try {
@@ -63,7 +73,7 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
         seen.add(key);
         teams.push({
           club_name: clubName,
-          team_name: teamName,
+          team_name: buildFullTeamName(clubName, teamName, season),
           category: category || "",
           season: season,
           team_key: key,
