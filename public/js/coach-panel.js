@@ -197,6 +197,7 @@ let coachMatchState = {
   events:    [],   // [{player, type, minute, ts}]
   savedId:   null,
 };
+let coachSelectedConvocatoriaMatchKey = "";
 let coachMatchSubTab = "lineup";
 let coachTacticIdx   = COACH_DEFAULT_TACTIC_IDX;
 let coachBoardState  = null;
@@ -807,6 +808,7 @@ function _coachApplyTabTeamValue(tabKey, optionValue) {
   }
   if (tabKey === "match") {
     coachBoardRemoteLoadedKey = "";
+    coachSelectedConvocatoriaMatchKey = "";
     const club = _cclub("match");
     const team = _cteam("match");
     const category = _ccategory("match");
@@ -837,6 +839,7 @@ function _coachApplyTeamSelectionAllTabs(optionValue) {
   const matchTeam = _cteam("match");
   const matchCategory = _ccategory("match");
   coachBoardRemoteLoadedKey = "";
+  coachSelectedConvocatoriaMatchKey = "";
   coachMatchState.players = _coachRosterFromConvocatoria(matchClub, matchTeam, matchCategory);
   coachMatchState.events = [];
   coachMatchState.savedId = null;
@@ -1016,29 +1019,46 @@ function _coachConvocatoriaMatchesCategory(convocatoria, wantedCategory = "") {
   return _coachCategoryMatchesAny(comp, wantedCategory);
 }
 
-function _coachFindLatestConvocatoria(clubName, teamName, category = "") {
+function _coachConvocatoriaTimestamp(convocatoria) {
+  const date = String(convocatoria?.matchDate || "").trim();
+  const time = String(convocatoria?.matchTime || "").trim();
+  const matchTs = date
+    ? Date.parse(`${date}${time ? `T${time}` : "T00:00:00"}`)
+    : NaN;
+  if (Number.isFinite(matchTs) && matchTs > 0) return matchTs;
+  return Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
+}
+
+function _coachConvocatoriaMatchIdentity(convocatoria) {
+  const explicit = String(convocatoria?.matchKey || "").trim();
+  if (explicit) return explicit;
+  return [
+    convocatoria?.matchCompetition || "",
+    convocatoria?.matchDate || "",
+    convocatoria?.matchTime || "",
+    convocatoria?.matchHome || "",
+    convocatoria?.matchAway || "",
+  ].map(v => encodeURIComponent(String(v || ""))).join("::");
+}
+
+function _coachConvocatoriaOptionLabel(convocatoria) {
+  const date = String(convocatoria?.matchDate || "").trim() || "Data pendent";
+  const time = String(convocatoria?.matchTime || "").trim();
+  const home = String(convocatoria?.matchHome || "").trim();
+  const away = String(convocatoria?.matchAway || "").trim();
+  const comp = String(convocatoria?.matchCompetition || "").trim();
+  const teams = home || away ? `${home || "Equip"} vs ${away || "Rival"}` : "Partit";
+  return `${date}${time ? ` · ${time}` : ""} · ${teams}${comp ? ` · ${comp}` : ""}`;
+}
+
+function _coachListTeamConvocatories(clubName, teamName, category = "") {
   const store = _coachLoadConvocatoriaStore();
   const wantedClub = String(clubName || "").trim();
   const wantedTeam = String(teamName || "").trim();
   const wantedCategory = String(category || "").trim();
-  const prefix = `${wantedClub}::${wantedTeam}::`;
-  let latest = null;
-  let latestTs = 0;
-  const candidates = [];
+  if (!wantedTeam) return [];
 
-  // Fast path: exact key prefix (legacy behavior).
-  for (const [key, convocatoria] of Object.entries(store || {})) {
-    if (!String(key).startsWith(prefix)) continue;
-    if (!_coachConvocatoriaMatchesCategory(convocatoria, wantedCategory)) continue;
-    const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
-    if (ts >= latestTs) {
-      latestTs = ts;
-      latest = convocatoria;
-    }
-  }
-  if (latest) return latest;
-
-  // Fallback: tolerant club/team matching to support naming variants.
+  const candidates = new Map();
   for (const [key, convocatoria] of Object.entries(store || {})) {
     const parts = String(key || "").split("::");
     if (parts.length < 2) continue;
@@ -1047,28 +1067,51 @@ function _coachFindLatestConvocatoria(clubName, teamName, category = "") {
 
     const teamMatches = _coachTeamEq(keyTeam, wantedTeam) || _coachTeamLoose(keyTeam, wantedTeam);
     if (!teamMatches) continue;
+    if (!_coachConvocatoriaMatchesCategory(convocatoria, wantedCategory)) continue;
 
     const clubMatches = !wantedClub
       || _coachTeamEq(keyClub, wantedClub)
       || _coachTeamLoose(keyClub, wantedClub)
       || _coachSearchNorm(keyClub) === _coachSearchNorm(wantedClub);
+    const ts = _coachConvocatoriaTimestamp(convocatoria);
+    const id = _coachConvocatoriaMatchIdentity(convocatoria) || `${key}::${ts}`;
 
-    if (!_coachConvocatoriaMatchesCategory(convocatoria, wantedCategory)) continue;
-
-    const ts = Date.parse(convocatoria?.createdAt || convocatoria?.updatedAt || "") || 0;
-    candidates.push({ convocatoria, ts, clubMatches });
+    const prev = candidates.get(id);
+    if (!prev) {
+      candidates.set(id, { convocatoria, ts, clubMatches });
+      continue;
+    }
+    const betterClub = clubMatches && !prev.clubMatches;
+    const newer = ts > prev.ts;
+    if (betterClub || (clubMatches === prev.clubMatches && newer)) {
+      candidates.set(id, { convocatoria, ts, clubMatches });
+    }
   }
 
-  if (!candidates.length) return null;
-  candidates.sort((a, b) => {
-    if (a.clubMatches !== b.clubMatches) return a.clubMatches ? -1 : 1;
-    return b.ts - a.ts;
-  });
-  return candidates[0].convocatoria || null;
+  return [...candidates.values()]
+    .sort((a, b) => {
+      if (a.clubMatches !== b.clubMatches) return a.clubMatches ? -1 : 1;
+      return b.ts - a.ts;
+    })
+    .map(item => item.convocatoria);
 }
 
-function _coachRosterFromConvocatoria(clubName, teamName, category = "") {
-  const convocatoria = _coachFindLatestConvocatoria(clubName, teamName, category);
+function _coachFindConvocatoriaByMatchKey(clubName, teamName, category = "", matchKey = "") {
+  const wanted = String(matchKey || "").trim();
+  if (!wanted) return null;
+  return _coachListTeamConvocatories(clubName, teamName, category)
+    .find(convocatoria => _coachConvocatoriaMatchIdentity(convocatoria) === wanted) || null;
+}
+
+function _coachFindLatestConvocatoria(clubName, teamName, category = "") {
+  return _coachListTeamConvocatories(clubName, teamName, category)[0] || null;
+}
+
+function _coachRosterFromConvocatoria(clubName, teamName, category = "", matchKey = "") {
+  const wantedKey = String(matchKey || "").trim();
+  const convocatoria = wantedKey
+    ? _coachFindConvocatoriaByMatchKey(clubName, teamName, category, wantedKey)
+    : _coachFindLatestConvocatoria(clubName, teamName, category);
   if (!convocatoria || !Array.isArray(convocatoria.players)) return [];
   const included = convocatoria.players.filter(p => p?.checked !== false && p?.status !== "baixa");
   const source = included.length ? included : convocatoria.players;
@@ -2419,6 +2462,12 @@ function _renderLineupTab() {
   const { matchDate, opponent, isHome, players } = coachMatchState;
   const team = _cteam();
   const club = _cclub();
+  const category = _ccategory();
+  const convocatorias = _coachListTeamConvocatories(club, team, category);
+  if (coachSelectedConvocatoriaMatchKey && !convocatorias.some(c => _coachConvocatoriaMatchIdentity(c) === coachSelectedConvocatoriaMatchKey)) {
+    coachSelectedConvocatoriaMatchKey = "";
+  }
+  const selectedConvocatoriaKey = coachSelectedConvocatoriaMatchKey || (convocatorias[0] ? _coachConvocatoriaMatchIdentity(convocatorias[0]) : "");
   const favoritePlayers = players.filter(p => String(p?.squad || "favorite") !== "rival");
   const rivalPlayers = players.filter(p => String(p?.squad || "favorite") === "rival");
   const starters = favoritePlayers.filter(p => p.isStarter);
@@ -2500,7 +2549,17 @@ function _renderLineupTab() {
 
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Equip favorit</div>
-        <button onclick="coachLoadLineupFromConvocatoria()" style="width:100%;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:pointer;margin-bottom:8px">Carregar jugadors de convocatòries (${_cesc(club || "club")}${team ? ` · ${_cesc(team)}` : ""})</button>
+        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Convocatòria de l'equip seleccionat</div>
+        <select onchange="coachSetLineupConvocatoriaMatch(this.value)" style="width:100%;padding:9px 10px;border:1.5px solid #dbe3f0;border-radius:9px;font-size:12px;font-family:inherit;background:#fff;margin-bottom:8px">
+          ${convocatorias.length
+            ? convocatorias.map(conv => {
+                const key = _coachConvocatoriaMatchIdentity(conv);
+                const selected = key === selectedConvocatoriaKey;
+                return `<option value="${_cesc(key)}" ${selected ? "selected" : ""}>${_cesc(_coachConvocatoriaOptionLabel(conv))}</option>`;
+              }).join("")
+            : `<option value="">No hi ha convocatòries disponibles</option>`}
+        </select>
+        <button onclick="coachLoadLineupFromSelectedConvocatoria()" ${convocatorias.length ? "" : "disabled"} style="width:100%;background:${convocatorias.length ? "#eef2ff" : "#f1f5f9"};border:1px solid ${convocatorias.length ? "#c7d2fe" : "#e2e8f0"};color:${convocatorias.length ? "#3730a3" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${convocatorias.length ? "pointer" : "not-allowed"};margin-bottom:8px">Carregar jugadors (${_cesc(club || "club")}${team ? ` · ${_cesc(team)}` : ""})</button>
         <div style="font-size:12px;color:#64748b;line-height:1.45;margin-bottom:10px">Blocs separats per evitar confusions: favorit i rival.</div>
         <input id="coach-add-number" type="text" placeholder="Dorsal (opcional)..."
           style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
@@ -3495,6 +3554,7 @@ function coachSetClub(val) {
   coachClubInput = (val || "").trim();
   coachClubSearch = coachClubInput;
   coachTeamInput = "";
+  coachSelectedConvocatoriaMatchKey = "";
   for (const tab of ["planning", "objectives", "match"]) coachTabTeamValues[tab] = "";
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
@@ -3538,26 +3598,45 @@ function coachLoadLineupFromConvocatoria() {
   const club = _cclub();
   const team = _cteam();
   const category = _ccategory();
+  const selectedMatchKey = String(coachSelectedConvocatoriaMatchKey || "").trim();
   if (!club || !team) {
     alert("Selecciona club i equip.");
     return;
   }
 
-  const players = _coachRosterFromConvocatoria(club, team, category);
+  const players = _coachRosterFromConvocatoria(club, team, category, selectedMatchKey);
   if (!players.length) {
-    alert("No hi ha convocatòries disponibles per aquest equip.");
+    alert(selectedMatchKey
+      ? "No s'han trobat jugadors per aquesta convocatòria seleccionada."
+      : "No hi ha convocatòries disponibles per aquest equip.");
     return;
   }
 
   const rivals = (coachMatchState.players || []).filter(p => String(p?.squad || "") === "rival");
   coachMatchState.players = _coachMergeRosterPlayers(players, rivals);
-  const convocatoria = _coachFindLatestConvocatoria(club, team, category);
+  const convocatoria = selectedMatchKey
+    ? _coachFindConvocatoriaByMatchKey(club, team, category, selectedMatchKey)
+    : _coachFindLatestConvocatoria(club, team, category);
   if (convocatoria) {
+    coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(convocatoria);
     coachMatchState.matchDate = String(convocatoria.matchDate || coachMatchState.matchDate || "").slice(0, 10) || coachMatchState.matchDate;
-    coachMatchState.opponent = "";
+    coachMatchState.opponent = String(convocatoria.matchAway || "").trim();
+    const teamHome = _coachTeamEq(convocatoria?.matchHome || "", team) || _coachTeamLoose(convocatoria?.matchHome || "", team);
+    if (teamHome || _coachTeamEq(convocatoria?.matchAway || "", team) || _coachTeamLoose(convocatoria?.matchAway || "", team)) {
+      coachMatchState.isHome = teamHome;
+    }
   }
   _coachSyncLinkedMatchFromState();
   renderCoachPanel();
+}
+
+function coachSetLineupConvocatoriaMatch(matchKey) {
+  coachSelectedConvocatoriaMatchKey = String(matchKey || "").trim();
+  renderCoachPanel();
+}
+
+function coachLoadLineupFromSelectedConvocatoria() {
+  coachLoadLineupFromConvocatoria();
 }
 
 function coachTogglePillar(id) {
@@ -4156,6 +4235,8 @@ window.coachToggleStarter      = coachToggleStarter;
 window.coachSetPlayerSide      = coachSetPlayerSide;
 window.coachSetPlayerPos       = coachSetPlayerPos;
 window.coachLoadLineupFromConvocatoria = coachLoadLineupFromConvocatoria;
+window.coachSetLineupConvocatoriaMatch = coachSetLineupConvocatoriaMatch;
+window.coachLoadLineupFromSelectedConvocatoria = coachLoadLineupFromSelectedConvocatoria;
 window.coachToggleLiveFullscreen = coachToggleLiveFullscreen;
 window.coachAddEvent           = coachAddEvent;
 window.coachRemoveEvent        = coachRemoveEvent;
