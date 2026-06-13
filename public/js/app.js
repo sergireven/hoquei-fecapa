@@ -592,6 +592,380 @@ function clearHoqueiUserData() {
 }
 window.clearHoqueiUserData = clearHoqueiUserData;
 
+// ── User notifications (logged users only) ───────────────────────────────
+const USER_NOTIFICATION_SETTINGS_KEY = "hoquei_user_notification_settings_v1";
+const USER_NOTIFICATION_SEEN_PREFIX = "hoquei_user_notification_seen_v1::";
+const CONVOCATORIA_NOTIFICATION_EVENTS_KEY = "hoquei_convocatoria_notification_events_v1";
+
+function loadUserNotificationSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(USER_NOTIFICATION_SETTINGS_KEY) || "{}");
+    return {
+      enabled: raw?.enabled === true,
+      convocatoria: raw?.convocatoria === true,
+      resultats: raw?.resultats === true,
+      updatedAt: raw?.updatedAt || null,
+    };
+  } catch {
+    return { enabled: false, convocatoria: false, resultats: false, updatedAt: null };
+  }
+}
+
+function saveUserNotificationSettings(next) {
+  const payload = {
+    enabled: next?.enabled === true,
+    convocatoria: next?.convocatoria === true,
+    resultats: next?.resultats === true,
+    updatedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(USER_NOTIFICATION_SETTINGS_KEY, JSON.stringify(payload));
+  return payload;
+}
+
+function getUserNotificationSeenKey() {
+  const uid = String(currentUser?.id || currentProfile?.id || "").trim();
+  if (!uid) return "";
+  return `${USER_NOTIFICATION_SEEN_PREFIX}${uid}`;
+}
+
+function loadUserNotificationSeen() {
+  const key = getUserNotificationSeenKey();
+  if (!key) return { initialized: { convocatoria: false, resultats: false }, keys: { convocatoria: {}, resultats: {} } };
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) || "{}");
+    return {
+      initialized: {
+        convocatoria: raw?.initialized?.convocatoria === true,
+        resultats: raw?.initialized?.resultats === true,
+      },
+      keys: {
+        convocatoria: raw?.keys?.convocatoria || {},
+        resultats: raw?.keys?.resultats || {},
+      },
+    };
+  } catch {
+    return { initialized: { convocatoria: false, resultats: false }, keys: { convocatoria: {}, resultats: {} } };
+  }
+}
+
+function saveUserNotificationSeen(state) {
+  const key = getUserNotificationSeenKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(state || {}));
+}
+
+function isBrowserNotificationSupported() {
+  return typeof window !== "undefined" && typeof window.Notification !== "undefined";
+}
+
+function canSendUserNotifications() {
+  if (!currentUser?.id) return false;
+  if (!isBrowserNotificationSupported()) return false;
+  const settings = loadUserNotificationSettings();
+  if (!settings.enabled) return false;
+  return Notification.permission === "granted";
+}
+
+async function requestUserNotificationPermission() {
+  if (!isBrowserNotificationSupported()) {
+    throw new Error("Aquest navegador no suporta notificacions.");
+  }
+  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "denied") return "denied";
+  return Notification.requestPermission();
+}
+
+function notifyUser(title, body, options = {}) {
+  if (!canSendUserNotifications()) return false;
+  const n = new Notification(title, {
+    body: String(body || ""),
+    icon: "Designer_2.png",
+    tag: options?.tag || undefined,
+  });
+  const targetUrl = String(options?.url || "").trim();
+  if (targetUrl) {
+    n.onclick = () => {
+      try { window.focus(); } catch {}
+      try { window.location.hash = targetUrl; } catch {}
+    };
+  }
+  return true;
+}
+
+function markNotificationSeen(type, key) {
+  const t = String(type || "").trim();
+  const k = String(key || "").trim();
+  if (!t || !k) return;
+  const state = loadUserNotificationSeen();
+  state.keys[t] = state.keys[t] || {};
+  state.keys[t][k] = new Date().toISOString();
+  saveUserNotificationSeen(state);
+}
+
+function hasNotificationBeenSeen(type, key) {
+  const t = String(type || "").trim();
+  const k = String(key || "").trim();
+  if (!t || !k) return false;
+  const state = loadUserNotificationSeen();
+  return !!state?.keys?.[t]?.[k];
+}
+
+function ensureNotificationBaseline(type, currentKeys = []) {
+  const t = String(type || "").trim();
+  if (!t) return;
+  const state = loadUserNotificationSeen();
+  if (state?.initialized?.[t] === true) return;
+  state.initialized = state.initialized || {};
+  state.keys = state.keys || {};
+  state.keys[t] = state.keys[t] || {};
+  for (const key of (currentKeys || [])) {
+    const k = String(key || "").trim();
+    if (!k) continue;
+    state.keys[t][k] = new Date().toISOString();
+  }
+  state.initialized[t] = true;
+  saveUserNotificationSeen(state);
+}
+
+async function setUserNotificationsEnabled(enabled) {
+  if (!currentUser?.id) throw new Error("Cal iniciar sessió.");
+  const nextEnabled = enabled === true;
+  const prev = loadUserNotificationSettings();
+  if (!nextEnabled) {
+    saveUserNotificationSettings({ ...prev, enabled: false });
+    return {
+      ok: true,
+      enabled: false,
+      permission: (typeof Notification !== "undefined" ? Notification.permission : "default"),
+    };
+  }
+  const permission = await requestUserNotificationPermission();
+  if (permission !== "granted") {
+    saveUserNotificationSettings({ ...prev, enabled: false });
+    return { ok: false, enabled: false, permission };
+  }
+  saveUserNotificationSettings({ ...prev, enabled: true });
+  return { ok: true, enabled: true, permission };
+}
+
+function setUserNotificationFeature(featureKey, enabled) {
+  const key = String(featureKey || "").trim();
+  if (!currentUser?.id) throw new Error("Cal iniciar sessió.");
+  const prev = loadUserNotificationSettings();
+  if (key === "convocatoria") {
+    return saveUserNotificationSettings({ ...prev, convocatoria: enabled === true });
+  }
+  if (key === "resultats") {
+    return saveUserNotificationSettings({ ...prev, resultats: enabled === true });
+  }
+  return prev;
+}
+
+function normalizeNotificationPlayerNameKey(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function loadConvocatoriaNotificationEvents() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CONVOCATORIA_NOTIFICATION_EVENTS_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveConvocatoriaNotificationEvents(events) {
+  localStorage.setItem(CONVOCATORIA_NOTIFICATION_EVENTS_KEY, JSON.stringify(Array.isArray(events) ? events : []));
+}
+
+function upsertConvocatoriaNotificationEvent(event) {
+  const next = { ...(event || {}) };
+  const id = String(next.id || "").trim();
+  if (!id) return;
+  const list = loadConvocatoriaNotificationEvents();
+  const idx = list.findIndex(item => String(item?.id || "") === id);
+  if (idx >= 0) list[idx] = { ...list[idx], ...next };
+  else list.push(next);
+  saveConvocatoriaNotificationEvents(list);
+}
+
+function buildConvocatoriaNotificationBody(event, options = {}) {
+  const isReminder = options?.isReminder === true;
+  const elapsedHours = Math.max(1, Math.round(Number(options?.elapsedHours || 0)));
+  const intro = String(event?.introMessage || "Nova convocatòria disponible").trim();
+  const reminderPrefix = isReminder ? `Recordatori (${elapsedHours}h): encara no s'ha contestat.` : intro;
+  const categoryLabel = event?.teamCategory ? (CAT_LABELS[event.teamCategory] || event.teamCategory) : "";
+  const matchLabel = `${String(event?.matchHome || "").trim()} vs ${String(event?.matchAway || "").trim()}`.trim();
+  const whenLabel = [String(event?.matchDate || "").trim(), String(event?.matchTime || "").trim()].filter(Boolean).join(" · ");
+  const whereLabel = String(event?.matchLocation || "").trim() || "Ubicació pendent";
+  const teamLabel = [shortTeamDisplayName(event?.teamName || ""), categoryLabel].filter(Boolean).join(" · ");
+  return [reminderPrefix, matchLabel, whenLabel, whereLabel, teamLabel].filter(Boolean).join(" · ");
+}
+
+function getCurrentUserFavoritePlayerMap() {
+  const out = [];
+  for (const pid of (playerFavs || [])) {
+    const player = getPlayerById(pid, { allowCrossSeason: true });
+    const pName = player?.slug
+      ? formatPlayerDisplayName(decodeURIComponent(String(player.slug).replace(/\+/g, " ")))
+      : (player?.name || playerFavMeta?.[String(pid)]?.name || "");
+    const key = normalizeNotificationPlayerNameKey(pName);
+    if (!key) continue;
+    out.push({ id: String(pid), name: String(pName || ""), key });
+  }
+  return out;
+}
+
+function queueConvocatoriaNotificationEventFromSave(convocatoria, options = {}) {
+  const manual = options?.manual === true;
+  const automatic = options?.automatic === true;
+  if (!manual && !automatic) return;
+  const nowIso = new Date().toISOString();
+  const id = [
+    String(convocatoria?.clubName || "").trim(),
+    String(convocatoria?.teamName || "").trim(),
+    String(convocatoria?.matchKey || "").trim(),
+  ].join("::");
+  if (!id || !convocatoria?.matchKey) return;
+
+  const selectedPlayers = (convocatoria?.players || [])
+    .filter(p => p?.checked)
+    .map(p => String(p?.name || "").trim())
+    .filter(Boolean);
+  const fallbackPlayers = (convocatoria?.players || [])
+    .map(p => String(p?.name || "").trim())
+    .filter(Boolean);
+
+  const reminderHours = Math.max(1, Math.min(168, Math.round(Number(options?.reminderHours || 6))));
+  const event = {
+    id,
+    clubName: String(convocatoria?.clubName || "").trim(),
+    teamName: String(convocatoria?.teamName || "").trim(),
+    teamCategory: String(convocatoria?.teamCategory || "").trim(),
+    matchKey: String(convocatoria?.matchKey || "").trim(),
+    matchDate: String(convocatoria?.matchDate || "").trim(),
+    matchTime: String(convocatoria?.matchTime || "").trim(),
+    matchHome: String(convocatoria?.matchHome || "").trim(),
+    matchAway: String(convocatoria?.matchAway || "").trim(),
+    matchCompetition: String(convocatoria?.matchCompetition || "").trim(),
+    matchLocation: String(convocatoria?.matchLocation || "").trim(),
+    introMessage: String(options?.introMessage || "Nova convocatòria disponible").trim() || "Nova convocatòria disponible",
+    reminderHours,
+    players: (selectedPlayers.length ? selectedPlayers : fallbackPlayers),
+    modeManual: manual,
+    modeAutomatic: automatic,
+    dispatchedAt: nowIso,
+    updatedAt: nowIso,
+  };
+  upsertConvocatoriaNotificationEvent(event);
+}
+
+function collectConvocatoriaNotificationCandidates() {
+  const events = loadConvocatoriaNotificationEvents();
+  const favPlayers = getCurrentUserFavoritePlayerMap();
+  if (!events.length || !favPlayers.length) return [];
+
+  const favByName = new Map();
+  for (const fp of favPlayers) favByName.set(fp.key, fp);
+  const availabilityStore = loadUserConvAvailabilityStore();
+  const nowMs = Date.now();
+  const out = [];
+
+  for (const ev of events) {
+    const eventNames = new Set((ev?.players || []).map(normalizeNotificationPlayerNameKey).filter(Boolean));
+    const relevantPlayers = favPlayers.filter(fp => eventNames.has(fp.key));
+    if (!relevantPlayers.length) continue;
+
+    const baseKey = String(ev?.id || "").trim();
+    const dispatchedAt = Date.parse(String(ev?.dispatchedAt || ev?.updatedAt || "")) || nowMs;
+    const initialKey = `${baseKey}::initial::${String(ev?.dispatchedAt || ev?.updatedAt || "")}`;
+
+    out.push({
+      key: initialKey,
+      title: "Convocatòria",
+      body: buildConvocatoriaNotificationBody(ev),
+    });
+
+    const reminderHours = Math.max(1, Math.min(168, Math.round(Number(ev?.reminderHours || 6))));
+    const elapsedMs = nowMs - dispatchedAt;
+    if (elapsedMs < reminderHours * 60 * 60 * 1000) continue;
+
+    const byMatch = availabilityStore?.[String(ev?.matchKey || "")] || {};
+    const allAnswered = relevantPlayers.every(fp => {
+      const status = String(byMatch?.[fp.id]?.status || "pendent").trim();
+      return status && status !== "pendent";
+    });
+    if (allAnswered) continue;
+
+    const reminderSlot = Math.floor(elapsedMs / (reminderHours * 60 * 60 * 1000));
+    const reminderKey = `${baseKey}::reminder::${reminderSlot}`;
+    const elapsedHours = Math.max(reminderHours, reminderSlot * reminderHours);
+    out.push({
+      key: reminderKey,
+      title: "Recordatori convocatòria",
+      body: buildConvocatoriaNotificationBody(ev, { isReminder: true, elapsedHours }),
+    });
+  }
+  return out.filter(it => String(it.key || "").trim());
+}
+
+function collectFavoriteResultNotificationCandidates() {
+  const out = [];
+  for (const fav of (favs || [])) {
+    const comp = findComp(fav?.compId);
+    if (!comp) continue;
+    const { last } = getLastAndNext(comp.calendar || [], fav.teamName);
+    if (!last || last.homeScore == null || last.awayScore == null) continue;
+    const key = [
+      String(fav.compId || ""),
+      normalizeCompKey(fav.teamName || ""),
+      String(last.date || ""),
+      normalizeCompKey(last.home || ""),
+      normalizeCompKey(last.away || ""),
+      String(last.homeScore),
+      String(last.awayScore),
+    ].join("::");
+    const myIsHome = teamIn(last.home, fav.teamName);
+    const myScore = myIsHome ? last.homeScore : last.awayScore;
+    const oppScore = myIsHome ? last.awayScore : last.homeScore;
+    const title = `Resultat actualitzat · ${shortTeamDisplayName(fav.teamName)}`;
+    const body = `${shortTeamDisplayName(last.home)} ${last.homeScore} - ${last.awayScore} ${shortTeamDisplayName(last.away)} (${myScore}-${oppScore})`;
+    out.push({ key, title, body });
+  }
+  return out;
+}
+
+function runUserFeatureNotifications() {
+  if (!canSendUserNotifications()) return;
+  const settings = loadUserNotificationSettings();
+
+  if (settings.convocatoria) {
+    const candidates = collectConvocatoriaNotificationCandidates();
+    ensureNotificationBaseline("convocatoria", candidates.map(c => c.key));
+    for (const c of candidates) {
+      if (hasNotificationBeenSeen("convocatoria", c.key)) continue;
+      const sent = notifyUser(c.title, c.body, { tag: `convocatoria::${c.key}`, url: "#home" });
+      if (sent) markNotificationSeen("convocatoria", c.key);
+    }
+  }
+
+  if (settings.resultats) {
+    const candidates = collectFavoriteResultNotificationCandidates();
+    ensureNotificationBaseline("resultats", candidates.map(c => c.key));
+    for (const c of candidates) {
+      if (hasNotificationBeenSeen("resultats", c.key)) continue;
+      const sent = notifyUser(c.title, c.body, { tag: `resultats::${c.key}`, url: "#home" });
+      if (sent) markNotificationSeen("resultats", c.key);
+    }
+  }
+}
+
 // ── Load coordinator data from Supabase (DB-primary) ────────────────────────
 async function _refreshCoordinatorFromDB() {
   if (!_sb || !currentProfile?.id) return;
@@ -848,6 +1222,8 @@ if (typeof window.closeCoachPanel !== "function") {
 function openUserModal() {
   const roleLabel = getProfileRolesLabel(currentProfile, "Usuari");
   const userLoc = getCurrentUserLocation();
+  const notif = loadUserNotificationSettings();
+  const notifSupported = isBrowserNotificationSupported();
   const adminBtn  = profileHasRole(currentProfile, "admin")
     ? `<button onclick="closeUserModal();openAdminPanel()" style="width:100%;background:#1a2035;border:none;color:#fff;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:10px">⚙️ Panell Admin</button>`
     : "";
@@ -878,6 +1254,22 @@ function openUserModal() {
       <div style="margin-top:5px;font-size:11px;color:#94a3b8">Només a nivell ciutat/barri. No guardis adreça exacta.</div>
       <div id="user-location-msg" style="margin-top:6px;font-size:12px;color:#64748b">${userLoc ? `Actual: ${esc(userLoc.label)} · ${new Date(userLoc.updatedAt || Date.now()).toLocaleString("ca-ES")}` : ""}</div>
     </div>`;
+  const notificationsSection = `<div style="margin-bottom:16px;background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:12px 12px 10px">
+      <div style="font-size:13px;font-weight:800;color:#1a2035;margin-bottom:8px">Notificacions</div>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:13px;color:#334155">Activar notificacions</span>
+        <input type="checkbox" ${notif.enabled ? "checked" : ""} ${notifSupported ? "" : "disabled"} onchange="toggleUserNotificationsGlobal(this.checked)"/>
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:13px;color:#334155">Notificacions de convocatòria</span>
+        <input type="checkbox" ${notif.convocatoria ? "checked" : ""} ${notif.enabled ? "" : "disabled"} onchange="toggleUserNotificationsFeature('convocatoria', this.checked)"/>
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0">
+        <span style="font-size:13px;color:#334155">Resultat actualitzat (equips favorits)</span>
+        <input type="checkbox" ${notif.resultats ? "checked" : ""} ${notif.enabled ? "" : "disabled"} onchange="toggleUserNotificationsFeature('resultats', this.checked)"/>
+      </label>
+      <div id="user-notifications-msg" style="margin-top:6px;font-size:12px;color:#64748b">${notifSupported ? `Permís navegador: ${Notification.permission}` : "Aquest navegador no admet notificacions."}</div>
+    </div>`;
   $("user-modal-body").innerHTML = `
     <div style="padding:20px 18px 32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
@@ -891,6 +1283,7 @@ function openUserModal() {
       </div>
       ${teamSection}
       ${locationSection}
+      ${notificationsSection}
       ${adminBtn}
       ${coordinadorBtn}
       ${entrenadorPanelBtn}
@@ -954,6 +1347,51 @@ async function saveUserLocation() {
   }
 }
 
+async function toggleUserNotificationsGlobal(enabled) {
+  const msg = $("user-notifications-msg");
+  if (msg) {
+    msg.style.color = "#64748b";
+    msg.textContent = "Actualitzant...";
+  }
+  try {
+    const result = await setUserNotificationsEnabled(enabled === true);
+    if (msg) {
+      if (result.ok) {
+        msg.style.color = "#16a34a";
+        msg.textContent = result.enabled ? "✓ Notificacions activades" : "Notificacions desactivades";
+      } else {
+        msg.style.color = "#b45309";
+        msg.textContent = result.permission === "denied"
+          ? "Permís denegat al navegador. Revisa configuració del lloc web."
+          : "No s'han pogut activar les notificacions.";
+      }
+    }
+    openUserModal();
+  } catch (err) {
+    if (msg) {
+      msg.style.color = "#e5001c";
+      msg.textContent = `Error: ${err?.message || "No s'ha pogut desar"}`;
+    }
+  }
+}
+
+function toggleUserNotificationsFeature(featureKey, enabled) {
+  const msg = $("user-notifications-msg");
+  try {
+    setUserNotificationFeature(featureKey, enabled === true);
+    if (msg) {
+      msg.style.color = "#16a34a";
+      msg.textContent = "✓ Preferències desades";
+    }
+    openUserModal();
+  } catch (err) {
+    if (msg) {
+      msg.style.color = "#e5001c";
+      msg.textContent = `Error: ${err?.message || "No s'ha pogut desar"}`;
+    }
+  }
+}
+
 async function signOut() {
   clearRememberedProfile();
   await _sb?.auth.signOut();
@@ -964,6 +1402,8 @@ async function signOut() {
 window.signOut         = signOut;
 window.saveTeamName    = saveTeamName;
 window.saveUserLocation = saveUserLocation;
+window.toggleUserNotificationsGlobal = toggleUserNotificationsGlobal;
+window.toggleUserNotificationsFeature = toggleUserNotificationsFeature;
 window.openLoginModal  = openLoginModal;
 window.closeLoginModal = closeLoginModal;
 window.openUserModal   = openUserModal;
@@ -1556,6 +1996,10 @@ function getCoordinatorClubSettings(clubName) {
     periodEnd: seasonDefaults.periodEnd,
     lastLocation: "",
     lastLockerRoom: "",
+    convocationLeadMinutes: getGlobalConvocationLeadMinutes(),
+    autoConvNotifications: false,
+    convReminderHours: 6,
+    convNotificationIntro: "Nova convocatòria disponible",
   };
   if (!clubName) return { ...defaults };
   const cache = loadCoordinatorSettingsCache();
@@ -1569,6 +2013,13 @@ function getCoordinatorClubSettings(clubName) {
     periodStart,
     periodEnd,
   };
+}
+
+function getConvocationLeadMinutesForClub(clubName) {
+  const settings = getCoordinatorClubSettings(clubName || "");
+  const raw = Number(settings?.convocationLeadMinutes);
+  if (Number.isFinite(raw)) return Math.max(15, Math.min(360, Math.round(raw)));
+  return getGlobalConvocationLeadMinutes();
 }
 
 function updateCoordinatorClubSettings(clubName, updates) {
@@ -2113,6 +2564,7 @@ function renderCoordinatorClubTab(currentFav) {
   const selectedEntry = currentFav?.clubName ? findCoordinatorClubEntry(currentFav.clubName) : null;
   const selectedTeams = selectedEntry ? getCoordinatorClubTeams(selectedEntry.displayName).slice(0, 10) : [];
   const selectedExtraTeams = currentFav?.clubName ? getCoordinatorExtraTeams(currentFav.clubName) : [];
+  const clubSettings = currentFav?.clubName ? getCoordinatorClubSettings(currentFav.clubName) : null;
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px">
@@ -2128,6 +2580,31 @@ function renderCoordinatorClubTab(currentFav) {
         <div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:12px">La seleccio de club determina els equips disponibles, les exportacions i la gestio d'entrenaments i convocatories.</div>
         <button onclick="exportCoordinatorResultsToExcel()" style="width:100%;background:#059669;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-bottom:8px">Exportar classificacio i calendari a Excel</button>
         <button onclick="exportCoordinatorResultsToPDF()" style="width:100%;background:#dc2626;border:none;color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer">Exportar equips a PDF (A4)</button>
+
+        <div style="height:1px;background:#e2e8f0;margin:12px 0"></div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.05em;margin-bottom:8px">Notificacions de convocatòria</div>
+        ${currentFav?.clubName ? `
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:12px;color:#334155;background:#f8fafc">
+              <span>Automàtiques en guardar convocatòria</span>
+              <input id="coordinator-club-auto-conv-notifications" type="checkbox" ${clubSettings?.autoConvNotifications ? "checked" : ""}/>
+            </label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:12px;color:#334155;background:#f8fafc">
+              <span>Temps convocatòria (min)</span>
+              <input id="coordinator-club-conv-lead-minutes" type="number" min="15" max="360" value="${esc(String(clubSettings?.convocationLeadMinutes || 75))}" style="width:84px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px"/>
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:12px;color:#334155;background:#f8fafc">
+              <span>Recordatori automàtic (hores)</span>
+              <input id="coordinator-club-conv-reminder-hours" type="number" min="1" max="168" value="${esc(String(clubSettings?.convReminderHours || 6))}" style="width:84px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px"/>
+            </label>
+            <div style="padding:10px;border:1.5px solid #e2e6ef;border-radius:10px;background:#f8fafc;font-size:11px;color:#64748b">El recordatori només s'enviarà a tutors amb jugadors encara pendents de disponibilitat.</div>
+          </div>
+          <input id="coordinator-club-conv-intro" type="text" value="${esc(clubSettings?.convNotificationIntro || "Nova convocatòria disponible")}" placeholder="Missatge d'introducció" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit;margin-bottom:8px"/>
+          <button onclick="coordinatorSaveClubNotificationSettings()" style="width:100%;background:#1d4ed8;border:none;color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:10px;cursor:pointer">Desar configuració de notificacions</button>
+          <div id="coordinator-club-notif-feedback" style="margin-top:8px;font-size:12px;color:#64748b"></div>
+        ` : `<div style="font-size:12px;color:#64748b">Selecciona un club per configurar notificacions.</div>`}
 
         <div style="height:1px;background:#e2e8f0;margin:12px 0"></div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.05em;margin-bottom:8px">Equips no federats (escoleta)</div>
@@ -2279,6 +2756,7 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     const teamToken = String(team?.teamKey || team?.teamName || "");
     return `<option value="${esc(teamToken)}" ${selectedToken === teamToken ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`;
   }).join("");
+  const clubSettings = getCoordinatorClubSettings(currentFav.clubName);
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px">
@@ -2363,6 +2841,11 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <div id="convocatoria-save-status" style="font-size:12px;font-weight:700;color:#64748b"></div>
+          <label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #dbe3f0;border-radius:8px;background:#f8fafc;font-size:11px;color:#334155">
+            <input id="coordinator-conv-notify-manual" type="checkbox"/>
+            Notificar (manual)
+          </label>
+          <input id="coordinator-conv-notify-intro" type="text" value="${esc(clubSettings?.convNotificationIntro || "Nova convocatòria disponible")}" placeholder="Missatge introductori" style="min-width:210px;flex:1;padding:7px 9px;border:1.5px solid #e2e6ef;border-radius:8px;font-size:12px;font-family:inherit"/>
           <button onclick="coordinatorSaveConvocatoria()" style="background:#0f766e;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">💾 Guardar</button>
           <button onclick="downloadConvocatoriaMarkdown()" style="background:#8b5cf6;border:none;color:#fff;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">Descarregar</button>
           <button onclick="coordinatorToggleAddPlayerSearch()" style="background:#f0f9ff;border:1.5px solid #bfdbfe;color:#1d4ed8;font-weight:700;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer">+ Afegir jugador</button>
@@ -3697,7 +4180,7 @@ function renderCoordinatorConvMatchSummary() {
   const previous = getPreviousPlayedMatchForTeam(fav.clubName, coordinatorConvTeamFilter, selected.ts);
   const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected.key);
   const counters = getConvocatoriaAvailabilityCounters(convocatoria);
-  const leadMinutes = getGlobalConvocationLeadMinutes();
+  const leadMinutes = getConvocationLeadMinutesForClub(fav.clubName);
   const convocationDateTime = formatConvocationDateTime(selected, leadMinutes);
   const venueDirections = selected.isAdHoc
     ? (selected.location ? { nativeUrl: `https://www.google.com/maps?q=${encodeURIComponent(selected.location)}`, label: selected.location } : null)
@@ -3825,7 +4308,39 @@ function coordinatorSaveConvocationLeadMinutes() {
   const input = $("coordinator-conv-lead-minutes");
   const next = setGlobalConvocationLeadMinutes(input?.value || 75);
   if (input) input.value = String(next);
+  const fav = loadCoordinatorFavorite();
+  if (fav?.clubName) {
+    updateCoordinatorClubSettings(fav.clubName, { convocationLeadMinutes: next });
+  }
   renderCoordinatorConvMatchSummary();
+}
+
+function coordinatorSaveClubNotificationSettings() {
+  const fav = loadCoordinatorFavorite();
+  const feedback = $("coordinator-club-notif-feedback");
+  const setMsg = (txt, color = "#64748b") => {
+    if (!feedback) return;
+    feedback.style.color = color;
+    feedback.textContent = txt;
+  };
+  if (!fav?.clubName) {
+    setMsg("Selecciona primer un club.", "#dc2626");
+    return;
+  }
+
+  const autoConvNotifications = $("coordinator-club-auto-conv-notifications")?.checked === true;
+  const convocationLeadMinutes = Math.max(15, Math.min(360, Math.round(Number($("coordinator-club-conv-lead-minutes")?.value || 75))));
+  const convReminderHours = Math.max(1, Math.min(168, Math.round(Number($("coordinator-club-conv-reminder-hours")?.value || 6))));
+  const convNotificationIntro = String($("coordinator-club-conv-intro")?.value || "Nova convocatòria disponible").trim() || "Nova convocatòria disponible";
+
+  updateCoordinatorClubSettings(fav.clubName, {
+    autoConvNotifications,
+    convocationLeadMinutes,
+    convReminderHours,
+    convNotificationIntro,
+  });
+  setGlobalConvocationLeadMinutes(convocationLeadMinutes);
+  setMsg("Configuració desada.", "#0f766e");
 }
 
 function coordinatorAdHocFeedback(message, color = "#64748b") {
@@ -4146,6 +4661,9 @@ async function coordinatorSaveConvocatoria() {
   }
   const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
   if (!convocatoria) { setMsg("Genera primer la convocatoria.", "#dc2626"); return; }
+  const clubSettings = getCoordinatorClubSettings(fav.clubName);
+  const manualNotify = $("coordinator-conv-notify-manual")?.checked === true;
+  const introMessage = String($("coordinator-conv-notify-intro")?.value || clubSettings?.convNotificationIntro || "Nova convocatòria disponible").trim();
   setMsg("Desant...");
   // Always save to localStorage
   saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
@@ -4156,8 +4674,20 @@ async function coordinatorSaveConvocatoria() {
       convocatoria.supabaseId = result.id;
       saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
     }
+    queueConvocatoriaNotificationEventFromSave(convocatoria, {
+      manual: manualNotify,
+      automatic: clubSettings?.autoConvNotifications === true,
+      reminderHours: Number(clubSettings?.convReminderHours || 6),
+      introMessage,
+    });
     setMsg("✓ Convocatoria desada.", "#16a34a");
   } else {
+    queueConvocatoriaNotificationEventFromSave(convocatoria, {
+      manual: manualNotify,
+      automatic: clubSettings?.autoConvNotifications === true,
+      reminderHours: Number(clubSettings?.convReminderHours || 6),
+      introMessage,
+    });
     setMsg("✓ Desat localment (BD no disponible).", "#d97706");
   }
 }
@@ -4240,6 +4770,7 @@ window.openCoordinatorPanel = openCoordinatorPanel;
 window.closeCoordinatorPanel = closeCoordinatorPanel;
 window.coordinatorAddExtraTeam = coordinatorAddExtraTeam;
 window.coordinatorRemoveExtraTeam = coordinatorRemoveExtraTeam;
+window.coordinatorSaveClubNotificationSettings = coordinatorSaveClubNotificationSettings;
 window.coordinatorSaveTrainingPeriod = coordinatorSaveTrainingPeriod;
 window.coordinatorAddTraining = coordinatorAddTraining;
 window.coordinatorDeleteTraining = coordinatorDeleteTraining;
@@ -8348,6 +8879,7 @@ window.togglePlayerFavAndRender = jid => { togglePlayerFav(jid); renderJugadorsT
 
 // ── FAVS ──────────────────────────────────────────────────────
 function renderFavs() {
+  runUserFeatureNotifications();
   void hydrateActaLinksForFavoriteComps();
   const body=$("home-body");
   if (!favs.length && !clubFavs.length && !levelFavs.length && !playerFavs.length) {
@@ -8899,6 +9431,7 @@ function renderUserFavCalendarPanel() {
 function renderUserFavConvocatoriesPanel() {
   const panel = $("user-favs-utility-panel");
   if (!panel) return;
+  runUserFeatureNotifications();
   const isMobile = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
   const teamOptions = getUserFavoriteTutorConvTeamFilterOptions();
   const teams = teamOptions.map(t => t.teamName);

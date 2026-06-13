@@ -1052,6 +1052,57 @@ function _coachConvocatoriaOptionLabel(convocatoria) {
   return `${date}${time ? ` · ${time}` : ""} · ${teams}${comp ? ` · ${comp}` : ""}`;
 }
 
+function _coachUpcomingMatchIdentity(match) {
+  if (!match) return "";
+  const key = String(match?.key || "").trim();
+  if (key) return key;
+  return [
+    String(match?.compId || ""),
+    String(match?.dateKey || ""),
+    String(match?.time || ""),
+    String(match?.home || ""),
+    String(match?.away || ""),
+  ].map(v => encodeURIComponent(v)).join("::");
+}
+
+function _coachUpcomingMatchLabel(match) {
+  if (!match) return "Partit";
+  const date = String(match?.date || "").trim() || "Data pendent";
+  const time = String(match?.time || "").trim();
+  const home = String(match?.home || "").trim();
+  const away = String(match?.away || "").trim();
+  const comp = String(match?.compName || "").trim();
+  const teams = home || away ? `${home || "Equip"} vs ${away || "Rival"}` : "Partit";
+  return `${date}${time ? ` · ${time}` : ""} · ${teams}${comp ? ` · ${comp}` : ""}`;
+}
+
+function _coachGetUpcomingMatches(clubName, teamName, category = "") {
+  if (typeof getUpcomingMatchesForConvocatoria === "function") {
+    const list = getUpcomingMatchesForConvocatoria(clubName, teamName, category);
+    return Array.isArray(list) ? list : [];
+  }
+  return [];
+}
+
+function _coachApplyUpcomingMatch(match) {
+  if (!match) return;
+  const team = _cteam();
+  coachMatchState.matchDate = String(match?.date || coachMatchState.matchDate || "").trim() || coachMatchState.matchDate;
+  const isHome = _coachTeamEq(match?.home || "", team) || _coachTeamLoose(match?.home || "", team);
+  coachMatchState.isHome = isHome;
+  coachMatchState.opponent = String(isHome ? (match?.away || "") : (match?.home || "")).trim();
+
+  const club = _cclub();
+  const category = _ccategory();
+  const identity = _coachUpcomingMatchIdentity(match);
+  if (identity) {
+    coachSelectedUpcomingMatchKey = identity;
+    const conv = _coachFindConvocatoriaByMatchKey(club, team, category, identity);
+    if (conv) coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(conv);
+  }
+  _coachSyncLinkedMatchFromState();
+}
+
 function _coachListTeamConvocatories(clubName, teamName, category = "") {
   const store = _coachLoadConvocatoriaStore();
   const wantedClub = String(clubName || "").trim();
@@ -2465,6 +2516,11 @@ function _renderLineupTab() {
   const club = _cclub();
   const category = _ccategory();
   const convocatorias = _coachListTeamConvocatories(club, team, category);
+  const upcomingMatches = _coachGetUpcomingMatches(club, team, category);
+  if (coachSelectedUpcomingMatchKey && !upcomingMatches.some(m => _coachUpcomingMatchIdentity(m) === coachSelectedUpcomingMatchKey)) {
+    coachSelectedUpcomingMatchKey = "";
+  }
+  const selectedUpcomingKey = coachSelectedUpcomingMatchKey || (upcomingMatches[0] ? _coachUpcomingMatchIdentity(upcomingMatches[0]) : "");
   if (coachSelectedConvocatoriaMatchKey && !convocatorias.some(c => _coachConvocatoriaMatchIdentity(c) === coachSelectedConvocatoriaMatchKey)) {
     coachSelectedConvocatoriaMatchKey = "";
   }
@@ -2524,6 +2580,18 @@ function _renderLineupTab() {
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Info del Partit</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="grid-column:1/-1">
+            <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Partits futurs (equip favorit)</div>
+            <select onchange="coachSelectUpcomingMatch(this.value)" style="width:100%;padding:9px 10px;border:1.5px solid #dbe3f0;border-radius:9px;font-size:12px;font-family:inherit;background:#fff">
+              ${upcomingMatches.length
+                ? upcomingMatches.map(m => {
+                    const key = _coachUpcomingMatchIdentity(m);
+                    const selected = key === selectedUpcomingKey;
+                    return `<option value="${_cesc(key)}" ${selected ? "selected" : ""}>${_cesc(_coachUpcomingMatchLabel(m))}</option>`;
+                  }).join("")
+                : `<option value="">No hi ha partits futurs disponibles</option>`}
+            </select>
+          </div>
           <div>
             <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Data</div>
             <input type="date" value="${matchDate}" onchange="coachMatchState.matchDate=this.value;_coachSyncLinkedMatchFromState()"
@@ -3531,11 +3599,24 @@ async function coachSetTeam(val) {
     Promise.resolve(_coachPersistSelectedClub(resolved.clubName));
   }
   _coachApplyTeamSelectionAllTabs(String(resolved?.optionValue || val || "").trim());
+  coachSelectedUpcomingMatchKey = "";
+  const club = String(resolved?.clubName || _cclub() || "").trim();
+  const team = String(resolved?.teamName || _cteam() || "").trim();
+  const category = String(resolved?.category || _ccategory() || "").trim();
+  const upcoming = _coachGetUpcomingMatches(club, team, category);
+  if (upcoming.length) _coachApplyUpcomingMatch(upcoming[0]);
   renderCoachPanel();
 }
 
 function coachSelectTabTeam(tabKey, optionValue) {
   _coachApplyTeamSelectionAllTabs(optionValue);
+  coachSelectedUpcomingMatchKey = "";
+  const resolved = _coachResolveTeamChoiceByValue(optionValue);
+  const club = String(resolved?.clubName || _cclub() || "").trim();
+  const team = String(resolved?.teamName || _cteam() || "").trim();
+  const category = String(resolved?.category || _ccategory() || "").trim();
+  const upcoming = _coachGetUpcomingMatches(club, team, category);
+  if (upcoming.length) _coachApplyUpcomingMatch(upcoming[0]);
   renderCoachPanel();
 }
 
@@ -3556,6 +3637,7 @@ function coachSetClub(val) {
   coachClubSearch = coachClubInput;
   coachTeamInput = "";
   coachSelectedConvocatoriaMatchKey = "";
+  coachSelectedUpcomingMatchKey = "";
   for (const tab of ["planning", "objectives", "match"]) coachTabTeamValues[tab] = "";
   coachTrainingsLoaded = false;
   coachPlayerObjsLoaded = false;
@@ -3633,6 +3715,22 @@ function coachLoadLineupFromConvocatoria() {
 
 function coachSetLineupConvocatoriaMatch(matchKey) {
   coachSelectedConvocatoriaMatchKey = String(matchKey || "").trim();
+  renderCoachPanel();
+}
+
+function coachSelectUpcomingMatch(matchKey) {
+  const club = _cclub();
+  const team = _cteam();
+  const category = _ccategory();
+  const wanted = String(matchKey || "").trim();
+  coachSelectedUpcomingMatchKey = wanted;
+  if (!wanted) {
+    renderCoachPanel();
+    return;
+  }
+  const match = _coachGetUpcomingMatches(club, team, category)
+    .find(item => _coachUpcomingMatchIdentity(item) === wanted) || null;
+  if (match) _coachApplyUpcomingMatch(match);
   renderCoachPanel();
 }
 
@@ -4238,6 +4336,7 @@ window.coachSetPlayerPos       = coachSetPlayerPos;
 window.coachLoadLineupFromConvocatoria = coachLoadLineupFromConvocatoria;
 window.coachSetLineupConvocatoriaMatch = coachSetLineupConvocatoriaMatch;
 window.coachLoadLineupFromSelectedConvocatoria = coachLoadLineupFromSelectedConvocatoria;
+window.coachSelectUpcomingMatch = coachSelectUpcomingMatch;
 window.coachToggleLiveFullscreen = coachToggleLiveFullscreen;
 window.coachAddEvent           = coachAddEvent;
 window.coachRemoveEvent        = coachRemoveEvent;
