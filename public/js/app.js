@@ -2985,7 +2985,18 @@ function getWeekDays(date = new Date()) {
 }
 
 function getCoordinatorTeamPool(clubName, teamName = "") {
-  if (teamName) return [teamName];
+  if (teamName) {
+    // Resolve the team name to its canonical form from the club's team list to match calendar data
+    const teams = getCoordinatorClubTeams(clubName);
+    const resolved = teams.find(t => {
+      const tName = String(t?.teamName || "").trim();
+      const tKey = String(t?.teamKey || "").trim();
+      const sName = String(teamName || "").trim();
+      return tName === sName || tKey === sName || tName.endsWith(sName) || sName.endsWith(tName);
+    });
+    if (resolved) return [String(resolved.teamName || "").trim()];
+    return [String(teamName || "").trim()];
+  }
   const teams = getCoordinatorClubTeams(clubName).map(t => String(t?.teamName || "").trim()).filter(Boolean);
   return teams.length ? teams : [clubName].filter(Boolean);
 }
@@ -5908,7 +5919,22 @@ function teamMatchesLoose(a, b) {
     const baseB = normalizeTeamNameStrict(getTeamBase(b));
     if (baseA && baseB && baseA === baseB) return false;
   }
-  return ka === kb || ka.includes(kb) || kb.includes(ka);
+  // Exact match first
+  if (ka === kb) return true;
+  // For substring matches, require that they don't both have significant prefixes
+  // (e.g., "ripollet benjami b" should NOT loosely match "benjami b" if both have suffixes)
+  if (sa && sb) {
+    // Both have suffixes: only accept if one is contained in the other AND they share significant base
+    const baseA = normalizeTeamNameStrict(getTeamBase(a));
+    const baseB = normalizeTeamNameStrict(getTeamBase(b));
+    if (!baseA || !baseB) return ka.includes(kb) || kb.includes(ka);
+    // If bases differ, don't accept substring match
+    if (!baseA.includes(baseB) && !baseB.includes(baseA)) return false;
+    // Bases overlap, accept loose match
+    return ka.includes(kb) || kb.includes(ka);
+  }
+  // At least one has no suffix: use original loose match logic
+  return ka.includes(kb) || kb.includes(ka);
 }
 
 function normalizeTeamNameStrict(name) {
