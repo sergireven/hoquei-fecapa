@@ -286,12 +286,39 @@ function _coachSetFavoritePersistStatus(type = "idle", text = "") {
   coachFavoritePersistStatus = { type: String(type || "idle"), text: String(text || "") };
 }
 
+function _coachFavoriteTeamNameForDB(choice) {
+  return buildFullTeamName(choice?.clubName || "", choice?.teamName || "", _coachSeasonKey());
+}
+
+function _coachTeamNameFromStoredFavorite(rec) {
+  const raw = String(rec?.team_name || rec?.teamName || "").trim();
+  const club = String(rec?.club_name || rec?.clubName || "").trim();
+  const season = String(_coachSeasonKey() || "").trim();
+  if (!raw) return "";
+  let out = raw;
+  if (club && out.startsWith(`${club} `)) out = out.slice(club.length + 1).trim();
+  if (season && out.endsWith(` ${season}`)) out = out.slice(0, -(season.length + 1)).trim();
+  return out;
+}
+
 async function _coachFavoriteExistsRemote(choice, writeUid = "") {
   const sb = _csb();
   const uid = writeUid || await _coachAuthUidForWrite();
   if (!sb || !uid || !choice) return true;
+  const dbTeamName = _coachFavoriteTeamNameForDB(choice);
   try {
     const { data, error } = await sb
+      .from("coach_favorite_teams")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("club_name", choice.clubName || "")
+      .eq("team_name", dbTeamName)
+      .eq("team_category", choice.category || "")
+      .limit(1)
+      .maybeSingle();
+    if (!error && data?.id) return true;
+
+    const { data: legacyData, error: legacyError } = await sb
       .from("coach_favorite_teams")
       .select("id")
       .eq("user_id", uid)
@@ -300,8 +327,8 @@ async function _coachFavoriteExistsRemote(choice, writeUid = "") {
       .eq("team_category", choice.category || "")
       .limit(1)
       .maybeSingle();
-    if (error) return false;
-    return Boolean(data?.id);
+    if (legacyError) return false;
+    return Boolean(legacyData?.id);
   } catch {
     return false;
   }
@@ -636,7 +663,7 @@ async function _coachLoadFavoriteTeams(options = null) {
   const sb = _csb();
   const uid = await _cauthUid();
   const mapChoice = rec => {
-    const team = String(rec?.team_name || rec?.teamName || "").trim();
+    const team = _coachTeamNameFromStoredFavorite(rec);
     const category = String(rec?.team_category || rec?.category || "").trim();
     const club = String(rec?.club_name || rec?.clubName || "").trim();
     return _coachResolveTeamChoiceByValue(_coachOptionValue(team, category, club), options);
@@ -682,11 +709,13 @@ async function _coachToggleFavoriteTeam(optionValue) {
     coachFavoriteTeams = coachFavoriteTeams.filter(x => String(x.optionValue) !== String(choice.optionValue));
     if (sb && writeUid) {
       try {
+        const dbTeamName = _coachFavoriteTeamNameForDB(choice);
         await sb.from("coach_favorite_teams")
           .delete()
           .eq("user_id", writeUid)
           .eq("club_name", choice.clubName || "")
-          .eq("team_name", choice.teamName || "");
+          .in("team_name", [dbTeamName, choice.teamName || ""])
+          .eq("team_category", choice.category || "");
       } catch (err) {
         console.warn("[coach] favorite delete failed", err);
         _coachSetFavoritePersistStatus("error", "No s'ha pogut treure el favorit de la BD.");
