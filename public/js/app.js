@@ -558,6 +558,87 @@ async function _removeFavFromCloud(type, key) {
   if (error) console.error("[fav] delete error", type, key, error);
 }
 
+// ── Clear user-created localStorage (keep preferences) ──────────────────────
+// Usage: clearHoqueiUserData() from browser console, or via UI button
+function clearHoqueiUserData() {
+  const USER_DATA_KEYS = [
+    "hoquei_coordinator_favorite_v1",
+    "hoquei_coordinator_trainings_v1",
+    "hoquei_coordinator_convocatorias_v2",
+    "hoquei_coordinator_adhoc_matches_v1",
+    "hoquei_user_convocation_availability_v1",
+    "hoquei_favs_v8",
+    "hoquei_level_favs_v1",
+    "hoquei_club_favs_v1",
+    "hoquei_player_favs_v1",
+    "hoquei_player_fav_meta_v1",
+    "hoquei_coach_favorite_teams_v1",
+    "hoquei_coach_selected_club_v1",
+    "hoquei_coach_tactic_board_state_v1",
+    "hoquei_coach_playbook_v1",
+  ];
+  const scopedPrefixes = [
+    "hoquei_coach_favorite_teams_v1::",
+    "hoquei_coach_selected_club_v1::",
+  ];
+  const keysToRemove = new Set(USER_DATA_KEYS);
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && scopedPrefixes.some(p => k.startsWith(p))) keysToRemove.add(k);
+  }
+  for (const k of keysToRemove) localStorage.removeItem(k);
+  console.log(`[clearHoquei] Cleared ${keysToRemove.size} user data keys.`);
+  return keysToRemove.size;
+}
+window.clearHoqueiUserData = clearHoqueiUserData;
+
+// ── Load coordinator data from Supabase (DB-primary) ────────────────────────
+async function _refreshCoordinatorFromDB() {
+  if (!_sb || !currentProfile?.id) return;
+  try {
+    // 1. Coordinator favourite club
+    const { data: favData } = await _sb
+      .from("coordinator_favorites")
+      .select("club_name, club_id")
+      .eq("user_id", currentProfile.id)
+      .maybeSingle();
+    if (favData?.club_name) {
+      const fav = { clubName: favData.club_name, clubId: favData.club_id || null, savedAt: new Date().toISOString() };
+      saveCoordinatorFavorite(fav);
+      if (!coordinatorClubSearch) coordinatorClubSearch = fav.clubName;
+    }
+
+    // 2. Ad-hoc matches
+    const { data: adHocData } = await _sb
+      .from("ad_hoc_matches")
+      .select("*")
+      .eq("coach_user_id", currentProfile.id);
+    if (Array.isArray(adHocData) && adHocData.length) {
+      const cache = {};
+      for (const row of adHocData) {
+        const club = String(row.club_name || "").trim();
+        if (!club) continue;
+        cache[club] = cache[club] || [];
+        cache[club].push({
+          id: row.id,
+          teamName: row.team_name || "",
+          type: row.type || "amistos",
+          location: row.location || "",
+          date: String(row.match_date || ""),
+          time: String(row.match_time || ""),
+          opponent: row.opponent || "",
+          createdAt: row.created_at || "",
+        });
+      }
+      saveCoordinatorAdHocMatchesCache(cache);
+    }
+
+    renderCoordinatorPanel();
+  } catch (err) {
+    console.warn("[coordinator] DB refresh failed", err);
+  }
+}
+
 function renderLoginButton() {
   if (!_sb) return `<button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer">+ Afegir equip</button>`;
   const loginBtn = currentUser
@@ -813,6 +894,13 @@ function openUserModal() {
       ${adminBtn}
       ${coordinadorBtn}
       ${entrenadorPanelBtn}
+      <details style="margin-bottom:10px">
+        <summary style="font-size:12px;color:#94a3b8;cursor:pointer;padding:8px 0">⚙ Configuració avançada</summary>
+        <div style="padding:8px 0">
+          <button onclick="clearHoqueiUserData();closeUserModal();location.reload();" style="width:100%;background:#fff;border:1.5px solid #fca5a5;color:#dc2626;font-weight:700;font-size:13px;padding:10px;border-radius:10px;cursor:pointer;margin-bottom:6px">🗑 Netejar dades locals (localStorage)</button>
+          <div style="font-size:11px;color:#94a3b8;line-height:1.5">Esborra favorits, convocatòries i partits emmagatzemats al navegador. Les dades a la base de dades no es toquen. La pàgina es recarregarà i tornarà a carregar des de la BD.</div>
+        </div>
+      </details>
       <button onclick="signOut()" style="width:100%;background:#f0f4f8;border:1.5px solid #e2e6ef;color:#e5001c;font-weight:700;font-size:14px;padding:12px;border-radius:12px;cursor:pointer">Tancar sessió</button>
     </div>`;
   $("user-modal-bd").style.display = "block";
@@ -1407,6 +1495,17 @@ function setCoordinatorFavorite(clubName, clubId = null) {
   coordinatorCalendarTeamFilter = "";
   coordinatorConvTeamFilter = "";
   coordinatorConvMatchKey = "";
+  // Write directly to coordinator_favorites table (DB-primary)
+  if (_sb && currentProfile?.id) {
+    _sb.from("coordinator_favorites").upsert({
+      user_id: currentProfile.id,
+      club_name: name,
+      club_id: clubId ? String(clubId) : null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" }).then(({ error }) => {
+      if (error) console.warn("[coord-fav] upsert error", error);
+    });
+  }
   _syncFavToCloud("coordinator_club", fav.clubName, fav);
 }
 
@@ -1976,6 +2075,8 @@ function openCoordinatorPanel() {
   const fav = loadCoordinatorFavorite();
   if (fav?.clubName && !coordinatorClubSearch) coordinatorClubSearch = fav.clubName;
   renderCoordinatorPanel();
+  // Refresh from DB in background — re-renders if new data found
+  _refreshCoordinatorFromDB();
 }
 
 function closeCoordinatorPanel() {
