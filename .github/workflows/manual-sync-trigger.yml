@@ -54,11 +54,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "Repository secret CRON_SECRET is not configured"
-            exit 1
-          fi
-
           if [ "${MODE}" = "full_pipeline" ]; then
             URL="${PROD_BASE_URL}/api/cron"
           else
@@ -67,10 +62,18 @@ jobs:
 
           echo "Calling: ${URL}"
 
-          curl --location --fail --show-error --silent \
-            -H "Accept: application/json" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${URL}" | tee sync-response.json
+          CURL_ARGS=(
+            --location --fail --show-error --silent
+            -H "Accept: application/json"
+          )
+
+          if [ -n "${CRON_SECRET:-}" ]; then
+            CURL_ARGS+=( -H "Authorization: Bearer ${CRON_SECRET}" )
+          else
+            echo "Warning: Repository secret CRON_SECRET is not configured. Sending request without Authorization header."
+          fi
+
+          curl "${CURL_ARGS[@]}" "${URL}" | tee sync-response.json
 
       - name: Validate response
         run: |
