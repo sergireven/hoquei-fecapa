@@ -825,6 +825,21 @@ function _coachMovePlayerForCarry(action, destination) {
   return _coachUpdateBoardEntityPosition("player", action.startId, destination);
 }
 
+function _coachMovePlayerForScreen(action, blockedPlayerId) {
+  if (action?.startKind !== "player" || !action?.startId) return false;
+  const blockedPlayer = _coachBoardPlayerById(blockedPlayerId);
+  if (!blockedPlayer) return false;
+  
+  // Calculate a position beside the blocked player (not on top)
+  // Distance: 3 units horizontally, based on their relative position
+  const dx = blockedPlayer.x - action.start.x;
+  const distFactor = Math.abs(dx) > 0.1 ? Math.sign(dx) : 1;
+  const newX = blockedPlayer.x - (distFactor * 3); // Position beside, not on top
+  const newY = blockedPlayer.y;
+  
+  return _coachUpdateBoardEntityPosition("player", action.startId, { x: newX, y: newY });
+}
+
 function _coachTabTeamHeader(tabKey, options = null) {
   const source = Array.isArray(options) ? options : _coachBuildClubTeamOptions();
   if (!source.length) return "";
@@ -4067,6 +4082,9 @@ function coachHandleBoardClick(evt, kind, id) {
   coachBoardState.annotations.push(_coachCreateAnnotation(tool, pending.start, entityPoint, annOpts));
   if (tool === "carry") {
     _coachMovePlayerForCarry(pending, entityPoint);
+  }
+  if (tool === "screen") {
+    _coachMovePlayerForScreen(pending, annOpts.blockedPlayerId);
   }
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;
