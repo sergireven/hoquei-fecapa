@@ -753,77 +753,10 @@ window.loginWithEmail = submitAuthForm;
 window.sendMagicLink  = submitAuthForm;
 
 if (typeof window.openCoachPanel !== "function") {
-  console.warn("[app.js] openCoachPanel not found on startup. Will attempt to load coach-panel.js on first use.");
-  let _coachPanelLoaderPromise = null;
-  const ensureCoachPanelLoaded = async () => {
-    console.log("[ensureCoachPanelLoaded] Checking if coach panel already loaded...");
-    if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
-      console.log("[ensureCoachPanelLoaded] Coach panel already loaded!");
-      return true;
-    }
-    if (_coachPanelLoaderPromise) {
-      console.log("[ensureCoachPanelLoaded] Already loading, waiting for result...");
-      return _coachPanelLoaderPromise;
-    }
-    _coachPanelLoaderPromise = new Promise(resolve => {
-      console.log("[ensureCoachPanelLoaded] Starting dynamic load...");
-      const existing = document.querySelector('script[data-coach-panel="1"]');
-      if (existing) {
-        if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
-          console.log("[ensureCoachPanelLoaded] Existing script already initialized openCoachPanel");
-          resolve(true);
-          return;
-        }
-        console.log("[ensureCoachPanelLoaded] Script tag already exists, attaching listeners...");
-        existing.addEventListener("load", () => {
-          console.log("[ensureCoachPanelLoaded] Existing script loaded!");
-          resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
-        }, { once: true });
-        existing.addEventListener("error", (err) => {
-          console.error("[ensureCoachPanelLoaded] Existing script error:", err);
-          resolve(false);
-        }, { once: true });
-        setTimeout(() => {
-          resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
-        }, 1500);
-        return;
-      }
-      const script = document.createElement("script");
-      const coachPanelUrl = new URL("js/coach-panel.js", document.baseURI || window.location.href);
-      coachPanelUrl.searchParams.set("v", String(Date.now()));
-      script.src = coachPanelUrl.toString();
-      script.async = true;
-      script.dataset.coachPanel = "1";
-      script.onload = () => {
-        console.log("[ensureCoachPanelLoaded] Script loaded successfully!");
-        console.log("[ensureCoachPanelLoaded] window.openCoachPanel type:", typeof window.openCoachPanel);
-        resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
-      };
-      script.onerror = (err) => {
-        console.error("[ensureCoachPanelLoaded] Script load error:", err);
-        resolve(false);
-      };
-      document.body.appendChild(script);
-      console.log("[ensureCoachPanelLoaded] Script tag appended to body");
-    }).finally(() => {
-      _coachPanelLoaderPromise = null;
-    });
-    return _coachPanelLoaderPromise;
+  console.warn("[app.js] openCoachPanel not found on startup. Using static fallback.");
+  window.openCoachPanel = function () {
+    alert("El panell d'entrenador no s'ha pogut carregar. Recarrega la pàgina.");
   };
-
-  const fallbackOpenCoachPanel = async function () {
-    console.log("[fallbackOpenCoachPanel] Called");
-    const loaded = await ensureCoachPanelLoaded();
-    console.log("[fallbackOpenCoachPanel] Load result:", loaded, "openCoachPanel type:", typeof window.openCoachPanel);
-    if (loaded && typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
-      console.log("[fallbackOpenCoachPanel] Calling real openCoachPanel");
-      return window.openCoachPanel();
-    }
-    console.error("[fallbackOpenCoachPanel] Failed to load coach panel or function not found");
-    alert("El panell d'entrenador no s'ha pogut carregar. Torna-ho a provar o recarrega la pàgina.");
-  };
-
-  window.openCoachPanel = fallbackOpenCoachPanel;
 }
 
 if (typeof window.closeCoachPanel !== "function") {
