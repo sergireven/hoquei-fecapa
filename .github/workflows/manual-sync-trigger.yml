@@ -63,7 +63,7 @@ jobs:
           echo "Calling: ${URL}"
 
           CURL_ARGS=(
-            --location --fail --show-error --silent
+            --location --show-error --silent
             -H "Accept: application/json"
           )
 
@@ -73,7 +73,15 @@ jobs:
             echo "Warning: Repository secret CRON_SECRET is not configured. Sending request without Authorization header."
           fi
 
-          curl "${CURL_ARGS[@]}" "${URL}" | tee sync-response.json
+          HTTP_CODE="$(curl "${CURL_ARGS[@]}" --output sync-response.json --write-out "%{http_code}" "${URL}")"
+          echo "HTTP status: ${HTTP_CODE}"
+
+          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
+            echo "Sync endpoint returned non-success status"
+            echo "Response body:"
+            cat sync-response.json || true
+            exit 1
+          fi
 
       - name: Validate response
         run: |
