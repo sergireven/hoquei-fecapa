@@ -769,25 +769,35 @@ if (typeof window.openCoachPanel !== "function") {
       console.log("[ensureCoachPanelLoaded] Starting dynamic load...");
       const existing = document.querySelector('script[data-coach-panel="1"]');
       if (existing) {
+        if (typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel) {
+          console.log("[ensureCoachPanelLoaded] Existing script already initialized openCoachPanel");
+          resolve(true);
+          return;
+        }
         console.log("[ensureCoachPanelLoaded] Script tag already exists, attaching listeners...");
         existing.addEventListener("load", () => {
           console.log("[ensureCoachPanelLoaded] Existing script loaded!");
-          resolve(true);
+          resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
         }, { once: true });
         existing.addEventListener("error", (err) => {
           console.error("[ensureCoachPanelLoaded] Existing script error:", err);
           resolve(false);
         }, { once: true });
+        setTimeout(() => {
+          resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
+        }, 1500);
         return;
       }
       const script = document.createElement("script");
-      script.src = `js/coach-panel.js?v=${Date.now()}`;
+      const coachPanelUrl = new URL("js/coach-panel.js", document.baseURI || window.location.href);
+      coachPanelUrl.searchParams.set("v", String(Date.now()));
+      script.src = coachPanelUrl.toString();
       script.async = true;
       script.dataset.coachPanel = "1";
       script.onload = () => {
         console.log("[ensureCoachPanelLoaded] Script loaded successfully!");
         console.log("[ensureCoachPanelLoaded] window.openCoachPanel type:", typeof window.openCoachPanel);
-        resolve(true);
+        resolve(typeof window.openCoachPanel === "function" && window.openCoachPanel !== fallbackOpenCoachPanel);
       };
       script.onerror = (err) => {
         console.error("[ensureCoachPanelLoaded] Script load error:", err);

@@ -69,8 +69,8 @@ jobs:
       - name: Executar scrapers previs
         if: ${{ inputs.run_prereq_scrapers }}
         run: |
-          node api/scraper-sidgad.js
-          node api/scraper-fecapa-categories.js \
+          npm run scrape:sidgad
+          node jobs/scraper-fecapa-categories.js \
             --category "NACIONAL CATALANA" \
             --category "PRIMERA CATALANA" \
             --category "SEGONA CATALANA" \

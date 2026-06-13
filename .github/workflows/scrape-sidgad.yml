@@ -30,7 +30,7 @@ jobs:
         run: npm install
 
       - name: Run Sidgad scraper
-        run: node api/scraper-sidgad.js
+        run: npm run scrape:sidgad
         env:
           NODE_ENV: production
           FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}

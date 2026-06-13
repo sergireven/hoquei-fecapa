@@ -39,12 +39,12 @@ jobs:
       - name: Executar scraper sidgad (dades jugadors)
         run: |
           set -euo pipefail
-          node api/scraper-sidgad.js
+          npm run scrape:sidgad
 
       - name: Executar scraper categories FECAPA
         run: |
           set -euo pipefail
-          node api/scraper-fecapa-categories.js \
+          node jobs/scraper-fecapa-categories.js \
             --category "NACIONAL CATALANA" \
             --category "PRIMERA CATALANA" \
             --category "SEGONA CATALANA" \
@@ -63,7 +63,7 @@ jobs:
       - name: Executar scraper principal
         run: |
           set -euo pipefail
-          node api/scraper.js
+          npm run scrape:on
 
       - name: Validar sortides mínimes
         run: |
