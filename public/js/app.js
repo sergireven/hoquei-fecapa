@@ -5598,6 +5598,8 @@ let userFavCalendarTeamFilter = "";
 let userFavConvTeamFilter = "";
 let userFavConvSelectedMatchKey = "";
 let userFavConvSavedAtByMatch = {};
+const userTutorConvPlayersByMatchCache = {};
+const userTutorConvPlayersByMatchInflight = {};
 const seasonDataCache = new Map();
 const globalJugadorsIndex = new Map();
 let allSearch     = "";
@@ -8438,6 +8440,41 @@ function getUserFavoriteTeamFilterOptions() {
     });
 }
 
+function getUserFavoriteTutorConvTeamFilterOptions() {
+  const items = [];
+  const upsert = (teamName, category = "") => {
+    const team = String(teamName || "").trim();
+    const cat = String(category || "").trim();
+    if (!team) return;
+    const existing = items.find(it => teamMatchesCalendarExact(it.teamName, team) || teamMatchesLoose(it.teamName, team));
+    if (!existing) {
+      items.push({ teamName: team, category: cat });
+      return;
+    }
+    if (!existing.category && cat) existing.category = cat;
+  };
+
+  for (const player of getUserFavoritePlayersForTeam("", "")) {
+    upsert(player?.team || "", player?.category || "");
+  }
+
+  return items
+    .sort((a, b) => String(a.teamName).localeCompare(String(b.teamName)))
+    .map(item => {
+      const catLabel = item.category ? (CAT_LABELS[item.category] || item.category) : "";
+      const teamLabel = shortTeamDisplayName(item.teamName || "");
+      return {
+        ...item,
+        categoryLabel: catLabel,
+        chipLabel: catLabel ? `${teamLabel} · ${catLabel}` : teamLabel,
+      };
+    });
+}
+
+function getUserFavoriteTutorConvTeamNames() {
+  return getUserFavoriteTutorConvTeamFilterOptions().map(item => item.teamName);
+}
+
 function getUserFavoritePlayersForTeam(teamName = "", categoryName = "") {
   const selectedTeam = String(teamName || "").trim();
   const selectedCategory = String(categoryName || "").trim();
@@ -8460,9 +8497,102 @@ function getUserFavoritePlayersForTeam(teamName = "", categoryName = "") {
   return filtered;
 }
 
+function normalizeTutorPlayerNameKey(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function loadTutorConvocatoriaPlayerNameKeys(match, teamName, matchKey) {
+  if (!_sb || !match) return { hasConvocatoria: false, playerNameKeys: null };
+  const convocatoriaId = await findConvocatoriaIdForMatch(match.home, match.away, teamName, matchKey);
+  if (!convocatoriaId) return { hasConvocatoria: false, playerNameKeys: null };
+
+  const { data, error } = await _sb
+    .from("convocatorias")
+    .select("players")
+    .eq("id", convocatoriaId)
+    .maybeSingle();
+
+  if (error || !data) return { hasConvocatoria: true, playerNameKeys: new Set() };
+
+  const keys = new Set(
+    (Array.isArray(data.players) ? data.players : [])
+      .map(player => normalizeTutorPlayerNameKey(player?.name || ""))
+      .filter(Boolean)
+  );
+  return { hasConvocatoria: true, playerNameKeys: keys };
+}
+
+function ensureTutorConvocatoriaPlayerKeys(match, teamName, matchKey) {
+  const key = String(matchKey || "").trim();
+  if (!key || !_sb) return;
+  if (Object.prototype.hasOwnProperty.call(userTutorConvPlayersByMatchCache, key)) return;
+  if (userTutorConvPlayersByMatchInflight[key]) return;
+
+  userTutorConvPlayersByMatchInflight[key] = loadTutorConvocatoriaPlayerNameKeys(match, teamName, key)
+    .then(result => {
+      userTutorConvPlayersByMatchCache[key] = result;
+    })
+    .catch(() => {
+      userTutorConvPlayersByMatchCache[key] = { hasConvocatoria: false, playerNameKeys: null };
+    })
+    .finally(() => {
+      delete userTutorConvPlayersByMatchInflight[key];
+      if (userFavView === "convocatories") renderUserFavConvocatoriesPanel();
+    });
+}
+
+async function getTutorConvocatoriaPlayerKeysForMatch(match, teamName, matchKey) {
+  const key = String(matchKey || "").trim();
+  if (!key || !_sb) return { hasConvocatoria: false, playerNameKeys: null };
+  if (Object.prototype.hasOwnProperty.call(userTutorConvPlayersByMatchCache, key)) {
+    return userTutorConvPlayersByMatchCache[key];
+  }
+  const loaded = await loadTutorConvocatoriaPlayerNameKeys(match, teamName, key);
+  userTutorConvPlayersByMatchCache[key] = loaded;
+  return loaded;
+}
+
+function getUserFavoritePlayersForTutorConv(match, teamName = "", categoryName = "", coordinatorPlayersFilter = null) {
+  const selectedTeam = String(teamName || "").trim();
+  const selectedCategory = String(categoryName || "").trim();
+  if (!selectedTeam) return [];
+  const base = getUserFavoritePlayersForTeam(selectedTeam, selectedCategory)
+    .filter(player => !selectedTeam || (player?.team && teamMatchesCalendarExact(player.team, selectedTeam)));
+
+  if (!coordinatorPlayersFilter?.hasConvocatoria || !(coordinatorPlayersFilter.playerNameKeys instanceof Set)) {
+    return base;
+  }
+  if (!coordinatorPlayersFilter.playerNameKeys.size) return [];
+
+  return base.filter(player => coordinatorPlayersFilter.playerNameKeys.has(normalizeTutorPlayerNameKey(player?.name || "")));
+}
+
 function resolveUserFavoriteTeamForMatch(match, fallbackTeam = "") {
   const fallback = String(fallbackTeam || "").trim();
   const favTeams = getUserFavoriteTeamNames();
+  const home = String(match?.home || "").trim();
+  const away = String(match?.away || "").trim();
+
+  if (fallback) {
+    const fallbackMatch = favTeams.find(t => teamMatchesCalendarExact(t, fallback) || teamMatchesLoose(t, fallback));
+    if (fallbackMatch) return fallbackMatch;
+  }
+
+  const exact = favTeams.find(t => teamMatchesCalendarExact(home, t) || teamMatchesCalendarExact(away, t));
+  if (exact) return exact;
+
+  const loose = favTeams.find(t => teamMatchesLoose(home, t) || teamMatchesLoose(away, t));
+  return loose || fallback || "";
+}
+
+function resolveUserFavoriteTutorTeamForMatch(match, fallbackTeam = "") {
+  const fallback = String(fallbackTeam || "").trim();
+  const favTeams = getUserFavoriteTutorConvTeamNames();
   const home = String(match?.home || "").trim();
   const away = String(match?.away || "").trim();
 
@@ -8621,6 +8751,62 @@ function getUserFavoriteUpcomingMatches(teamFilter = "") {
   return [...uniq.values()].sort((a, b) => a.ts - b.ts);
 }
 
+function getUserFavoriteUpcomingMatchesForTutorConv(teamFilter = "") {
+  const selectedTeam = String(teamFilter || "").trim();
+  const teamPool = selectedTeam ? [selectedTeam] : getUserFavoriteTutorConvTeamNames();
+  if (!teamPool.length) return [];
+
+  const nowTs = Date.now();
+  const matches = [];
+  for (const [categoryName, comps] of Object.entries(DB?.categories || {})) {
+    for (const comp of (Array.isArray(comps) ? comps : [comps])) {
+      for (const match of (comp?.calendar || [])) {
+        if (!matchBelongsToCoordinatorPool(match, teamPool)) continue;
+        const ts = parseMatchKickoffTimestamp(match, comp?.name || "");
+        if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
+        matches.push({
+          compName: comp?.name || "",
+          category: String(categoryName).trim(),
+          date: match?.date || "",
+          time: match?.time || "",
+          home: match?.home || "",
+          away: match?.away || "",
+          ts,
+          matchedTeam: findCoordinatorMatchedTeam(match, teamPool) || selectedTeam || "",
+        });
+      }
+    }
+  }
+
+  for (const item of getCoordinatorAdHocMatchesForPool(teamPool, selectedTeam)) {
+    const pseudo = {
+      date: item.date,
+      time: item.time,
+      compName: `Partit ${formatConvocationTypeLabel(item.type)} (ad-hoc)`,
+    };
+    const ts = parseMatchKickoffTimestamp(pseudo, pseudo.compName);
+    if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
+    matches.push({
+      compName: pseudo.compName,
+      date: item.date,
+      time: item.time,
+      home: item.teamName,
+      away: item.opponent || (item.type === "torneig" ? "Rival torneig" : "Rival amistos"),
+      ts,
+      matchedTeam: item.teamName,
+      isAdHoc: true,
+      location: item.location,
+    });
+  }
+
+  const uniq = new Map();
+  for (const m of matches) {
+    const key = [m.compName, m.date, m.time, m.home, m.away].join("|");
+    if (!uniq.has(key)) uniq.set(key, m);
+  }
+  return [...uniq.values()].sort((a, b) => a.ts - b.ts);
+}
+
 function userConvocationMatchKey(match) {
   return [match?.compName || "", match?.date || "", match?.time || "", match?.home || "", match?.away || ""]
     .map(v => encodeURIComponent(String(v || "")))
@@ -8703,18 +8889,21 @@ function renderUserFavConvocatoriesPanel() {
   const panel = $("user-favs-utility-panel");
   if (!panel) return;
   const isMobile = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
-  const teamOptions = getUserFavoriteTeamFilterOptions();
+  const teamOptions = getUserFavoriteTutorConvTeamFilterOptions();
   const teams = teamOptions.map(t => t.teamName);
   if (userFavConvTeamFilter && !teams.includes(userFavConvTeamFilter)) userFavConvTeamFilter = "";
-  const allMatches = getUserFavoriteUpcomingMatches(userFavConvTeamFilter || "").slice(0, 18);
+  const allMatches = getUserFavoriteUpcomingMatchesForTutorConv(userFavConvTeamFilter || "").slice(0, 18);
   const leadMinutes = getGlobalConvocationLeadMinutes();
   const availabilityStore = loadUserConvAvailabilityStore();
   
   // Filter matches: only show if there are players for that team+category
   const matches = allMatches.filter(match => {
-    const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
+    const mKey = userConvocationMatchKey(match);
+    const matchedFavoriteTeam = resolveUserFavoriteTutorTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
     const matchCategory = String(match.category || "").trim();
-    const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam, matchCategory);
+    ensureTutorConvocatoriaPlayerKeys(match, matchedFavoriteTeam, mKey);
+    const coordinatorPlayersFilter = userTutorConvPlayersByMatchCache[mKey] || null;
+    const players = getUserFavoritePlayersForTutorConv(match, matchedFavoriteTeam, matchCategory, coordinatorPlayersFilter);
     return players.length > 0;
   });
   
@@ -8739,9 +8928,11 @@ function renderUserFavConvocatoriesPanel() {
         const isOpen = mKey === userFavConvSelectedMatchKey;
         const convDateTime = formatConvocationDateTime(match, leadMinutes);
         const matchMeta = getUserConvMatchMeta(match);
-        const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
+        const matchedFavoriteTeam = resolveUserFavoriteTutorTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
         const matchCategory = String(match.category || "").trim();
-        const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam, matchCategory);
+        ensureTutorConvocatoriaPlayerKeys(match, matchedFavoriteTeam, mKey);
+        const coordinatorPlayersFilter = userTutorConvPlayersByMatchCache[mKey] || null;
+        const players = getUserFavoritePlayersForTutorConv(match, matchedFavoriteTeam, matchCategory, coordinatorPlayersFilter);
         const summary = getUserConvAvailabilitySummary(players, availabilityStore?.[mKey] || {});
         const savedState = userFavConvSavedAtByMatch?.[mKey] || null;
         const savedLabel = savedState?.text || "";
@@ -8785,7 +8976,7 @@ function renderUserFavConvocatoriesPanel() {
               </select>
               <input type="text" value="${esc(stored.note || "")}" onchange="userSetConvPlayerNote('${mKey}','${esc(player.id)}', this.value)" placeholder="Nota tutor" style="width:100%;padding:7px 8px;border:1px solid #dbe3f0;border-radius:8px;font-size:12px"/>
             </div>`;
-          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">No hi ha jugadors favorits vinculats a aquest equip.</div>`}
+          }).join("")}</div>` : `<div style="font-size:12px;color:#94a3b8">${coordinatorPlayersFilter?.hasConvocatoria ? "No tens jugadors favorits dins aquesta convocatòria." : "No hi ha jugadors favorits vinculats a aquest equip."}</div>`}
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button onclick="userSaveConvocatoria('${mKey}');event.stopPropagation();" style="background:#1a2035;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer">💾 Guardar</button>
             <div style="font-size:11px;color:${savedColor};font-weight:700">${esc(savedLabel)}</div>
@@ -8886,7 +9077,7 @@ async function userSaveConvocatoria(matchKey) {
   const key = String(matchKey || "");
   if (!key) return;
 
-  const match = getUserFavoriteUpcomingMatches(userFavConvTeamFilter || "")
+  const match = getUserFavoriteUpcomingMatchesForTutorConv(userFavConvTeamFilter || "")
     .slice(0, 18)
     .find(m => userConvocationMatchKey(m) === key);
 
@@ -8896,71 +9087,78 @@ async function userSaveConvocatoria(matchKey) {
     return;
   }
 
-  const matchedFavoriteTeam = resolveUserFavoriteTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
-  const players = getUserFavoritePlayersForTeam(matchedFavoriteTeam);
-  const store = loadUserConvAvailabilityStore();
-  const byPlayer = store?.[key] || {};
-  const responses = players.map(player => ({
-    player_id: String(player.id || ""),
-    player_name: String(player.name || ""),
-    team_name: String(matchedFavoriteTeam || ""),
-    status: String(byPlayer?.[player.id]?.status || "pendent"),
-    note: String(byPlayer?.[player.id]?.note || ""),
-  }));
-
   userFavConvSavedAtByMatch[key] = { text: "Guardant...", tone: "saving" };
   renderUserFavConvocatoriesPanel();
 
-  // Always save to old table (backward compat + local fallback)
-  const result = await saveTutorConvocatoriaToSupabase({
-    matchKey: key,
-    teamName: matchedFavoriteTeam,
-    competitionName: match.compName,
-    matchHome: match.home,
-    matchAway: match.away,
-    responses,
-  });
+  try {
+    const matchedFavoriteTeam = resolveUserFavoriteTutorTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
+    const coordinatorPlayersFilter = await getTutorConvocatoriaPlayerKeysForMatch(match, matchedFavoriteTeam, key);
+    const players = getUserFavoritePlayersForTutorConv(match, matchedFavoriteTeam, String(match.category || "").trim(), coordinatorPlayersFilter);
+    const store = loadUserConvAvailabilityStore();
+    const byPlayer = store?.[key] || {};
+    const responses = players.map(player => ({
+      player_id: String(player.id || ""),
+      player_name: String(player.name || ""),
+      team_name: String(matchedFavoriteTeam || ""),
+      status: String(byPlayer?.[player.id]?.status || "pendent"),
+      note: String(byPlayer?.[player.id]?.note || ""),
+    }));
 
-  // Additionally write to junction table if coordinator has created the convocatoria
-  if (_sb && currentProfile?.id) {
-    try {
-      const convocatoriaId = await findConvocatoriaIdForMatch(match.home, match.away, matchedFavoriteTeam, key);
-      if (convocatoriaId) {
-        const junctionRows = responses.map(r => ({
-          convocatoria_id: convocatoriaId,
-          tutor_id: currentProfile.id,
-          player_name: r.player_name,
-          status: r.status,
-          note: r.note,
-          updated_at: new Date().toISOString(),
-        }));
-        // UPSERT one row per player (conflict on convocatoria_id + player_name + tutor_id)
-        const { error: jErr } = await _sb
-          .from("convocatoria_player_responses")
-          .upsert(junctionRows, { onConflict: "convocatoria_id,player_name,tutor_id" });
-        if (jErr) console.warn("[tutor-conv] junction upsert error", jErr);
+    // Always save to old table (backward compat + local fallback)
+    const result = await saveTutorConvocatoriaToSupabase({
+      matchKey: key,
+      teamName: matchedFavoriteTeam,
+      competitionName: match.compName,
+      matchHome: match.home,
+      matchAway: match.away,
+      responses,
+    });
+
+    // Additionally write to junction table if coordinator has created the convocatoria
+    if (_sb && currentProfile?.id) {
+      try {
+        const convocatoriaId = await findConvocatoriaIdForMatch(match.home, match.away, matchedFavoriteTeam, key);
+        if (convocatoriaId && responses.length) {
+          const junctionRows = responses.map(r => ({
+            convocatoria_id: convocatoriaId,
+            tutor_id: currentProfile.id,
+            player_name: r.player_name,
+            status: r.status,
+            note: r.note,
+            updated_at: new Date().toISOString(),
+          }));
+          // UPSERT one row per player (conflict on convocatoria_id + player_name + tutor_id)
+          const { error: jErr } = await _sb
+            .from("convocatoria_player_responses")
+            .upsert(junctionRows, { onConflict: "convocatoria_id,player_name,tutor_id" });
+          if (jErr) console.warn("[tutor-conv] junction upsert error", jErr);
+        }
+      } catch (jEx) {
+        console.warn("[tutor-conv] junction write error", jEx);
       }
-    } catch (jEx) {
-      console.warn("[tutor-conv] junction write error", jEx);
     }
-  }
 
-  if (!result.ok) {
-    if (result.reason === "no_session") {
-      userFavConvSavedAtByMatch[key] = { text: "Guardat local (sense sessió)", tone: "ok" };
-    } else {
-      console.warn("[tutor-conv] save error", result.error);
-      userFavConvSavedAtByMatch[key] = { text: "Error guardant a Supabase", tone: "error" };
+    if (!result.ok) {
+      if (result.reason === "no_session") {
+        userFavConvSavedAtByMatch[key] = { text: "Guardat local (sense sessió)", tone: "ok" };
+      } else {
+        console.warn("[tutor-conv] save error", result.error);
+        userFavConvSavedAtByMatch[key] = { text: "Error guardant a Supabase", tone: "error" };
+      }
+      renderUserFavConvocatoriesPanel();
+      return;
     }
+
+    userFavConvSavedAtByMatch[key] = {
+      text: `Guardat ${new Date().toLocaleTimeString("ca-ES", { hour: "2-digit", minute: "2-digit" })}`,
+      tone: "ok",
+    };
     renderUserFavConvocatoriesPanel();
-    return;
+  } catch (err) {
+    console.warn("[tutor-conv] unexpected save error", err);
+    userFavConvSavedAtByMatch[key] = { text: "Error inesperat guardant", tone: "error" };
+    renderUserFavConvocatoriesPanel();
   }
-
-  userFavConvSavedAtByMatch[key] = {
-    text: `Guardat ${new Date().toLocaleTimeString("ca-ES", { hour: "2-digit", minute: "2-digit" })}`,
-    tone: "ok",
-  };
-  renderUserFavConvocatoriesPanel();
 }
 
 function userToggleConvMatchDetail(matchKey) {
