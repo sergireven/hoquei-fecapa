@@ -3202,17 +3202,8 @@ async function coachSaveTraining() {
     coachTrainingsLoaded  = false;
     await _loadTrainings();
     renderCoachPanel();
-  } else {
-    setMsg("✓ Entrenament desat.", "#16a34a");
-    coachPlanningPillars  = [];
-    coachPlanningNotes    = "";
-    coachTrainingsLoaded  = false;
-    await _loadTrainings();
-    renderCoachPanel();
   }
 }
-
-async function coachDeleteTraining(id) {
 
 async function coachDeleteTraining(id) {
   if (!confirm("Eliminar aquest entrenament?")) return;
