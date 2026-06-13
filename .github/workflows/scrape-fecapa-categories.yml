@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euxo pipefail
           echo "Starting scraper at $(date -u)"
-          node api/scraper-fecapa-categories.js \
+          node jobs/scraper-fecapa-categories.js \
             --category "NACIONAL CATALANA" \
             --category "PRIMERA CATALANA" \
             --category "SEGONA CATALANA" \
