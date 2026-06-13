@@ -131,6 +131,16 @@ const COACH_TACTIC_PLAYBOOK_KEY = "hoquei_coach_playbook_v1";
 const COACH_TACTIC_BOARD_STATE_KEY = "hoquei_coach_tactic_board_state_v1";
 const COACH_CONVOCATORIA_CACHE_KEY = "hoquei_coordinator_convocatorias_v2";
 const COACH_FAVORITE_TEAMS_KEY = "hoquei_coach_favorite_teams_v1";
+
+// Construeix team_name harmonitzat: Club + Equip + Temporada
+// Exemple: "Club Hoquei Ripollet Prebenjamí B 2025-26"
+function buildFullTeamName(clubName, teamName, season = "2025-26") {
+  const club = String(clubName || "").trim();
+  const team = String(teamName || "").trim();
+  const s = String(season || "2025-26").trim();
+  if (!club || !team) return "";
+  return `${club} ${team} ${s}`;
+}
 const COACH_SELECTED_CLUB_KEY = "hoquei_coach_selected_club_v1";
 const COACH_MAX_FAVORITES = 2;
 const COACH_DEFAULT_TACTIC_IDX = 1; // 2-2 Defensiu
@@ -371,12 +381,9 @@ function _coachSeasonLabel() {
 
 function _coachTeamIdentityLabel(choice = null) {
   const club = String(choice?.clubName || coachClubInput || "").trim();
-  const categoryKey = String(choice?.category || "").trim();
-  const categoryLabel = categoryKey
-    ? ((typeof CAT_LABELS !== "undefined" && CAT_LABELS[categoryKey]) ? CAT_LABELS[categoryKey] : categoryKey)
-    : "";
+  const teamName = String(choice?.teamName || "").trim();
   const seasonLabel = _coachSeasonLabel();
-  return [club, categoryLabel, seasonLabel].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  return buildFullTeamName(club, teamName, seasonLabel);
 }
 
 function _coachLoadConvocatoriaStore() {
@@ -699,7 +706,7 @@ async function _coachToggleFavoriteTeam(optionValue) {
         await sb.from("coach_favorite_teams").upsert({
           user_id: writeUid,
           club_name: choice.clubName || "",
-          team_name: choice.teamName || "",
+          team_name: buildFullTeamName(choice.clubName || "", choice.teamName || "", _coachSeasonKey()),
           team_category: choice.category || "",
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id,club_name,team_name,team_category" });
@@ -737,7 +744,7 @@ async function _coachEnsureFavoriteTeam(optionValue) {
       await sb.from("coach_favorite_teams").upsert({
         user_id: writeUid,
         club_name: choice.clubName || "",
-        team_name: choice.teamName || "",
+        team_name: buildFullTeamName(choice.clubName || "", choice.teamName || "", _coachSeasonKey()),
         team_category: choice.category || "",
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,club_name,team_name,team_category" });
@@ -816,6 +823,21 @@ function _coachShouldRenderInteractivePuck() {
 function _coachMovePlayerForCarry(action, destination) {
   if (action?.startKind !== "player" || !action?.startId) return false;
   return _coachUpdateBoardEntityPosition("player", action.startId, destination);
+}
+
+function _coachMovePlayerForScreen(action, blockedPlayerId) {
+  if (action?.startKind !== "player" || !action?.startId) return false;
+  const blockedPlayer = _coachBoardPlayerById(blockedPlayerId);
+  if (!blockedPlayer) return false;
+  
+  // Calculate a position beside the blocked player (not on top)
+  // Distance: 3 units horizontally, based on their relative position
+  const dx = blockedPlayer.x - action.start.x;
+  const distFactor = Math.abs(dx) > 0.1 ? Math.sign(dx) : 1;
+  const newX = blockedPlayer.x - (distFactor * 3); // Position beside, not on top
+  const newY = blockedPlayer.y;
+  
+  return _coachUpdateBoardEntityPosition("player", action.startId, { x: newX, y: newY });
 }
 
 function _coachTabTeamHeader(tabKey, options = null) {
@@ -3385,7 +3407,7 @@ async function coachSaveMatchEvents() {
 
   const payload = {
     coach_user_id:     uid,
-    team_name:         team,
+    team_name:         team || "",
     match_date:        coachMatchState.matchDate,
     opponent:          coachMatchState.opponent || "",
     is_home:           coachMatchState.isHome,
@@ -4060,6 +4082,9 @@ function coachHandleBoardClick(evt, kind, id) {
   coachBoardState.annotations.push(_coachCreateAnnotation(tool, pending.start, entityPoint, annOpts));
   if (tool === "carry") {
     _coachMovePlayerForCarry(pending, entityPoint);
+  }
+  if (tool === "screen") {
+    _coachMovePlayerForScreen(pending, annOpts.blockedPlayerId);
   }
   _coachBallActionFollow(tool, kind, id, entityPoint);
   coachBoardState.pendingAction = null;

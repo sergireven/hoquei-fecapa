@@ -1320,6 +1320,8 @@ let coordinatorConvMatchKey = "";
 let coordinatorConvPreviousMatchKey = "";
 let coordinatorConvAdHocFormOpen = false;
 let coordinatorConvAdHocEditingId = null;
+// tutor responses cache: convocatoria_id → { [playerNameLower]: [{ tutorId, status, note }] }
+let convPlayerResponsesCache = {};
 
 function getGlobalConvocationLeadMinutes() {
   const raw = Number(localStorage.getItem(CONVOCATION_GLOBAL_LEAD_MINUTES_KEY));
@@ -3164,6 +3166,37 @@ async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey) {
   return conv;
 }
 
+// Load tutor player responses for a given convocatoria from the junction table
+async function loadPlayerResponsesForConvocatoria(convocatoriaId) {
+  if (!_sb || !convocatoriaId) return {};
+  const { data, error } = await _sb
+    .from("convocatoria_player_responses")
+    .select("player_name, tutor_id, status, note, updated_at")
+    .eq("convocatoria_id", convocatoriaId);
+  if (error || !data) return {};
+  const byPlayer = {};
+  for (const row of data) {
+    const key = String(row.player_name || "").toLowerCase();
+    byPlayer[key] = byPlayer[key] || [];
+    byPlayer[key].push({ tutorId: row.tutor_id, status: row.status, note: row.note, updatedAt: row.updated_at });
+  }
+  return byPlayer;
+}
+
+// Find convocatoria_id for a given match (used by tutor panel)
+async function findConvocatoriaIdForMatch(matchHome, matchAway, teamName) {
+  if (!_sb || !matchHome || !matchAway) return null;
+  // Try exact match first, then looser match on home+away alone
+  const { data } = await _sb
+    .from("convocatorias")
+    .select("id")
+    .eq("match_home", matchHome)
+    .eq("match_away", matchAway)
+    .limit(1)
+    .maybeSingle();
+  return data?.id || null;
+}
+
 function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = "") {
   const teamPool = getCoordinatorTeamPool(clubName, teamName);
   const useStrictFilter = Boolean(String(teamName || "").trim());
@@ -3720,21 +3753,45 @@ async function coordinatorGenerateConvocatoria() {
     );
   }
 
+  // Load player responses from junction table if convocatoria is saved in Supabase
+  const supabaseId = convocatoria.supabaseId || null;
+  if (supabaseId) {
+    loadPlayerResponsesForConvocatoria(supabaseId).then(responses => {
+      convPlayerResponsesCache[supabaseId] = responses;
+      renderConvocatoriaPlayers(convocatoria);
+    });
+  }
   renderConvocatoriaPlayers(convocatoria);
   renderCoordinatorConvMatchSummary();
   $("convocatoria-players-container").style.display = "block";
 }
 
+function _tutorStatusBadge(responses) {
+  if (!responses || !responses.length) return "";
+  const labels = { disponible: "✓ Disponible", dubte: "⚠ Dubte", no_disponible: "✗ No disponible" };
+  const colors = { disponible: "#dcfce7;color:#166534", dubte: "#fef3c7;color:#92400e", no_disponible: "#fee2e2;color:#991b1b" };
+  return responses.map(r => {
+    const label = labels[r.status] || r.status;
+    const color = colors[r.status] || "#f1f5f9;color:#475569";
+    const note = r.note ? ` · ${esc(r.note)}` : "";
+    return `<span style="display:inline-block;font-size:10px;font-weight:700;background:${color};border-radius:999px;padding:2px 7px;margin-top:4px">👨‍👩‍👦 ${label}${note}</span>`;
+  }).join(" ");
+}
+
 function renderConvocatoriaPlayers(convocatoria) {
   const container = $("convocatoria-players-list");
   if (!container || !convocatoria) return;
+  const cachedResponses = convocatoria.supabaseId ? (convPlayerResponsesCache[convocatoria.supabaseId] || {}) : {};
   container.innerHTML = convocatoria.players.map(player => {
     const encodedName = encodeURIComponent(player.name || "");
+    const playerKey = String(player.name || "").toLowerCase();
+    const tutorResps = cachedResponses[playerKey] || [];
+    const tutorBadges = _tutorStatusBadge(tutorResps);
     return `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:12px;padding:12px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px">
         <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;flex:1">
           <input type="checkbox" ${player.checked !== false ? "checked" : ""} onchange="coordinatorToggleConvPlayer('${encodedName}', this.checked)" style="margin-top:2px;width:16px;height:16px;accent-color:#0f766e"/>
-          <span><span style="display:block;font-size:13px;font-weight:800;color:#1a2035">${esc(player.name)}</span><span style="display:block;font-size:11px;color:#64748b">${esc(player.position || "Jugador")}${player.dorsal ? ` · #${esc(player.dorsal)}` : ""}</span></span>
+          <span><span style="display:block;font-size:13px;font-weight:800;color:#1a2035">${esc(player.name)}</span><span style="display:block;font-size:11px;color:#64748b">${esc(player.position || "Jugador")}${player.dorsal ? ` · #${esc(player.dorsal)}` : ""}</span>${tutorBadges}</span>
         </label>
         <select onchange="coordinatorSetConvPlayerStatus('${encodedName}', this.value)" style="padding:6px 8px;border:1px solid #e2e6ef;border-radius:8px;font-size:11px;font-family:inherit">
           <option value="convocat" ${player.status === "convocat" ? "selected" : ""}>Convocat</option>
@@ -8588,6 +8645,7 @@ async function userSaveConvocatoria(matchKey) {
   userFavConvSavedAtByMatch[key] = { text: "Guardant...", tone: "saving" };
   renderUserFavConvocatoriesPanel();
 
+  // Always save to old table (backward compat + local fallback)
   const result = await saveTutorConvocatoriaToSupabase({
     matchKey: key,
     teamName: matchedFavoriteTeam,
@@ -8596,6 +8654,30 @@ async function userSaveConvocatoria(matchKey) {
     matchAway: match.away,
     responses,
   });
+
+  // Additionally write to junction table if coordinator has created the convocatoria
+  if (_sb && currentProfile?.id) {
+    try {
+      const convocatoriaId = await findConvocatoriaIdForMatch(match.home, match.away, matchedFavoriteTeam);
+      if (convocatoriaId) {
+        const junctionRows = responses.map(r => ({
+          convocatoria_id: convocatoriaId,
+          tutor_id: currentProfile.id,
+          player_name: r.player_name,
+          status: r.status,
+          note: r.note,
+          updated_at: new Date().toISOString(),
+        }));
+        // UPSERT one row per player (conflict on convocatoria_id + player_name + tutor_id)
+        const { error: jErr } = await _sb
+          .from("convocatoria_player_responses")
+          .upsert(junctionRows, { onConflict: "convocatoria_id,player_name,tutor_id" });
+        if (jErr) console.warn("[tutor-conv] junction upsert error", jErr);
+      }
+    } catch (jEx) {
+      console.warn("[tutor-conv] junction write error", jEx);
+    }
+  }
 
   if (!result.ok) {
     if (result.reason === "no_session") {
