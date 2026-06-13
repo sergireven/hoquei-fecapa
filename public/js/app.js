@@ -8567,15 +8567,20 @@ function getUserFavoritePlayersForTutorConv(match, teamName = "", categoryName =
   const selectedTeam = String(teamName || "").trim();
   const selectedCategory = String(categoryName || "").trim();
   if (!selectedTeam) return [];
-  const base = getUserFavoritePlayersForTeam(selectedTeam, selectedCategory)
+  const baseTeamPlayers = getUserFavoritePlayersForTeam(selectedTeam, selectedCategory)
     .filter(player => !selectedTeam || (player?.team && teamMatchesCalendarExact(player.team, selectedTeam)));
 
   if (!coordinatorPlayersFilter?.hasConvocatoria || !(coordinatorPlayersFilter.playerNameKeys instanceof Set)) {
-    return base;
+    return baseTeamPlayers;
   }
   if (!coordinatorPlayersFilter.playerNameKeys.size) return [];
 
-  return base.filter(player => coordinatorPlayersFilter.playerNameKeys.has(normalizeTutorPlayerNameKey(player?.name || "")));
+  // If coordinator created a convocatoria, allow any favorite player explicitly
+  // included in that convocatoria, even if their base favorite team differs.
+  const allFavoritePlayers = getUserFavoritePlayersForTeam("", "");
+  return allFavoritePlayers.filter(player =>
+    coordinatorPlayersFilter.playerNameKeys.has(normalizeTutorPlayerNameKey(player?.name || ""))
+  );
 }
 
 function resolveUserFavoriteTeamForMatch(match, fallbackTeam = "") {

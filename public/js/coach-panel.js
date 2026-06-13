@@ -199,6 +199,7 @@ let coachMatchState = {
 };
 let coachSelectedConvocatoriaMatchKey = "";
 let coachMatchSubTab = "lineup";
+let coachSelectedUpcomingMatchKey = "";
 let coachTacticIdx   = COACH_DEFAULT_TACTIC_IDX;
 let coachBoardState  = null;
 let coachSavedPlays  = [];
