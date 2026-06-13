@@ -1642,9 +1642,15 @@ function coordinatorCompMatchesTeamCategory(compName, teamCategory = "") {
   if (!textNorm) return false;
   const keyNorm = normalizeTeamName(typeof normalizeCompKey === "function" ? normalizeCompKey(cat) : cat);
   const labelNorm = normalizeTeamName((typeof CAT_LABELS !== "undefined" ? CAT_LABELS?.[cat] : "") || "");
+  // Use whole-word matching so "benjami" does NOT match inside "prebenjami".
+  const containsWord = (text, token) => {
+    if (!text || !token) return false;
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[\\s\\-])${escaped}(?:[\\s\\-]|$)`).test(text);
+  };
   return Boolean(
-    (keyNorm && textNorm.includes(keyNorm))
-    || (labelNorm && textNorm.includes(labelNorm))
+    (keyNorm && containsWord(textNorm, keyNorm))
+    || (labelNorm && containsWord(textNorm, labelNorm))
   );
 }
 
@@ -8948,7 +8954,7 @@ function renderUserFavConvocatoriesPanel() {
               <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(match.compName)}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-              <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(matchedFavoriteTeam || ""))}</div>
+              <div style="font-size:11px;color:#0f172a;font-weight:700;background:#e2e8f0;border-radius:999px;padding:3px 8px">${esc(shortTeamDisplayName(matchedFavoriteTeam || ""))}${matchCategory ? ` · ${esc(CAT_LABELS[matchCategory] || matchCategory)}` : ""}</div>
               <div style="font-size:11px;color:${isOpen ? "#1a2035" : "#64748b"};font-weight:800">${isOpen ? "▼" : "►"} Detall</div>
             </div>
           </div>
@@ -9077,6 +9083,12 @@ async function userSaveConvocatoria(matchKey) {
   const key = String(matchKey || "");
   if (!key) return;
 
+  // Render "Guardant..." immediately and yield to browser before doing heavy work,
+  // so the click handler returns fast and avoids long-task violations.
+  userFavConvSavedAtByMatch[key] = { text: "Guardant...", tone: "saving" };
+  renderUserFavConvocatoriesPanel();
+  await new Promise(resolve => setTimeout(resolve, 0));
+
   const match = getUserFavoriteUpcomingMatchesForTutorConv(userFavConvTeamFilter || "")
     .slice(0, 18)
     .find(m => userConvocationMatchKey(m) === key);
@@ -9087,12 +9099,15 @@ async function userSaveConvocatoria(matchKey) {
     return;
   }
 
-  userFavConvSavedAtByMatch[key] = { text: "Guardant...", tone: "saving" };
-  renderUserFavConvocatoriesPanel();
+  // Timeout helper so Supabase calls never hang indefinitely.
+  const withTimeout = (promise, ms, label) =>
+    Promise.race([promise, new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout (${label})`)), ms))]);
 
   try {
     const matchedFavoriteTeam = resolveUserFavoriteTutorTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
-    const coordinatorPlayersFilter = await getTutorConvocatoriaPlayerKeysForMatch(match, matchedFavoriteTeam, key);
+    const coordinatorPlayersFilter = await withTimeout(
+      getTutorConvocatoriaPlayerKeysForMatch(match, matchedFavoriteTeam, key), 8000, "load-conv");
     const players = getUserFavoritePlayersForTutorConv(match, matchedFavoriteTeam, String(match.category || "").trim(), coordinatorPlayersFilter);
     const store = loadUserConvAvailabilityStore();
     const byPlayer = store?.[key] || {};
@@ -9104,20 +9119,21 @@ async function userSaveConvocatoria(matchKey) {
       note: String(byPlayer?.[player.id]?.note || ""),
     }));
 
-    // Always save to old table (backward compat + local fallback)
-    const result = await saveTutorConvocatoriaToSupabase({
+    // Save to legacy table (backward compat + local fallback)
+    const result = await withTimeout(saveTutorConvocatoriaToSupabase({
       matchKey: key,
       teamName: matchedFavoriteTeam,
       competitionName: match.compName,
       matchHome: match.home,
       matchAway: match.away,
       responses,
-    });
+    }), 10000, "upsert-tutor");
 
-    // Additionally write to junction table if coordinator has created the convocatoria
+    // Write to junction table if coordinator has created the convocatoria
     if (_sb && currentProfile?.id) {
       try {
-        const convocatoriaId = await findConvocatoriaIdForMatch(match.home, match.away, matchedFavoriteTeam, key);
+        const convocatoriaId = await withTimeout(
+          findConvocatoriaIdForMatch(match.home, match.away, matchedFavoriteTeam, key), 8000, "find-conv");
         if (convocatoriaId && responses.length) {
           const junctionRows = responses.map(r => ({
             convocatoria_id: convocatoriaId,
@@ -9127,10 +9143,10 @@ async function userSaveConvocatoria(matchKey) {
             note: r.note,
             updated_at: new Date().toISOString(),
           }));
-          // UPSERT one row per player (conflict on convocatoria_id + player_name + tutor_id)
-          const { error: jErr } = await _sb
-            .from("convocatoria_player_responses")
-            .upsert(junctionRows, { onConflict: "convocatoria_id,player_name,tutor_id" });
+          const { error: jErr } = await withTimeout(
+            _sb.from("convocatoria_player_responses")
+              .upsert(junctionRows, { onConflict: "convocatoria_id,player_name,tutor_id" }),
+            10000, "upsert-junction");
           if (jErr) console.warn("[tutor-conv] junction upsert error", jErr);
         }
       } catch (jEx) {
@@ -9156,7 +9172,7 @@ async function userSaveConvocatoria(matchKey) {
     renderUserFavConvocatoriesPanel();
   } catch (err) {
     console.warn("[tutor-conv] unexpected save error", err);
-    userFavConvSavedAtByMatch[key] = { text: "Error inesperat guardant", tone: "error" };
+    userFavConvSavedAtByMatch[key] = { text: `Error: ${err.message || "inesperat"}`, tone: "error" };
     renderUserFavConvocatoriesPanel();
   }
 }
