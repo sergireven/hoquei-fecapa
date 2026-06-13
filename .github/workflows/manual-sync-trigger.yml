@@ -1,0 +1,99 @@
+name: Manual Sync Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Sync mode"
+        required: true
+        type: choice
+        default: "full_pipeline"
+        options:
+          - full_pipeline
+          - db_sync_only
+      season:
+        description: "Season for db_sync_only (all/current/2024-25...)"
+        required: false
+        default: "all"
+      prod_base_url:
+        description: "Production base URL"
+        required: false
+        default: "https://hoquei-fecapa.vercel.app"
+
+jobs:
+  trigger-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Validate inputs
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          SEASON: ${{ github.event.inputs.season }}
+          PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PROD_BASE_URL:-}" ]; then
+            echo "Missing prod_base_url input"
+            exit 1
+          fi
+          if [ "${MODE}" = "db_sync_only" ] && [ -z "${SEASON:-}" ]; then
+            echo "Missing season input for db_sync_only"
+            exit 1
+          fi
+          echo "Mode: ${MODE}"
+          echo "Season: ${SEASON}"
+          echo "Base URL: ${PROD_BASE_URL}"
+
+      - name: Trigger sync endpoint
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          SEASON: ${{ github.event.inputs.season }}
+          PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "Repository secret CRON_SECRET is not configured"
+            exit 1
+          fi
+
+          if [ "${MODE}" = "full_pipeline" ]; then
+            URL="${PROD_BASE_URL}/api/cron"
+          else
+            URL="${PROD_BASE_URL}/api/sync-database?season=${SEASON}"
+          fi
+
+          echo "Calling: ${URL}"
+
+          curl --location --fail --show-error --silent \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${URL}" | tee sync-response.json
+
+      - name: Validate response
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = fs.readFileSync('sync-response.json', 'utf8').trim();
+          if (!raw) {
+            console.error('Empty response');
+            process.exit(1);
+          }
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch (err) {
+            console.error('Non-JSON response:', raw.slice(0, 300));
+            process.exit(1);
+          }
+          if (!data || data.ok !== true) {
+            console.error('Sync endpoint returned failure:', data);
+            process.exit(1);
+          }
+          console.log('Sync OK:', data.message || 'completed');
+          if (data.elapsed) console.log('Elapsed:', data.elapsed);
+          if (Array.isArray(data.steps)) console.log('Steps:', data.steps.join(' -> '));
+          NODE

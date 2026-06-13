@@ -1,5 +1,5 @@
 // api/cron.js — Vercel Serverless Function
-// S'executa automàticament cada nit a les 02:00 UTC (veure vercel.json)
+// S'executa automàticament cada nit a les 02:00 CET (01:00 UTC) (veure vercel.json)
 // També es pot cridar manualment: GET https://el-teu-domini.vercel.app/api/cron
 
 const { execSync } = require("child_process");

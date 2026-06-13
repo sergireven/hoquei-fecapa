@@ -36,7 +36,7 @@ Procés de **migració gradual** que prepara la BD per rellac del JSON, sense tr
 
 ### 1. **Disparagor: Cron nocturn + manual**
 
-**Automàtic (cada nit 02:00 UTC):**
+**Automàtic (cada nit 02:00 CET = 01:00 UTC):**
 ```
 Vercel Cron → api/cron.js → 
   1. scraper-fecapa-categories.js (categories.json)
@@ -46,6 +46,23 @@ Vercel Cron → api/cron.js →
   5. generate-ripollet.json
   6. sync-db-from-json.js (NOVA)
 ```
+
+Configuració activa a `vercel.json`:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 1 * * *"
+    }
+  ]
+}
+```
+
+Notes:
+- Vercel interpreta el cron en UTC.
+- Per garantir les 02:00 CET fixes, el cron està configurat a `01:00 UTC` cada dia.
 
 **Manual (developer/testing):**
 ```bash
@@ -61,6 +78,14 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 curl -H "Authorization: Bearer $CRON_SECRET" \
   https://app.vercel.app/api/sync-database?season=2024-25
 ```
+
+**Manual des de GitHub Actions:**
+- Workflow: `.github/workflows/manual-sync-trigger.yml`
+- Trigger: `workflow_dispatch`
+- Modes disponibles:
+  - `full_pipeline` → crida `GET /api/cron`
+  - `db_sync_only` → crida `GET /api/sync-database?season=...`
+- Requisit: secret de repositori `CRON_SECRET`
 
 ---
 
@@ -186,3 +211,4 @@ syncAllSeasonsToDatabase(sb, './public').then(r => console.log(JSON.stringify(r,
 - **Les BD taules NO s'usen per ara**: estan buides, però preparades per a migració futura
 - **Idempotent**: cridades múltiples a la sincronització no causen problemes
 - **No-breaking**: si Supabase cau, la lectura de JSON segueix funcionant
+- **Procés nocturn automatitzat**: cada dia a les 02:00 CET es dispara `api/cron` i es fa la sincronització JSON → Supabase.

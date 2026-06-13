@@ -2,32 +2,12 @@
   "crons": [
     {
       "path": "/api/cron",
-      "schedule": "0 10 * * 1-5"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 8 * * 0,6"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 11 * * 0,6"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 14 * * 0,6"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 17 * * 0,6"
-    },
-    {
-      "path": "/api/cron",
-      "schedule": "0 20 * * 0,6"
+      "schedule": "0 1 * * *"
     }
   ],
   "functions": {
     "api/cron.js": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/fecapa-categories.js": {
       "maxDuration": 60
