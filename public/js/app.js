@@ -2766,10 +2766,10 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
           <option value="">Selecciona equip</option>
           ${teamOptions}
         </select>
-        <div style="font-size:12px;color:#64748b">En seleccionar l'equip es carrega el seguent partit i els partits anteriors disponibles.</div>
+        <div style="font-size:12px;color:#64748b">En seleccionar l'equip es carrega el següent partit i els partits anteriors disponibles.</div>
       </div>
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Seguent partit</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Següent partit</div>
         <select id="convocatoria-match-select" onchange="coordinatorOnMatchSelected()" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit;margin-bottom:10px">
           <option value="">Selecciona un partit</option>
         </select>
@@ -4166,7 +4166,7 @@ function renderCoordinatorConvMatchSummary() {
   const container = $("coordinator-conv-match-summary");
   if (!container) return;
   if (!fav?.clubName || !coordinatorConvTeamFilter) {
-    container.innerHTML = `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px;color:#64748b">Selecciona un equip per veure el seguent partit.</div>`;
+    container.innerHTML = `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px;color:#64748b">Selecciona un equip per veure el següent partit.</div>`;
     return;
   }
 
@@ -4191,11 +4191,11 @@ function renderCoordinatorConvMatchSummary() {
   container.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
       <div style="background:#fff;border-radius:14px;border:1.5px solid #dbeafe;padding:16px">
-        <div style="font-size:11px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Seguent partit</div>
+        <div style="font-size:11px;color:#1d4ed8;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Següent partit</div>
         <div style="font-size:14px;font-weight:800;color:#1a2035;margin-bottom:4px">${esc(selected.home)} vs ${esc(selected.away)}</div>
-        <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(selected.date, selected.compName))}${selected.time ? ` · ${esc(selected.time)}` : ""}</div>
-        <div style="font-size:12px;color:#64748b;margin-top:6px">${esc(selected.compName)}</div>
-        ${selected.isAdHoc ? `<div style="margin-top:6px;font-size:12px;color:#475569"><b>Tipus:</b> ${esc(formatConvocationTypeLabel(selected.adHocType || "amistos"))}${selected.location ? ` · <b>Ubicacio:</b> ${esc(selected.location)}` : ""}</div>` : ""}
+        <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(selected.date, selected.compName))}${selected.time ? ` · ${esc(String(selected.time).replace(/:\d{2}$/, ""))}` : ""}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px">${esc(selected.compName)}${coordinatorConvTeamCategoryFilter ? ` · <b style="color:#1d4ed8">${esc(coordinatorConvTeamCategoryFilter)}</b>` : ""}</div>
+        ${selected.isAdHoc ? `<div style="margin-top:6px;font-size:12px;color:#475569"><b>Tipus:</b> ${esc(formatConvocationTypeLabel(selected.adHocType || "amistos"))}${selected.location ? ` · <b>Ubicació:</b> ${esc(selected.location)}` : ""}</div>` : ""}
         <div style="margin-top:8px;font-size:12px;color:#1f2937"><b>Hora convocatòria:</b> ${esc(convocationDateTime)} <span style="color:#64748b">(${leadMinutes} min abans)</span></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
           <span style="font-size:11px;font-weight:800;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:3px 8px">Disponibles: ${counters.available}/${counters.total}</span>
@@ -4667,8 +4667,11 @@ async function coordinatorSaveConvocatoria() {
   setMsg("Desant...");
   // Always save to localStorage
   saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
-  // Try Supabase
-  const result = await syncConvocatoriaToSupabase(convocatoria);
+  // Try Supabase (with timeout so UI never stays stuck on "Desant...")
+  const result = await Promise.race([
+    syncConvocatoriaToSupabase(convocatoria),
+    new Promise(resolve => setTimeout(() => resolve({ ok: false, error: "Timeout" }), 12000)),
+  ]);
   if (result.ok) {
     if (result.id && !convocatoria.supabaseId) {
       convocatoria.supabaseId = result.id;
@@ -8411,7 +8414,7 @@ function getLastAndNext(matches, teamName) {
 function parseMatchKickoffTimestamp(match, compName = "") {
   const base = parseMatchTimestamp(match?.date || "", compName || "");
   const time = String(match?.time || "").trim();
-  const tm = time.match(/^(\d{1,2}):(\d{2})$/);
+  const tm = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!tm) return base;
   const hh = Math.max(0, Math.min(23, parseInt(tm[1], 10)));
   const mm = Math.max(0, Math.min(59, parseInt(tm[2], 10)));
@@ -9645,7 +9648,7 @@ async function userSaveConvocatoria(matchKey) {
   try {
     const matchedFavoriteTeam = resolveUserFavoriteTutorTeamForMatch(match, match.matchedTeam || userFavConvTeamFilter || "");
     const coordinatorPlayersFilter = await withTimeout(
-      getTutorConvocatoriaPlayerKeysForMatch(match, matchedFavoriteTeam, key), 8000, "load-conv");
+      getTutorConvocatoriaPlayerKeysForMatch(match, matchedFavoriteTeam, key), 15000, "load-conv");
     const players = getUserFavoritePlayersForTutorConv(match, matchedFavoriteTeam, String(match.category || "").trim(), coordinatorPlayersFilter);
     const store = loadUserConvAvailabilityStore();
     const byPlayer = store?.[key] || {};
