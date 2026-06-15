@@ -7,10 +7,11 @@ on:
         description: "Sync mode"
         required: true
         type: choice
-        default: "full_pipeline"
+        default: "github_direct_db_sync"
         options:
           - full_pipeline
           - db_sync_only
+          - github_direct_db_sync
       season:
         description: "Season for db_sync_only (all/current/2024-25...)"
         required: false
@@ -33,7 +34,7 @@ jobs:
           PROD_BASE_URL: ${{ github.event.inputs.prod_base_url }}
         run: |
           set -euo pipefail
-          if [ -z "${PROD_BASE_URL:-}" ]; then
+          if [ "${MODE}" != "github_direct_db_sync" ] && [ -z "${PROD_BASE_URL:-}" ]; then
             echo "Missing prod_base_url input"
             exit 1
           fi
@@ -46,6 +47,7 @@ jobs:
           echo "Base URL: ${PROD_BASE_URL}"
 
       - name: Trigger sync endpoint
+        if: ${{ github.event.inputs.mode != 'github_direct_db_sync' }}
         env:
           MODE: ${{ github.event.inputs.mode }}
           SEASON: ${{ github.event.inputs.season }}
@@ -83,7 +85,8 @@ jobs:
             exit 1
           fi
 
-      - name: Validate response
+      - name: Validate endpoint response
+        if: ${{ github.event.inputs.mode != 'github_direct_db_sync' }}
         run: |
           set -euo pipefail
           node - <<'NODE'
@@ -107,4 +110,90 @@ jobs:
           console.log('Sync OK:', data.message || 'completed');
           if (data.elapsed) console.log('Elapsed:', data.elapsed);
           if (Array.isArray(data.steps)) console.log('Steps:', data.steps.join(' -> '));
+          NODE
+
+      - name: Prepare repository for direct sync
+        if: ${{ github.event.inputs.mode == 'github_direct_db_sync' }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "https://github.com/${GITHUB_REPOSITORY}.git" repo
+          cd repo
+          npm ci
+
+      - name: Run GitHub-direct JSON -> DB sync
+        if: ${{ github.event.inputs.mode == 'github_direct_db_sync' }}
+        working-directory: repo
+        env:
+          SEASON: ${{ github.event.inputs.season }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Missing required repository secrets: SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const { createClient } = require('@supabase/supabase-js');
+          const { syncSeasonToDatabase, syncAllSeasonsToDatabase } = require('./api/sync-db-from-json');
+
+          (async () => {
+            const season = String(process.env.SEASON || 'all').trim().toLowerCase();
+            const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+            const publicDir = path.join(process.cwd(), 'public');
+
+            let result;
+            if (season === 'all') {
+              result = await syncAllSeasonsToDatabase(sb, publicDir);
+            } else if (season === 'current') {
+              result = await syncSeasonToDatabase(sb, 'current', path.join(publicDir, 'data.json'), '2025-26');
+            } else {
+              result = await syncSeasonToDatabase(sb, season, path.join(publicDir, 'season-archive', `data-${season}.json`), season);
+            }
+
+            const payload = {
+              ok: true,
+              mode: 'github_direct_db_sync',
+              season,
+              result,
+              timestamp: new Date().toISOString(),
+            };
+
+            fs.writeFileSync('sync-response-direct.json', JSON.stringify(payload, null, 2));
+            console.log(JSON.stringify(payload, null, 2));
+          })().catch((err) => {
+            const payload = {
+              ok: false,
+              mode: 'github_direct_db_sync',
+              error: err?.message || String(err),
+              timestamp: new Date().toISOString(),
+            };
+            fs.writeFileSync('sync-response-direct.json', JSON.stringify(payload, null, 2));
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Validate direct sync response
+        if: ${{ github.event.inputs.mode == 'github_direct_db_sync' }}
+        working-directory: repo
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = fs.readFileSync('sync-response-direct.json', 'utf8').trim();
+          if (!raw) {
+            console.error('Empty direct sync response');
+            process.exit(1);
+          }
+          const data = JSON.parse(raw);
+          if (!data || data.ok !== true) {
+            console.error('Direct sync failed:', data);
+            process.exit(1);
+          }
+          console.log('Direct sync OK:', data.mode, 'season=', data.season);
           NODE
