@@ -2815,10 +2815,6 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
                 <div style="font-weight:700;color:#1a2035">${esc(m.opponent || (m.type === "torneig" ? "Rival torneig" : "Rival amistos"))}</div>
                 <div style="color:#64748b;font-size:11px">${esc(m.date)} · ${esc(m.time)} · ${esc(m.location)}</div>
               </div>
-              <div style="display:flex;gap:4px">
-                <button onclick="coordinatorShowEditAdHocForm('${esc(m.id)}')" style="background:#3b82f6;border:none;color:#fff;font-weight:700;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer">Editar</button>
-                <button onclick="coordinatorConfirmDeleteAdHocMatch('${esc(m.id)}')" style="background:#ef4444;border:none;color:#fff;font-weight:700;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer">Eliminar</button>
-              </div>
             </div>`).join("") : `<div style="padding:8px;background:#fff;border-radius:8px;color:#64748b">Encara no hi ha partits ad-hoc per aquest equip.</div>`}
           </div>`;
         })()}
@@ -3660,6 +3656,12 @@ function coordinatorResetWeek() {
 
 // ── Coordinator Convocatories ───────────────────────────────
 function coordinatorMatchKey(match) {
+  const compId = String(match?.compId || "").trim();
+  if (compId.startsWith("adhoc:")) {
+    // For ad-hoc matches, key must be stable and unique from DB id,
+    // independent from editable fields (time/opponent/location).
+    return encodeURIComponent(compId);
+  }
   return [match?.compId || "", match?.dateKey || "", match?.time || "", match?.home || "", match?.away || ""]
     .map(v => encodeURIComponent(String(v || "")))
     .join("::");
@@ -3697,6 +3699,99 @@ function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
   } catch (err) {
     console.warn("Error saving convocatoria:", err);
   }
+}
+
+function normalizeConvocatoriaMatchTime(value) {
+  return String(value || "").trim().replace(/:\d{2}$/, "");
+}
+
+function convocatoriaMatchesSelectedMatch(convocatoria, match) {
+  if (!convocatoria || !match) return false;
+  const convDate = coordinatorDateKey(convocatoria?.matchDate || "", convocatoria?.matchCompetition || "");
+  const matchDate = coordinatorDateKey(match?.dateKey || match?.date || "", match?.compName || "");
+  if (!convDate || !matchDate || convDate !== matchDate) return false;
+
+  const convTime = normalizeConvocatoriaMatchTime(convocatoria?.matchTime || "");
+  const matchTime = normalizeConvocatoriaMatchTime(match?.time || "");
+  if (convTime && matchTime && convTime !== matchTime) return false;
+
+  const convHome = normalizeTeamName(convocatoria?.matchHome || "");
+  const convAway = normalizeTeamName(convocatoria?.matchAway || "");
+  const matchHome = normalizeTeamName(match?.home || "");
+  const matchAway = normalizeTeamName(match?.away || "");
+  return convHome === matchHome && convAway === matchAway;
+}
+
+function loadConvocatoriaForMatch(clubName, teamName, match) {
+  const exact = loadConvocatoria(clubName, teamName, match?.key || "");
+  if (exact) return exact;
+
+  let cache = {};
+  try {
+    cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
+  } catch {
+    cache = {};
+  }
+
+  const entries = Object.entries(cache || {});
+  const prefix = `${clubName}::${teamName}::`;
+  for (const [cacheKey, row] of entries) {
+    if (!String(cacheKey || "").startsWith(prefix)) continue;
+    if (!convocatoriaMatchesSelectedMatch(row, match)) continue;
+
+    const alias = { ...(row || {}) };
+    if (match?.key) alias.matchKey = match.key;
+    if (match?.key) saveConvocatoria(clubName, teamName, match.key, alias);
+    return alias;
+  }
+
+  return null;
+}
+
+async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match) {
+  if (!_sb || !currentProfile?.id || !match) return null;
+
+  const matchDate = coordinatorDateKey(match?.dateKey || match?.date || "", match?.compName || "");
+  const matchHome = String(match?.home || "").trim();
+  const matchAway = String(match?.away || "").trim();
+  if (!matchDate || !matchHome || !matchAway) return null;
+
+  const { data, error } = await _sb.from("convocatorias")
+    .select("*")
+    .eq("coordinator_id", currentProfile.id)
+    .eq("club_name", clubName)
+    .eq("team_name", teamName)
+    .eq("match_date", matchDate)
+    .eq("match_home", matchHome)
+    .eq("match_away", matchAway)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const conv = {
+    supabaseId:        data.id,
+    clubName:          data.club_name,
+    teamName:          data.team_name,
+    matchKey:          match?.key || data.match_key,
+    matchDate:         data.match_date || "",
+    matchTime:         data.match_time || "",
+    matchHome:         data.match_home,
+    matchAway:         data.match_away,
+    matchCompetition:  data.match_competition,
+    matchLocation:     data.match_location,
+    matchType:         data.match_type,
+    isAdHoc:           data.is_ad_hoc,
+    previousMatch:     data.previous_match,
+    previousMatchKey:  data.previous_match_key || "",
+    players:           Array.isArray(data.players) ? data.players : [],
+    createdAt:         data.created_at,
+    updatedAt:         data.updated_at,
+  };
+
+  saveConvocatoria(clubName, teamName, conv.matchKey, conv);
+  return conv;
 }
 
 // ── Supabase persistence for convocatories ──────────────────────────────
@@ -3906,7 +4001,9 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = ""
 
   const unique = new Map();
   for (const match of matches) {
-    const key = coordinatorConvocatoriaDedupKey(match);
+    const key = match?.isAdHoc && String(match?.compId || "").trim()
+      ? String(match.compId).trim()
+      : coordinatorConvocatoriaDedupKey(match);
     const existing = unique.get(key);
     if (!existing) {
       unique.set(key, match);
@@ -4130,14 +4227,26 @@ async function coordinatorLoadSelectedConvocatoria() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName || !coordinatorConvTeamFilter || !coordinatorConvMatchKey) return null;
 
-  let convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
+  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+  const selected = matches.find(match => match.key === coordinatorConvMatchKey) || null;
+
+  let convocatoria = selected
+    ? loadConvocatoriaForMatch(fav.clubName, coordinatorConvTeamFilter, selected)
+    : loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
   if (!convocatoria) {
     convocatoria = await loadConvocatoriaFromSupabase(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
   }
+  if (!convocatoria && selected) {
+    convocatoria = await loadConvocatoriaFromSupabaseBySignature(fav.clubName, coordinatorConvTeamFilter, selected);
+  }
   if (!convocatoria) return null;
 
+  if (selected?.key && String(convocatoria.matchKey || "") !== String(selected.key)) {
+    convocatoria.matchKey = selected.key;
+  }
+
   convocatoria.players = normalizeConvocatoriaPlayers(convocatoria.players || []);
-  saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
+  saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected?.key || coordinatorConvMatchKey, convocatoria);
 
   if (convocatoria.supabaseId) {
     loadPlayerResponsesForConvocatoria(convocatoria.supabaseId).then(responses => {
@@ -4204,7 +4313,7 @@ function renderCoordinatorConvMatchSummary() {
     return;
   }
 
-  const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected.key);
+  const convocatoria = loadConvocatoriaForMatch(fav.clubName, coordinatorConvTeamFilter, selected);
   const counters = getConvocatoriaAvailabilityCounters(convocatoria);
   const leadMinutes = getConvocationLeadMinutesForClub(fav.clubName);
   const convocationDateTime = formatConvocationDateTime(selected, leadMinutes);
@@ -4214,6 +4323,9 @@ function renderCoordinatorConvMatchSummary() {
   const travel = selected.isAdHoc
     ? null
     : estimateTravelForMatch(selected, selected.matchedTeam || coordinatorConvTeamFilter || "");
+  const adHocId = String(selected?.compId || "").startsWith("adhoc:")
+    ? String(selected.compId || "").slice(6)
+    : "";
   container.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
       <div style="background:#fff;border-radius:14px;border:1.5px solid #dbeafe;padding:16px">
@@ -4233,6 +4345,8 @@ function renderCoordinatorConvMatchSummary() {
           ${convocatoria
             ? `<button onclick="coordinatorToggleConvocatoriaPlayers()" style="background:#1a2035;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 11px;border-radius:8px;cursor:pointer">${coordinatorConvPlayersVisible ? "Ocultar convocats" : "Mostrar convocats"}</button>`
             : `<span style="font-size:12px;color:#64748b">Aquesta convocatòria encara no està generada.</span>`}
+          ${selected.isAdHoc && adHocId ? `<button onclick="coordinatorShowEditAdHocForm('${esc(adHocId)}')" style="background:#3b82f6;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 11px;border-radius:8px;cursor:pointer">Editar partit</button>` : ""}
+          ${selected.isAdHoc && adHocId ? `<button onclick="coordinatorConfirmDeleteAdHocMatch('${esc(adHocId)}')" style="background:#ef4444;border:none;color:#fff;font-weight:700;font-size:12px;padding:8px 11px;border-radius:8px;cursor:pointer">Eliminar partit</button>` : ""}
         </div>
         ${convocatoria ? `<div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe;font-size:12px">
           <div style="color:#1d4ed8;font-weight:700">Categoria: ${esc(convocatoria.teamCategory || "-")}</div>
@@ -4496,7 +4610,7 @@ async function coordinatorGenerateConvocatoria() {
     coordinatorConvPreviousMatchKey = selectedPrevious.key;
   }
 
-  let convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected.key);
+  let convocatoria = loadConvocatoriaForMatch(fav.clubName, coordinatorConvTeamFilter, selected);
   const needsRebuildFromPrevious = !convocatoria
     || String(convocatoria?.previousMatchKey || "") !== String(selectedPrevious?.key || "");
 
@@ -4679,6 +4793,7 @@ async function coordinatorSaveConvocatoria() {
   }
   const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey);
   if (!convocatoria) { setMsg("Genera primer la convocatoria.", "#dc2626"); return; }
+  convocatoria.matchKey = String(coordinatorConvMatchKey || convocatoria.matchKey || "");
   const clubSettings = getCoordinatorClubSettings(fav.clubName);
   const manualNotify = $("coordinator-conv-notify-manual")?.checked === true;
   const introMessage = String($("coordinator-conv-notify-intro")?.value || clubSettings?.convNotificationIntro || "Nova convocatòria disponible").trim();
@@ -9295,6 +9410,7 @@ function getUserFavoriteUpcomingMatches(teamFilter = "") {
     const ts = parseMatchKickoffTimestamp(pseudo, pseudo.compName);
     if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
     matches.push({
+      compId: `adhoc:${item.id}`,
       compName: pseudo.compName,
       date: item.date,
       time: item.time,
@@ -9309,7 +9425,9 @@ function getUserFavoriteUpcomingMatches(teamFilter = "") {
 
   const uniq = new Map();
   for (const m of matches) {
-    const key = [m.compName, m.date, m.time, m.home, m.away].join("|");
+    const key = m?.isAdHoc && String(m?.compId || "").trim()
+      ? String(m.compId).trim()
+      : [m.compName, m.date, m.time, m.home, m.away].join("|");
     if (!uniq.has(key)) uniq.set(key, m);
   }
   return [...uniq.values()].sort((a, b) => a.ts - b.ts);
@@ -9351,6 +9469,7 @@ function getUserFavoriteUpcomingMatchesForTutorConv(teamFilter = "") {
     const ts = parseMatchKickoffTimestamp(pseudo, pseudo.compName);
     if (!ts || ts < (nowTs - (2 * 60 * 60 * 1000))) continue;
     matches.push({
+      compId: `adhoc:${item.id}`,
       compName: pseudo.compName,
       date: item.date,
       time: item.time,
@@ -9365,13 +9484,19 @@ function getUserFavoriteUpcomingMatchesForTutorConv(teamFilter = "") {
 
   const uniq = new Map();
   for (const m of matches) {
-    const key = [m.compName, m.date, m.time, m.home, m.away].join("|");
+    const key = m?.isAdHoc && String(m?.compId || "").trim()
+      ? String(m.compId).trim()
+      : [m.compName, m.date, m.time, m.home, m.away].join("|");
     if (!uniq.has(key)) uniq.set(key, m);
   }
   return [...uniq.values()].sort((a, b) => a.ts - b.ts);
 }
 
 function userConvocationMatchKey(match) {
+  const compId = String(match?.compId || "").trim();
+  if (compId.startsWith("adhoc:")) {
+    return encodeURIComponent(compId);
+  }
   return [match?.compName || "", match?.date || "", match?.time || "", match?.home || "", match?.away || ""]
     .map(v => encodeURIComponent(String(v || "")))
     .join("::");

@@ -1006,8 +1006,17 @@ function _coachCategoryMatchesAny(text, wantedCategory = "") {
   if (!wanted.size) return true;
   const source = _coachSearchNorm(text || "");
   if (!source) return false;
+  const escapeRe = value => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const token of wanted) {
-    if (token && source.includes(token)) return true;
+    if (!token) continue;
+    const tokenPattern = token
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(escapeRe)
+      .join("\\s+");
+    if (!tokenPattern) continue;
+    const boundary = new RegExp(`(^|[^a-z0-9])${tokenPattern}($|[^a-z0-9])`, "i");
+    if (boundary.test(source)) return true;
   }
   return false;
 }
@@ -1107,7 +1116,7 @@ function _coachApplyUpcomingMatch(match) {
   if (identity) {
     coachSelectedUpcomingMatchKey = identity;
     coachSelectedPreviousMatchKey = "";
-    const conv = _coachFindConvocatoriaByMatchKey(club, team, category, identity);
+    const conv = _coachFindConvocatoriaForMatch(club, team, category, match);
     if (conv) coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(conv);
   }
   _coachSyncLinkedMatchFromState();
@@ -1127,7 +1136,7 @@ function _coachApplyPreviousMatch(match) {
   if (identity) {
     coachSelectedPreviousMatchKey = identity;
     coachSelectedUpcomingMatchKey = "";
-    const conv = _coachFindConvocatoriaByMatchKey(club, team, category, identity);
+    const conv = _coachFindConvocatoriaForMatch(club, team, category, match);
     if (conv) coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(conv);
   }
   _coachSyncLinkedMatchFromState();
@@ -1187,6 +1196,39 @@ function _coachFindConvocatoriaByMatchKey(clubName, teamName, category = "", mat
 
 function _coachFindLatestConvocatoria(clubName, teamName, category = "") {
   return _coachListTeamConvocatories(clubName, teamName, category)[0] || null;
+}
+
+function _coachMatchTeamsEquivalent(homeA, awayA, homeB, awayB) {
+  const aHome = String(homeA || "").trim();
+  const aAway = String(awayA || "").trim();
+  const bHome = String(homeB || "").trim();
+  const bAway = String(awayB || "").trim();
+  if (!aHome || !aAway || !bHome || !bAway) return false;
+  const sameOrder = _coachTeamEq(aHome, bHome) && _coachTeamEq(aAway, bAway);
+  const swappedOrder = _coachTeamEq(aHome, bAway) && _coachTeamEq(aAway, bHome);
+  return sameOrder || swappedOrder;
+}
+
+function _coachFindConvocatoriaForMatch(clubName, teamName, category = "", match = null) {
+  if (!match) return null;
+
+  const wantedIdentity = _coachUpcomingMatchIdentity(match);
+  if (wantedIdentity) {
+    const byIdentity = _coachFindConvocatoriaByMatchKey(clubName, teamName, category, wantedIdentity);
+    if (byIdentity) return byIdentity;
+  }
+
+  const matchDate = String(match?.date || "").trim();
+  const home = String(match?.home || "").trim();
+  const away = String(match?.away || "").trim();
+  if (!matchDate || !home || !away) return null;
+
+  return _coachListTeamConvocatories(clubName, teamName, category)
+    .find(conv => {
+      const convDate = String(conv?.matchDate || "").trim();
+      if (convDate !== matchDate) return false;
+      return _coachMatchTeamsEquivalent(conv?.matchHome, conv?.matchAway, home, away);
+    }) || null;
 }
 
 function _coachRosterFromConvocatoria(clubName, teamName, category = "", matchKey = "") {
@@ -3796,7 +3838,20 @@ function coachSelectPreviousMatch(matchKey) {
   }
   const match = _coachGetPreviousMatches(club, team, category)
     .find(item => _coachUpcomingMatchIdentity(item) === wanted) || null;
-  if (match) _coachApplyPreviousMatch(match);
+  if (match) {
+    _coachApplyPreviousMatch(match);
+
+    const conv = _coachFindConvocatoriaForMatch(club, team, category, match);
+    if (conv) {
+      const convKey = _coachConvocatoriaMatchIdentity(conv);
+      coachSelectedConvocatoriaMatchKey = convKey;
+      const roster = _coachRosterFromConvocatoria(club, team, category, convKey);
+      if (roster.length) {
+        const rivals = (coachMatchState.players || []).filter(p => String(p?.squad || "") === "rival");
+        coachMatchState.players = _coachMergeRosterPlayers(roster, rivals);
+      }
+    }
+  }
   renderCoachPanel();
 }
 
