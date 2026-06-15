@@ -3782,7 +3782,7 @@ async function loadPlayerResponsesForConvocatoria(convocatoriaId) {
   if (error || !data) return {};
   const byPlayer = {};
   for (const row of data) {
-    const key = String(row.player_name || "").toLowerCase();
+    const key = normalizeTutorPlayerNameKey(row.player_name || "");
     byPlayer[key] = byPlayer[key] || [];
     byPlayer[key].push({ tutorId: row.tutor_id, status: row.status, note: row.note, updatedAt: row.updated_at });
   }
@@ -3794,17 +3794,44 @@ async function findConvocatoriaIdForMatch(matchHome, matchAway, teamName, matchK
   if (!_sb || !matchHome || !matchAway) return null;
 
   const key = String(matchKey || "").trim();
-  if (key) {
-    const { data: byKey } = await _sb
+  const team = String(teamName || "").trim();
+
+  if (key && team) {
+    const { data: byKeyTeamAndPair } = await _sb
       .from("convocatorias")
       .select("id")
       .eq("match_key", key)
+      .eq("team_name", team)
+      .eq("match_home", matchHome)
+      .eq("match_away", matchAway)
       .limit(1)
       .maybeSingle();
-    if (byKey?.id) return byKey.id;
+    if (byKeyTeamAndPair?.id) return byKeyTeamAndPair.id;
   }
 
-  const team = String(teamName || "").trim();
+  if (key && team) {
+    const { data: byKeyAndTeam } = await _sb
+      .from("convocatorias")
+      .select("id")
+      .eq("match_key", key)
+      .eq("team_name", team)
+      .limit(1)
+      .maybeSingle();
+    if (byKeyAndTeam?.id) return byKeyAndTeam.id;
+  }
+
+  if (key) {
+    const { data: byKeyAndPair } = await _sb
+      .from("convocatorias")
+      .select("id")
+      .eq("match_key", key)
+      .eq("match_home", matchHome)
+      .eq("match_away", matchAway)
+      .limit(1)
+      .maybeSingle();
+    if (byKeyAndPair?.id) return byKeyAndPair.id;
+  }
+
   if (team) {
     const { data: byTeams } = await _sb
       .from("convocatorias")
@@ -4177,7 +4204,6 @@ function renderCoordinatorConvMatchSummary() {
     return;
   }
 
-  const previous = getPreviousPlayedMatchForTeam(fav.clubName, coordinatorConvTeamFilter, selected.ts);
   const convocatoria = loadConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected.key);
   const counters = getConvocatoriaAvailabilityCounters(convocatoria);
   const leadMinutes = getConvocationLeadMinutesForClub(fav.clubName);
@@ -4213,14 +4239,6 @@ function renderCoordinatorConvMatchSummary() {
         </div>` : ""}
         ${venueDirections ? `<div style="margin-top:6px;font-size:12px"><a href="${esc(venueDirections.nativeUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;text-decoration:none">📍 Obrir mapa</a> <span style="color:#64748b">(${esc(venueDirections.label)})</span></div>` : ""}
         ${travel ? `<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:700">🚗 ~${travel.minutes} min · ${travel.km.toFixed(1)} km</div>` : ""}
-      </div>
-      <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;padding:16px">
-        <div style="font-size:11px;color:#475569;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Ultim partit jugat</div>
-        ${previous ? `
-          <div style="font-size:14px;font-weight:800;color:#1a2035;margin-bottom:4px">${esc(previous.home)} ${esc(String(previous.homeScore ?? ""))} - ${esc(String(previous.awayScore ?? ""))} ${esc(previous.away)}</div>
-          <div style="font-size:12px;color:#475569">${esc(coordinatorFormatDate(previous.date, previous.compName))}${previous.time ? ` · ${esc(previous.time)}` : ""}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:6px">${esc(previous.compName)}</div>`
-          : `<div style="font-size:13px;color:#94a3b8">No hi ha cap partit anterior amb resultat disponible.</div>`}
       </div>
     </div>`;
 }
@@ -4540,7 +4558,7 @@ function renderConvocatoriaPlayers(convocatoria) {
   const cachedResponses = convocatoria.supabaseId ? (convPlayerResponsesCache[convocatoria.supabaseId] || {}) : {};
   container.innerHTML = convocatoria.players.map(player => {
     const encodedName = encodeURIComponent(player.name || "");
-    const playerKey = String(player.name || "").toLowerCase();
+    const playerKey = normalizeTutorPlayerNameKey(player.name || "");
     const tutorResps = cachedResponses[playerKey] || [];
     const tutorBadges = _tutorStatusBadge(tutorResps);
     return `<div style="background:#f8fafc;border:1px solid #e2e6ef;border-radius:12px;padding:12px">
