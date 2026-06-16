@@ -6433,14 +6433,244 @@ async function fetchJsonFile(url) {
   if (raw.startsWith("./")) urls.push(raw.slice(2));
   else if (raw && !raw.startsWith("/") && !raw.startsWith("http")) urls.push(`./${raw}`);
 
+  const shouldBypassCache = !/season-archive\/data-\d{4}-\d{2}\.json$/i.test(raw);
+
   let lastStatus = null;
   for (const candidate of [...new Set(urls)].filter(Boolean)) {
-    const res = await fetch(`${candidate}${candidate.includes("?") ? "&" : "?"}t=${Date.now()}`);
+    const requestUrl = shouldBypassCache
+      ? `${candidate}${candidate.includes("?") ? "&" : "?"}t=${Date.now()}`
+      : candidate;
+    const res = await fetch(requestUrl);
     if (res.ok) return res.json();
     lastStatus = res.status;
   }
 
   throw new Error(`HTTP ${lastStatus || 404} carregant ${raw}`);
+}
+
+const ARCHIVE_CHUNK_CATEGORY_SLUGS = [
+  "nacional-catalana",
+  "1-catalana",
+  "2-catalana",
+  "3-catalana",
+  "fem",
+  "junior",
+  "juvenil",
+  "infantil",
+  "alevi",
+  "benjami",
+  "prebenjami",
+  "veterans",
+  "altres",
+];
+
+const ARCHIVE_CHUNK_CATEGORY_LABELS = {
+  "nacional-catalana": "Nacional Catalana",
+  "1-catalana": "1ª Catalana",
+  "2-catalana": "2ª Catalana",
+  "3-catalana": "3ª Catalana",
+  fem: "Fem",
+  junior: "Júnior",
+  juvenil: "Juvenil",
+  infantil: "Infantil",
+  alevi: "Aleví",
+  benjami: "Benjamí",
+  prebenjami: "Prebenjamí",
+  veterans: "Veterans",
+  altres: "Altres",
+};
+
+function extractPlayerIdFromActaRow(row) {
+  const direct = String(row?.jugadorId || row?.id || "").trim();
+  if (direct) return direct;
+  const fromUrl = String(row?.url || "").match(/\/jugador\/(\d+)\//);
+  return fromUrl?.[1] ? String(fromUrl[1]) : "";
+}
+
+function buildPlayerSlugFromActaRow(row, fallbackId) {
+  const fromUrl = String(row?.url || "").match(/\/jugador\/\d+\/([^/?#]+)/);
+  if (fromUrl?.[1]) return decodeURIComponent(fromUrl[1]);
+
+  const name = String(row?.name || "").trim();
+  if (!name) return `jugador+${fallbackId}`;
+  return name.toUpperCase().replace(/\s+/g, "+");
+}
+
+async function loadSeasonDataFromArchiveChunks(seasonKey) {
+  const key = String(seasonKey || "").trim();
+  if (!key || key === "current") return null;
+
+  const baseCandidates = [
+    `./season-archive/data-${key}`,
+    `./season-archive/data-${key}.`,
+  ];
+
+  const categories = {};
+  const actesIndex = {};
+  const playerAgg = new Map();
+  let totalActes = 0;
+
+  const rememberPlayer = (row, acta, catSlug) => {
+    const pid = extractPlayerIdFromActaRow(row);
+    if (!pid) return;
+
+    const playerKey = String(pid);
+    const actaId = String(acta?.actaId || acta?.id || "").trim();
+    const teamName = String(row?._teamName || "").trim();
+
+    if (!playerAgg.has(playerKey)) {
+      playerAgg.set(playerKey, {
+        id: playerKey,
+        slug: buildPlayerSlugFromActaRow(row, playerKey),
+        number: null,
+        birthDate: null,
+        isGK: null,
+        sources: [],
+        teamStatsMap: new Map(),
+        goals: 0,
+        blue: 0,
+        red: 0,
+        matches: new Set(),
+      });
+    }
+
+    const rec = playerAgg.get(playerKey);
+    if (actaId && !rec.sources.some(s => String(s?.id || "") === actaId)) {
+      rec.sources.push({ type: "acta", id: actaId });
+    }
+
+    if (teamName) {
+      const tsKey = `${teamName}::${catSlug}`;
+      if (!rec.teamStatsMap.has(tsKey)) {
+        rec.teamStatsMap.set(tsKey, {
+          team: teamName,
+          cat: catSlug,
+          count: 0,
+          compIds: [],
+        });
+      }
+      const ts = rec.teamStatsMap.get(tsKey);
+      ts.count += 1;
+      const compId = String(acta?.compId || "").trim();
+      if (compId && !ts.compIds.includes(compId)) ts.compIds.push(compId);
+    }
+
+    rec.goals += Number(row?.g || 0);
+    rec.blue += Number(row?.b || 0);
+    rec.red += Number(row?.v || 0);
+    if (actaId) rec.matches.add(actaId);
+  };
+
+  for (const catSlug of ARCHIVE_CHUNK_CATEGORY_SLUGS) {
+    let actesById = null;
+
+    for (const baseUrl of baseCandidates) {
+      try {
+        const candidate = `${baseUrl}/${catSlug}.json`;
+        actesById = await fetchJsonFile(candidate);
+        if (actesById && typeof actesById === "object") break;
+      } catch {}
+    }
+
+    if (!actesById || typeof actesById !== "object") continue;
+
+    const catLabel = ARCHIVE_CHUNK_CATEGORY_LABELS[catSlug] || catSlug;
+    const compMap = new Map();
+
+    for (const acta of Object.values(actesById)) {
+      if (!acta || typeof acta !== "object") continue;
+
+      const actaId = String(acta?.actaId || acta?.id || "").trim();
+      if (!actaId) continue;
+      actesIndex[actaId] = catSlug;
+      totalActes += 1;
+
+      const compId = String(acta?.compId || `${catSlug}::sense-id`).trim();
+      if (!compMap.has(compId)) {
+        compMap.set(compId, {
+          id: compId,
+          slug: "",
+          name: String(acta?.compName || `Competició ${compId}`).trim(),
+          classification: [],
+          calendar: [],
+        });
+      }
+
+      const comp = compMap.get(compId);
+      comp.calendar.push({
+        compId,
+        home: String(acta?.home || "").trim(),
+        away: String(acta?.away || "").trim(),
+        homeScore: Number(acta?.homeScore ?? 0),
+        awayScore: Number(acta?.awayScore ?? 0),
+        jornada: Number(acta?.jornada ?? 0),
+        date: String(acta?.date || "").trim(),
+        time: String(acta?.time || "").trim(),
+        actaId,
+        actaUrl: String(acta?.actaUrl || acta?.url || "").trim(),
+        source: "archive-actes-chunk",
+      });
+
+      const homePlayers = Array.isArray(acta?.playerStats?.homePlayers) ? acta.playerStats.homePlayers : [];
+      const awayPlayers = Array.isArray(acta?.playerStats?.awayPlayers) ? acta.playerStats.awayPlayers : [];
+      for (const p of homePlayers) rememberPlayer({ ...p, _teamName: acta?.home }, acta, catSlug);
+      for (const p of awayPlayers) rememberPlayer({ ...p, _teamName: acta?.away }, acta, catSlug);
+    }
+
+    const comps = Array.from(compMap.values()).filter(c => c.calendar.length > 0);
+    if (comps.length) categories[catLabel] = comps;
+  }
+
+  if (!Object.keys(categories).length) return null;
+
+  const jugadors = {};
+  for (const [pid, rec] of playerAgg.entries()) {
+    const teamStats = Array.from(rec.teamStatsMap.values())
+      .sort((a, b) => Number(b.count || 0) - Number(a.count || 0));
+
+    jugadors[pid] = {
+      id: pid,
+      jugadorId: pid,
+      slug: rec.slug,
+      number: rec.number,
+      birthDate: rec.birthDate,
+      isGK: rec.isGK,
+      sources: rec.sources,
+      teamStats,
+      careerStats: [{
+        seasonName: key,
+        total_goals: rec.goals,
+        total_blue: rec.blue,
+        total_red: rec.red,
+        match_count: rec.matches.size,
+      }],
+    };
+  }
+
+  return {
+    updatedAt: new Date().toISOString(),
+    season: key,
+    totalComps: Object.values(categories).reduce((sum, comps) => sum + comps.length, 0),
+    totalActes,
+    categories,
+    jugadors,
+    actesIndex,
+    generatedFrom: "archive-actes-chunks",
+  };
+}
+
+async function loadSeasonDataForEntry(entry) {
+  if (!entry?.dataUrl) throw new Error("Entrada de temporada invàlida");
+
+  try {
+    const primary = await fetchJsonFile(entry.dataUrl);
+    if (primary?.categories) return primary;
+  } catch {}
+
+  const fallback = await loadSeasonDataFromArchiveChunks(entry.key);
+  if (fallback?.categories) return fallback;
+
+  throw new Error(`No s'ha pogut carregar la temporada ${entry?.label || entry?.key || ""}`.trim());
 }
 
 function mergePlayerSources(a = [], b = []) {
@@ -6600,7 +6830,7 @@ async function switchActiveSeason(nextKey, options = {}) {
 
   try {
     if (!seasonDataCache.has(nextKey)) {
-      const data = await fetchJsonFile(target.dataUrl);
+      const data = await loadSeasonDataForEntry(target);
       if (!data?.categories) throw new Error(`Dataset invàlid per ${target.label}`);
       seasonDataCache.set(nextKey, data);
       rebuildGlobalJugadorsIndex();
@@ -6641,7 +6871,7 @@ async function getSeasonDataForKey(seasonKey) {
   if (!target?.dataUrl) return null;
 
   try {
-    const data = await fetchJsonFile(target.dataUrl);
+    const data = await loadSeasonDataForEntry(target);
     if (!data?.categories) return null;
     seasonDataCache.set(key, data);
     return data;
@@ -12246,11 +12476,11 @@ async function openPlayerModal(jid, fallbackName) {
   };
 
   const seasonRowsByToken = new Map();
-  await Promise.all(cs.map(async s => {
-    if (!s?._seasonToken) return;
+  for (const s of cs) {
+    if (!s?._seasonToken) continue;
     const rows = await buildSeasonDisplayRows(s._seasonToken);
     seasonRowsByToken.set(s._seasonToken, rows || []);
-  }));
+  }
 
   const seasonsSections = cs.length ? `
     <div class="pm-section">
