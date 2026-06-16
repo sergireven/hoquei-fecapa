@@ -6480,6 +6480,13 @@ const ARCHIVE_CHUNK_CATEGORY_LABELS = {
   altres: "Altres",
 };
 
+const DEFAULT_ARCHIVE_SEASONS = [
+  { key: "2024-25", label: "2024-25" },
+  { key: "2023-24", label: "2023-24" },
+  { key: "2022-23", label: "2022-23" },
+  { key: "2021-22", label: "2021-22" },
+];
+
 function extractPlayerIdFromActaRow(row) {
   const direct = String(row?.jugadorId || row?.id || "").trim();
   if (direct) return direct;
@@ -6790,6 +6797,7 @@ async function loadSeasonCatalog() {
   }
 
   const fromManifest = Array.isArray(manifest?.seasons) ? manifest.seasons : [];
+  const sourceSeasons = fromManifest.length ? fromManifest : DEFAULT_ARCHIVE_SEASONS;
   const normalized = fromManifest
     .map((s, idx) => ({
       key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
@@ -6799,12 +6807,23 @@ async function loadSeasonCatalog() {
     }))
     .filter(s => s.key && s.dataUrl);
 
+  const fallbackNormalized = sourceSeasons
+    .map((s, idx) => ({
+      key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
+      label: String(s?.label || s?.season || `Arxiu ${idx + 1}`).trim(),
+      dataUrl: String(s?.dataUrl || `./season-archive/data-${String(s?.key || s?.season || "").trim()}.json`).trim(),
+      actesBaseUrl: normalizeActesBaseUrl(s?.actesBaseUrl || s?.actesUrl || `./season-archive/actes/${String(s?.key || s?.season || "").trim()}`),
+    }))
+    .filter(s => s.key && s.dataUrl);
+
+  const catalogEntries = normalized.length ? normalized : fallbackNormalized;
+
   seasonCatalog = [{
     key: "current",
     label: getSeasonLabelFromData(DB, "Actual"),
     dataUrl: DATA_URL,
     actesBaseUrl: "./actes",
-  }, ...normalized
+  }, ...catalogEntries
     .filter(s => s.key !== "current")
     .map(s => ({
       ...s,
@@ -12420,6 +12439,24 @@ async function openPlayerModal(jid, fallbackName) {
     .sort((a, b) => String(b?.seasonName || "").localeCompare(String(a?.seasonName || "")))
     .map(s => ({ ...s, _seasonToken: parseSeasonToken(s?.seasonName) }));
 
+  // Ensure archived seasons can appear even when jok careerStats omits them.
+  const knownTokens = new Set(cs.map(s => s?._seasonToken).filter(Boolean));
+  for (const seasonEntry of seasonCatalog) {
+    if (!seasonEntry || seasonEntry.key === "current") continue;
+    const token = parseSeasonToken(seasonEntry.label || seasonEntry.key);
+    if (!token || knownTokens.has(token)) continue;
+    cs.push({
+      seasonName: String(seasonEntry.label || seasonEntry.key || "Temporada").trim(),
+      total_goals: null,
+      total_blue: null,
+      total_red: null,
+      match_count: null,
+      _seasonToken: token,
+    });
+    knownTokens.add(token);
+  }
+  cs.sort((a, b) => String(b?._seasonToken || b?.seasonName || "").localeCompare(String(a?._seasonToken || a?.seasonName || "")));
+
   const selectedSeasonToken = parseSeasonToken(DB?.season || "");
   const selectedSeasonIdx = selectedSeasonToken
     ? cs.findIndex(s => s._seasonToken === selectedSeasonToken)
@@ -12482,12 +12519,23 @@ async function openPlayerModal(jid, fallbackName) {
     seasonRowsByToken.set(s._seasonToken, rows || []);
   }
 
-  const seasonsSections = cs.length ? `
+  const visibleSeasonRows = cs.filter(s => {
+    const rows = seasonRowsByToken.get(s?._seasonToken) || [];
+    const hasSeasonStats = [s?.match_count, s?.total_goals, s?.total_blue, s?.total_red]
+      .some(v => Number.isFinite(Number(v)) && Number(v) > 0);
+    return rows.length > 0 || hasSeasonStats;
+  });
+  const preferredSeasonToken = cs[preferredSeasonIdx]?._seasonToken || "";
+  const preferredVisibleIdx = preferredSeasonToken
+    ? visibleSeasonRows.findIndex(s => s?._seasonToken === preferredSeasonToken)
+    : -1;
+
+  const seasonsSections = visibleSeasonRows.length ? `
     <div class="pm-section">
       <div class="pm-section-title">Temporades</div>
-      ${cs.map((s, idx) => {
+      ${visibleSeasonRows.map((s, idx) => {
         const isLatest = idx === 0;
-        const isPreferred = idx === preferredSeasonIdx;
+        const isPreferred = idx === preferredVisibleIdx;
         const shouldOpen = isLatest || isPreferred;
         const seasonRows = seasonRowsByToken.get(s._seasonToken) || [];
         const maxCount = Math.max(1, Number(seasonRows[0]?.count || 0));
