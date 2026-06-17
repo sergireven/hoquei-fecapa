@@ -8,6 +8,7 @@
     "scrape:off": "JOK_SKIP_ACTA_ENRICH=1 node --max-old-space-size=4096 jobs/scraper.js",
     "scrape:actes:load": "node jobs/scraper-actes-load.js",
     "scrape:sidgad": "node jobs/scraper-sidgad.js",
+    "export:db-csv": "node jobs/export-db-csv.js",
     "build:mapping": "node jobs/build-entity-mapping.js",
     "build:audit": "npm run build:mapping && node jobs/build-classification-audit.js",
     "feedback:merge": "node jobs/merge-audit-feedback.js",
