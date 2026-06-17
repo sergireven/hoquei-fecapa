@@ -6666,8 +6666,198 @@ async function loadSeasonDataFromArchiveChunks(seasonKey) {
   };
 }
 
+function chunkArray(items, size = 500) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
+async function fetchAllRows(buildQuery, pageSize = 1000) {
+  const rows = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = Array.isArray(data) ? data : [];
+    if (!page.length) break;
+    rows.push(...page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
+function buildDbCompetitionClassificationRows(compTeams, teamById) {
+  const rows = compTeams
+    .map(ct => {
+      const team = teamById.get(String(ct.team_id || ""));
+      if (!team) return null;
+      const wins = Number(ct.wins || 0);
+      const draws = Number(ct.draws || 0);
+      const losses = Number(ct.losses || 0);
+      const played = Number(ct.matches_played || (wins + draws + losses));
+      const pts = wins * 3 + draws;
+
+      return {
+        pos: ct.league_position == null ? null : Number(ct.league_position),
+        team: String(team.team_name || ""),
+        teamId: String(team.id || ""),
+        clubId: String(team.club_id || ""),
+        pj: Number.isFinite(played) ? played : 0,
+        pg: Number.isFinite(wins) ? wins : 0,
+        pe: Number.isFinite(draws) ? draws : 0,
+        pp: Number.isFinite(losses) ? losses : 0,
+        gf: Number(ct.points_for || 0),
+        gc: Number(ct.points_against || 0),
+        pts,
+      };
+    })
+    .filter(Boolean);
+
+  rows.sort((a, b) => {
+    const aPos = Number.isFinite(a.pos) ? a.pos : Number.MAX_SAFE_INTEGER;
+    const bPos = Number.isFinite(b.pos) ? b.pos : Number.MAX_SAFE_INTEGER;
+    if (aPos !== bPos) return aPos - bPos;
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    return String(a.team || "").localeCompare(String(b.team || ""));
+  });
+
+  return rows;
+}
+
+function buildDbPlayersIndex(playersRows, teamById, seasonKey) {
+  const jugadors = {};
+
+  for (const row of (playersRows || [])) {
+    const pid = String(row?.id || "").trim();
+    if (!pid) continue;
+
+    const team = row?.primary_team_id ? teamById.get(String(row.primary_team_id)) : null;
+    const teamStats = team ? [{
+      team: String(team.team_name || ""),
+      cat: String(team.category || ""),
+      count: 0,
+      compIds: [],
+    }] : [];
+
+    jugadors[pid] = {
+      id: pid,
+      jugadorId: pid,
+      slug: row?.slug || String(row?.name || "").toUpperCase().replace(/\s+/g, "+"),
+      number: row?.dorsal || null,
+      birthDate: null,
+      isGK: Boolean(row?.is_goalkeeper),
+      position: row?.position || "Jugador",
+      teamStats,
+      sources: [{ type: "db", id: pid }],
+      careerStats: [{
+        seasonName: String(seasonKey || ""),
+        total_goals: null,
+        total_blue: null,
+        total_red: null,
+        match_count: null,
+      }],
+      name: String(row?.name || "").trim(),
+    };
+  }
+
+  return jugadors;
+}
+
+async function loadSeasonDataFromDatabase(seasonKey) {
+  const key = String(seasonKey || "").trim();
+  if (!key || key === "current" || !_sb) return null;
+
+  const competitions = await fetchAllRows(() =>
+    _sb.from("competitions")
+      .select("id, name, category, season")
+      .eq("season", key)
+      .order("name", { ascending: true })
+  );
+
+  if (!competitions.length) return null;
+
+  const teams = await fetchAllRows(() =>
+    _sb.from("teams")
+      .select("id, club_id, team_name, category, season")
+      .eq("season", key)
+      .order("team_name", { ascending: true })
+  );
+  const teamById = new Map((teams || []).map(t => [String(t.id || ""), t]));
+
+  const competitionIds = competitions.map(c => String(c.id || "")).filter(Boolean);
+  const competitionTeams = [];
+  for (const idsChunk of chunkArray(competitionIds, 250)) {
+    const chunkRows = await fetchAllRows(() =>
+      _sb.from("competition_teams")
+        .select("id, competition_id, team_id, league_position, matches_played, wins, draws, losses, points_for, points_against")
+        .in("competition_id", idsChunk)
+    );
+    competitionTeams.push(...chunkRows);
+  }
+
+  const compTeamsByCompId = new Map();
+  for (const row of competitionTeams) {
+    const compId = String(row?.competition_id || "");
+    if (!compId) continue;
+    if (!compTeamsByCompId.has(compId)) compTeamsByCompId.set(compId, []);
+    compTeamsByCompId.get(compId).push(row);
+  }
+
+  const categories = {};
+  for (const comp of competitions) {
+    const categoryLabel = String(comp?.category || "Altres").trim() || "Altres";
+    const compId = String(comp?.id || "").trim();
+    if (!compId) continue;
+
+    const classRows = buildDbCompetitionClassificationRows(compTeamsByCompId.get(compId) || [], teamById);
+    if (!categories[categoryLabel]) categories[categoryLabel] = [];
+
+    categories[categoryLabel].push({
+      id: compId,
+      slug: "",
+      name: String(comp?.name || "").trim(),
+      classification: classRows,
+      calendar: [],
+      source: "db",
+    });
+  }
+
+  const playersRows = await fetchAllRows(() =>
+    _sb.from("players")
+      .select("id, primary_team_id, name, slug, dorsal, position, is_goalkeeper, season")
+      .eq("season", key)
+      .order("name", { ascending: true })
+  );
+
+  return {
+    updatedAt: new Date().toISOString(),
+    season: key,
+    totalComps: Object.values(categories).reduce((sum, comps) => sum + (Array.isArray(comps) ? comps.length : 0), 0),
+    totalActes: 0,
+    categories,
+    jugadors: buildDbPlayersIndex(playersRows, teamById, key),
+    actesIndex: {},
+    generatedFrom: "supabase-db",
+  };
+}
+
 async function loadSeasonDataForEntry(entry) {
   if (!entry?.dataUrl) throw new Error("Entrada de temporada invàlida");
+
+  // Historical seasons are DB-first. JSON remains as fallback while migration is progressive.
+  if (entry.key && entry.key !== "current") {
+    try {
+      const fromDb = await loadSeasonDataFromDatabase(entry.key);
+      if (fromDb?.categories && Object.keys(fromDb.categories).length) return fromDb;
+    } catch (err) {
+      console.warn(`[season] DB load failed for ${entry.key}:`, err?.message || err);
+    }
+  }
 
   try {
     const primary = await fetchJsonFile(entry.dataUrl);
@@ -6718,6 +6908,64 @@ function rebuildGlobalJugadorsIndex() {
       globalJugadorsIndex.set(jid, mergePlayerRecord(prev, player));
     }
   }
+}
+
+function normalizePlayerIdentity(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getPlayerDisplayName(player) {
+  if (!player) return "";
+  const fromSlug = player?.slug
+    ? formatPlayerDisplayName(decodeURIComponent(String(player.slug).replace(/\+/g, " ")))
+    : "";
+  const fromName = String(player?.name || "").trim();
+  return fromSlug || fromName;
+}
+
+function findPlayerInSeasonDataByIdentity(seasonData, identity = {}) {
+  const wantedId = String(identity?.jid || "").trim();
+  if (!seasonData?.jugadors) return null;
+
+  if (wantedId && seasonData.jugadors[wantedId]) {
+    return { jid: wantedId, player: seasonData.jugadors[wantedId] };
+  }
+
+  const wantedSlug = normalizePlayerIdentity(identity?.slug || "");
+  const wantedName = normalizePlayerIdentity(identity?.name || "");
+  if (!wantedSlug && !wantedName) return null;
+
+  for (const [pid, player] of Object.entries(seasonData.jugadors || {})) {
+    const slugNorm = normalizePlayerIdentity(player?.slug ? decodeURIComponent(String(player.slug).replace(/\+/g, " ")) : "");
+    if (wantedSlug && slugNorm && slugNorm === wantedSlug) {
+      return { jid: String(pid), player };
+    }
+
+    const nameNorm = normalizePlayerIdentity(getPlayerDisplayName(player));
+    if (wantedName && nameNorm && nameNorm === wantedName) {
+      return { jid: String(pid), player };
+    }
+  }
+
+  return null;
+}
+
+function resolvePlayerForActiveSeason(jid, fallbackName = "") {
+  const wantedId = String(jid || "").trim();
+  const direct = getPlayerById(wantedId);
+  if (direct) return { jid: wantedId, player: direct };
+
+  const found = findPlayerInSeasonDataByIdentity(DB, {
+    jid: wantedId,
+    name: String(fallbackName || "").trim(),
+  });
+
+  return found || null;
 }
 
 function getPlayerById(jid, options = {}) {
@@ -9153,12 +9401,14 @@ function renderJugadorsTab(refreshOnly = false) {
     return today.getFullYear()-dob.getFullYear()-(today<new Date(today.getFullYear(),dob.getMonth(),dob.getDate())?1:0);
   };
 
-  const playerRow = (jid, player, dndType = null) => {
+  const playerRow = (jid, player, dndType = null, favKey = null) => {
+    const storedFavKey = String(favKey || jid || "").trim();
+    const uiJid = String(jid || "").trim();
     const name = fmtName(player);
     const age  = calcAge(player.birthDate);
     const team = normalizePlayerTeamStatsForDisplay(player)?.[0];
     const catLabel = team ? (CAT_LABELS[team.cat] || team.cat) : null;
-    const fav  = isPlayerFav(jid);
+    const fav  = isPlayerFav(storedFavKey);
     const sub  = [
       team    ? `<span style="font-size:11px;color:#6b7a99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${esc(team.team)}</span>` : "",
       catLabel? `<span style="font-size:10px;font-weight:700;background:#f0f4f8;color:#475569;border-radius:4px;padding:1px 5px;flex-shrink:0">${esc(catLabel)}</span>` : "",
@@ -9166,18 +9416,18 @@ function renderJugadorsTab(refreshOnly = false) {
       age     ? `<span style="font-size:11px;color:#94a3b8;flex-shrink:0">${age}a</span>` : "",
     ].filter(Boolean);
     const dragAttrs = dndType === "player"
-      ? `draggable="true" ondragstart="favDragStart('player','${esc(jid)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(jid)}')"`
+      ? `draggable="true" ondragstart="favDragStart('player','${esc(storedFavKey)}')" ondragend="favDragEnd()" ondragover="favDragOver(event)" ondrop="favDrop('player','${esc(storedFavKey)}')"`
       : "";
     const dragHandle = dndType === "player"
       ? `<div title="Arrossega per ordenar" style="color:#cbd5e1;font-size:16px;line-height:1;cursor:grab;user-select:none;flex-shrink:0">⋮⋮</div>`
       : "";
     return `<div ${dragAttrs} style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f2f8">
       ${dragHandle}
-      <div data-jid="${esc(jid)}" style="flex:1;min-width:0;cursor:pointer">
+      <div data-jid="${esc(uiJid)}" style="flex:1;min-width:0;cursor:pointer">
         <div style="font-size:14px;font-weight:600;color:#1a2035;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
         ${sub.length?`<div style="display:flex;align-items:center;gap:5px;margin-top:2px;flex-wrap:wrap">${sub.join("")}</div>`:""}
       </div>
-      <button onclick="event.stopPropagation();togglePlayerFavAndRender('${esc(jid)}')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px 2px;flex-shrink:0;line-height:1;color:${fav?"#f59e0b":"#cbd5e1"}">${fav?"★":"☆"}</button>
+      <button onclick="event.stopPropagation();togglePlayerFavAndRender('${esc(storedFavKey)}')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px 2px;flex-shrink:0;line-height:1;color:${fav?"#f59e0b":"#cbd5e1"}">${fav?"★":"☆"}</button>
     </div>`;
   };
 
@@ -9206,12 +9456,14 @@ function renderJugadorsTab(refreshOnly = false) {
   // Jugadors seguits
   if (playerFavs.length) {
     const rows = playerFavs.map(jid => {
-      const p = getPlayerById(jid);
+      const meta = playerFavMeta?.[String(jid)] || null;
+      const resolved = resolvePlayerForActiveSeason(jid, meta?.name || "");
+      const p = resolved?.player || null;
       if (p) {
         rememberPlayerFavMeta(jid);
-        return playerRow(jid, p, "player");
+        return playerRow(resolved?.jid || jid, p, "player", jid);
       }
-      return playerMissingRow(jid, playerFavMeta?.[String(jid)] || null, "player");
+      return playerMissingRow(jid, meta, "player");
     }).join("");
     if (rows) listHtml += `
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:6px">⭐ Seguits</div>
@@ -9930,6 +10182,14 @@ function renderUserFavConvocatoriesPanel() {
 function renderUserFavUtilityPanel() {
   const panel = $("user-favs-utility-panel");
   if (!panel) return;
+
+  if (activeSeasonKey !== "current" && DB?.generatedFrom === "supabase-db" && userFavView !== "none") {
+    panel.innerHTML = `<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:12px;color:#9a3412;font-size:12px;line-height:1.45">
+      En temporades històriques carregades des de BD, les eines de <b>Calendari</b> i <b>Convocatòries</b> de favorits estan temporalment limitades perquè encara no hi ha calendari/actes migrats a DB.
+    </div>`;
+    return;
+  }
+
   if (userFavView === "calendar") {
     renderUserFavCalendarPanel();
     return;
@@ -10118,6 +10378,8 @@ function userToggleConvMatchDetail(matchKey) {
 }
 
 async function hydrateActaLinksForFavoriteComps() {
+  if (DB?.generatedFrom === "supabase-db") return;
+
   const ids = [...new Set((favs || []).map(f => String(f?.compId || "")).filter(Boolean))];
   if (!ids.length) return;
 
@@ -10155,9 +10417,11 @@ function buildLevelFavCard(fav) {
 }
 
 function buildPlayerFavCard(jid) {
-  const p = getPlayerById(jid);
-  if (p) rememberPlayerFavMeta(jid);
   const meta = playerFavMeta?.[String(jid)] || null;
+  const resolved = resolvePlayerForActiveSeason(jid, meta?.name || "");
+  const resolvedJid = resolved?.jid || String(jid || "");
+  const p = resolved?.player || null;
+  if (p) rememberPlayerFavMeta(jid);
   const name = p?.slug ? formatPlayerDisplayName(decodeURIComponent(p.slug.replace(/\+/g," "))) : (meta?.name || `Jugador ${jid}`);
   const team = normalizePlayerTeamStatsForDisplay(p)?.[0] || (meta ? { team: meta.team, cat: meta.cat } : null);
   const catLabel = team?.cat ? (CAT_LABELS[team.cat] || team.cat) : "";
@@ -10176,7 +10440,7 @@ function buildPlayerFavCard(jid) {
         <button onclick="removePlayerFavHome('${esc(jid)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
-        <button onclick="openPlayerModal('${esc(jid)}','${esc(name)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">${ctaLabel}</button>
+        <button onclick="openPlayerModal('${esc(resolvedJid)}','${esc(name)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">${ctaLabel}</button>
       </div>
     </div>`;
 }
@@ -12376,22 +12640,26 @@ window.openDetail=openDetail;
 
 // ── Fitxa de jugador (bottom sheet) ──────────────────────────
 async function openPlayerModal(jid, fallbackName) {
-  await enrichPlayerOnDemand(jid);
-  const player = getPlayerById(jid);
+  const resolvedActive = resolvePlayerForActiveSeason(jid, fallbackName || "") || { jid: String(jid || ""), player: getPlayerById(jid) };
+  const activePlayerId = String(resolvedActive?.jid || jid || "").trim();
+
+  await enrichPlayerOnDemand(activePlayerId);
+  const player = resolvePlayerForActiveSeason(activePlayerId, fallbackName || "")?.player || getPlayerById(activePlayerId);
   const slug   = player?.slug ? decodeURIComponent(player.slug.replace(/\+/g," ")) : null;
   const name   = (slug ? formatPlayerDisplayName(slug) : null)
                || fallbackName
                || "Jugador";
 
   // Team i categoria del teamStats principal
-  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, jid, { seasonData: DB, seasonKey: activeSeasonKey });
+  const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, activePlayerId, { seasonData: DB, seasonKey: activeSeasonKey });
   const fixedTeamStats = sourceTeamStats.length
     ? sourceTeamStats
     : normalizePlayerTeamStatsForDisplay(player, DB);
   const firstTeam  = fixedTeamStats?.[0];
   const teamSuffix = firstTeam ? `, ${normalizeJokClubDisplayName(firstTeam.team)}` : "";
   const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
-  const url    = player?.url || `https://jok.cat/jugador/${jid}`;
+  const numericPlayerId = /^\d+$/.test(activePlayerId);
+  const url    = player?.url || (numericPlayerId ? `https://jok.cat/jugador/${activePlayerId}` : null);
 
   // ── Dades bàsiques ───────────────────────────────────────────
   const numberSuffix = player?.number != null
@@ -12487,10 +12755,15 @@ async function openPlayerModal(jid, fallbackName) {
     const seasonData = seasonKey ? await getSeasonDataForKey(seasonKey) : null;
     if (!seasonData) return [];
 
-    const seasonPlayer = seasonData?.jugadors?.[String(jid)] || null;
+    const seasonPlayerRef = findPlayerInSeasonDataByIdentity(seasonData, {
+      jid: activePlayerId,
+      slug: player?.slug || "",
+      name,
+    });
+    const seasonPlayer = seasonPlayerRef?.player || null;
     if (!seasonPlayer) return [];
 
-    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, jid, { seasonData, seasonKey: seasonKey || activeSeasonKey });
+    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData, seasonKey: seasonKey || activeSeasonKey });
     const teamStats = fromSources.length
       ? fromSources
       : normalizePlayerTeamStatsForDisplay(seasonPlayer, seasonData);
@@ -12600,13 +12873,13 @@ async function openPlayerModal(jid, fallbackName) {
     ${seasonsSections}
     ${noDataHtml}
     <div class="pm-section">
-      <a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#003da5;text-decoration:none">🔗 Veure perfil a jok.cat →</a>
+      ${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#003da5;text-decoration:none">🔗 Veure perfil a jok.cat →</a>` : `<div style="font-size:12px;color:#64748b">Perfil extern no disponible per aquest registre de BD.</div>`}
     </div>
     <div style="height:env(safe-area-inset-bottom,0px)"></div>`;
 
   $("player-modal").classList.add("pm-open");
   $("player-modal-bd").style.display = "block";
-  currentJugadorId = jid;
+  currentJugadorId = activePlayerId;
 }
 
 function closePlayerModal() {
@@ -12765,9 +13038,9 @@ async function renderDetailClassif(){
     if (m.homeScore === 0 && awayTeam && stats[awayTeam]) stats[awayTeam].shutouts++;
   });
 
-  // Calculate cards (blaves/vermelles) from actes
+  // Calculate cards (blaves/vermelles) from actes when acta data is available.
   const catSlug = getCatSlugForComp(detailComp);
-  if (catSlug) {
+  if (catSlug && DB?.generatedFrom !== "supabase-db") {
     const actes = await loadCatActes(catSlug);
     const compIdStr = String(detailComp.id);
 
