@@ -106,6 +106,30 @@ function writeCsv(filePath, headers, rows) {
   fs.writeFileSync(filePath, lines.join("\n") + "\n", "utf8");
 }
 
+function writeCsvSplitByLineLimit(baseFilePath, headers, rows, maxLinesPerFile = 10000) {
+  const maxDataRows = Math.max(1, Number(maxLinesPerFile || 0) - 1);
+  const parsed = path.parse(baseFilePath);
+  const fileNames = [];
+
+  if (rows.length <= maxDataRows) {
+    writeCsv(baseFilePath, headers, rows);
+    return [path.basename(baseFilePath)];
+  }
+
+  let part = 1;
+  for (let i = 0; i < rows.length; i += maxDataRows) {
+    const chunk = rows.slice(i, i + maxDataRows);
+    const filePath = part === 1
+      ? baseFilePath
+      : path.join(parsed.dir, `${parsed.name}_${String(part).padStart(3, "0")}${parsed.ext}`);
+    writeCsv(filePath, headers, chunk);
+    fileNames.push(path.basename(filePath));
+    part += 1;
+  }
+
+  return fileNames;
+}
+
 async function readJson(filePath) {
   const content = await fsp.readFile(filePath, "utf8");
   return JSON.parse(content);
@@ -688,31 +712,34 @@ async function main() {
     competitionTeamsRows
   );
 
-  writeCsv(
+  const matchesHistoricalHeaders = [
+    "id",
+    "source_acta_id",
+    "season",
+    "category",
+    "competition_id",
+    "competition_name",
+    "jornada",
+    "match_date",
+    "match_time",
+    "home_team_id",
+    "away_team_id",
+    "home_team_name",
+    "away_team_name",
+    "home_score",
+    "away_score",
+    "referees_json",
+    "acta_url",
+    "raw_json",
+    "created_at",
+    "updated_at",
+  ];
+
+  const matchesHistoricalFiles = writeCsvSplitByLineLimit(
     path.join(args.outDir, "matches_historical.csv"),
-    [
-      "id",
-      "source_acta_id",
-      "season",
-      "category",
-      "competition_id",
-      "competition_name",
-      "jornada",
-      "match_date",
-      "match_time",
-      "home_team_id",
-      "away_team_id",
-      "home_team_name",
-      "away_team_name",
-      "home_score",
-      "away_score",
-      "referees_json",
-      "acta_url",
-      "raw_json",
-      "created_at",
-      "updated_at",
-    ],
-    historicalMatchesRows
+    matchesHistoricalHeaders,
+    historicalMatchesRows,
+    10000
   );
 
   const report = {
@@ -734,8 +761,13 @@ async function main() {
       "competitions.csv",
       "players.csv",
       "competition_teams.csv",
-      "matches_historical.csv",
+      ...matchesHistoricalFiles,
     ],
+    matches_historical_files: matchesHistoricalFiles,
+    limits: {
+      csvMaxLinesPerFile: 10000,
+      matchesHistoricalMaxDataRowsPerFile: 9999,
+    },
   };
 
   await fsp.writeFile(path.join(args.outDir, "report.json"), JSON.stringify(report, null, 2) + "\n", "utf8");

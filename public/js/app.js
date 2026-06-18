@@ -996,6 +996,7 @@ async function _refreshCoordinatorFromDB() {
         cache[club].push({
           id: row.id,
           teamName: row.team_name || "",
+          category: String(row.category || "").trim(),
           type: row.type || "amistos",
           location: row.location || "",
           date: String(row.match_date || ""),
@@ -2267,6 +2268,7 @@ function getCoordinatorAdHocMatchesForPool(teamPool, teamFilter = "") {
 function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   const club = String(clubName || "").trim();
   const team = String(teamName || "").trim();
+  const category = String(payload?.category || "").trim();
   const type = String(payload?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos";
   const location = String(payload?.location || "").trim();
   const date = String(payload?.date || "").trim();
@@ -2285,6 +2287,7 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   const item = {
     id,
     teamName: team,
+    category,
     type,
     location,
     date,
@@ -2308,6 +2311,7 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
         id,
         club_name: club,
         team_name: team,
+        category,
         type,
         location,
         match_date: date,
@@ -2338,6 +2342,7 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
   if (itemIdx === -1) return { ok: false, message: "Partit no trobat." };
 
   const type = String(payload?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos";
+  const category = String(payload?.category || "").trim();
   const location = String(payload?.location || "").trim();
   const date = String(payload?.date || "").trim();
   const time = String(payload?.time || "").trim();
@@ -2351,6 +2356,7 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
   const updatedItem = {
     ...list[itemIdx],
     teamName: team,
+    category,
     type,
     location,
     date,
@@ -2373,6 +2379,7 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
       
       await sb.from("ad_hoc_matches").update({
         team_name: team,
+        category,
         type,
         location,
         match_date: date,
@@ -4013,6 +4020,8 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = ""
   for (const adHoc of getCoordinatorAdHocMatches(clubName, teamName)) {
     const ts = parseMatchKickoffTimestamp({ date: adHoc.date, time: adHoc.time }, "");
     if (!ts || ts < (nowTs - pastToleranceMs)) continue;
+    // Filter ad-hoc matches by category if a category filter is provided
+    if (teamCategory && String(adHoc?.category || "").trim() !== String(teamCategory).trim()) continue;
     const rival = adHoc.opponent || (adHoc.type === "torneig" ? "Rival torneig" : "Rival amistos");
     matches.push({
       compId: `adhoc:${adHoc.id}`,
@@ -4027,6 +4036,7 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = ""
       isAdHoc: true,
       adHocType: adHoc.type,
       location: adHoc.location,
+      category: adHoc.category,
     });
   }
 
@@ -4220,6 +4230,7 @@ function updateConvocatoriaPlayerField(playerName, updates) {
   Object.assign(player, next);
   saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvMatchKey, convocatoria);
   renderCoordinatorConvMatchSummary();
+  renderConvocatoriaPlayers(convocatoria);
 }
 
 function isConvGoalkeeper(player) {
@@ -4525,6 +4536,7 @@ function coordinatorCreateAdHocMatch() {
   }
 
   const result = addCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, {
+    category: coordinatorConvTeamCategoryFilter,
     type: $("coordinator-adhoc-type")?.value || "amistos",
     opponent: $("coordinator-adhoc-opponent")?.value || "",
     location: $("coordinator-adhoc-location")?.value || "",
@@ -4581,6 +4593,7 @@ function coordinatorEditAdHocMatch() {
   }
 
   const result = editCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, coordinatorConvAdHocEditingId, {
+    category: coordinatorConvTeamCategoryFilter,
     type: $("coordinator-adhoc-type")?.value || "amistos",
     opponent: $("coordinator-adhoc-opponent")?.value || "",
     location: $("coordinator-adhoc-location")?.value || "",
@@ -9777,8 +9790,8 @@ function getUserFavoritePlayersForTutorConv(match, teamName = "", categoryName =
   if (!coordinatorPlayersFilter.playerNameKeys.size) return [];
 
   // If coordinator created a convocatoria, allow any favorite player explicitly
-  // included in that convocatoria, even if their base favorite team differs.
-  const allFavoritePlayers = getUserFavoritePlayersForTeam("", "");
+  // included in that convocatoria, but filter by category to prevent cross-category favorites
+  const allFavoritePlayers = getUserFavoritePlayersForTeam("", selectedCategory);
   return allFavoritePlayers.filter(player =>
     coordinatorPlayersFilter.playerNameKeys.has(normalizeTutorPlayerNameKey(player?.name || ""))
   );

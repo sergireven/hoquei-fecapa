@@ -466,6 +466,9 @@ function _coachBuildClubTeamOptions() {
     }
   }
 
+  if (!map.size) {
+    console.warn("[coach-panel] No clubs found from buildClubMap, relying on convocatoria cache");
+  }
   const convStore = _coachLoadConvocatoriaStore();
   for (const key of Object.keys(convStore || {})) {
     const parts = String(key || "").split("::");
@@ -2245,8 +2248,16 @@ async function renderCoachPanel(clubSearchCursor) {
       </div>`;
 
   let options = _coachBuildClubTeamOptions();
-  await _coachLoadSelectedClub(options);
-  await _coachLoadFavoriteTeams(options);
+  try {
+    await _coachLoadSelectedClub(options);
+  } catch (err) {
+    console.warn("[coach-panel] load selected club failed", err);
+  }
+  try {
+    await _coachLoadFavoriteTeams(options);
+  } catch (err) {
+    console.warn("[coach-panel] load favorite teams failed", err);
+  }
   options = _coachEnsureTeamSelection(options);
   const team = _cteam();
   const club = _cclub();
