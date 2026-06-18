@@ -17,6 +17,7 @@ Expected output directory:
 - `public/db-csv/competitions.csv`
 - `public/db-csv/players.csv`
 - `public/db-csv/competition_teams.csv`
+- `public/db-csv/matches_historical.csv`
 - `public/db-csv/report.json`
 
 ## 2) If starting fresh (no existing data)
@@ -28,6 +29,7 @@ Upload/import in this order to preserve foreign keys:
 3. `competitions.csv`
 4. `players.csv`
 5. `competition_teams.csv`
+6. `matches_historical.csv`
 
 ## 2b) If reimporting due to FK violations
 
@@ -87,6 +89,7 @@ teams: 6552
 players: 39899
 competitions: 2147
 competition_teams: 11866
+matches_historical: (depèn de les temporades disponibles a `public/actes` i `public/season-archive/actes`)
 ```
 
 ## 5) Scripts reference

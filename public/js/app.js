@@ -2529,6 +2529,12 @@ function openCoordinatorPanel() {
     alert("No tens permisos de coordinador.");
     return;
   }
+  if (activeSeasonKey !== "current") {
+    ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team", "screen-admin"].forEach(id => $(id).style.display = "none");
+    $("screen-coordinator").style.display = "flex";
+    renderCoordinatorPanel();
+    return;
+  }
   ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team", "screen-admin"].forEach(id => $(id).style.display = "none");
   $("screen-coordinator").style.display = "flex";
   const fav = loadCoordinatorFavorite();
@@ -2541,6 +2547,23 @@ function openCoordinatorPanel() {
 function closeCoordinatorPanel() {
   $("screen-coordinator").style.display = "none";
   renderHome();
+}
+
+async function coordinatorSwitchToCurrentSeason() {
+  if (activeSeasonKey === "current") {
+    openCoordinatorPanel();
+    return;
+  }
+  if (typeof switchActiveSeason !== "function") {
+    alert("No s'ha pogut canviar de temporada automàticament.");
+    return;
+  }
+  try {
+    await switchActiveSeason("current", { showLoading: true });
+    openCoordinatorPanel();
+  } catch (err) {
+    alert(`No s'ha pogut canviar a temporada actual: ${err?.message || "error desconegut"}`);
+  }
 }
 
 function renderCoordinatorTabs() {
@@ -2862,6 +2885,14 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
 
 function renderCoordinatorPanel(searchCursor) {
   const body = $("coordinator-body");
+  if (activeSeasonKey !== "current") {
+    body.innerHTML = `<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:14px;padding:18px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Panell disponible a la temporada actual</div>
+      <div style="font-size:13px;color:#7c2d12;line-height:1.55;margin-bottom:10px">Per evitar barrejar entrenaments, convocatòries i configuracions entre temporades, el panell de Coordinador només funciona en temporada actual.</div>
+      <button onclick="coordinatorSwitchToCurrentSeason()" style="background:#ea580c;border:none;color:#fff;font-weight:800;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer">Canviar a temporada actual</button>
+    </div>`;
+    return;
+  }
   const currentFav = loadCoordinatorFavorite();
   if (coordinatorPanelTab === "convocatories") {
     coordinatorEnsureValidConvTeam(currentFav);
@@ -4900,6 +4931,7 @@ function coordinatorAddPlayerToConvocatoria(encodedName, encodedTeam, encodedPos
 }
 
 window.coordinatorSetTab = coordinatorSetTab;
+window.coordinatorSwitchToCurrentSeason = coordinatorSwitchToCurrentSeason;
 window.coordinatorSetClubSearch = coordinatorSetClubSearch;
 window.coordinatorChooseClub = coordinatorChooseClub;
 window.openCoordinatorPanel = openCoordinatorPanel;
