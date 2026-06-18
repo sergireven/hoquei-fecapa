@@ -987,25 +987,65 @@ async function _refreshCoordinatorFromDB() {
       .from("ad_hoc_matches")
       .select("*")
       .eq("coach_user_id", currentProfile.id);
-    if (Array.isArray(adHocData) && adHocData.length) {
-      const cache = {};
+    if (Array.isArray(adHocData)) {
+      // Merge DB rows into local cache instead of replacing it, so a transient
+      // DB sync error does not make recently-created local ad-hoc matches vanish.
+      const localCache = loadCoordinatorAdHocMatchesCache();
+      const mergedByClub = {};
+
+      const upsertItem = (club, item) => {
+        const key = String(club || "").trim();
+        const id = String(item?.id || "").trim();
+        if (!key || !id) return;
+        mergedByClub[key] = mergedByClub[key] || new Map();
+        mergedByClub[key].set(id, {
+          id,
+          teamName: String(item?.teamName || "").trim(),
+          category: String(item?.category || "").trim(),
+          type: String(item?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos",
+          location: String(item?.location || "").trim(),
+          date: String(item?.date || "").trim(),
+          time: String(item?.time || "").trim(),
+          opponent: String(item?.opponent || "").trim(),
+          createdAt: String(item?.createdAt || ""),
+          updatedAt: String(item?.updatedAt || ""),
+        });
+      };
+
+      for (const [clubName, list] of Object.entries(localCache || {})) {
+        if (!Array.isArray(list)) continue;
+        for (const item of list) upsertItem(clubName, item);
+      }
+
       for (const row of adHocData) {
-        const club = String(row.club_name || "").trim();
+        const club = String(row?.club_name || "").trim();
         if (!club) continue;
-        cache[club] = cache[club] || [];
-        cache[club].push({
-          id: row.id,
-          teamName: row.team_name || "",
-          category: String(row.category || "").trim(),
-          type: row.type || "amistos",
-          location: row.location || "",
-          date: String(row.match_date || ""),
-          time: String(row.match_time || ""),
-          opponent: row.opponent || "",
-          createdAt: row.created_at || "",
+        upsertItem(club, {
+          id: row?.id,
+          teamName: row?.team_name,
+          category: row?.category,
+          type: row?.type,
+          location: row?.location,
+          date: row?.match_date,
+          time: row?.match_time,
+          opponent: row?.opponent,
+          createdAt: row?.created_at,
+          updatedAt: row?.updated_at,
         });
       }
-      saveCoordinatorAdHocMatchesCache(cache);
+
+      const mergedCache = {};
+      for (const [club, itemsMap] of Object.entries(mergedByClub)) {
+        mergedCache[club] = [...itemsMap.values()]
+          .filter(item => item.id && item.teamName && item.date && item.time)
+          .sort((a, b) => {
+            const ta = Date.parse(String(a?.createdAt || "")) || 0;
+            const tb = Date.parse(String(b?.createdAt || "")) || 0;
+            return ta - tb;
+          });
+      }
+
+      saveCoordinatorAdHocMatchesCache(mergedCache);
     }
 
     renderCoordinatorPanel();
@@ -4022,8 +4062,10 @@ function getUpcomingMatchesForConvocatoria(clubName, teamName, teamCategory = ""
   for (const adHoc of getCoordinatorAdHocMatches(clubName, teamName)) {
     const ts = parseMatchKickoffTimestamp({ date: adHoc.date, time: adHoc.time }, "");
     if (!ts || ts < (nowTs - pastToleranceMs)) continue;
-    // Filter ad-hoc matches by category if a category filter is provided
-    if (teamCategory && String(adHoc?.category || "").trim() !== String(teamCategory).trim()) continue;
+    // Filter ad-hoc matches by category when provided, but keep legacy rows
+    // that were created before category was persisted.
+    const adHocCategory = String(adHoc?.category || "").trim();
+    if (teamCategory && adHocCategory && adHocCategory !== String(teamCategory).trim()) continue;
     const rival = adHoc.opponent || (adHoc.type === "torneig" ? "Rival torneig" : "Rival amistos");
     matches.push({
       compId: `adhoc:${adHoc.id}`,
