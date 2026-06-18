@@ -2224,6 +2224,7 @@ function getCoordinatorAdHocMatches(clubName, teamName = "") {
       id: String(item?.id || "").trim(),
       clubName: club,
       teamName: String(item?.teamName || "").trim(),
+      category: String(item?.category || "").trim(),
       type: String(item?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos",
       location: String(item?.location || "").trim(),
       date: String(item?.date || "").trim(),
@@ -2254,6 +2255,7 @@ function getCoordinatorAdHocMatchesForPool(teamPool, teamFilter = "") {
         id: String(item?.id || "").trim(),
         clubName: String(clubName || "").trim(),
         teamName,
+        category: String(item?.category || "").trim(),
         type: String(item?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos",
         location: String(item?.location || "").trim(),
         date: String(item?.date || "").trim(),
@@ -6736,7 +6738,44 @@ async function fetchAllRows(buildQuery, pageSize = 1000) {
   return rows;
 }
 
-function buildDbCompetitionClassificationRows(compTeams, teamById) {
+function normalizeShieldKey(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return "";
+
+  // Accept full URL/path and keep only the filename/id segment.
+  const noQuery = raw.split(/[?#]/)[0];
+  const tail = noQuery.split("/").filter(Boolean).pop() || "";
+  const candidate = String(tail || raw).trim();
+  if (!candidate) return "";
+  return candidate;
+}
+
+function normalizeClubNameForShieldMap(rawValue) {
+  return String(rawValue || "")
+    .replace(/\s+[A-E]$/i, "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildClubShieldMapFromSeasonData(seasonData) {
+  const out = new Map();
+  for (const comps of Object.values(seasonData?.categories || {})) {
+    for (const comp of (comps || [])) {
+      for (const row of (comp?.classification || [])) {
+        const teamName = String(row?.team || "").trim();
+        const shield = normalizeShieldKey(row?.clubId || row?.logoSrc || "");
+        if (!teamName || !shield) continue;
+        const key = normalizeClubNameForShieldMap(teamName);
+        if (key && !out.has(key)) out.set(key, shield);
+      }
+    }
+  }
+  return out;
+}
+
+function buildDbCompetitionClassificationRows(compTeams, teamById, clubShieldByDbId = null) {
   const rows = compTeams
     .map(ct => {
       const team = teamById.get(String(ct.team_id || ""));
@@ -6746,12 +6785,16 @@ function buildDbCompetitionClassificationRows(compTeams, teamById) {
       const losses = Number(ct.losses || 0);
       const played = Number(ct.matches_played || (wins + draws + losses));
       const pts = wins * 3 + draws;
+      const dbClubId = String(team.club_id || "").trim();
+      const mappedShield = dbClubId && clubShieldByDbId
+        ? normalizeShieldKey(clubShieldByDbId[dbClubId] || "")
+        : "";
 
       return {
         pos: ct.league_position == null ? null : Number(ct.league_position),
         team: String(team.team_name || ""),
         teamId: String(team.id || ""),
-        clubId: String(team.club_id || ""),
+        clubId: mappedShield || dbClubId || null,
         pj: Number.isFinite(played) ? played : 0,
         pg: Number.isFinite(wins) ? wins : 0,
         pe: Number.isFinite(draws) ? draws : 0,
@@ -6834,6 +6877,45 @@ async function loadSeasonDataFromDatabase(seasonKey) {
   );
   const teamById = new Map((teams || []).map(t => [String(t.id || ""), t]));
 
+  const clubIds = [...new Set((teams || []).map(t => String(t?.club_id || "").trim()).filter(Boolean))];
+  const clubs = [];
+  for (const idsChunk of chunkArray(clubIds, 250)) {
+    const chunkRows = await fetchAllRows(() =>
+      _sb.from("clubs")
+        .select("id, name, jok_key")
+        .in("id", idsChunk)
+    );
+    clubs.push(...chunkRows);
+  }
+  const clubShieldByDbId = {};
+  for (const club of clubs) {
+    const clubDbId = String(club?.id || "").trim();
+    if (!clubDbId) continue;
+    const shieldKey = normalizeShieldKey(club?.jok_key || "");
+    if (shieldKey) clubShieldByDbId[clubDbId] = shieldKey;
+  }
+
+  const fallbackSeasonData = seasonDataCache.get("current") || DB;
+  const fallbackShieldByClubName = buildClubShieldMapFromSeasonData(fallbackSeasonData);
+  for (const team of teams || []) {
+    const clubDbId = String(team?.club_id || "").trim();
+    if (!clubDbId || clubShieldByDbId[clubDbId]) continue;
+    const byName = fallbackShieldByClubName.get(normalizeClubNameForShieldMap(team?.club_name || ""));
+    const fallbackShield = normalizeShieldKey(byName || "");
+    if (fallbackShield) clubShieldByDbId[clubDbId] = fallbackShield;
+  }
+
+  const clubIndex = {};
+  for (const team of teams || []) {
+    const teamDbId = String(team?.id || "").trim();
+    const clubDbId = String(team?.club_id || "").trim();
+    if (!teamDbId) continue;
+    clubIndex[teamDbId] = {
+      clubId: clubShieldByDbId[clubDbId] || clubDbId || null,
+      dbClubId: clubDbId || null,
+    };
+  }
+
   const competitionIds = competitions.map(c => String(c.id || "")).filter(Boolean);
   const competitionTeams = [];
   for (const idsChunk of chunkArray(competitionIds, 250)) {
@@ -6859,7 +6941,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
     const compId = String(comp?.id || "").trim();
     if (!compId) continue;
 
-    const classRows = buildDbCompetitionClassificationRows(compTeamsByCompId.get(compId) || [], teamById);
+    const classRows = buildDbCompetitionClassificationRows(compTeamsByCompId.get(compId) || [], teamById, clubShieldByDbId);
     if (!categories[categoryLabel]) categories[categoryLabel] = [];
 
     categories[categoryLabel].push({
@@ -6885,6 +6967,8 @@ async function loadSeasonDataFromDatabase(seasonKey) {
     totalComps: Object.values(categories).reduce((sum, comps) => sum + (Array.isArray(comps) ? comps.length : 0), 0),
     totalActes: 0,
     categories,
+    clubIndex,
+    clubShieldByDbId,
     jugadors: buildDbPlayersIndex(playersRows, teamById, key),
     actesIndex: {},
     generatedFrom: "supabase-db",
@@ -7655,7 +7739,13 @@ function shieldImg(clubId, size) {
   size = size||22;
   const r = size<=22?4:8, p = size>22?2:1;
   if (!clubId) return `<span style="width:${size}px;height:${size}px;background:#e8ecf4;border-radius:${r}px;display:inline-block;flex-shrink:0"></span>`;
-  const safeId = String(clubId || "").trim();
+  const rawId = String(clubId || "").trim();
+  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawId);
+  const mappedFromDb = uuidLike ? normalizeShieldKey(DB?.clubShieldByDbId?.[rawId] || "") : "";
+  const safeId = normalizeShieldKey(mappedFromDb || rawId);
+  if (!safeId || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(safeId)) {
+    return `<span style="width:${size}px;height:${size}px;background:#e8ecf4;border-radius:${r}px;display:inline-block;flex-shrink:0"></span>`;
+  }
   const hasExt = safeId.includes(".");
   // clubId can be a full filename like "278_3.png" or just "278".
   // When extension is unknown, try gif -> png -> jpg before showing placeholder.
@@ -13048,7 +13138,10 @@ function setupListeners(){
   // Delegació de clics als noms de jugadors (qualsevol pantalla)
   document.addEventListener("click", e => {
     const btn = e.target.closest("[data-jid]");
-    if (btn) openPlayerModal(btn.dataset.jid, btn.textContent.trim());
+    if (!btn) return;
+    const cleanName = String(btn.dataset.playerName || btn.dataset.name || "").trim();
+    const fallbackName = cleanName || btn.textContent.trim();
+    openPlayerModal(btn.dataset.jid, fallbackName);
   });
   document.querySelectorAll(".detail-tab").forEach(tab=>{
     tab.addEventListener("click",()=>{
@@ -13439,7 +13532,7 @@ async function renderDetailJugadors(){
       const age  = calcAge(p?.birthDate);
       const team = normalizeJokClubDisplayName(String(p?.registeredTeam || p?.teamStats?.[0]?.team || "—"));
       const gk   = p?.isGK ? " 🥅" : "";
-      return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
+      return `<tr data-jid="${jid}" data-player-name="${esc(name)}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
         <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(name)}${gk}</td>
         <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
         <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(team || '—')}</td>
@@ -13472,7 +13565,7 @@ async function renderDetailJugadors(){
     const name = p?.slug ? fmtName(p) : formatPlayerDisplayName(s.name || "?");
     const age  = calcAge(p?.birthDate);
     const gk   = p?.isGK ? " 🥅" : "";
-    return `<tr data-jid="${jid}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
+    return `<tr data-jid="${jid}" data-player-name="${esc(name)}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
       <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(name)}${gk}</td>
       <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
       <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(p?.registeredTeam||'—')}</td>

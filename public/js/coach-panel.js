@@ -387,6 +387,24 @@ function _coachSeasonKey() {
   return String(typeof activeSeasonKey !== "undefined" ? activeSeasonKey || "current" : "current").trim() || "current";
 }
 
+function _coachIsCurrentSeason() {
+  const key = _coachSeasonKey();
+  if (key === "current") return true;
+  try {
+    if (typeof getActiveSeasonEntry === "function") {
+      const entry = getActiveSeasonEntry();
+      if (String(entry?.key || "").trim() === "current") return true;
+    }
+  } catch {}
+  try {
+    if (typeof seasonDataCache !== "undefined" && seasonDataCache?.get && typeof DB !== "undefined") {
+      const currentData = seasonDataCache.get("current");
+      if (currentData && DB === currentData) return true;
+    }
+  } catch {}
+  return false;
+}
+
 function _coachSeasonFromOptionValue(value) {
   const parts = String(value || "").split("|||");
   if (parts.length >= 3 && String(parts[2] || "").includes("::cat:")) return String(parts[0] || "").trim() || "";
@@ -2147,7 +2165,7 @@ function openCoachPanel() {
     alert("No tens permisos d'entrenador.");
     return;
   }
-  if (_coachSeasonKey() !== "current") {
+  if (!_coachIsCurrentSeason()) {
     ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team",
      "screen-admin", "screen-coordinator"].forEach(id => {
       const hidden = document.getElementById(id);
@@ -2186,7 +2204,7 @@ function closeCoachPanel() {
 }
 
 async function coachSwitchToCurrentSeason() {
-  if (_coachSeasonKey() === "current") {
+  if (_coachIsCurrentSeason()) {
     openCoachPanel();
     return;
   }
@@ -2227,7 +2245,7 @@ async function renderCoachPanel(clubSearchCursor) {
   const body = document.getElementById("coach-body");
   if (!body) return;
 
-  if (_coachSeasonKey() !== "current") {
+  if (!_coachIsCurrentSeason()) {
     body.innerHTML = `<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:14px;padding:18px;margin-bottom:12px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Panell disponible a la temporada actual</div>
       <div style="font-size:13px;color:#7c2d12;line-height:1.55;margin-bottom:10px">Per evitar barrejar dades operatives (alineacions, objectius, entrenaments i tàctica), el panell d'Entrenador només funciona en temporada actual.</div>
