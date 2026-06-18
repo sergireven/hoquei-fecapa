@@ -3964,6 +3964,44 @@ async function loadPlayerResponsesForConvocatoria(convocatoriaId) {
   return byPlayer;
 }
 
+function getCoordinatorEffectivePlayerStatus(player, cachedResponses = {}) {
+  const base = normalizeConvocatoriaPlayerStatus(player?.status, player?.checked !== false);
+  const key = normalizeTutorPlayerNameKey(player?.name || "");
+  const responses = Array.isArray(cachedResponses?.[key]) ? cachedResponses[key] : [];
+  if (!responses.length) return base;
+
+  const sorted = [...responses].sort((a, b) => {
+    const ta = Date.parse(String(a?.updatedAt || "")) || 0;
+    const tb = Date.parse(String(b?.updatedAt || "")) || 0;
+    return tb - ta;
+  });
+
+  for (const row of sorted) {
+    const normalized = normalizeConvocatoriaPlayerStatus(row?.status, false);
+    if (normalized === "disponible" || normalized === "no_disponible") return normalized;
+  }
+
+  return base;
+}
+
+function applyTutorResponsesToConvocatoria(convocatoria, cachedResponses = {}) {
+  if (!convocatoria || !Array.isArray(convocatoria.players)) return false;
+  let changed = false;
+  convocatoria.players = convocatoria.players.map(player => {
+    const nextStatus = getCoordinatorEffectivePlayerStatus(player, cachedResponses);
+    const normalizedCurrent = normalizeConvocatoriaPlayerStatus(player?.status, player?.checked !== false);
+    const nextChecked = nextStatus === "disponible";
+    if (normalizedCurrent === nextStatus && Boolean(player?.checked === true) === nextChecked) return player;
+    changed = true;
+    return {
+      ...player,
+      status: nextStatus,
+      checked: nextChecked,
+    };
+  });
+  return changed;
+}
+
 // Find convocatoria_id for a given match (used by tutor panel)
 async function findConvocatoriaIdForMatch(matchHome, matchAway, teamName, matchKey = "") {
   if (!_sb || !matchHome || !matchAway) return null;
@@ -4337,7 +4375,11 @@ async function coordinatorLoadSelectedConvocatoria() {
   if (convocatoria.supabaseId) {
     loadPlayerResponsesForConvocatoria(convocatoria.supabaseId).then(responses => {
       convPlayerResponsesCache[convocatoria.supabaseId] = responses;
+      if (applyTutorResponsesToConvocatoria(convocatoria, responses)) {
+        saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected?.key || coordinatorConvMatchKey, convocatoria);
+      }
       renderConvocatoriaPlayers(convocatoria);
+      renderCoordinatorConvMatchSummary();
     });
   }
 
@@ -4734,7 +4776,11 @@ async function coordinatorGenerateConvocatoria() {
   if (supabaseId) {
     loadPlayerResponsesForConvocatoria(supabaseId).then(responses => {
       convPlayerResponsesCache[supabaseId] = responses;
+      if (applyTutorResponsesToConvocatoria(convocatoria, responses)) {
+        saveConvocatoria(fav.clubName, coordinatorConvTeamFilter, selected.key, convocatoria);
+      }
       renderConvocatoriaPlayers(convocatoria);
+      renderCoordinatorConvMatchSummary();
     });
   }
   renderConvocatoriaPlayers(convocatoria);
@@ -4759,6 +4805,7 @@ function renderConvocatoriaPlayers(convocatoria) {
   if (!container || !convocatoria) return;
   const cachedResponses = convocatoria.supabaseId ? (convPlayerResponsesCache[convocatoria.supabaseId] || {}) : {};
   container.innerHTML = convocatoria.players.map(player => {
+    const effectiveStatus = getCoordinatorEffectivePlayerStatus(player, cachedResponses);
     const encodedName = encodeURIComponent(player.name || "");
     const playerKey = normalizeTutorPlayerNameKey(player.name || "");
     const tutorResps = cachedResponses[playerKey] || [];
@@ -4767,9 +4814,9 @@ function renderConvocatoriaPlayers(convocatoria) {
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:flex-start;gap:8px;flex:1"><span><span style="display:block;font-size:13px;font-weight:800;color:#1a2035">${esc(player.name)}</span><span style="display:block;font-size:11px;color:#64748b">${esc(player.position || "Jugador")}${player.dorsal ? ` · #${esc(player.dorsal)}` : ""}</span>${tutorBadges}</span></div>
         <select onchange="coordinatorSetConvPlayerStatus('${encodedName}', this.value)" style="padding:6px 8px;border:1px solid #e2e6ef;border-radius:8px;font-size:11px;font-family:inherit">
-          <option value="pendent" ${normalizeConvocatoriaPlayerStatus(player.status, player.checked !== false) === "pendent" ? "selected" : ""}>Pendent</option>
-          <option value="disponible" ${normalizeConvocatoriaPlayerStatus(player.status, player.checked !== false) === "disponible" ? "selected" : ""}>Disponible</option>
-          <option value="no_disponible" ${normalizeConvocatoriaPlayerStatus(player.status, player.checked !== false) === "no_disponible" ? "selected" : ""}>No disponible</option>
+          <option value="pendent" ${effectiveStatus === "pendent" ? "selected" : ""}>Pendent</option>
+          <option value="disponible" ${effectiveStatus === "disponible" ? "selected" : ""}>Disponible</option>
+          <option value="no_disponible" ${effectiveStatus === "no_disponible" ? "selected" : ""}>No disponible</option>
         </select>
       </div>
       <input type="text" value="${esc(player.notes || "")}" onchange="coordinatorSetConvPlayerNotes('${encodedName}', this.value)" placeholder="Observacions" style="width:100%;padding:8px 10px;border:1px solid #e2e6ef;border-radius:8px;font-size:12px;font-family:inherit"/>
