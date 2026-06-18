@@ -8,6 +8,7 @@
  * - players
  * - competitions
  * - competition_teams
+ * - matches_historical
  *
  * Fonts:
  * - public/data.json (temporada actual)
@@ -27,6 +28,8 @@ const ROOT_DIR = path.join(__dirname, "..");
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const ARCHIVE_DIR = path.join(PUBLIC_DIR, "season-archive");
 const MANIFEST_PATH = path.join(ARCHIVE_DIR, "manifest.json");
+const ACTES_CURRENT_DIR = path.join(PUBLIC_DIR, "actes");
+const ACTES_ARCHIVE_DIR = path.join(ARCHIVE_DIR, "actes");
 
 const TEAM_LETTER_SUFFIX_RE = /\s+[A-E]$/i;
 
@@ -160,6 +163,41 @@ function normalizePlayerName(name) {
 function toIntOrDefault(value, defaultValue = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : defaultValue;
+}
+
+function seasonToActesFolder(season) {
+  return String(season || "").trim();
+}
+
+function guessSeasonFromActa(record, seasonFallback) {
+  const fromComp = inferSeasonFromCompName(record?.compName || "");
+  if (fromComp) return fromComp;
+  const rawDate = normalizeSpaces(record?.actaMeta?.date || "");
+  const m = rawDate.match(/(\d{4})$/);
+  if (!m) return seasonFallback;
+  const year = Number(m[1]);
+  if (!Number.isFinite(year)) return seasonFallback;
+  const short = String(year + 1).slice(-2);
+  return `${year}-${short}`;
+}
+
+function parseActaDate(record) {
+  const raw = normalizeSpaces(record?.actaMeta?.date || "");
+  const m = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!m) return null;
+  const dd = m[1];
+  const mm = m[2];
+  const yyyy = m[3];
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function stringifyJson(value) {
+  if (value === null || value === undefined) return null;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
 }
 
 function deriveStats(row) {
@@ -405,6 +443,126 @@ function extractAllFromSeason({ data, season, context }) {
   }
 }
 
+function buildTeamLookup(teams) {
+  const byExact = new Map();
+  const byNoDiacritics = new Map();
+
+  for (const team of teams.values()) {
+    const exactKey = `${normalizeKey(team.season)}::${normalizeKey(team.category)}::${normalizeKey(team.team_name)}`;
+    const normKey = `${normalizeKey(team.season)}::${normalizeKey(team.category)}::${normalizeNoDiacritics(team.team_name).toLowerCase()}`;
+    if (!byExact.has(exactKey)) byExact.set(exactKey, team.id);
+    if (!byNoDiacritics.has(normKey)) byNoDiacritics.set(normKey, team.id);
+  }
+
+  return { byExact, byNoDiacritics };
+}
+
+function resolveTeamId({ teamLookup, season, category, teamName }) {
+  const exactKey = `${normalizeKey(season)}::${normalizeKey(category)}::${normalizeKey(teamName)}`;
+  if (teamLookup.byExact.has(exactKey)) return teamLookup.byExact.get(exactKey);
+
+  const normKey = `${normalizeKey(season)}::${normalizeKey(category)}::${normalizeNoDiacritics(teamName).toLowerCase()}`;
+  return teamLookup.byNoDiacritics.get(normKey) || null;
+}
+
+async function readActesFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  const parsed = await readJson(filePath);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  return parsed;
+}
+
+async function extractHistoricalMatches({ seasonInputs, teams, competitions }) {
+  const now = toIsoTimestamp();
+  const matches = new Map();
+  const teamLookup = buildTeamLookup(teams);
+  const competitionIdByKey = new Map();
+
+  for (const comp of competitions.values()) {
+    const compKey = `${normalizeKey(comp.name)}::${normalizeKey(comp.season)}::${normalizeKey(comp.category)}`;
+    competitionIdByKey.set(compKey, comp.id);
+  }
+
+  const acteFilesBySeason = new Map();
+
+  for (const input of seasonInputs) {
+    if (input.season === "2025-26") {
+      if (fs.existsSync(ACTES_CURRENT_DIR)) {
+        const files = (await fsp.readdir(ACTES_CURRENT_DIR)).filter((f) => f.endsWith(".json"));
+        acteFilesBySeason.set(input.season, files.map((f) => path.join(ACTES_CURRENT_DIR, f)));
+      }
+      continue;
+    }
+
+    const folder = path.join(ACTES_ARCHIVE_DIR, seasonToActesFolder(input.season));
+    if (!fs.existsSync(folder)) continue;
+    const files = (await fsp.readdir(folder)).filter((f) => f.endsWith(".json"));
+    acteFilesBySeason.set(input.season, files.map((f) => path.join(folder, f)));
+  }
+
+  for (const [seasonHint, files] of acteFilesBySeason.entries()) {
+    for (const filePath of files) {
+      const categoryFromFile = normalizeSpaces(path.basename(filePath, ".json").replace(/-/g, " "));
+      const actas = await readActesFile(filePath);
+      for (const record of Object.values(actas)) {
+        if (!record || typeof record !== "object") continue;
+        const sourceActaId = normalizeSpaces(record.actaId || record.id || "");
+        if (!sourceActaId) continue;
+
+        const season = guessSeasonFromActa(record, seasonHint);
+        const compName = normalizeSpaces(record.compName || record.actaMeta?.compName || "");
+        const category = inferCategoryFromCompName(compName, categoryFromFile);
+        const competitionKey = `${normalizeKey(compName)}::${normalizeKey(season)}::${normalizeKey(category)}`;
+        const competitionId = competitionIdByKey.get(competitionKey) || null;
+
+        const homeTeamName = normalizeSpaces(record.home || "");
+        const awayTeamName = normalizeSpaces(record.away || "");
+
+        const matchSeed = `${season}::${sourceActaId}`;
+        const id = makeId("historical_match", matchSeed);
+        const matchDateIso = parseActaDate(record);
+        const referees = Array.isArray(record.referees) ? record.referees.filter(Boolean) : [];
+
+        const homeTeamId = homeTeamName
+          ? resolveTeamId({ teamLookup, season, category, teamName: homeTeamName })
+          : null;
+        const awayTeamId = awayTeamName
+          ? resolveTeamId({ teamLookup, season, category, teamName: awayTeamName })
+          : null;
+
+        matches.set(id, {
+          id,
+          source_acta_id: sourceActaId,
+          season,
+          category,
+          competition_id: competitionId,
+          competition_name: compName || null,
+          jornada: Number.isFinite(Number(record.jornada)) ? Number(record.jornada) : null,
+          match_date: matchDateIso,
+          match_time: normalizeSpaces(record.time || record.actaMeta?.time || "") || null,
+          home_team_id: homeTeamId,
+          away_team_id: awayTeamId,
+          home_team_name: homeTeamName || null,
+          away_team_name: awayTeamName || null,
+          home_score: Number.isFinite(Number(record.homeScore)) ? Number(record.homeScore) : null,
+          away_score: Number.isFinite(Number(record.awayScore)) ? Number(record.awayScore) : null,
+          referees_json: stringifyJson(referees),
+          acta_url: normalizeSpaces(record.actaUrl || record.url || "") || null,
+          raw_json: stringifyJson(record),
+          created_at: now,
+          updated_at: now,
+        });
+      }
+    }
+  }
+
+  return [...matches.values()].sort((a, b) => {
+    const sa = `${a.season}::${a.category}::${a.jornada || 0}::${a.source_acta_id}`;
+    const sb = `${b.season}::${b.category}::${b.jornada || 0}::${b.source_acta_id}`;
+    return sa.localeCompare(sb);
+  });
+}
+
 function finalizeCompetitionTeamCounters(competitions, competitionTeams) {
   const counter = new Map();
   for (const row of competitionTeams.values()) {
@@ -445,6 +603,11 @@ async function main() {
   }
 
   finalizeCompetitionTeamCounters(context.competitions, context.competitionTeams);
+  const historicalMatchesRows = await extractHistoricalMatches({
+    seasonInputs,
+    teams: context.teams,
+    competitions: context.competitions,
+  });
 
   const clubsRows = [...context.clubs.values()].sort((a, b) => a.name.localeCompare(b.name));
   const teamsRows = [...context.teams.values()].sort((a, b) => {
@@ -525,6 +688,33 @@ async function main() {
     competitionTeamsRows
   );
 
+  writeCsv(
+    path.join(args.outDir, "matches_historical.csv"),
+    [
+      "id",
+      "source_acta_id",
+      "season",
+      "category",
+      "competition_id",
+      "competition_name",
+      "jornada",
+      "match_date",
+      "match_time",
+      "home_team_id",
+      "away_team_id",
+      "home_team_name",
+      "away_team_name",
+      "home_score",
+      "away_score",
+      "referees_json",
+      "acta_url",
+      "raw_json",
+      "created_at",
+      "updated_at",
+    ],
+    historicalMatchesRows
+  );
+
   const report = {
     generatedAt: new Date().toISOString(),
     outDir: args.outDir,
@@ -536,8 +726,16 @@ async function main() {
       players: playersRows.length,
       competitions: competitionsRows.length,
       competition_teams: competitionTeamsRows.length,
+      matches_historical: historicalMatchesRows.length,
     },
-    loadOrder: ["clubs.csv", "teams.csv", "competitions.csv", "players.csv", "competition_teams.csv"],
+    loadOrder: [
+      "clubs.csv",
+      "teams.csv",
+      "competitions.csv",
+      "players.csv",
+      "competition_teams.csv",
+      "matches_historical.csv",
+    ],
   };
 
   await fsp.writeFile(path.join(args.outDir, "report.json"), JSON.stringify(report, null, 2) + "\n", "utf8");

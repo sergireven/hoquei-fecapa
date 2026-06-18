@@ -2144,6 +2144,17 @@ function openCoachPanel() {
     alert("No tens permisos d'entrenador.");
     return;
   }
+  if (_coachSeasonKey() !== "current") {
+    ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team",
+     "screen-admin", "screen-coordinator"].forEach(id => {
+      const hidden = document.getElementById(id);
+      if (hidden) hidden.style.display = "none";
+    });
+    const guardEl = document.getElementById("screen-coach");
+    if (guardEl) guardEl.style.display = "flex";
+    Promise.resolve(renderCoachPanel()).catch(() => {});
+    return;
+  }
   ["screen-home", "screen-picker", "screen-detail", "screen-acta", "screen-team",
    "screen-admin", "screen-coordinator"].forEach(id => {
     const el = document.getElementById(id);
@@ -2171,6 +2182,23 @@ function closeCoachPanel() {
   if (typeof renderHome === "function") renderHome();
 }
 
+async function coachSwitchToCurrentSeason() {
+  if (_coachSeasonKey() === "current") {
+    openCoachPanel();
+    return;
+  }
+  if (typeof switchActiveSeason !== "function") {
+    alert("No s'ha pogut canviar de temporada automàticament.");
+    return;
+  }
+  try {
+    await switchActiveSeason("current", { showLoading: true });
+    openCoachPanel();
+  } catch (err) {
+    alert(`No s'ha pogut canviar a temporada actual: ${err?.message || "error desconegut"}`);
+  }
+}
+
 function coachSetTab(tab) {
   coachPanelTab = tab;
   const resolved = _coachResolveTeamChoice(tab);
@@ -2195,6 +2223,15 @@ function coachSetMatchSubTab(tab) {
 async function renderCoachPanel(clubSearchCursor) {
   const body = document.getElementById("coach-body");
   if (!body) return;
+
+  if (_coachSeasonKey() !== "current") {
+    body.innerHTML = `<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:14px;padding:18px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Panell disponible a la temporada actual</div>
+      <div style="font-size:13px;color:#7c2d12;line-height:1.55;margin-bottom:10px">Per evitar barrejar dades operatives (alineacions, objectius, entrenaments i tàctica), el panell d'Entrenador només funciona en temporada actual.</div>
+      <button onclick="coachSwitchToCurrentSeason()" style="background:#ea580c;border:none;color:#fff;font-weight:800;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer">Canviar a temporada actual</button>
+    </div>`;
+    return;
+  }
 
   const writeUid = await _coachAuthUidForWrite();
   const authBadge = writeUid
@@ -3606,7 +3643,7 @@ async function coachSavePlayerObjective() {
       coach_user_id: uid,
       team_name:     team || "",
       player_name:   name,
-      season:        "2025-26",
+      season:        _coachSeasonKey(),
       pillar_data:   pillarData,
     }, { onConflict: "coach_user_id,team_name,player_name,season" }));
   }
@@ -4430,6 +4467,7 @@ function coachHandleBoardClick(evt, kind, id) {
 /* ── Window exports ──────────────────────────────────────────────────────── */
 window.openCoachPanel          = openCoachPanel;
 window.closeCoachPanel         = closeCoachPanel;
+window.coachSwitchToCurrentSeason = coachSwitchToCurrentSeason;
 window.coachSetTab             = coachSetTab;
 window.coachSetMatchSubTab     = coachSetMatchSubTab;
 window.coachSetTeam            = coachSetTeam;
