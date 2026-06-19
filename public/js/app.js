@@ -982,6 +982,7 @@ async function _refreshCoordinatorFromDB() {
       if (!coordinatorClubSearch) coordinatorClubSearch = fav.clubName;
 
       await refreshCoordinatorTrainingsFromDB(fav.clubName);
+      await refreshCoordinatorExtraTeamsFromDB(fav.clubName);
     }
 
     await refreshCoordinatorConvocatoriasFromDB();
@@ -1861,6 +1862,7 @@ let coordinatorConvPollingInterval = null;
 let coordinatorTrainingsCache = {};
 let coordinatorConvocatoriasCache = {};
 let coordinatorAdHocMatchesCache = {};
+let coordinatorExtraTeamsCache = {};  // clubName -> [{teamName, category, createdAt}]
 
 function getGlobalConvocationLeadMinutes() {
   const raw = Number(localStorage.getItem(CONVOCATION_GLOBAL_LEAD_MINUTES_KEY));
@@ -2196,15 +2198,35 @@ function getCoordinatorClubEntries() {
 }
 
 function loadCoordinatorExtraTeamsCache() {
-  try {
-    return JSON.parse(localStorage.getItem(COORDINATOR_EXTRA_TEAMS_KEY) || "{}");
-  } catch {
-    return {};
-  }
+  return coordinatorExtraTeamsCache || {};
 }
 
 function saveCoordinatorExtraTeamsCache(cache) {
-  localStorage.setItem(COORDINATOR_EXTRA_TEAMS_KEY, JSON.stringify(cache || {}));
+  coordinatorExtraTeamsCache = cache || {};
+}
+
+async function refreshCoordinatorExtraTeamsFromDB(clubName) {
+  const sb = _csb();
+  const uid = await _cauthUid();
+  const club = String(clubName || "").trim();
+  if (!sb || !uid || !club) { coordinatorExtraTeamsCache[club] = []; return []; }
+  const { data, error } = await sb
+    .from("extra_teams")
+    .select("team_name, category, created_at")
+    .eq("club_name", club)
+    .eq("coach_user_id", uid);
+  if (error || !Array.isArray(data)) {
+    console.warn("[extra-teams] refresh error", error);
+    coordinatorExtraTeamsCache[club] = [];
+    return [];
+  }
+  const list = data.map(row => ({
+    teamName: String(row.team_name || "").trim(),
+    category: String(row.category || "No federat").trim() || "No federat",
+    createdAt: row.created_at || new Date().toISOString(),
+  })).filter(t => t.teamName);
+  coordinatorExtraTeamsCache[club] = list;
+  return list;
 }
 
 function getCoordinatorExtraTeams(clubName) {
@@ -2223,7 +2245,7 @@ function getCoordinatorExtraTeams(clubName) {
     .filter(item => item.teamName);
 }
 
-function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
+async function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
   const name = String(clubName || "").trim();
   const nextTeamName = String(teamName || "").trim();
   const nextCategory = String(category || "No federat").trim() || "No federat";
@@ -2234,61 +2256,45 @@ function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
   const exists = list.some(item => normalizeTeamName(item?.teamName || "") === normalizeTeamName(nextTeamName));
   if (exists) return { ok: false, message: "Aquest equip ja existeix al club." };
 
-  const item = {
-    teamName: nextTeamName,
+  // Save to Supabase first (DB is the single source of truth)
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar equips." };
+
+  const { error } = await sb.from("extra_teams").insert({
+    club_name: name,
+    team_name: nextTeamName,
     category: nextCategory,
-    createdAt: new Date().toISOString(),
-  };
-  
-  list.push(item);
-  cache[name] = list;
-  saveCoordinatorExtraTeamsCache(cache);
-  
-  // Guardar a Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("extra_teams").insert({
-        club_name: name,
-        team_name: nextTeamName,
-        category: nextCategory,
-        coach_user_id: uid,
-        created_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error("[extra-team] Error saving to BD:", err);
-    }
-  })();
-  
+    coach_user_id: uid,
+  });
+  if (error) {
+    console.error("[extra-team] Error saving to BD:", error);
+    return { ok: false, message: error.message || "No s'ha pogut desar l'equip." };
+  }
+
+  // Update in-memory cache
+  list.push({ teamName: nextTeamName, category: nextCategory, createdAt: new Date().toISOString() });
+  saveCoordinatorExtraTeamsCache({ ...(cache || {}), [name]: list });
   return { ok: true };
 }
 
-function removeCoordinatorExtraTeam(clubName, teamName) {
+async function removeCoordinatorExtraTeam(clubName, teamName) {
   const name = String(clubName || "").trim();
   const wanted = String(teamName || "").trim();
   if (!name || !wanted) return;
+
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (sb && uid) {
+    const { error } = await sb.from("extra_teams").delete()
+      .eq("club_name", name).eq("team_name", wanted).eq("coach_user_id", uid);
+    if (error) console.error("[extra-team] Error deleting from BD:", error);
+  }
+
+  // Update in-memory cache
   const cache = loadCoordinatorExtraTeamsCache();
   const list = Array.isArray(cache[name]) ? cache[name] : [];
-  cache[name] = list.filter(item => normalizeTeamName(item?.teamName || "") !== normalizeTeamName(wanted));
-  saveCoordinatorExtraTeamsCache(cache);
-  
-  // Eliminar de Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("extra_teams").delete().eq("club_name", name).eq("team_name", wanted).eq("coach_user_id", uid);
-    } catch (err) {
-      console.error("[extra-team] Error deleting from BD:", err);
-    }
-  })();
+  saveCoordinatorExtraTeamsCache({ ...(cache || {}), [name]: list.filter(item => normalizeTeamName(item?.teamName || "") !== normalizeTeamName(wanted)) });
 }
 
 function getCoordinatorAdHocMatches(clubName, teamName = "") {
@@ -2746,7 +2752,7 @@ function coordinatorExtraTeamFeedback(message, color = "#64748b") {
   node.textContent = message;
 }
 
-function coordinatorAddExtraTeam() {
+async function coordinatorAddExtraTeam() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
     alert("Selecciona primer un club.");
@@ -2754,7 +2760,7 @@ function coordinatorAddExtraTeam() {
   }
   const teamName = $("coordinator-extra-team-name")?.value || "";
   const category = $("coordinator-extra-team-cat")?.value || "Escoleta";
-  const result = addCoordinatorExtraTeam(fav.clubName, teamName, category);
+  const result = await addCoordinatorExtraTeam(fav.clubName, teamName, category);
   if (!result.ok) {
     coordinatorExtraTeamFeedback(result.message || "No s'ha pogut afegir l'equip.", "#dc2626");
     return;
@@ -2764,11 +2770,11 @@ function coordinatorAddExtraTeam() {
   renderCoordinatorPanel();
 }
 
-function coordinatorRemoveExtraTeam(encodedTeamName) {
+async function coordinatorRemoveExtraTeam(encodedTeamName) {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) return;
   const teamName = decodeURIComponent(String(encodedTeamName || ""));
-  removeCoordinatorExtraTeam(fav.clubName, teamName);
+  await removeCoordinatorExtraTeam(fav.clubName, teamName);
   renderCoordinatorPanel();
 }
 
@@ -3259,7 +3265,9 @@ async function createTraining(clubId, payload) {
         club_name: clubId,
         team_name: String(teamRef.teamName || "").trim(),
         team_category: String(teamRef.category || "").trim(),
-        team_id: teamRef.teamKey ? String(teamRef.teamKey) : null,
+        // team_id is a UUID FK to the teams table — teamRef.teamKey is an internal
+        // string identifier (not a UUID), so always leave it null.
+        team_id: null,
         season: getActiveSeasonLabel(),
         training_date: date,
         training_time: time,
@@ -3862,6 +3870,21 @@ function saveConvocatoria(clubName, teamName, matchKey, convocatoria, teamKey = 
 }
 
 function coordinatorResolveEffectiveConvTeam(clubName, match = null) {
+  if (coordinatorConvTeamFilter) {
+    const teams = getCoordinatorClubTeams(clubName);
+    // Priority 1: exact match by name AND category — avoids confusion between
+    // two teams with the same name in different categories (e.g. Ripollet B Benjamí / Infantil)
+    if (coordinatorConvTeamCategoryFilter) {
+      const byNameAndCat = teams.find(t =>
+        String(t?.teamName || "").trim() === coordinatorConvTeamFilter &&
+        String(t?.category || "").trim() === coordinatorConvTeamCategoryFilter
+      );
+      if (byNameAndCat?.teamName) return byNameAndCat;
+    }
+    // Priority 2: match by teamKey (exact, covers the key stored from chip selection)
+    const byKey = teams.find(t => String(t?.teamKey || "").trim() === coordinatorConvTeamFilter);
+    if (byKey?.teamName) return byKey;
+  }
   const resolved = coordinatorResolveTeamSelection(clubName, coordinatorConvTeamFilter);
   if (resolved?.teamName) return resolved;
 
