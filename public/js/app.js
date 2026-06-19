@@ -2351,6 +2351,32 @@ function getCoordinatorAdHocMatchesForPool(teamPool, teamFilter = "") {
   return out;
 }
 
+function formatAdHocDbError(error, fallbackMessage) {
+  const fallback = String(fallbackMessage || "Error desconegut guardant a la BD.");
+  if (!error) return fallback;
+  const code = String(error?.code || "").trim();
+  const msg = String(error?.message || "").trim();
+  const details = String(error?.details || "").trim();
+  const hint = String(error?.hint || "").trim();
+
+  // Frequent real-world causes in this project:
+  // - 42501: RLS / permissions
+  // - 42703: schema mismatch (missing column, often pending migration)
+  if (code === "42501") {
+    return "Sense permisos per escriure a ad_hoc_matches (RLS). Revisa login i polítiques.";
+  }
+  if (code === "42703" || /column .* does not exist/i.test(msg)) {
+    return "L'esquema de la BD no esta actualitzat (falta una columna a ad_hoc_matches). Executa les migracions pendents.";
+  }
+
+  const parts = [fallback];
+  if (msg) parts.push(msg);
+  if (details) parts.push(details);
+  if (hint) parts.push(`Hint: ${hint}`);
+  if (code) parts.push(`Code: ${code}`);
+  return parts.join(" · ");
+}
+
 async function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   const club = String(clubName || "").trim();
   const team = String(teamName || "").trim();
@@ -2401,7 +2427,7 @@ async function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   }).select("*").single();
   if (error) {
     console.error("[ad-hoc-match] Error saving to BD:", error);
-    return { ok: false, message: error.message || "No s'ha pogut desar el partit a la BD." };
+    return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut desar el partit a la BD.") };
   }
 
   const saved = data ? mapAdHocRowToCache(data) : item;
@@ -2464,7 +2490,7 @@ async function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = 
   }).eq("id", id).eq("coach_user_id", uid).select("*").single();
   if (error) {
     console.error("[ad-hoc-match] Error updating in BD:", error);
-    return { ok: false, message: error.message || "No s'ha pogut actualitzar el partit a la BD." };
+    return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut actualitzar el partit a la BD.") };
   }
 
   const saved = data ? mapAdHocRowToCache(data) : updatedItem;
@@ -2493,7 +2519,7 @@ async function deleteCoordinatorAdHocMatch(clubName, matchId) {
   const { error } = await sb.from("ad_hoc_matches").delete().eq("id", id).eq("coach_user_id", uid);
   if (error) {
     console.error("[ad-hoc-match] Error deleting from BD:", error);
-    return { ok: false, message: error.message || "No s'ha pogut eliminar el partit de la BD." };
+    return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut eliminar el partit de la BD.") };
   }
 
   list.splice(itemIdx, 1);
@@ -4809,7 +4835,7 @@ async function coordinatorCreateAdHocMatch() {
     return;
   }
 
-  coordinatorAdHocFeedback("Partit ad-hoc creat.", "#0f766e");
+  coordinatorAdHocFeedback(result.message || "Partit ad-hoc creat.", "#0f766e");
   coordinatorConvAdHocFormOpen = false;
   coordinatorConvMatchKey = coordinatorMatchKey({
     compId: `adhoc:${result.match.id}`,
