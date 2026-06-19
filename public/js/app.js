@@ -980,7 +980,12 @@ async function _refreshCoordinatorFromDB() {
       const fav = { clubName: favData.club_name, clubId: favData.club_id || null, savedAt: new Date().toISOString() };
       saveCoordinatorFavorite(fav);
       if (!coordinatorClubSearch) coordinatorClubSearch = fav.clubName;
+
+      await refreshCoordinatorTrainingsFromDB(fav.clubName);
+      await refreshCoordinatorExtraTeamsFromDB(fav.clubName);
     }
+
+    await refreshCoordinatorConvocatoriasFromDB();
 
     // 2. Ad-hoc matches
     const { data: adHocData } = await _sb
@@ -988,55 +993,16 @@ async function _refreshCoordinatorFromDB() {
       .select("*")
       .eq("coach_user_id", currentProfile.id);
     if (Array.isArray(adHocData)) {
-      // Merge DB rows into local cache instead of replacing it, so a transient
-      // DB sync error does not make recently-created local ad-hoc matches vanish.
-      const localCache = loadCoordinatorAdHocMatchesCache();
-      const mergedByClub = {};
-
-      const upsertItem = (club, item) => {
-        const key = String(club || "").trim();
-        const id = String(item?.id || "").trim();
-        if (!key || !id) return;
-        mergedByClub[key] = mergedByClub[key] || new Map();
-        mergedByClub[key].set(id, {
-          id,
-          teamName: String(item?.teamName || "").trim(),
-          category: String(item?.category || "").trim(),
-          type: String(item?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos",
-          location: String(item?.location || "").trim(),
-          date: String(item?.date || "").trim(),
-          time: String(item?.time || "").trim(),
-          opponent: String(item?.opponent || "").trim(),
-          createdAt: String(item?.createdAt || ""),
-          updatedAt: String(item?.updatedAt || ""),
-        });
-      };
-
-      for (const [clubName, list] of Object.entries(localCache || {})) {
-        if (!Array.isArray(list)) continue;
-        for (const item of list) upsertItem(clubName, item);
-      }
-
+      const mergedCache = {};
       for (const row of adHocData) {
         const club = String(row?.club_name || "").trim();
         if (!club) continue;
-        upsertItem(club, {
-          id: row?.id,
-          teamName: row?.team_name,
-          category: row?.category,
-          type: row?.type,
-          location: row?.location,
-          date: row?.match_date,
-          time: row?.match_time,
-          opponent: row?.opponent,
-          createdAt: row?.created_at,
-          updatedAt: row?.updated_at,
-        });
+        mergedCache[club] = mergedCache[club] || [];
+        mergedCache[club].push(mapAdHocRowToCache(row));
       }
 
-      const mergedCache = {};
-      for (const [club, itemsMap] of Object.entries(mergedByClub)) {
-        mergedCache[club] = [...itemsMap.values()]
+      for (const [club, list] of Object.entries(mergedCache)) {
+        mergedCache[club] = list
           .filter(item => item.id && item.teamName && item.date && item.time)
           .sort((a, b) => {
             const ta = Date.parse(String(a?.createdAt || "")) || 0;
@@ -1893,6 +1859,10 @@ let coordinatorConvPlayersVisible = false;
 // tutor responses cache: convocatoria_id → { [playerNameLower]: [{ tutorId, status, note }] }
 let convPlayerResponsesCache = {};
 let coordinatorConvPollingInterval = null;
+let coordinatorTrainingsCache = {};
+let coordinatorConvocatoriasCache = {};
+let coordinatorAdHocMatchesCache = {};
+let coordinatorExtraTeamsCache = {};  // clubName -> [{teamName, category, createdAt}]
 
 function getGlobalConvocationLeadMinutes() {
   const raw = Number(localStorage.getItem(CONVOCATION_GLOBAL_LEAD_MINUTES_KEY));
@@ -1923,16 +1893,86 @@ function formatConvocationTypeLabel(type) {
   return String(type || "").toLowerCase() === "torneig" ? "Torneig" : "Amistos";
 }
 
+function mapSharedTrainingRowToCoordinatorTraining(row) {
+  const teamName = String(row?.team_name || "").trim();
+  const category = String(row?.team_category || "").trim();
+  const teamKey = row?.team_id ? String(row.team_id) : "";
+  return {
+    id: String(row?.id || ""),
+    clubId: String(row?.club_name || "").trim(),
+    teamName,
+    teamNames: teamName ? [teamName] : [],
+    teamCategories: category ? [category] : [],
+    teamRefs: teamName ? [{ teamName, category, teamKey }] : [],
+    teamLabel: teamName ? shortTeamDisplayName(teamName) : "",
+    date: String(row?.training_date || ""),
+    time: String(row?.training_time || ""),
+    location: String(row?.location || ""),
+    lockerRoom: String(row?.locker_room || ""),
+    duration: Number(row?.duration_minutes || 0) || 0,
+    notes: String(row?.notes || row?.coach_notes || "").trim(),
+    recurrence: String(row?.recurrence || "none"),
+    seriesStart: row?.series_start || null,
+    seriesEnd: row?.series_end || null,
+    createdAt: row?.created_at || new Date().toISOString(),
+    updatedAt: row?.updated_at || new Date().toISOString(),
+    _source: "shared",
+    _sharedRaw: row,
+  };
+}
+
+function mapConvocatoriaRowToCache(row) {
+  return {
+    supabaseId:        row?.id || null,
+    clubName:          String(row?.club_name || "").trim(),
+    teamName:          String(row?.team_name || "").trim(),
+    teamKey:           String(row?.team_id || row?.team_key || "").trim(),
+    matchKey:          String(row?.match_key || "").trim(),
+    matchDate:         row?.match_date || "",
+    matchTime:         row?.match_time || "",
+    matchHome:         row?.match_home || "",
+    matchAway:         row?.match_away || "",
+    matchCompetition:  row?.match_competition || "",
+    matchLocation:     row?.match_location || "",
+    matchType:         row?.match_type || "federat",
+    isAdHoc:           Boolean(row?.is_ad_hoc),
+    previousMatch:     row?.previous_match || null,
+    previousMatchKey:  row?.previous_match_key || "",
+    players:           Array.isArray(row?.players) ? row.players : [],
+    createdAt:         row?.created_at || null,
+    updatedAt:         row?.updated_at || null,
+  };
+}
+
+function mapAdHocRowToCache(row) {
+  return {
+    id: String(row?.id || ""),
+    teamName: String(row?.team_name || "").trim(),
+    category: String(row?.category || "").trim(),
+    type: String(row?.type || "amistos").toLowerCase() === "torneig" ? "torneig" : "amistos",
+    location: String(row?.location || "").trim(),
+    date: String(row?.match_date || "").trim(),
+    time: String(row?.match_time || "").trim(),
+    opponent: String(row?.opponent || "").trim(),
+    createdAt: String(row?.created_at || ""),
+    updatedAt: String(row?.updated_at || ""),
+  };
+}
+
+function replaceById(list, item) {
+  const next = Array.isArray(list) ? [...list] : [];
+  const index = next.findIndex(entry => String(entry?.id || "") === String(item?.id || ""));
+  if (index === -1) next.push(item);
+  else next[index] = item;
+  return next;
+}
+
 function loadCoordinatorAdHocMatchesCache() {
-  try {
-    return JSON.parse(localStorage.getItem(COORDINATOR_ADHOC_MATCHES_KEY) || "{}");
-  } catch {
-    return {};
-  }
+  return coordinatorAdHocMatchesCache || {};
 }
 
 function saveCoordinatorAdHocMatchesCache(cache) {
-  localStorage.setItem(COORDINATOR_ADHOC_MATCHES_KEY, JSON.stringify(cache || {}));
+  coordinatorAdHocMatchesCache = cache || {};
 }
 
 function buildVenueDirectionsForMatch(match) {
@@ -2158,15 +2198,35 @@ function getCoordinatorClubEntries() {
 }
 
 function loadCoordinatorExtraTeamsCache() {
-  try {
-    return JSON.parse(localStorage.getItem(COORDINATOR_EXTRA_TEAMS_KEY) || "{}");
-  } catch {
-    return {};
-  }
+  return coordinatorExtraTeamsCache || {};
 }
 
 function saveCoordinatorExtraTeamsCache(cache) {
-  localStorage.setItem(COORDINATOR_EXTRA_TEAMS_KEY, JSON.stringify(cache || {}));
+  coordinatorExtraTeamsCache = cache || {};
+}
+
+async function refreshCoordinatorExtraTeamsFromDB(clubName) {
+  const sb = _csb();
+  const uid = await _cauthUid();
+  const club = String(clubName || "").trim();
+  if (!sb || !uid || !club) { coordinatorExtraTeamsCache[club] = []; return []; }
+  const { data, error } = await sb
+    .from("extra_teams")
+    .select("team_name, category, created_at")
+    .eq("club_name", club)
+    .eq("coach_user_id", uid);
+  if (error || !Array.isArray(data)) {
+    console.warn("[extra-teams] refresh error", error);
+    coordinatorExtraTeamsCache[club] = [];
+    return [];
+  }
+  const list = data.map(row => ({
+    teamName: String(row.team_name || "").trim(),
+    category: String(row.category || "No federat").trim() || "No federat",
+    createdAt: row.created_at || new Date().toISOString(),
+  })).filter(t => t.teamName);
+  coordinatorExtraTeamsCache[club] = list;
+  return list;
 }
 
 function getCoordinatorExtraTeams(clubName) {
@@ -2185,7 +2245,7 @@ function getCoordinatorExtraTeams(clubName) {
     .filter(item => item.teamName);
 }
 
-function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
+async function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
   const name = String(clubName || "").trim();
   const nextTeamName = String(teamName || "").trim();
   const nextCategory = String(category || "No federat").trim() || "No federat";
@@ -2196,61 +2256,45 @@ function addCoordinatorExtraTeam(clubName, teamName, category = "Escoleta") {
   const exists = list.some(item => normalizeTeamName(item?.teamName || "") === normalizeTeamName(nextTeamName));
   if (exists) return { ok: false, message: "Aquest equip ja existeix al club." };
 
-  const item = {
-    teamName: nextTeamName,
+  // Save to Supabase first (DB is the single source of truth)
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar equips." };
+
+  const { error } = await sb.from("extra_teams").insert({
+    club_name: name,
+    team_name: nextTeamName,
     category: nextCategory,
-    createdAt: new Date().toISOString(),
-  };
-  
-  list.push(item);
-  cache[name] = list;
-  saveCoordinatorExtraTeamsCache(cache);
-  
-  // Guardar a Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("extra_teams").insert({
-        club_name: name,
-        team_name: nextTeamName,
-        category: nextCategory,
-        coach_user_id: uid,
-        created_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error("[extra-team] Error saving to BD:", err);
-    }
-  })();
-  
+    coach_user_id: uid,
+  });
+  if (error) {
+    console.error("[extra-team] Error saving to BD:", error);
+    return { ok: false, message: error.message || "No s'ha pogut desar l'equip." };
+  }
+
+  // Update in-memory cache
+  list.push({ teamName: nextTeamName, category: nextCategory, createdAt: new Date().toISOString() });
+  saveCoordinatorExtraTeamsCache({ ...(cache || {}), [name]: list });
   return { ok: true };
 }
 
-function removeCoordinatorExtraTeam(clubName, teamName) {
+async function removeCoordinatorExtraTeam(clubName, teamName) {
   const name = String(clubName || "").trim();
   const wanted = String(teamName || "").trim();
   if (!name || !wanted) return;
+
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (sb && uid) {
+    const { error } = await sb.from("extra_teams").delete()
+      .eq("club_name", name).eq("team_name", wanted).eq("coach_user_id", uid);
+    if (error) console.error("[extra-team] Error deleting from BD:", error);
+  }
+
+  // Update in-memory cache
   const cache = loadCoordinatorExtraTeamsCache();
   const list = Array.isArray(cache[name]) ? cache[name] : [];
-  cache[name] = list.filter(item => normalizeTeamName(item?.teamName || "") !== normalizeTeamName(wanted));
-  saveCoordinatorExtraTeamsCache(cache);
-  
-  // Eliminar de Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("extra_teams").delete().eq("club_name", name).eq("team_name", wanted).eq("coach_user_id", uid);
-    } catch (err) {
-      console.error("[extra-team] Error deleting from BD:", err);
-    }
-  })();
+  saveCoordinatorExtraTeamsCache({ ...(cache || {}), [name]: list.filter(item => normalizeTeamName(item?.teamName || "") !== normalizeTeamName(wanted)) });
 }
 
 function getCoordinatorAdHocMatches(clubName, teamName = "") {
@@ -2337,9 +2381,8 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
     opponent,
     createdAt: new Date().toISOString(),
   };
-  list.push(item);
-  cache[club] = list;
-  saveCoordinatorAdHocMatchesCache(cache);
+  const nextList = [...list, item];
+  saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: nextList });
   
   // Guardar a Supabase de fons (sense bloquear)
   (async () => {
@@ -2408,8 +2451,7 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
   };
   
   list[itemIdx] = updatedItem;
-  cache[club] = list;
-  saveCoordinatorAdHocMatchesCache(cache);
+  saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
   
   // Actualizar a Supabase de fons
   (async () => {
@@ -2450,8 +2492,7 @@ function deleteCoordinatorAdHocMatch(clubName, matchId) {
   if (itemIdx === -1) return { ok: false, message: "Partit no trobat." };
 
   list.splice(itemIdx, 1);
-  cache[club] = list;
-  saveCoordinatorAdHocMatchesCache(cache);
+  saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
   
   // Eliminar de Supabase de fons
   (async () => {
@@ -2711,7 +2752,7 @@ function coordinatorExtraTeamFeedback(message, color = "#64748b") {
   node.textContent = message;
 }
 
-function coordinatorAddExtraTeam() {
+async function coordinatorAddExtraTeam() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
     alert("Selecciona primer un club.");
@@ -2719,7 +2760,7 @@ function coordinatorAddExtraTeam() {
   }
   const teamName = $("coordinator-extra-team-name")?.value || "";
   const category = $("coordinator-extra-team-cat")?.value || "Escoleta";
-  const result = addCoordinatorExtraTeam(fav.clubName, teamName, category);
+  const result = await addCoordinatorExtraTeam(fav.clubName, teamName, category);
   if (!result.ok) {
     coordinatorExtraTeamFeedback(result.message || "No s'ha pogut afegir l'equip.", "#dc2626");
     return;
@@ -2729,11 +2770,11 @@ function coordinatorAddExtraTeam() {
   renderCoordinatorPanel();
 }
 
-function coordinatorRemoveExtraTeam(encodedTeamName) {
+async function coordinatorRemoveExtraTeam(encodedTeamName) {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) return;
   const teamName = decodeURIComponent(String(encodedTeamName || ""));
-  removeCoordinatorExtraTeam(fav.clubName, teamName);
+  await removeCoordinatorExtraTeam(fav.clubName, teamName);
   renderCoordinatorPanel();
 }
 
@@ -2840,7 +2881,7 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
           <button onclick="coordinatorSetConvTeam('')" style="background:${!selectedToken ? "#1a2035" : "#f8fafc"};border:1.5px solid ${!selectedToken ? "#1a2035" : "#e2e6ef"};color:${!selectedToken ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
           ${teamChips}
         </div>
-        <div style="font-size:12px;color:#64748b">Filtra per equip com a gestió club. Amb Tots, el partit seleccionat resol automàticament l'equip efectiu.</div>
+        <div style="font-size:12px;color:#64748b">En seleccionar l'equip es carrega el seguent partit i els partits anteriors disponibles.</div>
       </div>
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Següent partit</div>
@@ -3120,29 +3161,40 @@ function buildRecurringDateList(startDate, endDate, recurrence) {
 
 // ── Coordinator Training Management ─────────────────────────
 function loadCoordinatorTrainings(clubId) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(TRAININGS_CACHE_KEY) || "{}");
-    return cache[clubId] || [];
-  } catch {
-    return [];
-  }
+  return Array.isArray(coordinatorTrainingsCache?.[clubId]) ? coordinatorTrainingsCache[clubId] : [];
 }
 
 function saveCoordinatorTrainings(clubId, trainings) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(TRAININGS_CACHE_KEY) || "{}");
-    cache[clubId] = trainings;
-    localStorage.setItem(TRAININGS_CACHE_KEY, JSON.stringify(cache));
-  } catch (e) {
-    console.warn("Error saving trainings to localStorage:", e);
-  }
+  coordinatorTrainingsCache = {
+    ...(coordinatorTrainingsCache || {}),
+    [clubId]: Array.isArray(trainings) ? trainings : [],
+  };
 }
 
-async function syncTrainingToCloud(action, training, clubId) {
-  // Trainings are currently stored locally in TRAININGS_CACHE_KEY.
-  // The generic user_favorites RPC only accepts team/club/player/level,
-  // so sending coordinator_training causes DB constraint failures and stalls.
-  return false;
+async function refreshCoordinatorTrainingsFromDB(clubId) {
+  const sb = _csb();
+  const uid = await _cauthUid();
+  const club = String(clubId || "").trim();
+  if (!sb || !uid || !club) {
+    coordinatorTrainingsCache[club] = [];
+    return [];
+  }
+
+  const { data, error } = await sb
+    .from("shared_trainings")
+    .select("*")
+    .eq("club_name", club)
+    .order("training_date", { ascending: true });
+
+  if (error || !Array.isArray(data)) {
+    console.warn("[trainings] refresh error", error);
+    coordinatorTrainingsCache[club] = [];
+    return [];
+  }
+
+  const trainings = data.map(mapSharedTrainingRowToCoordinatorTraining);
+  saveCoordinatorTrainings(club, trainings);
+  return trainings;
 }
 
 async function createTraining(clubId, payload) {
@@ -3184,59 +3236,74 @@ async function createTraining(clubId, payload) {
     return { ok: false, message: "No s'han pogut generar dates per a la recurrencia indicada." };
   }
 
+  const sb = _csb();
+  const uid = await _cauthUid();
   const trainings = loadCoordinatorTrainings(clubId);
   const created = [];
   let skipped = 0;
-  const sortedTeamRefs = [...teamRefs]
-    .map(ref => `${String(ref.teamName || "").trim()}::${String(ref.category || "").trim()}`)
-    .sort();
+  if (!sb || !uid) {
+    return { ok: false, message: "Cal iniciar sessió per desar entrenaments a la BD." };
+  }
 
   for (const date of dates) {
-    const duplicate = trainings.some(t =>
-      JSON.stringify(coordinatorGetTrainingTeamRefs(t).map(ref => `${String(ref.teamName || "").trim()}::${String(ref.category || "").trim()}`).sort()) === JSON.stringify(sortedTeamRefs)
-      && String(t?.date || "") === date
-      && String(t?.time || "") === time
-      && normalizeTeamName(t?.location || "") === normalizeTeamName(location)
-      && normalizeTeamName(t?.lockerRoom || "") === normalizeTeamName(lockerRoom)
-    );
-    if (duplicate) {
-      skipped += 1;
-      continue;
-    }
+    for (const teamRef of teamRefs) {
+      const duplicate = trainings.some(t => {
+        const refs = coordinatorGetTrainingTeamRefs(t).map(ref => `${String(ref.teamName || "").trim()}::${String(ref.category || "").trim()}`).sort();
+        const wanted = [`${String(teamRef.teamName || "").trim()}::${String(teamRef.category || "").trim()}`].sort();
+        return JSON.stringify(refs) === JSON.stringify(wanted)
+          && String(t?.date || "") === date
+          && String(t?.time || "") === time
+          && normalizeTeamName(t?.location || "") === normalizeTeamName(location)
+          && normalizeTeamName(t?.lockerRoom || "") === normalizeTeamName(lockerRoom);
+      });
+      if (duplicate) {
+        skipped += 1;
+        continue;
+      }
 
-    const newTraining = {
-      id: generateId(),
-      clubId,
-      teamName: teamNames[0],
-      teamNames,
-      teamCategories,
-      teamRefs,
-      teamLabel: teamNames.map(name => shortTeamDisplayName(name)).join(" + "),
-      date,
-      time,
-      location,
-      lockerRoom,
-      duration,
-      notes,
-      recurrence,
-      seriesStart: firstDate,
-      seriesEnd: recurrence === "none" ? null : periodEnd,
-      createdAt: new Date().toISOString(),
-    };
-    trainings.push(newTraining);
-    created.push(newTraining);
+      const row = {
+        club_name: clubId,
+        team_name: String(teamRef.teamName || "").trim(),
+        team_category: String(teamRef.category || "").trim(),
+        // team_id is a UUID FK to the teams table — teamRef.teamKey is an internal
+        // string identifier (not a UUID), so always leave it null.
+        team_id: null,
+        season: getActiveSeasonLabel(),
+        training_date: date,
+        training_time: time,
+        location,
+        locker_room: lockerRoom,
+        duration_minutes: duration,
+        recurrence,
+        series_start: firstDate,
+        series_end: recurrence === "none" ? null : periodEnd,
+        notes,
+        created_by: uid,
+        enriched_by: uid,
+      };
+      const { data, error } = await sb.from("shared_trainings").insert(row).select("*").single();
+      if (error || !data) {
+        return { ok: false, message: error?.message || "No s'ha pogut desar l'entrenament." };
+      }
+      const newTraining = mapSharedTrainingRowToCoordinatorTraining(data);
+      trainings.push(newTraining);
+      created.push(newTraining);
+    }
   }
 
   saveCoordinatorTrainings(clubId, trainings);
-  await Promise.all(created.map(training => syncTrainingToCloud("create", training, clubId)));
   return { ok: true, count: created.length, skipped };
 }
 
 async function deleteTraining(clubId, trainingId) {
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return false;
   const trainings = loadCoordinatorTrainings(clubId);
   const filtered = trainings.filter(t => t.id !== trainingId);
+  const { error } = await sb.from("shared_trainings").delete().eq("id", trainingId).eq("created_by", uid);
+  if (error) return false;
   saveCoordinatorTrainings(clubId, filtered);
-  await syncTrainingToCloud("delete", { id: trainingId }, clubId);
   return true;
 }
 
@@ -3765,26 +3832,59 @@ function coordinatorStrictTeamMatch(match, teamPool) {
   );
 }
 
-function loadConvocatoria(clubName, teamName, matchKey) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
-    return cache[`${clubName}::${teamName}::${matchKey}`] || null;
-  } catch {
-    return null;
-  }
+function buildConvocatoriaCacheKey(clubName, teamName, matchKey, teamKey = "") {
+  const club = String(clubName || "").trim();
+  const team = String(teamName || "").trim();
+  const match = String(matchKey || "").trim();
+  const key = String(teamKey || "").trim();
+  return key ? `${club}::${team}::${key}::${match}` : `${club}::${team}::${match}`;
 }
 
-function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
-    cache[`${clubName}::${teamName}::${matchKey}`] = convocatoria;
-    localStorage.setItem(CONVOCATORIA_CACHE_KEY, JSON.stringify(cache));
-  } catch (err) {
-    console.warn("Error saving convocatoria:", err);
+function loadConvocatoria(clubName, teamName, matchKey, teamKey = "") {
+  const exactKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, teamKey);
+  if (coordinatorConvocatoriasCache[exactKey]) return coordinatorConvocatoriasCache[exactKey];
+  const legacyKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, "");
+  if (coordinatorConvocatoriasCache[legacyKey]) return coordinatorConvocatoriasCache[legacyKey];
+  const team = String(teamName || "").trim();
+  const match = String(matchKey || "").trim();
+  const club = String(clubName || "").trim();
+  const teamKeyNorm = String(teamKey || "").trim();
+  const entries = Object.entries(coordinatorConvocatoriasCache || {});
+  for (const [cacheKey, row] of entries) {
+    if (!String(cacheKey || "").startsWith(`${club}::${team}::`)) continue;
+    if (match && String(row?.matchKey || "") !== match) continue;
+    if (teamKeyNorm && String(row?.teamKey || row?.teamId || "") !== teamKeyNorm) continue;
+    return row;
+  }
+  return null;
+}
+
+function saveConvocatoria(clubName, teamName, matchKey, convocatoria, teamKey = "") {
+  const canonicalKey = String(teamKey || convocatoria?.teamKey || convocatoria?.teamId || "").trim();
+  const key = buildConvocatoriaCacheKey(clubName, teamName, matchKey, canonicalKey);
+  coordinatorConvocatoriasCache[key] = { ...(convocatoria || {}), teamKey: canonicalKey || String(convocatoria?.teamKey || convocatoria?.teamId || "").trim() };
+  const legacyKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, "");
+  if (!coordinatorConvocatoriasCache[legacyKey]) {
+    coordinatorConvocatoriasCache[legacyKey] = coordinatorConvocatoriasCache[key];
   }
 }
 
 function coordinatorResolveEffectiveConvTeam(clubName, match = null) {
+  if (coordinatorConvTeamFilter) {
+    const teams = getCoordinatorClubTeams(clubName);
+    // Priority 1: exact match by name AND category — avoids confusion between
+    // two teams with the same name in different categories (e.g. Ripollet B Benjamí / Infantil)
+    if (coordinatorConvTeamCategoryFilter) {
+      const byNameAndCat = teams.find(t =>
+        String(t?.teamName || "").trim() === coordinatorConvTeamFilter &&
+        String(t?.category || "").trim() === coordinatorConvTeamCategoryFilter
+      );
+      if (byNameAndCat?.teamName) return byNameAndCat;
+    }
+    // Priority 2: match by teamKey (exact, covers the key stored from chip selection)
+    const byKey = teams.find(t => String(t?.teamKey || "").trim() === coordinatorConvTeamFilter);
+    if (byKey?.teamName) return byKey;
+  }
   const resolved = coordinatorResolveTeamSelection(clubName, coordinatorConvTeamFilter);
   if (resolved?.teamName) return resolved;
 
@@ -3811,7 +3911,7 @@ function coordinatorLoadCurrentConvocatoria(clubName, match = null, matchKey = "
   const effective = coordinatorResolveEffectiveConvTeam(clubName, match);
   const wantedKey = String(matchKey || coordinatorConvMatchKey || match?.key || "").trim();
   if (!clubName || !effective?.teamName || !wantedKey) return null;
-  return loadConvocatoria(clubName, effective.teamName, wantedKey);
+  return loadConvocatoria(clubName, effective.teamName, wantedKey, effective.teamKey);
 }
 
 function coordinatorSaveCurrentConvocatoria(clubName, convocatoria, match = null, matchKey = "") {
@@ -3844,32 +3944,48 @@ function convocatoriaMatchesSelectedMatch(convocatoria, match) {
 }
 
 function loadConvocatoriaForMatch(clubName, teamName, match) {
-  const exact = loadConvocatoria(clubName, teamName, match?.key || "");
+  const teamKey = String(coordinatorResolveTeamSelection(clubName, teamName)?.teamKey || "").trim();
+  const exact = loadConvocatoria(clubName, teamName, match?.key || "", teamKey);
   if (exact) return exact;
 
-  let cache = {};
-  try {
-    cache = JSON.parse(localStorage.getItem(CONVOCATORIA_CACHE_KEY) || "{}");
-  } catch {
-    cache = {};
-  }
-
-  const entries = Object.entries(cache || {});
+  const entries = Object.entries(coordinatorConvocatoriasCache || {});
   const prefix = `${clubName}::${teamName}::`;
   for (const [cacheKey, row] of entries) {
     if (!String(cacheKey || "").startsWith(prefix)) continue;
     if (!convocatoriaMatchesSelectedMatch(row, match)) continue;
 
     const alias = { ...(row || {}) };
+    if (row?.teamKey) alias.teamKey = String(row.teamKey || "").trim();
     if (match?.key) alias.matchKey = match.key;
-    if (match?.key) saveConvocatoria(clubName, teamName, match.key, alias);
+    if (match?.key) saveConvocatoria(clubName, teamName, match.key, alias, alias.teamKey || teamKey);
     return alias;
   }
 
   return null;
 }
 
-async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match) {
+async function refreshCoordinatorConvocatoriasFromDB() {
+  if (!_sb || !currentProfile?.id) return [];
+  const { data, error } = await _sb
+    .from("convocatorias")
+    .select("*")
+    .eq("coordinator_id", currentProfile.id)
+    .order("updated_at", { ascending: false });
+  if (error || !Array.isArray(data)) {
+    console.warn("[conv] refresh error", error);
+    return [];
+  }
+
+  const next = {};
+  for (const row of data) {
+    const conv = mapConvocatoriaRowToCache(row);
+    next[buildConvocatoriaCacheKey(conv.clubName, conv.teamName, conv.matchKey, conv.teamKey || conv.teamId || "")] = { ...conv, teamKey: String(conv.teamKey || conv.teamId || "").trim() };
+  }
+  coordinatorConvocatoriasCache = next;
+  return data.map(mapConvocatoriaRowToCache);
+}
+
+async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match, teamKey = "") {
   if (!_sb || !currentProfile?.id || !match) return null;
 
   const matchDate = coordinatorDateKey(match?.dateKey || match?.date || "", match?.compName || "");
@@ -3877,41 +3993,26 @@ async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match
   const matchAway = String(match?.away || "").trim();
   if (!matchDate || !matchHome || !matchAway) return null;
 
-  const { data, error } = await _sb.from("convocatorias")
+  let query = _sb.from("convocatorias")
     .select("*")
     .eq("coordinator_id", currentProfile.id)
     .eq("club_name", clubName)
     .eq("team_name", teamName)
     .eq("match_date", matchDate)
     .eq("match_home", matchHome)
-    .eq("match_away", matchAway)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("match_away", matchAway);
+  const resolvedTeamKey = String(teamKey || "").trim();
+  if (resolvedTeamKey) query = query.eq("team_id", resolvedTeamKey);
+  const { data, error } = await query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
   if (error || !data) return null;
 
   const conv = {
-    supabaseId:        data.id,
-    clubName:          data.club_name,
-    teamName:          data.team_name,
-    matchKey:          match?.key || data.match_key,
-    matchDate:         data.match_date || "",
-    matchTime:         data.match_time || "",
-    matchHome:         data.match_home,
-    matchAway:         data.match_away,
-    matchCompetition:  data.match_competition,
-    matchLocation:     data.match_location,
-    matchType:         data.match_type,
-    isAdHoc:           data.is_ad_hoc,
-    previousMatch:     data.previous_match,
-    previousMatchKey:  data.previous_match_key || "",
-    players:           Array.isArray(data.players) ? data.players : [],
-    createdAt:         data.created_at,
-    updatedAt:         data.updated_at,
+    ...mapConvocatoriaRowToCache(data),
+    matchKey: match?.key || data.match_key,
   };
 
-  saveConvocatoria(clubName, teamName, conv.matchKey, conv);
+  saveConvocatoria(clubName, teamName, conv.matchKey, conv, conv.teamKey || conv.teamId || "");
   return conv;
 }
 
@@ -3923,6 +4024,7 @@ async function syncConvocatoriaToSupabase(convocatoria) {
     coordinator_id:    currentProfile.id,
     club_name:         String(convocatoria.clubName || ""),
     team_name:         String(convocatoria.teamName || ""),
+    team_id:           String(convocatoria.teamKey || convocatoria.teamId || "") || null,
     match_key:         String(convocatoria.matchKey || ""),
     match_date:        convocatoria.matchDate || null,
     match_time:        convocatoria.matchTime || null,
@@ -3954,37 +4056,19 @@ async function syncConvocatoriaToSupabase(convocatoria) {
   return { ok: true, id: data?.id || null };
 }
 
-async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey) {
+async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey, teamKey = "") {
   if (!_sb || !currentProfile?.id) return null;
-  const { data, error } = await _sb.from("convocatorias")
+  let query = _sb.from("convocatorias")
     .select("*")
     .eq("coordinator_id", currentProfile.id)
     .eq("club_name", clubName)
     .eq("team_name", teamName)
-    .eq("match_key", matchKey)
-    .maybeSingle();
+    .eq("match_key", matchKey);
+  if (String(teamKey || "").trim()) query = query.eq("team_id", String(teamKey).trim());
+  const { data, error } = await query.maybeSingle();
   if (error || !data) return null;
-  const conv = {
-    supabaseId:        data.id,
-    clubName:          data.club_name,
-    teamName:          data.team_name,
-    matchKey:          data.match_key,
-    matchDate:         data.match_date || "",
-    matchTime:         data.match_time || "",
-    matchHome:         data.match_home,
-    matchAway:         data.match_away,
-    matchCompetition:  data.match_competition,
-    matchLocation:     data.match_location,
-    matchType:         data.match_type,
-    isAdHoc:           data.is_ad_hoc,
-    previousMatch:     data.previous_match,
-    previousMatchKey:  data.previous_match_key || "",
-    players:           Array.isArray(data.players) ? data.players : [],
-    createdAt:         data.created_at,
-    updatedAt:         data.updated_at,
-  };
-  // Also push to localStorage so existing local paths work
-  saveConvocatoria(clubName, teamName, matchKey, conv);
+  const conv = mapConvocatoriaRowToCache(data);
+  saveConvocatoria(clubName, teamName, matchKey, conv, conv.teamKey || conv.teamId || "");
   return conv;
 }
 
@@ -4284,10 +4368,11 @@ async function getCoordinatorRosterFromMatch(match, teamName) {
   return [...roster.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function createConvocatoria(clubName, teamName, matchData, previousMatch, roster, teamCategory = "") {
+function createConvocatoria(clubName, teamName, matchData, previousMatch, roster, teamCategory = "", teamKey = "") {
   const convocatoria = {
     clubName,
     teamName,
+    teamKey: String(teamKey || matchData?.teamKey || "").trim(),
     teamCategory: String(teamCategory || "").trim(),
     matchKey: matchData.key,
     matchCompetition: matchData.compName || "",
@@ -4310,7 +4395,7 @@ function createConvocatoria(clubName, teamName, matchData, previousMatch, roster
       notes: "",
     })),
   };
-  saveConvocatoria(clubName, teamName, matchData.key, convocatoria);
+  saveConvocatoria(clubName, teamName, matchData.key, convocatoria, convocatoria.teamKey);
   return convocatoria;
 }
 
@@ -4354,6 +4439,7 @@ function updateConvocatoriaPlayerField(playerName, updates) {
   }
   Object.assign(player, next);
   coordinatorSaveCurrentConvocatoria(fav.clubName, convocatoria, selected, coordinatorConvMatchKey);
+  void syncConvocatoriaToSupabase(convocatoria);
   renderCoordinatorConvMatchSummary();
   renderConvocatoriaPlayers(convocatoria);
 }
@@ -4400,13 +4486,13 @@ async function coordinatorLoadSelectedConvocatoria() {
   if (!effectiveTeam?.teamName) return null;
 
   let convocatoria = selected
-    ? loadConvocatoriaForMatch(fav.clubName, effectiveTeam.teamName, selected)
+    ? await loadConvocatoriaForMatch(fav.clubName, effectiveTeam.teamName, selected)
     : loadConvocatoria(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey);
   if (!convocatoria) {
-    convocatoria = await loadConvocatoriaFromSupabase(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey);
+    convocatoria = await loadConvocatoriaFromSupabase(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey, effectiveTeam.teamKey);
   }
   if (!convocatoria && selected) {
-    convocatoria = await loadConvocatoriaFromSupabaseBySignature(fav.clubName, effectiveTeam.teamName, selected);
+    convocatoria = await loadConvocatoriaFromSupabaseBySignature(fav.clubName, effectiveTeam.teamName, selected, effectiveTeam.teamKey);
   }
   if (!convocatoria) return null;
 
@@ -4547,7 +4633,10 @@ function coordinatorSetConvTeam(teamName) {
   coordinatorConvMatchKey = "";
   coordinatorConvPreviousMatchKey = "";
   coordinatorClearConvocatoria();
+  // Re-render to update chip highlighting, then populate the match selector
+  // (same behaviour as the old dropdown, which updated selectors in-place)
   renderCoordinatorPanel();
+  coordinatorPopulateMatchSelector();
 }
 
 function coordinatorPopulateMatchSelector() {
@@ -4791,7 +4880,7 @@ async function coordinatorGenerateConvocatoria() {
     coordinatorConvPreviousMatchKey = selectedPrevious.key;
   }
 
-  let convocatoria = loadConvocatoriaForMatch(fav.clubName, effectiveTeam.teamName, selected);
+  let convocatoria = await loadConvocatoriaForMatch(fav.clubName, effectiveTeam.teamName, selected);
   const needsRebuildFromPrevious = !convocatoria
     || String(convocatoria?.previousMatchKey || "") !== String(selectedPrevious?.key || "");
 
@@ -4815,7 +4904,8 @@ async function coordinatorGenerateConvocatoria() {
         awayScore: selectedPrevious.awayScore,
       } : null,
       roster,
-      teamCat
+      teamCat,
+      effectiveTeam.teamKey
     );
   }
 
@@ -10141,9 +10231,8 @@ function getUserFavoriteDayEvents(dateInput, teamFilter = "") {
     }));
   matches.push(...adHocMatches);
 
-  const cache = JSON.parse(localStorage.getItem(TRAININGS_CACHE_KEY) || "{}");
   const trainings = [];
-  for (const clubTrainings of Object.values(cache)) {
+  for (const clubTrainings of Object.values(coordinatorTrainingsCache || {})) {
     for (const training of (Array.isArray(clubTrainings) ? clubTrainings : [])) {
       if (String(training?.date || "") !== dateKey) continue;
       const tNames = coordinatorGetTrainingTeamNames(training);
