@@ -2351,7 +2351,7 @@ function getCoordinatorAdHocMatchesForPool(teamPool, teamFilter = "") {
   return out;
 }
 
-function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
+async function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   const club = String(clubName || "").trim();
   const team = String(teamName || "").trim();
   const category = String(payload?.category || "").trim();
@@ -2367,6 +2367,10 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   const ts = parseMatchKickoffTimestamp({ date, time }, "");
   if (!Number.isFinite(ts)) return { ok: false, message: "Data o hora no valides." };
 
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar el partit a la BD." };
+
   const cache = loadCoordinatorAdHocMatchesCache();
   const list = Array.isArray(cache[club]) ? cache[club] : [];
   const id = `adhoc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -2381,39 +2385,33 @@ function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
     opponent,
     createdAt: new Date().toISOString(),
   };
-  const nextList = [...list, item];
+
+  const { data, error } = await sb.from("ad_hoc_matches").insert({
+    id,
+    club_name: club,
+    team_name: team,
+    category,
+    type,
+    location,
+    match_date: date,
+    match_time: time,
+    opponent,
+    coach_user_id: uid,
+    created_at: new Date().toISOString(),
+  }).select("*").single();
+  if (error) {
+    console.error("[ad-hoc-match] Error saving to BD:", error);
+    return { ok: false, message: error.message || "No s'ha pogut desar el partit a la BD." };
+  }
+
+  const saved = data ? mapAdHocRowToCache(data) : item;
+  const nextList = [...list, saved];
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: nextList });
   
-  // Guardar a Supabase de fons (sense bloquear)
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("ad_hoc_matches").insert({
-        id,
-        club_name: club,
-        team_name: team,
-        category,
-        type,
-        location,
-        match_date: date,
-        match_time: time,
-        opponent,
-        coach_user_id: uid,
-        created_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error("[ad-hoc-match] Error saving to BD:", err);
-    }
-  })();
-  
-  return { ok: true, match: item };
+  return { ok: true, match: saved };
 }
 
-function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
+async function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
   const club = String(clubName || "").trim();
   const team = String(teamName || "").trim();
   const id = String(matchId || "").trim();
@@ -2438,6 +2436,10 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
   const ts = parseMatchKickoffTimestamp({ date, time }, "");
   if (!Number.isFinite(ts)) return { ok: false, message: "Data o hora no valides." };
 
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar canvis a la BD." };
+
   const updatedItem = {
     ...list[itemIdx],
     teamName: team,
@@ -2449,37 +2451,30 @@ function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = {}) {
     opponent,
     updatedAt: new Date().toISOString(),
   };
-  
-  list[itemIdx] = updatedItem;
+
+  const { data, error } = await sb.from("ad_hoc_matches").update({
+    team_name: team,
+    category,
+    type,
+    location,
+    match_date: date,
+    match_time: time,
+    opponent,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id).eq("coach_user_id", uid).select("*").single();
+  if (error) {
+    console.error("[ad-hoc-match] Error updating in BD:", error);
+    return { ok: false, message: error.message || "No s'ha pogut actualitzar el partit a la BD." };
+  }
+
+  const saved = data ? mapAdHocRowToCache(data) : updatedItem;
+  list[itemIdx] = saved;
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
   
-  // Actualizar a Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("ad_hoc_matches").update({
-        team_name: team,
-        category,
-        type,
-        location,
-        match_date: date,
-        match_time: time,
-        opponent,
-        updated_at: new Date().toISOString(),
-      }).eq("id", id).eq("coach_user_id", uid);
-    } catch (err) {
-      console.error("[ad-hoc-match] Error updating in BD:", err);
-    }
-  })();
-  
-  return { ok: true, match: updatedItem };
+  return { ok: true, match: saved };
 }
 
-function deleteCoordinatorAdHocMatch(clubName, matchId) {
+async function deleteCoordinatorAdHocMatch(clubName, matchId) {
   const club = String(clubName || "").trim();
   const id = String(matchId || "").trim();
   
@@ -2491,22 +2486,18 @@ function deleteCoordinatorAdHocMatch(clubName, matchId) {
   
   if (itemIdx === -1) return { ok: false, message: "Partit no trobat." };
 
+  const sb = _csb();
+  const uid = await _cauthUid();
+  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per eliminar el partit de la BD." };
+
+  const { error } = await sb.from("ad_hoc_matches").delete().eq("id", id).eq("coach_user_id", uid);
+  if (error) {
+    console.error("[ad-hoc-match] Error deleting from BD:", error);
+    return { ok: false, message: error.message || "No s'ha pogut eliminar el partit de la BD." };
+  }
+
   list.splice(itemIdx, 1);
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
-  
-  // Eliminar de Supabase de fons
-  (async () => {
-    try {
-      const sb = _csb();
-      if (!sb) return;
-      const uid = await _cauthUid();
-      if (!uid) return;
-      
-      await sb.from("ad_hoc_matches").delete().eq("id", id).eq("coach_user_id", uid);
-    } catch (err) {
-      console.error("[ad-hoc-match] Error deleting from BD:", err);
-    }
-  })();
   
   return { ok: true, message: "Partit cancel·lat." };
 }
@@ -4794,7 +4785,7 @@ function coordinatorAdHocFeedback(message, color = "#64748b") {
   node.textContent = message;
 }
 
-function coordinatorCreateAdHocMatch() {
+async function coordinatorCreateAdHocMatch() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
     alert("Selecciona primer un club.");
@@ -4805,7 +4796,7 @@ function coordinatorCreateAdHocMatch() {
     return;
   }
 
-  const result = addCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, {
+  const result = await addCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, {
     category: coordinatorConvTeamCategoryFilter,
     type: $("coordinator-adhoc-type")?.value || "amistos",
     opponent: $("coordinator-adhoc-opponent")?.value || "",
@@ -4851,7 +4842,7 @@ function coordinatorShowEditAdHocForm(matchId) {
   renderCoordinatorPanel();
 }
 
-function coordinatorEditAdHocMatch() {
+async function coordinatorEditAdHocMatch() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
     alert("Selecciona primer un club.");
@@ -4862,7 +4853,7 @@ function coordinatorEditAdHocMatch() {
     return;
   }
 
-  const result = editCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, coordinatorConvAdHocEditingId, {
+  const result = await editCoordinatorAdHocMatch(fav.clubName, coordinatorConvTeamFilter, coordinatorConvAdHocEditingId, {
     category: coordinatorConvTeamCategoryFilter,
     type: $("coordinator-adhoc-type")?.value || "amistos",
     opponent: $("coordinator-adhoc-opponent")?.value || "",
@@ -4882,13 +4873,13 @@ function coordinatorEditAdHocMatch() {
   renderCoordinatorPanel();
 }
 
-function coordinatorConfirmDeleteAdHocMatch(matchId) {
+async function coordinatorConfirmDeleteAdHocMatch(matchId) {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) return;
 
   if (!confirm("Estàs segur que vols cancel·lar aquest partit ad-hoc?")) return;
 
-  const result = deleteCoordinatorAdHocMatch(fav.clubName, matchId);
+  const result = await deleteCoordinatorAdHocMatch(fav.clubName, matchId);
   if (!result.ok) {
     alert(result.message || "No s'ha pogut eliminar el partit.");
     return;
