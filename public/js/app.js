@@ -968,7 +968,11 @@ function runUserFeatureNotifications() {
 
 // ── Load coordinator data from Supabase (DB-primary) ────────────────────────
 async function _refreshCoordinatorFromDB() {
-  if (!_sb || !currentProfile?.id) return;
+  if (!_sb || !currentProfile?.id) {
+    coordinatorSetDbStatusCheck("refresh", "error", "Sense sessio Supabase per sincronitzar.");
+    return;
+  }
+  coordinatorSetDbStatusCheck("refresh", "loading", "Sincronitzant dades de coordinador...");
   try {
     // 1. Coordinator favourite club
     const { data: favData } = await _sb
@@ -988,11 +992,14 @@ async function _refreshCoordinatorFromDB() {
     await refreshCoordinatorConvocatoriasFromDB();
 
     // 2. Ad-hoc matches
-    const { data: adHocData } = await _sb
+    coordinatorSetDbStatusCheck("adHoc", "loading", "Carregant ad_hoc_matches...");
+    const { data: adHocData, error: adHocError } = await _sb
       .from("ad_hoc_matches")
       .select("*")
       .eq("coach_user_id", currentProfile.id);
-    if (Array.isArray(adHocData)) {
+    if (adHocError) {
+      coordinatorSetDbStatusCheck("adHoc", "error", adHocError.message || "Error llegint ad_hoc_matches.");
+    } else if (Array.isArray(adHocData)) {
       const mergedCache = {};
       for (const row of adHocData) {
         const club = String(row?.club_name || "").trim();
@@ -1012,11 +1019,18 @@ async function _refreshCoordinatorFromDB() {
       }
 
       saveCoordinatorAdHocMatchesCache(mergedCache);
+      const total = Object.values(mergedCache).reduce((acc, list) => acc + (Array.isArray(list) ? list.length : 0), 0);
+      coordinatorSetDbStatusCheck("adHoc", "ok", `${total} partits ad-hoc carregats.`);
+    } else {
+      coordinatorSetDbStatusCheck("adHoc", "ok", "0 partits ad-hoc carregats.");
     }
 
+    coordinatorSetDbStatusCheck("refresh", "ok", "Sincronitzacio completada.");
     renderCoordinatorPanel();
   } catch (err) {
     console.warn("[coordinator] DB refresh failed", err);
+    coordinatorSetDbStatusCheck("refresh", "error", err?.message || "Error desconegut al refresc BD.");
+    renderCoordinatorPanel();
   }
 }
 
@@ -1863,6 +1877,110 @@ let coordinatorTrainingsCache = {};
 let coordinatorConvocatoriasCache = {};
 let coordinatorAdHocMatchesCache = {};
 let coordinatorExtraTeamsCache = {};  // clubName -> [{teamName, category, createdAt}]
+let coordinatorDbStatusChecks = {
+  refresh: { state: "idle", message: "" },
+  trainings: { state: "idle", message: "" },
+  extraTeams: { state: "idle", message: "" },
+  convocatories: { state: "idle", message: "" },
+  adHoc: { state: "idle", message: "" },
+};
+let coordinatorDbStatusUpdatedAt = 0;
+
+function coordinatorSetDbStatusCheck(key, state, message = "") {
+  const allowed = ["idle", "loading", "ok", "error"];
+  const nextState = allowed.includes(String(state || "")) ? state : "idle";
+  coordinatorDbStatusChecks = {
+    ...(coordinatorDbStatusChecks || {}),
+    [key]: {
+      state: nextState,
+      message: String(message || "").trim(),
+    },
+  };
+  coordinatorDbStatusUpdatedAt = Date.now();
+}
+
+function coordinatorDbStatusTone() {
+  const checks = Object.values(coordinatorDbStatusChecks || {});
+  if (checks.some(c => c?.state === "error")) {
+    return {
+      bg: "#fff1f2",
+      border: "#fecdd3",
+      title: "#9f1239",
+      text: "#881337",
+      chipBg: "#ffe4e6",
+      chipText: "#9f1239",
+      label: "Connexio BD amb errors",
+    };
+  }
+  if (checks.some(c => c?.state === "loading")) {
+    return {
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      title: "#1d4ed8",
+      text: "#1e3a8a",
+      chipBg: "#dbeafe",
+      chipText: "#1e40af",
+      label: "Sincronitzant amb BD...",
+    };
+  }
+  if (checks.some(c => c?.state === "ok")) {
+    return {
+      bg: "#ecfdf5",
+      border: "#a7f3d0",
+      title: "#047857",
+      text: "#065f46",
+      chipBg: "#d1fae5",
+      chipText: "#047857",
+      label: "Connexio BD operativa",
+    };
+  }
+  return {
+    bg: "#f8fafc",
+    border: "#e2e8f0",
+    title: "#334155",
+    text: "#475569",
+    chipBg: "#e2e8f0",
+    chipText: "#334155",
+    label: "Sense diagnosi BD",
+  };
+}
+
+function renderCoordinatorDbStatusBanner() {
+  if (!_sb || !currentProfile?.id) return "";
+  const checks = coordinatorDbStatusChecks || {};
+  const items = [
+    { key: "refresh", label: "Refresh" },
+    { key: "trainings", label: "Trainings" },
+    { key: "extraTeams", label: "Extra teams" },
+    { key: "convocatories", label: "Convocatories" },
+    { key: "adHoc", label: "Ad-hoc" },
+  ];
+  const tone = coordinatorDbStatusTone();
+  const stateLabel = state => state === "ok" ? "OK" : state === "error" ? "ERROR" : state === "loading" ? "LOADING" : "IDLE";
+  const updated = coordinatorDbStatusUpdatedAt
+    ? new Date(coordinatorDbStatusUpdatedAt).toLocaleTimeString("ca-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "-";
+
+  return `<div style="background:${tone.bg};border:1.5px solid ${tone.border};border-radius:12px;padding:10px 12px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:800;color:${tone.title};text-transform:uppercase;letter-spacing:.05em">${tone.label}</div>
+      <div style="font-size:11px;color:${tone.text};font-weight:700">Usuari: ${esc(currentProfile?.email || currentProfile?.id || "sessio")} · ${updated}</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${items.some(item => String(checks?.[item.key]?.message || "").trim()) ? "8px" : "0"}">
+      ${items.map(item => {
+        const s = checks?.[item.key] || { state: "idle", message: "" };
+        return `<span style="display:inline-flex;align-items:center;gap:6px;background:${tone.chipBg};color:${tone.chipText};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700">${item.label}: ${stateLabel(s.state)}</span>`;
+      }).join("")}
+    </div>
+    ${items.map(item => {
+      const s = checks?.[item.key] || { state: "idle", message: "" };
+      const msg = String(s.message || "").trim();
+      if (!msg) return "";
+      const color = s.state === "error" ? "#b91c1c" : s.state === "ok" ? "#065f46" : "#334155";
+      return `<div style="font-size:11px;color:${color};margin-bottom:3px"><b>${item.label}:</b> ${esc(msg)}</div>`;
+    }).join("")}
+  </div>`;
+}
 
 function getGlobalConvocationLeadMinutes() {
   const raw = Number(localStorage.getItem(CONVOCATION_GLOBAL_LEAD_MINUTES_KEY));
@@ -2206,10 +2324,15 @@ function saveCoordinatorExtraTeamsCache(cache) {
 }
 
 async function refreshCoordinatorExtraTeamsFromDB(clubName) {
+  coordinatorSetDbStatusCheck("extraTeams", "loading", "Carregant extra_teams...");
   const sb = _csb();
   const uid = await _cauthUid();
   const club = String(clubName || "").trim();
-  if (!sb || !uid || !club) { coordinatorExtraTeamsCache[club] = []; return []; }
+  if (!sb || !uid || !club) {
+    coordinatorExtraTeamsCache[club] = [];
+    coordinatorSetDbStatusCheck("extraTeams", "error", "Sense sessio o club actiu per consultar extra_teams.");
+    return [];
+  }
   const { data, error } = await sb
     .from("extra_teams")
     .select("team_name, category, created_at")
@@ -2218,6 +2341,7 @@ async function refreshCoordinatorExtraTeamsFromDB(clubName) {
   if (error || !Array.isArray(data)) {
     console.warn("[extra-teams] refresh error", error);
     coordinatorExtraTeamsCache[club] = [];
+    coordinatorSetDbStatusCheck("extraTeams", "error", error?.message || "Error llegint extra_teams.");
     return [];
   }
   const list = data.map(row => ({
@@ -2226,6 +2350,7 @@ async function refreshCoordinatorExtraTeamsFromDB(clubName) {
     createdAt: row.created_at || new Date().toISOString(),
   })).filter(t => t.teamName);
   coordinatorExtraTeamsCache[club] = list;
+  coordinatorSetDbStatusCheck("extraTeams", "ok", `${list.length} equips extra carregats.`);
   return list;
 }
 
@@ -2395,7 +2520,11 @@ async function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
 
   const sb = _csb();
   const uid = await _cauthUid();
-  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar el partit a la BD." };
+  if (!sb || !uid) {
+    coordinatorSetDbStatusCheck("adHoc", "error", "Sense sessio per crear partits ad-hoc a la BD.");
+    return { ok: false, message: "Cal iniciar sessio per desar el partit a la BD." };
+  }
+  coordinatorSetDbStatusCheck("adHoc", "loading", "Creant partit ad-hoc...");
 
   const cache = loadCoordinatorAdHocMatchesCache();
   const list = Array.isArray(cache[club]) ? cache[club] : [];
@@ -2427,12 +2556,14 @@ async function addCoordinatorAdHocMatch(clubName, teamName, payload = {}) {
   }).select("*").single();
   if (error) {
     console.error("[ad-hoc-match] Error saving to BD:", error);
+    coordinatorSetDbStatusCheck("adHoc", "error", formatAdHocDbError(error, "No s'ha pogut desar el partit a la BD."));
     return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut desar el partit a la BD.") };
   }
 
   const saved = data ? mapAdHocRowToCache(data) : item;
   const nextList = [...list, saved];
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: nextList });
+  coordinatorSetDbStatusCheck("adHoc", "ok", "Partit ad-hoc creat a la BD.");
   
   return { ok: true, match: saved };
 }
@@ -2464,7 +2595,11 @@ async function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = 
 
   const sb = _csb();
   const uid = await _cauthUid();
-  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per desar canvis a la BD." };
+  if (!sb || !uid) {
+    coordinatorSetDbStatusCheck("adHoc", "error", "Sense sessio per editar partits ad-hoc.");
+    return { ok: false, message: "Cal iniciar sessio per desar canvis a la BD." };
+  }
+  coordinatorSetDbStatusCheck("adHoc", "loading", "Actualitzant partit ad-hoc...");
 
   const updatedItem = {
     ...list[itemIdx],
@@ -2490,12 +2625,14 @@ async function editCoordinatorAdHocMatch(clubName, teamName, matchId, payload = 
   }).eq("id", id).eq("coach_user_id", uid).select("*").single();
   if (error) {
     console.error("[ad-hoc-match] Error updating in BD:", error);
+    coordinatorSetDbStatusCheck("adHoc", "error", formatAdHocDbError(error, "No s'ha pogut actualitzar el partit a la BD."));
     return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut actualitzar el partit a la BD.") };
   }
 
   const saved = data ? mapAdHocRowToCache(data) : updatedItem;
   list[itemIdx] = saved;
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
+  coordinatorSetDbStatusCheck("adHoc", "ok", "Partit ad-hoc actualitzat a la BD.");
   
   return { ok: true, match: saved };
 }
@@ -2514,16 +2651,22 @@ async function deleteCoordinatorAdHocMatch(clubName, matchId) {
 
   const sb = _csb();
   const uid = await _cauthUid();
-  if (!sb || !uid) return { ok: false, message: "Cal iniciar sessio per eliminar el partit de la BD." };
+  if (!sb || !uid) {
+    coordinatorSetDbStatusCheck("adHoc", "error", "Sense sessio per eliminar partits ad-hoc.");
+    return { ok: false, message: "Cal iniciar sessio per eliminar el partit de la BD." };
+  }
+  coordinatorSetDbStatusCheck("adHoc", "loading", "Eliminant partit ad-hoc...");
 
   const { error } = await sb.from("ad_hoc_matches").delete().eq("id", id).eq("coach_user_id", uid);
   if (error) {
     console.error("[ad-hoc-match] Error deleting from BD:", error);
+    coordinatorSetDbStatusCheck("adHoc", "error", formatAdHocDbError(error, "No s'ha pogut eliminar el partit de la BD."));
     return { ok: false, message: formatAdHocDbError(error, "No s'ha pogut eliminar el partit de la BD.") };
   }
 
   list.splice(itemIdx, 1);
   saveCoordinatorAdHocMatchesCache({ ...(cache || {}), [club]: list });
+  coordinatorSetDbStatusCheck("adHoc", "ok", "Partit ad-hoc eliminat de la BD.");
   
   return { ok: true, message: "Partit cancel·lat." };
 }
@@ -3011,7 +3154,7 @@ function renderCoordinatorPanel(searchCursor) {
     : coordinatorPanelTab === "convocatories"
       ? renderCoordinatorConvocatoriesTab(currentFav)
       : renderCoordinatorClubTab(currentFav);
-  body.innerHTML = `${renderCoordinatorTabs()}${content}`;
+  body.innerHTML = `${renderCoordinatorTabs()}${renderCoordinatorDbStatusBanner()}${content}`;
 
   if (coordinatorPanelTab === "trainings") {
     renderCoordinatorTrainingsList();
@@ -3189,11 +3332,13 @@ function saveCoordinatorTrainings(clubId, trainings) {
 }
 
 async function refreshCoordinatorTrainingsFromDB(clubId) {
+  coordinatorSetDbStatusCheck("trainings", "loading", "Carregant trainings...");
   const sb = _csb();
   const uid = await _cauthUid();
   const club = String(clubId || "").trim();
   if (!sb || !uid || !club) {
     coordinatorTrainingsCache[club] = [];
+    coordinatorSetDbStatusCheck("trainings", "error", "Sense sessio o club actiu per consultar trainings.");
     return [];
   }
 
@@ -3206,11 +3351,13 @@ async function refreshCoordinatorTrainingsFromDB(clubId) {
   if (error || !Array.isArray(data)) {
     console.warn("[trainings] refresh error", error);
     coordinatorTrainingsCache[club] = [];
+    coordinatorSetDbStatusCheck("trainings", "error", error?.message || "Error llegint shared_trainings.");
     return [];
   }
 
   const trainings = data.map(mapSharedTrainingRowToCoordinatorTraining);
   saveCoordinatorTrainings(club, trainings);
+  coordinatorSetDbStatusCheck("trainings", "ok", `${trainings.length} trainings carregats.`);
   return trainings;
 }
 
@@ -3982,7 +4129,11 @@ function loadConvocatoriaForMatch(clubName, teamName, match) {
 }
 
 async function refreshCoordinatorConvocatoriasFromDB() {
-  if (!_sb || !currentProfile?.id) return [];
+  coordinatorSetDbStatusCheck("convocatories", "loading", "Carregant convocatories...");
+  if (!_sb || !currentProfile?.id) {
+    coordinatorSetDbStatusCheck("convocatories", "error", "Sense sessio per consultar convocatories.");
+    return [];
+  }
   const { data, error } = await _sb
     .from("convocatorias")
     .select("*")
@@ -3990,6 +4141,7 @@ async function refreshCoordinatorConvocatoriasFromDB() {
     .order("updated_at", { ascending: false });
   if (error || !Array.isArray(data)) {
     console.warn("[conv] refresh error", error);
+    coordinatorSetDbStatusCheck("convocatories", "error", error?.message || "Error llegint convocatories.");
     return [];
   }
 
@@ -3999,6 +4151,7 @@ async function refreshCoordinatorConvocatoriasFromDB() {
     next[buildConvocatoriaCacheKey(conv.clubName, conv.teamName, conv.matchKey, conv.teamKey || conv.teamId || "")] = { ...conv, teamKey: String(conv.teamKey || conv.teamId || "").trim() };
   }
   coordinatorConvocatoriasCache = next;
+  coordinatorSetDbStatusCheck("convocatories", "ok", `${data.length} convocatories carregades.`);
   return data.map(mapConvocatoriaRowToCache);
 }
 
