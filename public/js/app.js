@@ -4639,6 +4639,42 @@ function coordinatorSetConvTeam(teamName) {
   coordinatorPopulateMatchSelector();
 }
 
+function getMatchesWithExistingConvocatoria(clubName) {
+  // Return all matches that already have a convocatoria saved, regardless of team
+  const club = String(clubName || "").trim();
+  if (!club) return [];
+  
+  const matches = [];
+  const processed = new Set();  // Deduplicate by matchKey
+  
+  for (const [cacheKey, convocatoria] of Object.entries(coordinatorConvocatoriasCache || {})) {
+    if (!String(cacheKey || "").startsWith(`${club}::`)) continue;
+    if (!convocatoria?.matchKey) continue;
+    if (processed.has(convocatoria.matchKey)) continue;
+    processed.add(convocatoria.matchKey);
+    
+    matches.push({
+      key: convocatoria.matchKey,
+      compName: convocatoria.matchCompetition || "",
+      date: convocatoria.matchDate || "",
+      dateKey: convocatoria.matchDate || "",
+      time: convocatoria.matchTime || "",
+      home: convocatoria.matchHome || "",
+      away: convocatoria.matchAway || "",
+      teamName: String(convocatoria.teamName || "").trim(),
+      category: String(convocatoria.teamCategory || "").trim(),
+      isAdHoc: !!convocatoria.isAdHoc,
+      adHocType: convocatoria.matchType || "federat",
+      ts: parseMatchKickoffTimestamp(
+        { date: convocatoria.matchDate, time: convocatoria.matchTime },
+        convocatoria.matchCompetition || ""
+      ) || 0,
+    });
+  }
+  
+  return matches.sort((a, b) => a.ts - b.ts);
+}
+
 function coordinatorPopulateMatchSelector() {
   const fav = loadCoordinatorFavorite();
   const selector = $("convocatoria-match-select");
@@ -4652,7 +4688,11 @@ function coordinatorPopulateMatchSelector() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+  // When "Tots" (no team filter), show only matches that already have a convocatoria.
+  // Otherwise, show upcoming matches for the selected team.
+  const matches = !coordinatorConvTeamFilter
+    ? getMatchesWithExistingConvocatoria(fav.clubName)
+    : getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
   const prevMatchKey = coordinatorConvMatchKey;
   selector.innerHTML = matches.length
     ? matches.map(match => `<option value="${match.key}">${match.isAdHoc ? "[Ad-hoc] " : ""}${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(shortTeamDisplayName(match.home))} vs ${esc(shortTeamDisplayName(match.away))}</option>`).join("")
