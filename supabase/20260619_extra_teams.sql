@@ -1,4 +1,4 @@
--- Extra (non-federated) teams created by coordinators/coaches for their club
+--- Extra (non-federated) teams created by coordinators/coaches for their club
 -- These cover internal categories like Escoleta, Veterans, etc.
 CREATE TABLE IF NOT EXISTS public.extra_teams (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
