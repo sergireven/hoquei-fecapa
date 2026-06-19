@@ -4480,7 +4480,7 @@ async function coordinatorLoadSelectedConvocatoria() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName || !coordinatorConvMatchKey) return null;
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+  const matches = getCoordinatorConvMatchesForCurrentFilter(fav.clubName);
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || null;
   const effectiveTeam = coordinatorResolveEffectiveConvTeam(fav.clubName, selected);
   if (!effectiveTeam?.teamName) return null;
@@ -4570,7 +4570,7 @@ function renderCoordinatorConvMatchSummary() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+  const matches = getCoordinatorConvMatchesForCurrentFilter(fav.clubName);
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || matches[0] || null;
   if (!selected) {
     container.innerHTML = `<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px;color:#64748b">No hi ha cap partit pendent per aquest equip.</div>`;
@@ -4639,6 +4639,50 @@ function coordinatorSetConvTeam(teamName) {
   coordinatorPopulateMatchSelector();
 }
 
+function getMatchesWithExistingConvocatoria(clubName) {
+  // Return all matches that already have a convocatoria saved, regardless of team
+  const club = String(clubName || "").trim();
+  if (!club) return [];
+  
+  const matches = [];
+  const processed = new Set();  // Deduplicate by matchKey
+  
+  for (const [cacheKey, convocatoria] of Object.entries(coordinatorConvocatoriasCache || {})) {
+    if (!String(cacheKey || "").startsWith(`${club}::`)) continue;
+    if (!convocatoria?.matchKey) continue;
+    if (processed.has(convocatoria.matchKey)) continue;
+    processed.add(convocatoria.matchKey);
+    
+    matches.push({
+      key: convocatoria.matchKey,
+      compName: convocatoria.matchCompetition || "",
+      date: convocatoria.matchDate || "",
+      dateKey: convocatoria.matchDate || "",
+      time: convocatoria.matchTime || "",
+      home: convocatoria.matchHome || "",
+      away: convocatoria.matchAway || "",
+      teamName: String(convocatoria.teamName || "").trim(),
+      category: String(convocatoria.teamCategory || "").trim(),
+      isAdHoc: !!convocatoria.isAdHoc,
+      adHocType: convocatoria.matchType || "federat",
+      ts: parseMatchKickoffTimestamp(
+        { date: convocatoria.matchDate, time: convocatoria.matchTime },
+        convocatoria.matchCompetition || ""
+      ) || 0,
+    });
+  }
+  
+  return matches.sort((a, b) => a.ts - b.ts);
+}
+
+function getCoordinatorConvMatchesForCurrentFilter(clubName) {
+  const club = String(clubName || "").trim();
+  if (!club) return [];
+  return !coordinatorConvTeamFilter
+    ? getMatchesWithExistingConvocatoria(club)
+    : getUpcomingMatchesForConvocatoria(club, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+}
+
 function coordinatorPopulateMatchSelector() {
   const fav = loadCoordinatorFavorite();
   const selector = $("convocatoria-match-select");
@@ -4652,7 +4696,9 @@ function coordinatorPopulateMatchSelector() {
     return;
   }
 
-  const matches = getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter);
+  // When "Tots" (no team filter), show only matches that already have a convocatoria.
+  // Otherwise, show upcoming matches for the selected team.
+  const matches = getCoordinatorConvMatchesForCurrentFilter(fav.clubName);
   const prevMatchKey = coordinatorConvMatchKey;
   selector.innerHTML = matches.length
     ? matches.map(match => `<option value="${match.key}">${match.isAdHoc ? "[Ad-hoc] " : ""}${esc(coordinatorFormatDate(match.date, match.compName))}${match.time ? ` · ${esc(match.time)}` : ""} · ${esc(shortTeamDisplayName(match.home))} vs ${esc(shortTeamDisplayName(match.away))}</option>`).join("")
@@ -4681,8 +4727,8 @@ function coordinatorPopulateMatchSelector() {
 function coordinatorOnMatchSelected() {
   coordinatorConvMatchKey = $("convocatoria-match-select")?.value || "";
   const fav = loadCoordinatorFavorite();
-  const matches = fav?.clubName && coordinatorConvTeamFilter
-    ? getUpcomingMatchesForConvocatoria(fav.clubName, coordinatorConvTeamFilter, coordinatorConvTeamCategoryFilter)
+  const matches = fav?.clubName
+    ? getCoordinatorConvMatchesForCurrentFilter(fav.clubName)
     : [];
   const selected = matches.find(match => match.key === coordinatorConvMatchKey) || null;
   coordinatorPopulatePreviousMatchSelector(selected?.ts || Number.POSITIVE_INFINITY);
@@ -4858,6 +4904,11 @@ async function coordinatorGenerateConvocatoria() {
   const fav = loadCoordinatorFavorite();
   if (!fav?.clubName) {
     alert("Selecciona primer un club.");
+    return;
+  }
+
+  if (!coordinatorConvTeamFilter) {
+    alert("Per generar una convocatòria nova, selecciona un equip concret.");
     return;
   }
 
