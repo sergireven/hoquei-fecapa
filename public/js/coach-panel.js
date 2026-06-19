@@ -2653,7 +2653,6 @@ function _renderLineupTab() {
   const team = _cteam();
   const club = _cclub();
   const category = _ccategory();
-  const convocatorias = _coachListTeamConvocatories(club, team, category);
   const upcomingMatches = _coachGetUpcomingMatches(club, team, category);
   const previousMatches = _coachGetPreviousMatches(club, team, category);
   if (coachSelectedUpcomingMatchKey && !upcomingMatches.some(m => _coachUpcomingMatchIdentity(m) === coachSelectedUpcomingMatchKey)) {
@@ -2664,10 +2663,6 @@ function _renderLineupTab() {
     coachSelectedPreviousMatchKey = "";
   }
   const selectedPreviousKey = coachSelectedPreviousMatchKey;
-  if (coachSelectedConvocatoriaMatchKey && !convocatorias.some(c => _coachConvocatoriaMatchIdentity(c) === coachSelectedConvocatoriaMatchKey)) {
-    coachSelectedConvocatoriaMatchKey = "";
-  }
-  const selectedConvocatoriaKey = coachSelectedConvocatoriaMatchKey || (convocatorias[0] ? _coachConvocatoriaMatchIdentity(convocatorias[0]) : "");
   const favoritePlayers = players.filter(p => String(p?.squad || "favorite") !== "rival");
   const rivalPlayers = players.filter(p => String(p?.squad || "favorite") === "rival");
   const starters = favoritePlayers.filter(p => p.isStarter);
@@ -2680,12 +2675,6 @@ function _renderLineupTab() {
       <td style="padding:8px 10px;font-size:13px;font-weight:600;color:#1a2035">${_cesc(p.name)}</td>
       <td style="padding:8px 6px;text-align:center">
         <button onclick="coachToggleStarter(${i})" style="background:${p.isStarter ? "#16a34a" : "#f0f4f8"};border:none;color:${p.isStarter ? "#fff" : "#94a3b8"};border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer">${p.isStarter ? "TITULAR" : "SUPLENT"}</button>
-      </td>
-      <td style="padding:8px 6px;text-align:center">
-        <select onchange="coachSetPlayerSide(${i},this.value)" style="padding:4px 6px;border:1.5px solid #e2e6ef;border-radius:6px;font-size:12px;font-family:inherit;background:#fff">
-          <option value="D" ${p.side === "D" ? "selected" : ""}>Dreta</option>
-          <option value="E" ${p.side === "E" ? "selected" : ""}>Esquerra</option>
-        </select>
       </td>
       <td style="padding:8px 6px;text-align:center">
         <select onchange="coachSetPlayerPos(${i},this.value)" style="padding:4px 6px;border:1.5px solid #e2e6ef;border-radius:6px;font-size:12px;font-family:inherit;background:#fff">
@@ -2746,6 +2735,7 @@ function _renderLineupTab() {
                   return `<option value="${_cesc(key)}" ${sel ? "selected" : ""}>${_cesc(_coachUpcomingMatchLabel(m))}</option>`;
                 }).join("")}
             </select>
+            <button onclick="coachLoadLineupFromSelectedConvocatoria()" ${previousMatches.length ? "" : "disabled"} style="width:100%;background:${previousMatches.length ? "#eef2ff" : "#f1f5f9"};border:1px solid ${previousMatches.length ? "#c7d2fe" : "#e2e8f0"};color:${previousMatches.length ? "#3730a3" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${previousMatches.length ? "pointer" : "not-allowed"};margin-top:8px">Carregar jugadors</button>
           </div>
           ` : ""}
           <div>
@@ -2774,27 +2764,12 @@ function _renderLineupTab() {
 
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:18px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:12px">Equip favorit</div>
-        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Convocatòria de l'equip seleccionat</div>
-        <select onchange="coachSetLineupConvocatoriaMatch(this.value)" style="width:100%;padding:9px 10px;border:1.5px solid #dbe3f0;border-radius:9px;font-size:12px;font-family:inherit;background:#fff;margin-bottom:8px">
-          ${convocatorias.length
-            ? convocatorias.map(conv => {
-                const key = _coachConvocatoriaMatchIdentity(conv);
-                const selected = key === selectedConvocatoriaKey;
-                return `<option value="${_cesc(key)}" ${selected ? "selected" : ""}>${_cesc(_coachConvocatoriaOptionLabel(conv))}</option>`;
-              }).join("")
-            : `<option value="">No hi ha convocatòries disponibles</option>`}
-        </select>
-        <button onclick="coachLoadLineupFromSelectedConvocatoria()" ${convocatorias.length ? "" : "disabled"} style="width:100%;background:${convocatorias.length ? "#eef2ff" : "#f1f5f9"};border:1px solid ${convocatorias.length ? "#c7d2fe" : "#e2e8f0"};color:${convocatorias.length ? "#3730a3" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${convocatorias.length ? "pointer" : "not-allowed"};margin-bottom:8px">Carregar jugadors (${_cesc(club || "club")}${team ? ` · ${_cesc(team)}` : ""})</button>
         <div style="font-size:12px;color:#64748b;line-height:1.45;margin-bottom:10px">Blocs separats per evitar confusions: favorit i rival.</div>
         <input id="coach-add-number" type="text" placeholder="Dorsal (opcional)..."
           style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
         <input id="coach-add-name" type="text" placeholder="Nom del jugador..."
           style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px"/>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <select id="coach-add-side" style="padding:9px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;background:#fff">
-            <option value="D">Mà dreta</option>
-            <option value="E">Mà esquerra</option>
-          </select>
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
           <select id="coach-add-pos" style="padding:9px;border:1.5px solid #e2e6ef;border-radius:9px;font-size:13px;font-family:inherit;background:#fff">
             <option value="MIG">MIG</option>
             <option value="DEF">DEF</option>
@@ -2841,7 +2816,6 @@ function _renderLineupTab() {
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">#</th>
           <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Jugador</th>
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Estat</th>
-          <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Mà</th>
           <th style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Pos</th>
           <th style="padding:8px;"></th>
         </tr></thead>
@@ -3922,6 +3896,17 @@ function coachSelectPreviousMatch(matchKey) {
 }
 
 function coachLoadLineupFromSelectedConvocatoria() {
+  const club = _cclub();
+  const team = _cteam();
+  const category = _ccategory();
+  if (coachSelectedPreviousMatchKey) {
+    const previousMatch = _coachGetPreviousMatches(club, team, category)
+      .find(item => _coachUpcomingMatchIdentity(item) === String(coachSelectedPreviousMatchKey || "").trim()) || null;
+    if (previousMatch) {
+      const conv = _coachFindConvocatoriaForMatch(club, team, category, previousMatch);
+      if (conv) coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(conv);
+    }
+  }
   coachLoadLineupFromConvocatoria();
 }
 
@@ -3971,7 +3956,7 @@ function coachAddPlayerToLineup() {
     name,
     number: String(document.getElementById("coach-add-number")?.value || "").trim(),
     isStarter: document.getElementById("coach-add-starter")?.checked ?? true,
-    side:      document.getElementById("coach-add-side")?.value || "D",
+    side:      "D",
     pos:       document.getElementById("coach-add-pos")?.value  || "MIG",
     squad:     "favorite",
   });
