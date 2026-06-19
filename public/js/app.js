@@ -1924,6 +1924,7 @@ function mapConvocatoriaRowToCache(row) {
     supabaseId:        row?.id || null,
     clubName:          String(row?.club_name || "").trim(),
     teamName:          String(row?.team_name || "").trim(),
+    teamKey:           String(row?.team_id || row?.team_key || "").trim(),
     matchKey:          String(row?.match_key || "").trim(),
     matchDate:         row?.match_date || "",
     matchTime:         row?.match_time || "",
@@ -3823,13 +3824,41 @@ function coordinatorStrictTeamMatch(match, teamPool) {
   );
 }
 
-function loadConvocatoria(clubName, teamName, matchKey) {
-  return coordinatorConvocatoriasCache[`${clubName}::${teamName}::${matchKey}`] || null;
+function buildConvocatoriaCacheKey(clubName, teamName, matchKey, teamKey = "") {
+  const club = String(clubName || "").trim();
+  const team = String(teamName || "").trim();
+  const match = String(matchKey || "").trim();
+  const key = String(teamKey || "").trim();
+  return key ? `${club}::${team}::${key}::${match}` : `${club}::${team}::${match}`;
 }
 
-function saveConvocatoria(clubName, teamName, matchKey, convocatoria) {
-  const key = `${clubName}::${teamName}::${matchKey}`;
-  coordinatorConvocatoriasCache[key] = convocatoria;
+function loadConvocatoria(clubName, teamName, matchKey, teamKey = "") {
+  const exactKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, teamKey);
+  if (coordinatorConvocatoriasCache[exactKey]) return coordinatorConvocatoriasCache[exactKey];
+  const legacyKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, "");
+  if (coordinatorConvocatoriasCache[legacyKey]) return coordinatorConvocatoriasCache[legacyKey];
+  const team = String(teamName || "").trim();
+  const match = String(matchKey || "").trim();
+  const club = String(clubName || "").trim();
+  const teamKeyNorm = String(teamKey || "").trim();
+  const entries = Object.entries(coordinatorConvocatoriasCache || {});
+  for (const [cacheKey, row] of entries) {
+    if (!String(cacheKey || "").startsWith(`${club}::${team}::`)) continue;
+    if (match && String(row?.matchKey || "") !== match) continue;
+    if (teamKeyNorm && String(row?.teamKey || row?.teamId || "") !== teamKeyNorm) continue;
+    return row;
+  }
+  return null;
+}
+
+function saveConvocatoria(clubName, teamName, matchKey, convocatoria, teamKey = "") {
+  const canonicalKey = String(teamKey || convocatoria?.teamKey || convocatoria?.teamId || "").trim();
+  const key = buildConvocatoriaCacheKey(clubName, teamName, matchKey, canonicalKey);
+  coordinatorConvocatoriasCache[key] = { ...(convocatoria || {}), teamKey: canonicalKey || String(convocatoria?.teamKey || convocatoria?.teamId || "").trim() };
+  const legacyKey = buildConvocatoriaCacheKey(clubName, teamName, matchKey, "");
+  if (!coordinatorConvocatoriasCache[legacyKey]) {
+    coordinatorConvocatoriasCache[legacyKey] = coordinatorConvocatoriasCache[key];
+  }
 }
 
 function coordinatorResolveEffectiveConvTeam(clubName, match = null) {
@@ -3859,7 +3888,7 @@ function coordinatorLoadCurrentConvocatoria(clubName, match = null, matchKey = "
   const effective = coordinatorResolveEffectiveConvTeam(clubName, match);
   const wantedKey = String(matchKey || coordinatorConvMatchKey || match?.key || "").trim();
   if (!clubName || !effective?.teamName || !wantedKey) return null;
-  return loadConvocatoria(clubName, effective.teamName, wantedKey);
+  return loadConvocatoria(clubName, effective.teamName, wantedKey, effective.teamKey);
 }
 
 function coordinatorSaveCurrentConvocatoria(clubName, convocatoria, match = null, matchKey = "") {
@@ -3891,8 +3920,9 @@ function convocatoriaMatchesSelectedMatch(convocatoria, match) {
   return convHome === matchHome && convAway === matchAway;
 }
 
-async function loadConvocatoriaForMatch(clubName, teamName, match) {
-  const exact = loadConvocatoria(clubName, teamName, match?.key || "");
+function loadConvocatoriaForMatch(clubName, teamName, match) {
+  const teamKey = String(coordinatorResolveTeamSelection(clubName, teamName)?.teamKey || "").trim();
+  const exact = loadConvocatoria(clubName, teamName, match?.key || "", teamKey);
   if (exact) return exact;
 
   const entries = Object.entries(coordinatorConvocatoriasCache || {});
@@ -3902,12 +3932,13 @@ async function loadConvocatoriaForMatch(clubName, teamName, match) {
     if (!convocatoriaMatchesSelectedMatch(row, match)) continue;
 
     const alias = { ...(row || {}) };
+    if (row?.teamKey) alias.teamKey = String(row.teamKey || "").trim();
     if (match?.key) alias.matchKey = match.key;
-    if (match?.key) saveConvocatoria(clubName, teamName, match.key, alias);
+    if (match?.key) saveConvocatoria(clubName, teamName, match.key, alias, alias.teamKey || teamKey);
     return alias;
   }
 
-  return loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match);
+  return null;
 }
 
 async function refreshCoordinatorConvocatoriasFromDB() {
@@ -3925,13 +3956,13 @@ async function refreshCoordinatorConvocatoriasFromDB() {
   const next = {};
   for (const row of data) {
     const conv = mapConvocatoriaRowToCache(row);
-    next[`${conv.clubName}::${conv.teamName}::${conv.matchKey}`] = conv;
+    next[buildConvocatoriaCacheKey(conv.clubName, conv.teamName, conv.matchKey, conv.teamKey || conv.teamId || "")] = { ...conv, teamKey: String(conv.teamKey || conv.teamId || "").trim() };
   }
   coordinatorConvocatoriasCache = next;
   return data.map(mapConvocatoriaRowToCache);
 }
 
-async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match) {
+async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match, teamKey = "") {
   if (!_sb || !currentProfile?.id || !match) return null;
 
   const matchDate = coordinatorDateKey(match?.dateKey || match?.date || "", match?.compName || "");
@@ -3939,17 +3970,17 @@ async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match
   const matchAway = String(match?.away || "").trim();
   if (!matchDate || !matchHome || !matchAway) return null;
 
-  const { data, error } = await _sb.from("convocatorias")
+  let query = _sb.from("convocatorias")
     .select("*")
     .eq("coordinator_id", currentProfile.id)
     .eq("club_name", clubName)
     .eq("team_name", teamName)
     .eq("match_date", matchDate)
     .eq("match_home", matchHome)
-    .eq("match_away", matchAway)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("match_away", matchAway);
+  const resolvedTeamKey = String(teamKey || "").trim();
+  if (resolvedTeamKey) query = query.eq("team_id", resolvedTeamKey);
+  const { data, error } = await query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
   if (error || !data) return null;
 
@@ -3958,7 +3989,7 @@ async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match
     matchKey: match?.key || data.match_key,
   };
 
-  saveConvocatoria(clubName, teamName, conv.matchKey, conv);
+  saveConvocatoria(clubName, teamName, conv.matchKey, conv, conv.teamKey || conv.teamId || "");
   return conv;
 }
 
@@ -3970,6 +4001,7 @@ async function syncConvocatoriaToSupabase(convocatoria) {
     coordinator_id:    currentProfile.id,
     club_name:         String(convocatoria.clubName || ""),
     team_name:         String(convocatoria.teamName || ""),
+    team_id:           String(convocatoria.teamKey || convocatoria.teamId || "") || null,
     match_key:         String(convocatoria.matchKey || ""),
     match_date:        convocatoria.matchDate || null,
     match_time:        convocatoria.matchTime || null,
@@ -4001,18 +4033,19 @@ async function syncConvocatoriaToSupabase(convocatoria) {
   return { ok: true, id: data?.id || null };
 }
 
-async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey) {
+async function loadConvocatoriaFromSupabase(clubName, teamName, matchKey, teamKey = "") {
   if (!_sb || !currentProfile?.id) return null;
-  const { data, error } = await _sb.from("convocatorias")
+  let query = _sb.from("convocatorias")
     .select("*")
     .eq("coordinator_id", currentProfile.id)
     .eq("club_name", clubName)
     .eq("team_name", teamName)
-    .eq("match_key", matchKey)
-    .maybeSingle();
+    .eq("match_key", matchKey);
+  if (String(teamKey || "").trim()) query = query.eq("team_id", String(teamKey).trim());
+  const { data, error } = await query.maybeSingle();
   if (error || !data) return null;
   const conv = mapConvocatoriaRowToCache(data);
-  saveConvocatoria(clubName, teamName, matchKey, conv);
+  saveConvocatoria(clubName, teamName, matchKey, conv, conv.teamKey || conv.teamId || "");
   return conv;
 }
 
@@ -4312,10 +4345,11 @@ async function getCoordinatorRosterFromMatch(match, teamName) {
   return [...roster.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function createConvocatoria(clubName, teamName, matchData, previousMatch, roster, teamCategory = "") {
+function createConvocatoria(clubName, teamName, matchData, previousMatch, roster, teamCategory = "", teamKey = "") {
   const convocatoria = {
     clubName,
     teamName,
+    teamKey: String(teamKey || matchData?.teamKey || "").trim(),
     teamCategory: String(teamCategory || "").trim(),
     matchKey: matchData.key,
     matchCompetition: matchData.compName || "",
@@ -4338,7 +4372,7 @@ function createConvocatoria(clubName, teamName, matchData, previousMatch, roster
       notes: "",
     })),
   };
-  saveConvocatoria(clubName, teamName, matchData.key, convocatoria);
+  saveConvocatoria(clubName, teamName, matchData.key, convocatoria, convocatoria.teamKey);
   return convocatoria;
 }
 
@@ -4432,10 +4466,10 @@ async function coordinatorLoadSelectedConvocatoria() {
     ? await loadConvocatoriaForMatch(fav.clubName, effectiveTeam.teamName, selected)
     : loadConvocatoria(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey);
   if (!convocatoria) {
-    convocatoria = await loadConvocatoriaFromSupabase(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey);
+    convocatoria = await loadConvocatoriaFromSupabase(fav.clubName, effectiveTeam.teamName, coordinatorConvMatchKey, effectiveTeam.teamKey);
   }
   if (!convocatoria && selected) {
-    convocatoria = await loadConvocatoriaFromSupabaseBySignature(fav.clubName, effectiveTeam.teamName, selected);
+    convocatoria = await loadConvocatoriaFromSupabaseBySignature(fav.clubName, effectiveTeam.teamName, selected, effectiveTeam.teamKey);
   }
   if (!convocatoria) return null;
 
@@ -4844,7 +4878,8 @@ async function coordinatorGenerateConvocatoria() {
         awayScore: selectedPrevious.awayScore,
       } : null,
       roster,
-      teamCat
+      teamCat,
+      effectiveTeam.teamKey
     );
   }
 
