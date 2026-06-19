@@ -1946,7 +1946,7 @@ function coordinatorDbStatusTone() {
 }
 
 function renderCoordinatorDbStatusBanner() {
-  if (!_sb || !currentProfile?.id) return "";
+  if (!_sb || !currentProfile?.id || !profileHasRole(currentProfile, "admin")) return "";
   const checks = coordinatorDbStatusChecks || {};
   const items = [
     { key: "refresh", label: "Refresh" },
@@ -4190,11 +4190,15 @@ async function loadConvocatoriaFromSupabaseBySignature(clubName, teamName, match
 
 async function syncConvocatoriaToSupabase(convocatoria) {
   if (!_sb || !currentProfile?.id) return { ok: false, error: "No session" };
+  const rawTeamId = String(convocatoria.teamId || convocatoria.teamKey || "").trim();
+  const teamId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawTeamId)
+    ? rawTeamId
+    : null;
   const row = {
     coordinator_id:    currentProfile.id,
     club_name:         String(convocatoria.clubName || ""),
     team_name:         String(convocatoria.teamName || ""),
-    team_id:           String(convocatoria.teamKey || convocatoria.teamId || "") || null,
+    team_id:           teamId,
     match_key:         String(convocatoria.matchKey || ""),
     match_date:        convocatoria.matchDate || null,
     match_time:        convocatoria.matchTime || null,
@@ -5318,15 +5322,21 @@ async function coordinatorSaveConvocatoria() {
       reminderHours: Number(clubSettings?.convReminderHours || 6),
       introMessage,
     });
+    coordinatorSetDbStatusCheck("convocatories", "ok", "Convocatoria desada correctament a la BD.");
     setMsg("✓ Convocatoria desada.", "#16a34a");
   } else {
+    const rawErr = result?.error;
+    const errText = typeof rawErr === "string"
+      ? rawErr
+      : String(rawErr?.message || rawErr?.details || rawErr?.hint || "BD no disponible");
     queueConvocatoriaNotificationEventFromSave(convocatoria, {
       manual: manualNotify,
       automatic: clubSettings?.autoConvNotifications === true,
       reminderHours: Number(clubSettings?.convReminderHours || 6),
       introMessage,
     });
-    setMsg("✓ Desat localment (BD no disponible).", "#d97706");
+    coordinatorSetDbStatusCheck("convocatories", "error", `Error desant convocatoria: ${errText}`);
+    setMsg(`⚠ Desat localment. Error BD: ${errText}`, "#dc2626");
   }
 }
 
