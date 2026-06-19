@@ -2860,10 +2860,9 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter && String(team?.category || "") === coordinatorConvTeamCategoryFilter)
     || teams.find(team => String(team?.teamName || "") === coordinatorConvTeamFilter)
   )?.teamKey || coordinatorConvTeamFilter;
-  const teamChips = teams.map(team => {
+  const teamOptions = teams.map(team => {
     const teamToken = String(team?.teamKey || team?.teamName || "");
-    const selected = selectedToken === teamToken;
-    return `<button onclick="coordinatorSetConvTeam('${encodeURIComponent(teamToken)}')" style="background:${selected ? "#1a2035" : "#f8fafc"};border:1.5px solid ${selected ? "#1a2035" : "#e2e6ef"};color:${selected ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">${esc(formatCoordinatorTeamLabel(team))}</button>`;
+    return `<option value="${esc(teamToken)}" ${selectedToken === teamToken ? "selected" : ""}>${esc(formatCoordinatorTeamLabel(team))}</option>`;
   }).join("");
   const clubSettings = getCoordinatorClubSettings(currentFav.clubName);
 
@@ -2871,11 +2870,11 @@ function renderCoordinatorConvocatoriesTab(currentFav) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px">
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Seleccio d'equip</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-          <button onclick="coordinatorSetConvTeam('')" style="background:${!selectedToken ? "#1a2035" : "#f8fafc"};border:1.5px solid ${!selectedToken ? "#1a2035" : "#e2e6ef"};color:${!selectedToken ? "#fff" : "#334155"};border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">Tots</button>
-          ${teamChips}
-        </div>
-        <div style="font-size:12px;color:#64748b">Filtra per equip com a gestió club. Amb Tots, el partit seleccionat resol automàticament l'equip efectiu.</div>
+        <select id="coordinator-conv-team-select" onchange="coordinatorSetConvTeam(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid #e2e6ef;border-radius:10px;font-size:13px;font-family:inherit;margin-bottom:10px">
+          <option value="">Selecciona equip</option>
+          ${teamOptions}
+        </select>
+        <div style="font-size:12px;color:#64748b">En seleccionar l'equip es carrega el següent partit i els partits anteriors disponibles.</div>
       </div>
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e6ef;padding:16px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:#1a2035;letter-spacing:.06em;margin-bottom:10px">Següent partit</div>
