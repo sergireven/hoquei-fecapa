@@ -7334,7 +7334,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
 
   const competitions = await fetchAllRows(() =>
     _sb.from("competitions")
-      .select("id, name, category, season")
+      .select("id, name, category, season, is_finished")
       .eq("season", key)
       .order("name", { ascending: true })
   );
@@ -7422,6 +7422,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
       name: String(comp?.name || "").trim(),
       classification: classRows,
       calendar: [],
+      isFinished: comp?.is_finished === true,
       source: "db",
     });
   }
@@ -9209,6 +9210,7 @@ function isCurrentSeasonView() {
 
 const isActive = comp => {
   if (!isCurrentSeasonView()) return false;
+  if (comp?.isFinished === true) return false;
   return getCompPlayedPct(comp) < 100;
 };
 
@@ -13153,7 +13155,8 @@ function renderDetailHeaderMeta() {
   const phaseMatches = normalizePostSeasonPhases(detailComp?.postSeasonPhases || []).flatMap(p => p?.matches || []);
   const hasPendingRelevant = [...regularMatches, ...phaseMatches].some(isPendingRelevant);
   const playedMatchCount = [...regularMatches, ...phaseMatches].filter(m => m?.homeScore != null && m?.awayScore != null).length;
-  const isFinished = playedPct >= 100 || (playedMatchCount > 0 && !hasPendingRelevant);
+  const forcedFinished = detailComp?.isFinished === true;
+  const isFinished = forcedFinished || playedPct >= 100 || (playedMatchCount > 0 && !hasPendingRelevant);
   const status = (playedPct == null || playedPct === 0) ? "No començada" : (isFinished ? "Finalitzada" : "En curs");
   const statusColor = isFinished ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
 
