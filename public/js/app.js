@@ -7935,6 +7935,60 @@ const CAT_LABELS = {
   "alevi":"Aleví","benjami":"Benjamí","prebenjami":"Pre-benjamí",
   "fem":"Femení","veterans":"Veterans","altres":"Altres",
 };
+
+const ACTA_CAT_SLUG_ALIASES = {
+  "1-catalana": "1a-catalana",
+  "1a-catalana": "1a-catalana",
+  "1a-catalana-masculina": "1a-catalana",
+  "1a-catalana-femenina": "1a-catalana",
+  "2-catalana": "2a-catalana",
+  "2a-catalana": "2a-catalana",
+  "3-catalana": "3a-catalana",
+  "3a-catalana": "3a-catalana",
+  "alevi": "alevi",
+  "benjami": "benjami",
+  "prebenjami": "prebenjami",
+  "femeni": "fem",
+  "femeni": "fem",
+  "femenina": "fem",
+  "fem": "fem",
+  "junior": "junior",
+  "juvenil": "juvenil",
+  "infantil": "infantil",
+  "veterans": "veterans",
+  "altres": "altres",
+  "nacional-catalana": "nacional-catalana",
+};
+
+const FALLBACK_ACTA_CATEGORY_SLUGS = [
+  "nacional-catalana",
+  "1a-catalana",
+  "1-catalana",
+  "2a-catalana",
+  "3a-catalana",
+  "juvenil",
+  "junior",
+  "infantil",
+  "alevi",
+  "benjami",
+  "prebenjami",
+  "fem",
+  "veterans",
+  "altres",
+];
+
+function normalizeActaCategorySlug(raw) {
+  const key = String(raw || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .trim();
+  if (!key) return "";
+  return ACTA_CAT_SLUG_ALIASES[key] || key;
+}
 const CAT_COLOR = {
   "Nacional Catalana":"#003da5","1ª Catalana":"#1a5dc7","2ª Catalana":"#2563eb",
   "3ª Catalana":"#7c3aed","Fem":"#db2777","Júnior":"#ea580c","Juvenil":"#16a34a",
@@ -8004,23 +8058,65 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
   };
 
   const actaIdsByCat = new Map();
+  const unresolvedActaIds = new Set();
   for (const src of sources) {
     const actaId = String(src.id || "").trim();
     if (!actaId) continue;
-    const cat = seasonData?.actesIndex?.[actaId];
-    if (!cat) continue;
-    if (!actaIdsByCat.has(cat)) actaIdsByCat.set(cat, new Set());
-    actaIdsByCat.get(cat).add(actaId);
+    const rawCat = seasonData?.actesIndex?.[actaId];
+    const cat = normalizeActaCategorySlug(rawCat);
+    if (cat) {
+      if (!actaIdsByCat.has(cat)) actaIdsByCat.set(cat, new Set());
+      actaIdsByCat.get(cat).add(actaId);
+    } else {
+      unresolvedActaIds.add(actaId);
+    }
   }
 
-  if (!actaIdsByCat.size) return [];
+  if (!actaIdsByCat.size && !unresolvedActaIds.size) return [];
 
-  const actesByCat = new Map(await Promise.all(
-    Array.from(actaIdsByCat.keys()).map(async cat => [cat, await loadCatActes(cat, seasonKey)])
-  ));
+  const actesByCat = new Map();
+  const ensureCatLoaded = async cat => {
+    if (!cat) return {};
+    if (actesByCat.has(cat)) return actesByCat.get(cat) || {};
+    const actes = await loadCatActes(cat, seasonKey);
+    actesByCat.set(cat, actes || {});
+    return actes || {};
+  };
 
+  await Promise.all(Array.from(actaIdsByCat.keys()).map(cat => ensureCatLoaded(cat)));
+
+  // Some archived datasets have category labels/aliases in actesIndex.
+  // Fallback: probe known category files to resolve acta ids that were not found above.
+  const missingByHint = new Set();
   for (const [cat, ids] of actaIdsByCat.entries()) {
     const actes = actesByCat.get(cat) || {};
+    for (const actaId of ids) {
+      if (!actes?.[actaId]) missingByHint.add(actaId);
+    }
+  }
+  for (const id of unresolvedActaIds) missingByHint.add(id);
+
+  if (missingByHint.size) {
+    const preferredCats = [...new Set([
+      ...Array.from(actaIdsByCat.keys()),
+      ...FALLBACK_ACTA_CATEGORY_SLUGS,
+    ].map(normalizeActaCategorySlug).filter(Boolean))];
+
+    for (const cat of preferredCats) {
+      if (!missingByHint.size) break;
+      const actes = await ensureCatLoaded(cat);
+      if (!actes || typeof actes !== "object") continue;
+      for (const actaId of [...missingByHint]) {
+        if (!actes?.[actaId]) continue;
+        if (!actaIdsByCat.has(cat)) actaIdsByCat.set(cat, new Set());
+        actaIdsByCat.get(cat).add(actaId);
+        missingByHint.delete(actaId);
+      }
+    }
+  }
+
+  for (const [cat, ids] of actaIdsByCat.entries()) {
+    const actes = await ensureCatLoaded(cat);
     for (const actaId of ids) {
       const acta = actes?.[actaId];
       if (!acta?.playerStats) continue;
