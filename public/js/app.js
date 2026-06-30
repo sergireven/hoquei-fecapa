@@ -9208,9 +9208,16 @@ function isCurrentSeasonView() {
   return activeSeasonKey === "current";
 }
 
+function isCompetitionFinished(comp) {
+  if (!comp) return false;
+  if (comp?.isFinished === true) return true;
+  const seasonMatch = String(comp?.name || "").match(/\((\d{4}-\d{2})\)\s*$/);
+  return Boolean(seasonMatch && seasonMatch[1] === "2025-26");
+}
+
 const isActive = comp => {
   if (!isCurrentSeasonView()) return false;
-  if (comp?.isFinished === true) return false;
+  if (isCompetitionFinished(comp)) return false;
   return getCompPlayedPct(comp) < 100;
 };
 
@@ -11528,7 +11535,8 @@ function renderClubDashboard() {
     const comp=findComp(t.compId); if (!comp) return "";
     const cl=comp.classification||[], cal=comp.calendar||[];
     const teamCalendar = cal.filter(m=>teamIn(m.home,t.teamName)||teamIn(m.away,t.teamName));
-    const hasPendingTeamMatch = teamCalendar.some(m =>
+    const forcedFinishedComp = isCompetitionFinished(comp);
+    const hasPendingTeamMatch = forcedFinishedComp ? false : teamCalendar.some(m =>
       !isPlaceholderTeamName(m?.home) &&
       !isPlaceholderTeamName(m?.away) &&
       !isDescansaTeamName(m?.home) &&
@@ -11542,7 +11550,7 @@ function renderClubDashboard() {
     );
     if (allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
     const playedPct = getCompPlayedPct(comp);
-    const statusFlag = (!isCurrentSeasonView() || (!hasPendingTeamMatch && playedPct >= 100))
+    const statusFlag = (!isCurrentSeasonView() || forcedFinishedComp || (!hasPendingTeamMatch && playedPct >= 100))
       ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf3;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">✅ Acabada</span>`
       : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">🟠 En curs</span>`;
     const myRow=cl.find(r=>teamIn(r.team,t.teamName));
@@ -13155,7 +13163,7 @@ function renderDetailHeaderMeta() {
   const phaseMatches = normalizePostSeasonPhases(detailComp?.postSeasonPhases || []).flatMap(p => p?.matches || []);
   const hasPendingRelevant = [...regularMatches, ...phaseMatches].some(isPendingRelevant);
   const playedMatchCount = [...regularMatches, ...phaseMatches].filter(m => m?.homeScore != null && m?.awayScore != null).length;
-  const forcedFinished = detailComp?.isFinished === true;
+  const forcedFinished = isCompetitionFinished(detailComp);
   const isFinished = forcedFinished || playedPct >= 100 || (playedMatchCount > 0 && !hasPendingRelevant);
   const status = (playedPct == null || playedPct === 0) ? "No començada" : (isFinished ? "Finalitzada" : "En curs");
   const statusColor = isFinished ? "#6b7a99" : (playedPct === 0 ? "#94a3b8" : "#e5001c");
