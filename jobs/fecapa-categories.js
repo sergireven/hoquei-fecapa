@@ -736,6 +736,16 @@ function buildGroupId(competitionId, groupName, fallbackOrder) {
   return `${competitionId}-${tier}-${suffix}`;
 }
 
+function isCompetitionFinishedOverride(competitionName) {
+  const seasonMatch = String(competitionName || "").match(/\((\d{4}-\d{2})\)\s*$/);
+  if (seasonMatch) return seasonMatch[1] === "2025-26";
+
+  const now = new Date();
+  const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const inferredSeason = `${startYear}-${String(startYear + 1).slice(-2)}`;
+  return inferredSeason === "2025-26";
+}
+
 function annotateCompetitionNoMatches(compData) {
   const groups = Array.isArray(compData?.groups) ? compData.groups : [];
   const hasAnyTeam = groups.some(g => (g?.teamCount || 0) > 0);
@@ -760,6 +770,7 @@ function annotateCompetitionNoMatches(compData) {
       teamCount: 0,
       groups: annotatedGroups,
       statusMessage: competitionStatusMessage,
+      isFinished: isCompetitionFinishedOverride(compData?.competitionName),
     };
   }
 
@@ -770,6 +781,7 @@ function annotateCompetitionNoMatches(compData) {
       teamCount: Number.isFinite(g?.teamCount) ? g.teamCount : ((g?.teams || []).length || 0),
       teams: Array.isArray(g?.teams) ? g.teams : [],
     })),
+    isFinished: isCompetitionFinishedOverride(compData?.competitionName),
   };
 }
 

@@ -174,6 +174,10 @@ function inferRegionalLevel(name) {
   return null;
 }
 
+function shouldMarkCompetitionFinished(season) {
+  return String(season || "").trim() === "2025-26";
+}
+
 function normalizeClubFromTeam(teamName) {
   return normalizeSpaces(teamName).replace(TEAM_LETTER_SUFFIX_RE, "").trim();
 }
@@ -305,6 +309,7 @@ function extractAllFromSeason({ data, season, context }) {
           league_name: null,
           regional_level: inferRegionalLevel(compName),
           total_teams: 0,
+          is_finished: shouldMarkCompetitionFinished(compSeason),
           created_at: now,
           updated_at: now,
         })
@@ -685,6 +690,7 @@ async function main() {
       "league_name",
       "regional_level",
       "total_teams",
+      "is_finished",
       "created_at",
       "updated_at",
     ],

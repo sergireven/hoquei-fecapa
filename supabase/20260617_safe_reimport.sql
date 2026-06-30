@@ -45,7 +45,7 @@ TRUNCATE TABLE public.clubs CASCADE;
 --    → Ensure columns map: id, club_id, club_name, team_name, category, season, team_key, created_at, updated_at
 --
 -- 3. Upload: public/db-csv/competitions.csv
---    → Ensure columns map: id, name, competition_code, category, season, competition_type, league_name, regional_level, total_teams, created_at, updated_at
+--    → Ensure columns map: id, name, competition_code, category, season, competition_type, league_name, regional_level, total_teams, is_finished, created_at, updated_at
 --
 -- 4. Upload: public/db-csv/players.csv
 --    → Ensure columns map: id, primary_team_id, name, slug, dorsal, position, is_goalkeeper, season, created_at, updated_at
