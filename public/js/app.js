@@ -7308,9 +7308,10 @@ function buildDbPlayersIndex(playersRows, teamById, seasonKey) {
     jugadors[pid] = {
       id: pid,
       jugadorId: pid,
+      playerMasterId: String(row?.player_master_id || "").trim() || null,
       slug: row?.slug || String(row?.name || "").toUpperCase().replace(/\s+/g, "+"),
       number: row?.dorsal || null,
-      birthDate: null,
+      birthDate: String(row?.birth_date || "").trim() || null,
       isGK: Boolean(row?.is_goalkeeper),
       position: row?.position || "Jugador",
       teamStats,
@@ -7430,7 +7431,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
 
   const playersRows = await fetchAllRows(() =>
     _sb.from("players")
-      .select("id, primary_team_id, name, slug, dorsal, position, is_goalkeeper, season")
+      .select("id, player_master_id, primary_team_id, name, slug, dorsal, position, is_goalkeeper, birth_date, season")
       .eq("season", key)
       .order("name", { ascending: true })
   );
@@ -7533,10 +7534,20 @@ function getPlayerDisplayName(player) {
 
 function findPlayerInSeasonDataByIdentity(seasonData, identity = {}) {
   const wantedId = String(identity?.jid || "").trim();
+  const wantedMasterId = String(identity?.playerMasterId || identity?.masterId || "").trim();
   if (!seasonData?.jugadors) return null;
 
   if (wantedId && seasonData.jugadors[wantedId]) {
     return { jid: wantedId, player: seasonData.jugadors[wantedId] };
+  }
+
+  if (wantedMasterId) {
+    for (const [pid, player] of Object.entries(seasonData.jugadors || {})) {
+      const playerMasterId = String(player?.playerMasterId || player?.player_master_id || "").trim();
+      if (playerMasterId && playerMasterId === wantedMasterId) {
+        return { jid: String(pid), player };
+      }
+    }
   }
 
   const wantedSlug = normalizePlayerIdentity(identity?.slug || "");
