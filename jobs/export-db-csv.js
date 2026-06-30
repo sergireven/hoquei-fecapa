@@ -184,8 +184,19 @@ function normalizeClubFromTeam(teamName) {
 
 function normalizePlayerName(name) {
   const decoded = safeDecode(name);
-  const noPrefix = decoded.replace(/^[A-Z0-9]+\s+/, "");
-  return normalizeSpaces(noPrefix || decoded);
+  const normalized = normalizeSpaces(decoded);
+  if (!normalized) return "";
+
+  const prefixMatch = normalized.match(/^([A-Z0-9]{2,})\s+(.+)$/);
+  if (!prefixMatch) return normalized;
+
+  const firstToken = String(prefixMatch[1] || "").trim();
+  const rest = normalizeSpaces(prefixMatch[2] || "");
+  const looksLikeCode = /\d/.test(firstToken)
+    || /^(ID|CODI|JUG|PID)\d*$/i.test(firstToken)
+    || /^#?\d+$/.test(firstToken);
+
+  return (looksLikeCode && rest) ? rest : normalized;
 }
 
 function toIntOrDefault(value, defaultValue = 0) {
