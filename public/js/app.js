@@ -8003,17 +8003,30 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
     }
   };
 
+  const actaIdsByCat = new Map();
   for (const src of sources) {
-    const actaId = String(src.id);
+    const actaId = String(src.id || "").trim();
+    if (!actaId) continue;
     const cat = seasonData?.actesIndex?.[actaId];
     if (!cat) continue;
+    if (!actaIdsByCat.has(cat)) actaIdsByCat.set(cat, new Set());
+    actaIdsByCat.get(cat).add(actaId);
+  }
 
-    const actes = await loadCatActes(cat, seasonKey);
-    const acta = actes?.[actaId];
-    if (!acta?.playerStats) continue;
+  if (!actaIdsByCat.size) return [];
 
-    addAppearance(acta.playerStats.homePlayers, acta.home, cat, acta?.compId);
-    addAppearance(acta.playerStats.awayPlayers, acta.away, cat, acta?.compId);
+  const actesByCat = new Map(await Promise.all(
+    Array.from(actaIdsByCat.keys()).map(async cat => [cat, await loadCatActes(cat, seasonKey)])
+  ));
+
+  for (const [cat, ids] of actaIdsByCat.entries()) {
+    const actes = actesByCat.get(cat) || {};
+    for (const actaId of ids) {
+      const acta = actes?.[actaId];
+      if (!acta?.playerStats) continue;
+      addAppearance(acta.playerStats.homePlayers, acta.home, cat, acta?.compId);
+      addAppearance(acta.playerStats.awayPlayers, acta.away, cat, acta?.compId);
+    }
   }
 
   return Object.values(teamCatCounts).sort((a, b) => b.count - a.count);
@@ -13321,9 +13334,22 @@ async function openPlayerModal(jid, fallbackName) {
 
   // ── Estadístiques de temporada ────────────────────────────────
   const parseSeasonToken = raw => {
-    const m = String(raw || "").match(/(20\d{2})\s*[-/]\s*(\d{2,4})/);
-    if (!m) return "";
-    return `${m[1]}-${String(m[2]).slice(-2)}`;
+    const txt = String(raw || "").trim();
+    if (!txt) return "";
+
+    const fullYear = txt.match(/(20\d{2})\s*[-/]\s*(\d{2,4})/);
+    if (fullYear) {
+      return `${fullYear[1]}-${String(fullYear[2]).slice(-2)}`;
+    }
+
+    const shortYear = txt.match(/(?:^|\D)(\d{2})\s*[-/]\s*(\d{2})(?:\D|$)/);
+    if (shortYear) {
+      const start = Number(shortYear[1]);
+      if (!Number.isFinite(start)) return "";
+      return `${2000 + start}-${shortYear[2]}`;
+    }
+
+    return "";
   };
   const cs = [...(player?.careerStats || [])]
     .sort((a, b) => String(b?.seasonName || "").localeCompare(String(a?.seasonName || "")))
@@ -13408,10 +13434,10 @@ async function openPlayerModal(jid, fallbackName) {
   };
 
   const seasonRowsByToken = new Map();
-  for (const s of cs) {
-    if (!s?._seasonToken) continue;
-    const rows = await buildSeasonDisplayRows(s._seasonToken);
-    seasonRowsByToken.set(s._seasonToken, rows || []);
+  const tokensToBuild = [...new Set(cs.map(s => s?._seasonToken).filter(Boolean))];
+  const builtRows = await Promise.all(tokensToBuild.map(async token => [token, await buildSeasonDisplayRows(token)]));
+  for (const [token, rows] of builtRows) {
+    seasonRowsByToken.set(token, rows || []);
   }
 
   const visibleSeasonRows = cs.filter(s => {
