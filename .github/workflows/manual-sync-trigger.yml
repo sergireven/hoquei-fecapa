@@ -119,6 +119,7 @@ jobs:
           git clone --depth 1 "https://github.com/${GITHUB_REPOSITORY}.git" repo
           cd repo
           npm ci
+          npm install --no-save @supabase/supabase-js
 
       - name: Run GitHub-direct JSON -> DB sync
         if: ${{ github.event.inputs.mode == 'github_direct_db_sync' }}
