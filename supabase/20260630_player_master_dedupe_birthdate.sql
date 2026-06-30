@@ -47,6 +47,50 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.best_player_display_name(
+  in_name TEXT,
+  in_slug TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_name TEXT;
+  v_slug_name TEXT;
+  v_name_tokens INT;
+  v_slug_tokens INT;
+BEGIN
+  v_name := NULLIF(BTRIM(COALESCE(in_name, '')), '');
+  v_slug_name := NULLIF(BTRIM(REPLACE(COALESCE(in_slug, ''), '+', ' ')), '');
+
+  IF v_name IS NULL AND v_slug_name IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF v_name IS NULL THEN
+    RETURN v_slug_name;
+  END IF;
+  IF v_slug_name IS NULL THEN
+    RETURN v_name;
+  END IF;
+
+  v_name_tokens := COALESCE(array_length(regexp_split_to_array(v_name, '\\s+'), 1), 0);
+  v_slug_tokens := COALESCE(array_length(regexp_split_to_array(v_slug_name, '\\s+'), 1), 0);
+
+  IF v_name_tokens > v_slug_tokens THEN
+    RETURN v_name;
+  END IF;
+  IF v_slug_tokens > v_name_tokens THEN
+    RETURN v_slug_name;
+  END IF;
+
+  IF LENGTH(v_name) >= LENGTH(v_slug_name) THEN
+    RETURN v_name;
+  END IF;
+  RETURN v_slug_name;
+END;
+$$;
+
 WITH prepared AS (
   SELECT
     p.id AS player_id,
@@ -60,7 +104,14 @@ masters AS (
   SELECT
     master_key,
     MIN(NULLIF(BTRIM(slug), '')) FILTER (WHERE NULLIF(BTRIM(slug), '') IS NOT NULL) AS canonical_slug,
-    MIN(NULLIF(BTRIM(name), '')) FILTER (WHERE NULLIF(BTRIM(name), '') IS NOT NULL) AS canonical_name,
+    (
+      ARRAY_AGG(public.best_player_display_name(name, slug)
+        ORDER BY
+          COALESCE(array_length(regexp_split_to_array(public.best_player_display_name(name, slug), '\\s+'), 1), 0) DESC,
+          LENGTH(public.best_player_display_name(name, slug)) DESC,
+          public.best_player_display_name(name, slug) ASC
+      ) FILTER (WHERE public.best_player_display_name(name, slug) IS NOT NULL)
+    )[1] AS canonical_name,
     MIN(birth_date) FILTER (WHERE birth_date IS NOT NULL) AS canonical_birth_date
   FROM prepared
   GROUP BY master_key
