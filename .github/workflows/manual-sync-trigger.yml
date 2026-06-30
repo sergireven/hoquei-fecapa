@@ -142,8 +142,24 @@ jobs:
           const { createClient } = require('@supabase/supabase-js');
           const { syncSeasonToDatabase, syncAllSeasonsToDatabase } = require('./api/sync-db-from-json');
 
+          function decodeJwtPayload(token) {
+            try {
+              const parts = String(token || '').split('.');
+              if (parts.length < 2) return null;
+              return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+            } catch {
+              return null;
+            }
+          }
+
           (async () => {
             const season = String(process.env.SEASON || 'all').trim().toLowerCase();
+            const jwtPayload = decodeJwtPayload(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
+            const role = String(jwtPayload?.role || '').trim();
+            if (role && role !== 'service_role') {
+              throw new Error(`SUPABASE_SERVICE_ROLE_KEY is not service_role (detected role=${role})`);
+            }
+
             const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
             const publicDir = path.join(process.cwd(), 'public');
 
@@ -157,15 +173,22 @@ jobs:
             }
 
             const payload = {
-              ok: true,
+              ok: !!result && (season === 'all'
+                ? Object.values(result).every(r => r && r.ok === true)
+                : result.ok === true),
               mode: 'github_direct_db_sync',
               season,
               result,
               timestamp: new Date().toISOString(),
             };
 
+            if (!payload.ok) {
+              payload.error = 'One or more sync steps failed. See result details.';
+            }
+
             fs.writeFileSync('sync-response-direct.json', JSON.stringify(payload, null, 2));
             console.log(JSON.stringify(payload, null, 2));
+            if (!payload.ok) process.exit(1);
           })().catch((err) => {
             const payload = {
               ok: false,

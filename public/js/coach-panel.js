@@ -290,17 +290,41 @@ function _coachSetFavoritePersistStatus(type = "idle", text = "") {
 }
 
 function _coachFavoriteTeamNameForDB(choice) {
-  return buildFullTeamName(choice?.clubName || "", choice?.teamName || "", _coachSeasonKey());
+  const seasonRaw = String((typeof DB !== "undefined" ? DB?.season : "") || "").trim();
+  const fallbackRaw = String(_coachSeasonLabel() || "").trim().replace(/\//g, "-");
+  const season = seasonRaw || fallbackRaw || _coachSeasonKey();
+  return buildFullTeamName(choice?.clubName || "", choice?.teamName || "", season);
 }
 
 function _coachTeamNameFromStoredFavorite(rec) {
   const raw = String(rec?.team_name || rec?.teamName || "").trim();
   const club = String(rec?.club_name || rec?.clubName || "").trim();
-  const season = String(_coachSeasonKey() || "").trim();
   if (!raw) return "";
   let out = raw;
+
+  // Stored team_name may be prefixed with club and suffixed with season in multiple formats.
   if (club && out.startsWith(`${club} `)) out = out.slice(club.length + 1).trim();
-  if (season && out.endsWith(` ${season}`)) out = out.slice(0, -(season.length + 1)).trim();
+
+  const seasonTokens = new Set();
+  const seasonKey = String(_coachSeasonKey() || "").trim();
+  const seasonLabel = String(_coachSeasonLabel() || "").trim();
+  const seasonDb = String((typeof DB !== "undefined" ? DB?.season : "") || "").trim();
+  if (seasonKey) seasonTokens.add(seasonKey);
+  if (seasonLabel) seasonTokens.add(seasonLabel);
+  if (seasonLabel) seasonTokens.add(seasonLabel.replace(/\//g, "-"));
+  if (seasonDb) seasonTokens.add(seasonDb);
+
+  for (const token of seasonTokens) {
+    if (!token) continue;
+    if (out.endsWith(` ${token}`)) {
+      out = out.slice(0, -(token.length + 1)).trim();
+      break;
+    }
+  }
+
+  // Generic fallback for persisted rows like "... 2025-26" or "... 2025/26".
+  out = out.replace(/\s+(?:19|20)\d{2}[\/-]\d{2,4}$/i, "").trim();
+
   return out;
 }
 

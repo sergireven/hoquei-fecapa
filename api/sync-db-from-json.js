@@ -7,11 +7,33 @@
 
 const fs = require("fs").promises;
 const path = require("path");
+const crypto = require("crypto");
 
 // Helpers de normalització
 const normalizeClubName = (name) => String(name || "").toLowerCase().trim().replace(/\s+/g, " ");
 
 const normalizeTeamName = (name) => String(name || "").toLowerCase().trim();
+
+function hashUuid(seed) {
+  const hex = crypto.createHash("sha1").update(String(seed || "")).digest("hex");
+  const chars = hex.slice(0, 32).split("");
+  chars[12] = "5";
+  const variant = parseInt(chars[16], 16);
+  chars[16] = ((variant & 0x3) | 0x8).toString(16);
+  const s = chars.join("");
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20, 32)}`;
+}
+
+function makeDeterministicPlayerId({ season, name, teamName, category }) {
+  const seed = [
+    "player",
+    normalizeTeamName(season || ""),
+    normalizeTeamName(name || ""),
+    normalizeTeamName(teamName || ""),
+    normalizeTeamName(category || ""),
+  ].join("::");
+  return hashUuid(`hoquei-fecapa:${seed}`);
+}
 
 // Construeix team_name harmonitzat: Club + Equip + Temporada
 // Exemple: "Club Hoquei Ripollet Prebenjamí B 2025-26"
@@ -142,6 +164,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   const clubs = extractClubsFromCategories(data.categories || {});
   const teams = extractTeamsFromCategories(data.categories || {}, season);
   const players = extractPlayersFromDb(data, season);
+  const syncErrors = [];
 
   console.log(`[sync] Extracted: ${clubs.length} clubs, ${teams.length} teams, ${players.length} players`);
 
@@ -149,12 +172,19 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   if (clubs.length) {
     const { error: clubErr } = await sb.from("clubs")
       .upsert(clubs.map(c => ({ name: c.displayName, jok_key: c.jok_key })), { onConflict: "name" });
-    if (clubErr) console.error("[sync] Error upserting clubs:", clubErr.message);
+    if (clubErr) {
+      console.error("[sync] Error upserting clubs:", clubErr.message);
+      syncErrors.push(`clubs: ${clubErr.message}`);
+    }
   }
 
   // 4. UPSERT teams (necessita club_id FK, així que ho fem en dos passos)
   // Primer, obtenim el mapping de noms a IDs
-  const { data: clubRows } = await sb.from("clubs").select("id, name");
+  const { data: clubRows, error: clubReadErr } = await sb.from("clubs").select("id, name");
+  if (clubReadErr) {
+    console.error("[sync] Error reading clubs:", clubReadErr.message);
+    syncErrors.push(`clubs-read: ${clubReadErr.message}`);
+  }
   const clubIdMap = new Map(clubRows?.map(r => [normalizeClubName(r.name), r.id]) || []);
 
   if (teams.length) {
@@ -168,11 +198,18 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
     }));
     const { error: teamErr } = await sb.from("teams")
       .upsert(teamsWithClubId, { onConflict: "club_id,team_name,category,season" });
-    if (teamErr) console.error("[sync] Error upserting teams:", teamErr.message);
+    if (teamErr) {
+      console.error("[sync] Error upserting teams:", teamErr.message);
+      syncErrors.push(`teams: ${teamErr.message}`);
+    }
   }
 
   // 5. UPSERT players (necessita team_id FK)
-  const { data: teamRows } = await sb.from("teams").select("id, team_name, category, season");
+  const { data: teamRows, error: teamReadErr } = await sb.from("teams").select("id, team_name, category, season");
+  if (teamReadErr) {
+    console.error("[sync] Error reading teams:", teamReadErr.message);
+    syncErrors.push(`teams-read: ${teamReadErr.message}`);
+  }
   const teamIdMap = new Map();
   for (const t of teamRows || []) {
     const key = `${normalizeTeamName(t.team_name)}::${normalizeTeamName(t.category)}::${t.season}`;
@@ -183,6 +220,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
     const playersWithTeamId = players.map(p => {
       const key = `${normalizeTeamName(p.name)}::${normalizeTeamName(p.team_name)}::${p.season}`;
       return {
+        id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_name, category: p.category }),
         primary_team_id: teamIdMap.get(key) || null,
         name: p.name,
         slug: p.slug,
@@ -193,11 +231,24 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       };
     });
     const { error: playerErr } = await sb.from("players")
-      .upsert(playersWithTeamId, { onConflict: "name,season" });
-    if (playerErr) console.error("[sync] Error upserting players:", playerErr.message);
+      .upsert(playersWithTeamId, { onConflict: "id" });
+    if (playerErr) {
+      console.error("[sync] Error upserting players:", playerErr.message);
+      syncErrors.push(`players: ${playerErr.message}`);
+    }
   }
 
   console.log(`[sync] Sync completed for season: ${seasonKey}`);
+  if (syncErrors.length) {
+    return {
+      ok: false,
+      clubs: clubs.length,
+      teams: teams.length,
+      players: players.length,
+      error: syncErrors[0],
+      errors: syncErrors,
+    };
+  }
   return { ok: true, clubs: clubs.length, teams: teams.length, players: players.length };
 }
 
@@ -215,6 +266,15 @@ async function syncAllSeasonsToDatabase(sb, publicDir = "./public") {
   for (const year of seasonYears) {
     const seasonDataPath = path.join(archiveDir, "data-" + year + ".json");
     results[year] = await syncSeasonToDatabase(sb, year, seasonDataPath, year);
+  }
+
+  const hasErrors = Object.values(results).some(r => !r?.ok);
+  if (hasErrors) {
+    const summary = Object.entries(results)
+      .filter(([, r]) => !r?.ok)
+      .map(([seasonName, r]) => `${seasonName}: ${r?.error || "unknown error"}`)
+      .join(" | ");
+    throw new Error(`DB sync failed for one or more seasons. ${summary}`);
   }
 
   return results;
