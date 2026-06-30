@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-06-18T16:06:41.636Z",
+  "outDir": "/Users/u1022697/hoquei-fecapa/public/db-csv",
+  "processedSeasons": [
+    {
+      "season": "2021-22",
+      "filePath": "/Users/u1022697/hoquei-fecapa/public/season-archive/data-2021-22.json"
+    },
+    {
+      "season": "2022-23",
+      "filePath": "/Users/u1022697/hoquei-fecapa/public/season-archive/data-2022-23.json"
+    },
+    {
+      "season": "2023-24",
+      "filePath": "/Users/u1022697/hoquei-fecapa/public/season-archive/data-2023-24.json"
+    },
+    {
+      "season": "2024-25",
+      "filePath": "/Users/u1022697/hoquei-fecapa/public/season-archive/data-2024-25.json"
+    },
+    {
+      "season": "2025-26",
+      "filePath": "/Users/u1022697/hoquei-fecapa/public/data.json"
+    }
+  ],
+  "skippedSeasons": [],
+  "counts": {
+    "clubs": 479,
+    "teams": 6549,
+    "players": 39899,
+    "competitions": 2147,
+    "competition_teams": 11870,
+    "matches_historical": 54407
+  },
+  "loadOrder": [
+    "clubs.csv",
+    "teams.csv",
+    "competitions.csv",
+    "players.csv",
+    "competition_teams.csv",
+    "matches_historical.csv",
+    "matches_historical_002.csv",
+    "matches_historical_003.csv",
+    "matches_historical_004.csv",
+    "matches_historical_005.csv",
+    "matches_historical_006.csv"
+  ],
+  "matches_historical_files": [
+    "matches_historical.csv",
+    "matches_historical_002.csv",
+    "matches_historical_003.csv",
+    "matches_historical_004.csv",
+    "matches_historical_005.csv",
+    "matches_historical_006.csv"
+  ],
+  "limits": {
+    "csvMaxLinesPerFile": 10000,
+    "matchesHistoricalMaxDataRowsPerFile": 9999
+  }
+}
