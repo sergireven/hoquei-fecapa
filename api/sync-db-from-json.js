@@ -120,7 +120,9 @@ function extractPlayersFromDb(db, season = "2025-26") {
   for (const jugId of Object.keys(jugadors)) {
     const player = jugadors[jugId];
     if (!player) continue;
-    const name = String(player?.name || player?.slug || "").trim();
+    // Converteix + a espai per slug (format del JSON), pren name si existeix
+    const slug = String(player?.slug || "").replace(/\+/g, " ").trim();
+    const name = String(player?.name || slug || "").trim();
     if (!name) continue;
     // Team stats: si existeixen, pren el primer
     const teamStats = Array.isArray(player?.teamStats) ? player.teamStats : [];
@@ -137,7 +139,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     );
     players.push({
       name: name,
-      slug: player?.slug || null,
+      slug: slug,
       dorsal: player?.dorsal || "",
       position: player?.position || "Jugador",
       is_goalkeeper: isGK,
