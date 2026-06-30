@@ -34,7 +34,12 @@ BEGIN
   ON CONFLICT (master_key) DO UPDATE
   SET
     canonical_slug = COALESCE(public.player_masters.canonical_slug, EXCLUDED.canonical_slug),
-    canonical_name = COALESCE(NULLIF(public.player_masters.canonical_name, ''), EXCLUDED.canonical_name),
+    canonical_name = CASE
+      WHEN COALESCE(array_length(regexp_split_to_array(EXCLUDED.canonical_name, '\\s+'), 1), 0) >
+           COALESCE(array_length(regexp_split_to_array(public.player_masters.canonical_name, '\\s+'), 1), 0)
+        THEN EXCLUDED.canonical_name
+      ELSE public.player_masters.canonical_name
+    END,
     canonical_birth_date = COALESCE(public.player_masters.canonical_birth_date, EXCLUDED.canonical_birth_date),
     updated_at = NOW()
   RETURNING id INTO v_master_id;

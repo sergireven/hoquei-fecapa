@@ -33,10 +33,10 @@ best_names AS (
 )
 UPDATE public.player_masters pm
 SET
-  canonical_name = COALESCE(bn.best_name, pm.canonical_name),
+  canonical_name = bn.best_name,
   updated_at = NOW()
 FROM best_names bn
 WHERE pm.id = bn.id
   AND pm.canonical_name IS DISTINCT FROM bn.best_name;
 
-COMMENT ON TABLE public.player_masters IS 'Global player identity across seasons. canonical_name now uses best_player_display_name logic to prefer full names over slugs.';
+COMMENT ON TABLE public.player_masters IS 'Global player identity across seasons. canonical_name now uses best_player_display_name logic to prefer full names over slugs, prioritizing names with more tokens and preserving accents.';
