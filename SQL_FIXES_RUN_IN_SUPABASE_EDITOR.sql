@@ -140,7 +140,7 @@ WITH duplicates AS (
     canonical_name,
     canonical_birth_date,
     ARRAY_AGG(id ORDER BY id) AS all_ids,
-    MIN(id) AS keep_id,
+    (ARRAY_AGG(id ORDER BY id))[1] AS keep_id,
     COUNT(*) AS duplicate_count
   FROM public.player_masters
   GROUP BY canonical_name, canonical_birth_date
@@ -159,7 +159,7 @@ WHERE id IN (
   FROM (
     SELECT
       ARRAY_AGG(id ORDER BY id) AS all_ids,
-      MIN(id) AS keep_id,
+      (ARRAY_AGG(id ORDER BY id))[1] AS keep_id,
       COUNT(*) AS duplicate_count
     FROM public.player_masters
     GROUP BY canonical_name, canonical_birth_date
