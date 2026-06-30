@@ -130,7 +130,11 @@ function extractPlayersFromDb(db, season = "2025-26") {
     const key = `${normalizeTeamName(name)}::${normalizeTeamName(teamName)}::${season}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const isGK = String(player?.position || "").toLowerCase().includes("port") || player?.isGK;
+    const isGK = Boolean(
+      String(player?.position || "").toLowerCase().includes("port")
+      || player?.isGK
+      || player?.is_goalkeeper
+    );
     players.push({
       name: name,
       slug: player?.slug || null,
@@ -226,7 +230,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         slug: p.slug,
         dorsal: p.dorsal,
         position: p.position,
-        is_goalkeeper: p.is_goalkeeper,
+        is_goalkeeper: Boolean(p.is_goalkeeper),
         season: p.season,
       };
     });
