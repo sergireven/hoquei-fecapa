@@ -6793,6 +6793,7 @@ let userFavConvSavedAtByMatch = {};
 const userTutorConvPlayersByMatchCache = {};
 const userTutorConvPlayersByMatchInflight = {};
 const seasonDataCache = new Map();
+const seasonPlayerFallbackCache = new Map();
 const globalJugadorsIndex = new Map();
 let allSearch     = "";
 let allFilterCat  = "ALL";
@@ -7747,6 +7748,35 @@ async function getSeasonDataForKey(seasonKey) {
   } catch {
     return null;
   }
+}
+
+async function getSeasonPlayerFallbackData(seasonKey) {
+  const key = String(seasonKey || "").trim();
+  if (!key || key === "current") return null;
+  if (seasonPlayerFallbackCache.has(key)) {
+    return seasonPlayerFallbackCache.get(key);
+  }
+
+  const pending = (async () => {
+    const entry = seasonCatalog.find(s => s.key === key) || null;
+
+    if (entry?.dataUrl) {
+      try {
+        const jsonData = await fetchJsonFile(entry.dataUrl);
+        const playerCount = Object.keys(jsonData?.jugadors || {}).length;
+        if (jsonData?.categories && playerCount > 0) return jsonData;
+      } catch {}
+    }
+
+    try {
+      return await loadSeasonDataFromArchiveChunks(key);
+    } catch {
+      return null;
+    }
+  })();
+
+  seasonPlayerFallbackCache.set(key, pending);
+  return pending;
 }
 
 window.onSeasonSelectChange = async (value) => {
@@ -13630,18 +13660,35 @@ async function openPlayerModal(jid, fallbackName) {
     const seasonData = seasonKey ? await getSeasonDataForKey(seasonKey) : null;
     if (!seasonData) return [];
 
-    const seasonPlayerRef = findPlayerInSeasonDataByIdentity(seasonData, {
+    let resolvedSeasonData = seasonData;
+    let seasonPlayerRef = findPlayerInSeasonDataByIdentity(resolvedSeasonData, {
       jid: activePlayerId,
       slug: player?.slug || "",
       name,
     });
+
+    if (!seasonPlayerRef && String(seasonData?.generatedFrom || "") === "supabase-db" && seasonKey && seasonKey !== "current") {
+      const fallbackSeasonData = await getSeasonPlayerFallbackData(seasonKey);
+      if (fallbackSeasonData?.jugadors) {
+        const fallbackRef = findPlayerInSeasonDataByIdentity(fallbackSeasonData, {
+          jid: activePlayerId,
+          slug: player?.slug || "",
+          name,
+        });
+        if (fallbackRef) {
+          resolvedSeasonData = fallbackSeasonData;
+          seasonPlayerRef = fallbackRef;
+        }
+      }
+    }
+
     const seasonPlayer = seasonPlayerRef?.player || null;
     if (!seasonPlayer) return [];
 
-    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData, seasonKey: seasonKey || activeSeasonKey });
+    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData: resolvedSeasonData, seasonKey: seasonKey || activeSeasonKey });
     const teamStats = fromSources.length
       ? fromSources
-      : normalizePlayerTeamStatsForDisplay(seasonPlayer, seasonData);
+      : normalizePlayerTeamStatsForDisplay(seasonPlayer, resolvedSeasonData);
 
     if (teamStats.length) {
       return teamStats.map(t => ({
