@@ -1107,6 +1107,48 @@ function _coachUpcomingMatchLabel(match) {
   return `${date}${time ? ` · ${time}` : ""} · ${teams}${comp ? ` · ${comp}` : ""}`;
 }
 
+function _coachNormalizeMatchDateForDb(rawDate) {
+  const raw = String(rawDate || "").trim();
+  if (!raw) return "";
+
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) {
+    const y = Number(iso[1]);
+    const m = Number(iso[2]);
+    const d = Number(iso[3]);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+
+  const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?$/);
+  if (!dmy) return "";
+
+  const dd = Number(dmy[1]);
+  const mm = Number(dmy[2]);
+  if (!Number.isFinite(dd) || !Number.isFinite(mm) || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+
+  let yyyy = null;
+  if (dmy[3]) {
+    const yRaw = Number(dmy[3]);
+    if (!Number.isFinite(yRaw)) return "";
+    yyyy = String(dmy[3]).length <= 2 ? (2000 + yRaw) : yRaw;
+  } else {
+    const seasonKey = String(_coachSeasonKey() || "").trim();
+    const seasonMatch = seasonKey.match(/(\d{4})-(\d{2})/);
+    if (seasonMatch) {
+      const startYear = Number(seasonMatch[1]);
+      yyyy = mm >= 8 ? startYear : startYear + 1;
+    } else {
+      const now = new Date();
+      yyyy = now.getFullYear();
+    }
+  }
+
+  if (!Number.isFinite(yyyy)) return "";
+  return `${String(yyyy).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+}
+
 function _coachGetUpcomingMatches(clubName, teamName, category = "") {
   if (typeof getUpcomingMatchesForConvocatoria === "function") {
     const list = getUpcomingMatchesForConvocatoria(clubName, teamName, category);
@@ -1126,7 +1168,8 @@ function _coachGetPreviousMatches(clubName, teamName, category = "") {
 function _coachApplyUpcomingMatch(match) {
   if (!match) return;
   const team = _cteam();
-  coachMatchState.matchDate = String(match?.date || coachMatchState.matchDate || "").trim() || coachMatchState.matchDate;
+  const normalizedDate = _coachNormalizeMatchDateForDb(match?.date || coachMatchState.matchDate || "");
+  if (normalizedDate) coachMatchState.matchDate = normalizedDate;
   const isHome = _coachTeamEq(match?.home || "", team) || _coachTeamLoose(match?.home || "", team);
   coachMatchState.isHome = isHome;
   coachMatchState.opponent = String(isHome ? (match?.away || "") : (match?.home || "")).trim();
@@ -1146,7 +1189,8 @@ function _coachApplyUpcomingMatch(match) {
 function _coachApplyPreviousMatch(match) {
   if (!match) return;
   const team = _cteam();
-  coachMatchState.matchDate = String(match?.date || coachMatchState.matchDate || "").trim() || coachMatchState.matchDate;
+  const normalizedDate = _coachNormalizeMatchDateForDb(match?.date || coachMatchState.matchDate || "");
+  if (normalizedDate) coachMatchState.matchDate = normalizedDate;
   const isHome = _coachTeamEq(match?.home || "", team) || _coachTeamLoose(match?.home || "", team);
   coachMatchState.isHome = isHome;
   coachMatchState.opponent = String(isHome ? (match?.away || "") : (match?.home || "")).trim();
@@ -3691,17 +3735,37 @@ async function coachSaveMatchEvents() {
   const choice = _coachResolveTeamChoice();
   const team = _coachTeamIdentityLabel(choice) || _cteam();
   if (!team) { setMsg("Indica l'equip.", "#e5001c"); return; }
+
+  const normalizedMatchDate = _coachNormalizeMatchDateForDb(coachMatchState.matchDate);
+  if (!normalizedMatchDate) {
+    setMsg("Data de partit invàlida. Selecciona una data vàlida.", "#e5001c");
+    return;
+  }
+  coachMatchState.matchDate = normalizedMatchDate;
+  _coachSyncLinkedMatchFromState();
+
   setMsg("Desant...");
+
+  const linkedMatchContext = {
+    linkedMatchId: String(coachMatchState.linkedMatchId || "").trim(),
+    linkedMatchLabel: String(coachMatchState.linkedMatchLabel || "").trim(),
+    selectedUpcomingMatchKey: String(coachSelectedUpcomingMatchKey || "").trim(),
+    selectedPreviousMatchKey: String(coachSelectedPreviousMatchKey || "").trim(),
+    selectedConvocatoriaMatchKey: String(coachSelectedConvocatoriaMatchKey || "").trim(),
+  };
 
   const payload = {
     coach_user_id:     uid,
     team_name:         team || "",
-    match_date:        coachMatchState.matchDate,
+    match_date:        normalizedMatchDate,
     opponent:          coachMatchState.opponent || "",
     is_home:           coachMatchState.isHome,
     available_players: coachMatchState.players,
     events:            coachMatchState.events,
-    tactics:           _coachBoardPayload(),
+    tactics:           {
+      ..._coachBoardPayload(),
+      matchContext: linkedMatchContext,
+    },
     updated_at:        new Date().toISOString(),
   };
 
@@ -4147,14 +4211,15 @@ function coachAddEvent(playerName, eventType) {
 
 function _coachSyncLinkedMatchFromState() {
   const team = String(_cteam("match") || _cteam() || "").trim();
-  const date = String(coachMatchState.matchDate || "").trim();
+  const date = _coachNormalizeMatchDateForDb(coachMatchState.matchDate);
   const opp = String(coachMatchState.opponent || "").trim();
   if (!team || !date) {
     coachMatchState.linkedMatchId = "";
     coachMatchState.linkedMatchLabel = "";
     return;
   }
-  const id = `${_coachSeasonKey()}::${team}::${date}::${opp}`;
+  const selectedKey = String(coachSelectedUpcomingMatchKey || coachSelectedPreviousMatchKey || coachSelectedConvocatoriaMatchKey || "").trim();
+  const id = selectedKey || `${_coachSeasonKey()}::${team}::${date}::${opp}`;
   coachMatchState.linkedMatchId = id;
   coachMatchState.linkedMatchLabel = `${date} · ${team} vs ${opp || "Rival per definir"}`;
 }
