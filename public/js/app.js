@@ -8681,27 +8681,156 @@ const actaLinkHydrationState = new Map(); // seasonKey::compId -> {status, promi
 const actaLookupById = new Map(); // seasonKey::actaId -> acta
 const actaLookupBySignature = new Map(); // seasonKey::compId::home|away|date|hs|as -> acta
 const actaLookupByBaseSignature = new Map(); // seasonKey::compId::home|away|date -> [acta]
+const historicalActesDbBySeason = new Map(); // seasonKey -> Map(catSlug -> {actaId: acta})
+const historicalActesDbBySeasonPromise = new Map();
+const actaDataSourceByCacheKey = new Map(); // seasonKey::catSlug -> db|json|json-fallback|empty
 
 function getActesCacheKey(slug, seasonKey = activeSeasonKey) {
-  return `${String(seasonKey || "current")}::${String(slug || "")}`;
+  const normalizedSlug = normalizeActaCategorySlug(slug) || String(slug || "");
+  return `${String(seasonKey || "current")}::${normalizedSlug}`;
+}
+
+function seasonUsesDatabaseDataset(seasonKey = activeSeasonKey) {
+  const sk = String(seasonKey || "current").trim() || "current";
+  const seasonData = seasonDataCache.get(sk) || (sk === activeSeasonKey ? DB : null);
+  return String(seasonData?.generatedFrom || "") === "supabase-db";
+}
+
+function parseHistoricalActaRaw(rawValue) {
+  if (!rawValue) return null;
+  if (typeof rawValue === "object") return rawValue;
+  const txt = String(rawValue || "").trim();
+  if (!txt) return null;
+  try {
+    return JSON.parse(txt);
+  } catch {
+    return null;
+  }
+}
+
+function buildActaFromHistoricalRow(row) {
+  const rawActa = parseHistoricalActaRaw(row?.raw_json) || {};
+  const actaId = String(row?.source_acta_id || rawActa?.actaId || rawActa?.id || "").trim();
+  if (!actaId) return null;
+
+  const dateIso = String(row?.match_date || "").trim();
+  const dateFromRaw = String(rawActa?.date || rawActa?.matchDate || rawActa?.actaMeta?.date || "").trim();
+  const normalizedDate = dateFromRaw || dateIso;
+  const rawTime = String(rawActa?.time || rawActa?.actaMeta?.time || "").trim();
+  const rowTime = String(row?.match_time || "").trim();
+  const home = String(rawActa?.home || row?.home_team_name || "").trim();
+  const away = String(rawActa?.away || row?.away_team_name || "").trim();
+
+  return {
+    ...rawActa,
+    actaId,
+    id: actaId,
+    compId: String(rawActa?.compId || row?.competition_id || "").trim(),
+    compName: String(rawActa?.compName || row?.competition_name || "").trim(),
+    date: normalizedDate,
+    matchDate: normalizedDate,
+    time: rawTime || rowTime,
+    home,
+    away,
+    homeScore: rawActa?.homeScore ?? row?.home_score ?? null,
+    awayScore: rawActa?.awayScore ?? row?.away_score ?? null,
+    actaUrl: String(rawActa?.actaUrl || rawActa?.url || row?.acta_url || "").trim() || null,
+  };
+}
+
+async function loadHistoricalActesBucketsFromDatabase(seasonKey = activeSeasonKey) {
+  const sk = String(seasonKey || "current").trim() || "current";
+  if (!seasonUsesDatabaseDataset(sk) || !_sb || sk === "current") return null;
+  if (historicalActesDbBySeason.has(sk)) return historicalActesDbBySeason.get(sk) || null;
+  if (historicalActesDbBySeasonPromise.has(sk)) return historicalActesDbBySeasonPromise.get(sk) || null;
+
+  const pending = (async () => {
+    try {
+      const rows = await fetchAllRows(() =>
+        _sb.from("matches_historical")
+          .select("source_acta_id, season, category, competition_id, competition_name, match_date, match_time, home_team_name, away_team_name, home_score, away_score, acta_url, raw_json")
+          .eq("season", sk)
+      );
+
+      const byCat = new Map();
+      for (const row of (rows || [])) {
+        const acta = buildActaFromHistoricalRow(row);
+        if (!acta) continue;
+
+        const catSlug = normalizeActaCategorySlug(row?.category || acta?.category || "") || "altres";
+        if (!byCat.has(catSlug)) byCat.set(catSlug, {});
+        byCat.get(catSlug)[String(acta.actaId)] = acta;
+      }
+
+      historicalActesDbBySeason.set(sk, byCat);
+      return byCat;
+    } catch (err) {
+      console.warn(`[actes] DB load failed for ${sk}:`, err?.message || err);
+      historicalActesDbBySeason.set(sk, new Map());
+      return historicalActesDbBySeason.get(sk);
+    } finally {
+      historicalActesDbBySeasonPromise.delete(sk);
+    }
+  })();
+
+  historicalActesDbBySeasonPromise.set(sk, pending);
+  return pending;
 }
 
 async function loadCatActes(slug, seasonKey = activeSeasonKey) {
-  const key = getActesCacheKey(slug, seasonKey);
+  const normalizedSlug = normalizeActaCategorySlug(slug) || String(slug || "");
+  const key = getActesCacheKey(normalizedSlug, seasonKey);
   if (actesCache[key]) return actesCache[key];
 
+  // Historical seasons are DB-first. JSON remains as fallback while migration is progressive.
+  if (seasonUsesDatabaseDataset(seasonKey)) {
+    const dbBuckets = await loadHistoricalActesBucketsFromDatabase(seasonKey);
+    const fromDb = dbBuckets?.get(normalizedSlug) || null;
+    if (fromDb && Object.keys(fromDb).length) {
+      actesCache[key] = fromDb;
+      actaDataSourceByCacheKey.set(key, "db");
+      indexSeasonActesLookup(actesCache[key], seasonKey);
+      return actesCache[key];
+    }
+  }
+
   const baseUrl = getSeasonActesBaseUrl(seasonKey);
-  const fileUrl = `${baseUrl}/${slug}.json`;
+  const fileUrl = `${baseUrl}/${normalizedSlug}.json`;
   try {
     const res = await fetch(`${fileUrl}?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     actesCache[key] = await res.json();
+    actaDataSourceByCacheKey.set(key, seasonUsesDatabaseDataset(seasonKey) ? "json-fallback" : "json");
   } catch(e) {
     actesCache[key] = {};
+    actaDataSourceByCacheKey.set(key, "empty");
   }
 
   indexSeasonActesLookup(actesCache[key], seasonKey);
   return actesCache[key];
+}
+
+function getActaSourceDebugHtmlForComp(comp, seasonKey = activeSeasonKey) {
+  const catSlug = getCatSlugForComp(comp);
+  if (!catSlug) return `<div><span style="font-weight:700;color:#1a2035">Actes:</span> categoria no resolta</div>`;
+
+  const key = getActesCacheKey(catSlug, seasonKey);
+  const source = actaDataSourceByCacheKey.get(key)
+    || (seasonUsesDatabaseDataset(seasonKey) ? "pending-db" : "pending-json");
+
+  const sourceLabel = source === "db"
+    ? "BD (matches_historical)"
+    : source === "json-fallback"
+      ? "JSON fallback (BD sense dades)"
+      : source === "json"
+        ? "JSON"
+        : source === "empty"
+          ? "sense dades"
+          : source === "pending-db"
+            ? "pendent (BD)"
+            : "pendent (JSON)";
+
+  return `<div><span style="font-weight:700;color:#1a2035">Actes:</span> ${esc(sourceLabel)} · cat ${esc(catSlug)}</div>`;
 }
 
 function buildActaSignatureBase(home, away, date) {
@@ -9128,7 +9257,7 @@ function getActaTeamFouls(acta) {
     return fromScoreBlock;
   }
 
-  return { homeFouls: 0, awayFouls: 0 };
+  return { homeFouls: null, awayFouls: null };
 }
 
 function hasAnyPlayerFouls(players) {
@@ -13296,6 +13425,7 @@ function renderDetailHeaderMeta() {
   const pilotMeta = detailComp.finalsPilotMeta || null;
   const pilotSources = pilotMeta?.payloadSources || null;
   const pilotState = finalsPilotLoadState.get(String(detailComp.id || "")) || null;
+  const actaSourceInfo = isAdmin ? getActaSourceDebugHtmlForComp(detailComp, activeSeasonKey) : "";
 
   let pilotInfo = "";
   if (pilotMeta) {
@@ -13311,6 +13441,7 @@ function renderDetailHeaderMeta() {
   const pilotSourcesInfo = pilotSources ? `<div><span style="font-weight:700;color:#1a2035">Fonts fases finals:</span> jok ${esc(String(pilotSources?.jok?.matchCount ?? 0))} · fecapa ${esc(String(pilotSources?.fecapa?.matchCount ?? 0))}</div>` : "";
   const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
     <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
+    ${actaSourceInfo}
     <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>
     ${mergeInfo && mergeInfo.merged ? `<div><span style="font-weight:700;color:#1a2035">Vista fusionada:</span> classif de ${esc(mergeInfo.classificationFromCompId || "?")} · calendari de ${esc(mergeInfo.calendarFromCompId || "?")} · candidats: ${esc((mergeInfo.sameNameCompIds || []).join(", "))}</div>` : ""}
     ${pilotInfo}
@@ -13787,8 +13918,9 @@ async function renderDetailClassif(){
 
   // Calculate cards (blaves/vermelles) from actes when acta data is available.
   const catSlug = getCatSlugForComp(detailComp);
-  if (catSlug && DB?.generatedFrom !== "supabase-db") {
+  if (catSlug) {
     const actes = await loadCatActes(catSlug);
+    renderDetailHeaderMeta();
     const compIdStr = String(detailComp.id);
 
     for (const acta of Object.values(actes)) {
@@ -14046,6 +14178,7 @@ async function renderDetailJugadors(){
   $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">Carregant jugadors...</div>`;
 
   const actes = await loadCatActes(catSlug);
+  renderDetailHeaderMeta();
   const compIdStr = String(detailComp.id);
   const calendarActaIds = new Set(
     calendarMatches.map(m => String(m?.actaId || "").trim()).filter(Boolean)
