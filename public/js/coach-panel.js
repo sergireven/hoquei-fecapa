@@ -2723,6 +2723,7 @@ function _renderLineupTab() {
                   }).join("")
                 : `<option value="">No hi ha partits futurs disponibles</option>`}
             </select>
+            <button onclick="coachLoadLineupFromUpcomingConvocatoria()" ${upcomingMatches.length ? "" : "disabled"} style="width:100%;background:${upcomingMatches.length ? "#eff6ff" : "#f1f5f9"};border:1px solid ${upcomingMatches.length ? "#bfdbfe" : "#e2e8f0"};color:${upcomingMatches.length ? "#1d4ed8" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${upcomingMatches.length ? "pointer" : "not-allowed"};margin-top:8px">Carregar jugadors (convocatòria)</button>
           </div>
           ${previousMatches.length ? `
           <div style="grid-column:1/-1">
@@ -2735,7 +2736,7 @@ function _renderLineupTab() {
                   return `<option value="${_cesc(key)}" ${sel ? "selected" : ""}>${_cesc(_coachUpcomingMatchLabel(m))}</option>`;
                 }).join("")}
             </select>
-            <button onclick="coachLoadLineupFromSelectedConvocatoria()" ${previousMatches.length ? "" : "disabled"} style="width:100%;background:${previousMatches.length ? "#eef2ff" : "#f1f5f9"};border:1px solid ${previousMatches.length ? "#c7d2fe" : "#e2e8f0"};color:${previousMatches.length ? "#3730a3" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${previousMatches.length ? "pointer" : "not-allowed"};margin-top:8px">Carregar jugadors</button>
+            <button onclick="coachLoadLineupFromPreviousMatch()" ${previousMatches.length ? "" : "disabled"} style="width:100%;background:${previousMatches.length ? "#eef2ff" : "#f1f5f9"};border:1px solid ${previousMatches.length ? "#c7d2fe" : "#e2e8f0"};color:${previousMatches.length ? "#3730a3" : "#94a3b8"};font-weight:700;font-size:12px;padding:9px;border-radius:10px;cursor:${previousMatches.length ? "pointer" : "not-allowed"};margin-top:8px">Carregar jugadors (partit anterior)</button>
           </div>
           ` : ""}
           <div>
@@ -3910,6 +3911,133 @@ function coachLoadLineupFromSelectedConvocatoria() {
   coachLoadLineupFromConvocatoria();
 }
 
+function coachLoadLineupFromUpcomingConvocatoria() {
+  const club = _cclub();
+  const team = _cteam();
+  const category = _ccategory();
+  if (!club || !team) {
+    alert("Selecciona club i equip.");
+    return;
+  }
+
+  const selectedUpcoming = _coachGetUpcomingMatches(club, team, category)
+    .find(item => _coachUpcomingMatchIdentity(item) === String(coachSelectedUpcomingMatchKey || "").trim())
+    || null;
+  if (!selectedUpcoming) {
+    alert("No hi ha cap partit futur seleccionat.");
+    return;
+  }
+
+  const conv = _coachFindConvocatoriaForMatch(club, team, category, selectedUpcoming);
+  if (!conv) {
+    alert("Aquest partit futur no té convocatòria disponible. Pots carregar jugadors des d'un partit del passat.");
+    return;
+  }
+
+  coachSelectedConvocatoriaMatchKey = _coachConvocatoriaMatchIdentity(conv);
+  coachLoadLineupFromConvocatoria();
+}
+
+async function _coachRosterFromSpecificPreviousMatch(previousMatch, clubName, teamName, category = "") {
+  if (!previousMatch || !teamName) return [];
+
+  if (typeof getCoordinatorRosterFromMatch === "function") {
+    try {
+      const source = await getCoordinatorRosterFromMatch(previousMatch, teamName);
+      const mapped = (Array.isArray(source) ? source : [])
+        .map(player => ({
+          name: String(player?.name || "").trim(),
+          number: String(player?.dorsal || player?.number || "").trim(),
+          pos: /porter|gk/i.test(String(player?.position || "")) ? "PORT" : "MIG",
+          isStarter: true,
+          side: "D",
+          squad: "favorite",
+        }))
+        .filter(p => p.name);
+      if (mapped.length) return _coachMergeRosterPlayers(mapped);
+    } catch {}
+  }
+
+  const dateWanted = String(previousMatch?.dateKey || previousMatch?.date || "").trim();
+  const homeWanted = String(previousMatch?.home || "").trim();
+  const awayWanted = String(previousMatch?.away || "").trim();
+  const archive = await _coachLoadActaArchive();
+  const roster = [];
+
+  for (const acta of (archive || [])) {
+    const home = String(acta?.home || "").trim();
+    const away = String(acta?.away || "").trim();
+    const date = String(acta?.date || acta?.matchDate || acta?.actaMeta?.date || "").trim();
+    if (!home || !away || !date) continue;
+    const sameDate = dateWanted ? String(date) === String(dateWanted) : true;
+    const sameTeams = _coachMatchTeamsEquivalent(home, away, homeWanted, awayWanted);
+    if (!sameDate || !sameTeams) continue;
+
+    const sidePlayers = _coachTeamEq(home, teamName)
+      ? (acta?.playerStats?.homePlayers || [])
+      : (_coachTeamEq(away, teamName) ? (acta?.playerStats?.awayPlayers || []) : []);
+    for (const player of sidePlayers) {
+      const name = String(player?.name || "").trim();
+      if (!name) continue;
+      roster.push({
+        name,
+        number: String(player?.dorsal || player?.number || "").trim(),
+        pos: /porter|gk/i.test(String(player?.position || "")) ? "PORT" : "MIG",
+        isStarter: true,
+        side: "D",
+        squad: "favorite",
+      });
+    }
+  }
+
+  if (roster.length) return _coachMergeRosterPlayers(roster);
+
+  const fallbackActa = await _coachRosterFromActaArchive(clubName, teamName, category);
+  if (fallbackActa.length) return _coachMergeRosterPlayers(fallbackActa);
+
+  const fallbackDb = _coachRosterFromTeam(teamName, clubName, category);
+  return _coachMergeRosterPlayers(fallbackDb);
+}
+
+async function coachLoadLineupFromPreviousMatch() {
+  const club = _cclub();
+  const team = _cteam();
+  const category = _ccategory();
+  if (!club || !team) {
+    alert("Selecciona club i equip.");
+    return;
+  }
+
+  const previousMatches = _coachGetPreviousMatches(club, team, category);
+  if (!previousMatches.length) {
+    alert("No hi ha partits del passat disponibles.");
+    return;
+  }
+
+  const selectedPrevious = previousMatches
+    .find(item => _coachUpcomingMatchIdentity(item) === String(coachSelectedPreviousMatchKey || "").trim())
+    || previousMatches[0]
+    || null;
+  if (!selectedPrevious) {
+    alert("No s'ha pogut determinar el partit anterior.");
+    return;
+  }
+
+  coachSelectedPreviousMatchKey = _coachUpcomingMatchIdentity(selectedPrevious);
+  _coachApplyPreviousMatch(selectedPrevious);
+
+  const roster = await _coachRosterFromSpecificPreviousMatch(selectedPrevious, club, team, category);
+  if (!roster.length) {
+    alert("No s'han trobat jugadors per aquest partit anterior.");
+    return;
+  }
+
+  const rivals = (coachMatchState.players || []).filter(p => String(p?.squad || "") === "rival");
+  coachMatchState.players = _coachMergeRosterPlayers(roster, rivals);
+  _coachSyncLinkedMatchFromState();
+  renderCoachPanel();
+}
+
 function coachTogglePillar(id) {
   const idx = coachPlanningPillars.indexOf(id);
   if (idx >= 0) coachPlanningPillars.splice(idx, 1);
@@ -4509,6 +4637,8 @@ window.coachSetPlayerPos       = coachSetPlayerPos;
 window.coachLoadLineupFromConvocatoria = coachLoadLineupFromConvocatoria;
 window.coachSetLineupConvocatoriaMatch = coachSetLineupConvocatoriaMatch;
 window.coachLoadLineupFromSelectedConvocatoria = coachLoadLineupFromSelectedConvocatoria;
+window.coachLoadLineupFromUpcomingConvocatoria = coachLoadLineupFromUpcomingConvocatoria;
+window.coachLoadLineupFromPreviousMatch = coachLoadLineupFromPreviousMatch;
 window.coachSelectUpcomingMatch = coachSelectUpcomingMatch;
 window.coachSelectPreviousMatch = coachSelectPreviousMatch;
 window.coachToggleLiveFullscreen = coachToggleLiveFullscreen;
