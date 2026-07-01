@@ -120,8 +120,15 @@ function extractPlayersFromDb(db, season = "2025-26") {
   for (const jugId of Object.keys(jugadors)) {
     const player = jugadors[jugId];
     if (!player) continue;
-    // Converteix + a espai per slug (format del JSON), pren name si existeix
-    const slug = String(player?.slug || "").replace(/\+/g, " ").trim();
+    // Decodifica URL-encoded slug, converteix + a espai
+    const rawSlug = String(player?.slug || "");
+    let slug = rawSlug;
+    try {
+      slug = decodeURIComponent(rawSlug);
+    } catch (e) {
+      // Si falla decoding, es pot que no sigui URL-encoded
+    }
+    slug = slug.replace(/\+/g, " ").trim();
     const name = String(player?.name || slug || "").trim();
     if (!name) continue;
     // Team stats: si existeixen, pren el primer
