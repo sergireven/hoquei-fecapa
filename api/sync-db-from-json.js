@@ -61,7 +61,7 @@ async function readJsonFile(filePath) {
 
 // Extreu clubs únics de categories + classifications
 function extractClubsFromCategories(categories) {
-  const clubs = new Map(); // normalizedName → { name, jok_key }
+  const clubs = new Map(); // normalizedName → { name, jok_id }
   for (const comps of Object.values(categories)) {
     for (const comp of comps) {
       if (!comp.classification) continue;
@@ -72,7 +72,7 @@ function extractClubsFromCategories(categories) {
         const clubName = teamName.replace(/\s+[a-eA-E]$/, "").trim();
         const normalized = normalizeClubName(clubName);
         if (!clubs.has(normalized)) {
-          clubs.set(normalized, { displayName: clubName, jok_key: row?.clubId || null });
+          clubs.set(normalized, { displayName: clubName, jok_id: row?.clubId || null });
         }
       }
     }
@@ -102,6 +102,7 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
           category: category || "",
           season: season,
           team_key: key,
+          jok_id: row?.teamId || null,  // jok.cat team ID
         });
       }
     }
@@ -156,9 +157,13 @@ function extractPlayersFromDb(db, season = "2025-26") {
     const category = primaryTeam?.cat || "";
     const dorsal = primaryTeam?.dorsal || player?.dorsal || "";  // Dorsal from team stats first, then player-level
     
+    // Build team_key for consistent lookup and deduplication
+    // Format: "normalized_team::normalized_category::season"
+    const teamKey = `${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+    
     // Deduplication within season + team (to avoid duplicates in UPSERT)
     // This prevents the same player appearing twice in same team/season
-    const dedupeKey = `${normalizeTeamName(normalizedSlug)}::${normalizeTeamName(teamName)}::${season}`;
+    const dedupeKey = `${normalizeTeamName(normalizedSlug)}::${teamKey}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
     
@@ -193,7 +198,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
       position: player?.position || "Jugador",
       is_goalkeeper: isGK,
       birth_date: birthDate,  // Now populated if available
-      team_name: teamName,
+      team_key: teamKey,  // Use team_key for consistent lookup (not full team_name)
       category: category,
       season: season,
     });
@@ -227,7 +232,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   // 3. UPSERT clubs
   if (clubs.length) {
     const { error: clubErr } = await sb.from("clubs")
-      .upsert(clubs.map(c => ({ name: c.displayName, jok_key: c.jok_key })), { onConflict: "name" });
+      .upsert(clubs.map(c => ({ name: c.displayName, jok_id: c.jok_id })), { onConflict: "name" });
     if (clubErr) {
       console.error("[sync] Error upserting clubs:", clubErr.message);
       syncErrors.push(`clubs: ${clubErr.message}`);
@@ -251,6 +256,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       category: t.category,
       season: t.season,
       team_key: t.team_key,
+      jok_id: t.jok_id,  // jok.cat team ID
     }));
     const { error: teamErr } = await sb.from("teams")
       .upsert(teamsWithClubId, { onConflict: "club_id,team_name,category,season" });
@@ -261,28 +267,26 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   }
 
   // 5. UPSERT players (necessita team_id FK)
-  const { data: teamRows, error: teamReadErr } = await sb.from("teams").select("id, team_name, category, season");
+  const { data: teamRows, error: teamReadErr } = await sb.from("teams").select("id, team_key");
   if (teamReadErr) {
     console.error("[sync] Error reading teams:", teamReadErr.message);
     syncErrors.push(`teams-read: ${teamReadErr.message}`);
   }
   const teamIdMap = new Map();
   for (const t of teamRows || []) {
-    const key = `${normalizeTeamName(t.team_name)}::${normalizeTeamName(t.category)}::${t.season}`;
-    teamIdMap.set(key, t.id);
+    teamIdMap.set(t.team_key, t.id);
   }
 
   if (players.length) {
     const playersWithTeamId = players.map(p => {
-      // Look up team by team_name, category, and season (NOT slug)
-      const key = `${normalizeTeamName(p.team_name)}::${normalizeTeamName(p.category)}::${p.season}`;
+      // Look up team by team_key (consistent with teams table)
       return {
-        id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_name, category: p.category }),
-        primary_team_id: teamIdMap.get(key) || null,
+        id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_key, category: p.category }),
+        primary_team_id: teamIdMap.get(p.team_key) || null,
         jok_id: p.jok_id,  // jok.cat player ID for linking
         name: p.name,
         slug: p.slug,
-        team_name: p.team_name,  // IMPORTANT: include for composite key
+        team_key: p.team_key,  // Use team_key instead of full team_name for composite key
         dorsal: p.dorsal,
         position: p.position,
         is_goalkeeper: Boolean(p.is_goalkeeper),
@@ -290,11 +294,11 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         season: p.season,
       };
     });
-    // Use composite key (slug, team_name, season) for UPSERT
+    // Use composite key (slug, team_key, season) for UPSERT
     // Each player in each team in each season is unique
     // player_master_id deduplication happens via database trigger
     const { error: playerErr } = await sb.from("players")
-      .upsert(playersWithTeamId, { onConflict: "slug,team_name,season" });
+      .upsert(playersWithTeamId, { onConflict: "slug,team_key,season" });
     if (playerErr) {
       console.error("[sync] Error upserting players:", playerErr.message);
       syncErrors.push(`players: ${playerErr.message}`);
