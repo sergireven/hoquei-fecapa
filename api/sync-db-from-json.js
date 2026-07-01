@@ -120,23 +120,26 @@ function extractPlayersFromDb(db, season = "2025-26") {
   for (const jugId of Object.keys(jugadors)) {
     const player = jugadors[jugId];
     if (!player) continue;
-    // Decodifica URL-encoded slug, converteix + a espai
+    // Extract raw slug (keep original format for matching/deduplication)
     const rawSlug = String(player?.slug || "");
-    let slug = rawSlug;
+    // Decode slug for display name
+    let decodedSlug = rawSlug;
     try {
-      slug = decodeURIComponent(rawSlug);
+      decodedSlug = decodeURIComponent(rawSlug).toUpperCase();
     } catch (e) {
-      // Si falla decoding, es pot que no sigui URL-encoded
+      decodedSlug = rawSlug.toUpperCase();
     }
-    slug = slug.replace(/\+/g, " ").trim();
-    const name = String(player?.name || slug || "").trim();
+    // name: displayable with spaces (decoded slug or explicit name)
+    const displayName = String(player?.name || decodedSlug || "").trim();
+    const name = displayName.replace(/\+/g, " ").trim();
     if (!name) continue;
     // Team stats: si existeixen, pren el primer
     const teamStats = Array.isArray(player?.teamStats) ? player.teamStats : [];
     const primaryTeam = teamStats[0];
     const teamName = primaryTeam?.team || "";
     const category = primaryTeam?.cat || "";
-    const key = `${normalizeTeamName(name)}::${normalizeTeamName(teamName)}::${season}`;
+    // Deduplication key: use displayName (with +) and lowercase
+    const key = `${normalizeTeamName(displayName)}::${normalizeTeamName(teamName)}::${season}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const isGK = Boolean(
@@ -146,7 +149,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     );
     players.push({
       name: name,
-      slug: slug,
+      slug: displayName,  // Keep decoded slug with + for consistency
       dorsal: player?.dorsal || "",
       position: player?.position || "Jugador",
       is_goalkeeper: isGK,
