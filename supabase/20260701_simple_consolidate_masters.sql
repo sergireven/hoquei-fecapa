@@ -13,8 +13,8 @@ INSERT INTO public.player_masters (master_key, canonical_slug, canonical_name, c
 SELECT 
   -- master_key: normalized slug + birth_date
   public.normalize_identity_token(p.slug) || '::' || COALESCE(TO_CHAR(p.birth_date, 'YYYYMMDD'), 'unknown'),
-  -- canonical_slug: the slug (already normalized from Node.js)
-  p.slug,
+  -- canonical_slug: pick longest slug (best representation)
+  (array_agg(p.slug ORDER BY LENGTH(p.slug) DESC))[1],
   -- canonical_name: pick longest name (best display)
   (array_agg(p.name ORDER BY LENGTH(p.name) DESC))[1],
   -- canonical_birth_date: the birth_date
