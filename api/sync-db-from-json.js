@@ -157,10 +157,22 @@ function extractPlayersFromDb(db, season = "2025-26") {
       || player?.is_goalkeeper
     );
     
-    // Extract birth date if available
-    const birthDate = player?.birth_date 
-      ? new Date(player.birth_date).toISOString().split('T')[0]  // Format as YYYY-MM-DD
-      : null;
+    // Extract birth date if available (format: DD/MM/YYYY from JSON)
+    let birthDate = null;
+    const rawBirthDate = player?.birthDate || player?.birth_date;  // Try both camelCase and snake_case
+    if (rawBirthDate) {
+      // Parse DD/MM/YYYY or YYYY-MM-DD
+      let parsed = rawBirthDate;
+      if (rawBirthDate.includes('/')) {
+        const [day, month, year] = rawBirthDate.split('/');
+        if (day && month && year) {
+          parsed = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          birthDate = parsed;  // Format: YYYY-MM-DD
+        }
+      } else if (rawBirthDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        birthDate = rawBirthDate;  // Already YYYY-MM-DD
+      }
+    }
     
     players.push({
       name: name,
