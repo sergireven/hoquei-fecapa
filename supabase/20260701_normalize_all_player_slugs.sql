@@ -19,17 +19,23 @@ WITH normalized_identities AS (
     public.build_player_master_key(p.slug, p.name, p.birth_date, p.id::TEXT) AS master_key
   FROM public.players p
 ),
-unique_masters AS (
-  SELECT DISTINCT
+grouped_by_master AS (
+  SELECT 
     master_key,
     (array_agg(slug ORDER BY LENGTH(slug) DESC NULLS LAST))[1] as canonical_slug,
     (array_agg(name ORDER BY LENGTH(name) DESC NULLS LAST))[1] as canonical_name,
-    MIN(birth_date) as canonical_birth_date
+    MIN(birth_date) as canonical_birth_date,
+    COUNT(*) as count
   FROM normalized_identities
   GROUP BY master_key
 )
 INSERT INTO public.player_masters (master_key, canonical_slug, canonical_name, canonical_birth_date)
-SELECT * FROM unique_masters;
+SELECT master_key, canonical_slug, canonical_name, canonical_birth_date 
+FROM grouped_by_master
+ON CONFLICT (master_key) DO UPDATE SET
+  canonical_slug = COALESCE(EXCLUDED.canonical_slug, player_masters.canonical_slug),
+  canonical_name = COALESCE(EXCLUDED.canonical_name, player_masters.canonical_name),
+  canonical_birth_date = COALESCE(EXCLUDED.canonical_birth_date, player_masters.canonical_birth_date);
 
 -- 4. Link all players to their master_ids
 WITH player_masters_map AS (
