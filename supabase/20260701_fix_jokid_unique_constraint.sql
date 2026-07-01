@@ -7,16 +7,12 @@
 ALTER TABLE public.players
   DROP CONSTRAINT IF EXISTS players_jok_id_key;
 
--- 2. Drop any incorrect indexes
+-- 2. Drop any UNIQUE indexes on jok_id (jok_id can repeat across seasons)
+DROP INDEX IF EXISTS idx_players_jok_id_unique;
 DROP INDEX IF EXISTS idx_players_jok_id;
 
--- 3. Create PARTIAL unique index (only for non-NULL values)
--- This allows multiple NULLs while ensuring unique jok_id values
-CREATE UNIQUE INDEX IF NOT EXISTS idx_players_jok_id_unique 
-  ON public.players (jok_id) 
-  WHERE jok_id IS NOT NULL;
-
--- 4. Create regular index for fast lookups
+-- 3. Create NON-UNIQUE index for fast lookups only
+-- jok_id CAN repeat (same jok.cat player across multiple seasons)
 CREATE INDEX IF NOT EXISTS idx_players_jok_id 
   ON public.players (jok_id);
 
