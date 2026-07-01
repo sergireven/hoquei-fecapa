@@ -9,10 +9,16 @@ ALTER TABLE public.players
   ADD COLUMN IF NOT EXISTS team_name TEXT;
 
 -- 2. Add composite unique constraint
-ALTER TABLE public.players
-  ADD CONSTRAINT players_slug_team_season_unique
-    UNIQUE (slug, team_name, season)
-    ON CONFLICT DO NOTHING;
+-- If constraint already exists, this will fail silently (safe)
+DO $$
+BEGIN
+  ALTER TABLE public.players
+    ADD CONSTRAINT players_slug_team_season_unique
+      UNIQUE (slug, team_name, season);
+EXCEPTION WHEN duplicate_object THEN
+  -- Constraint already exists, that's fine
+  NULL;
+END $$;
 
 -- 3. Create index for better performance
 CREATE INDEX IF NOT EXISTS idx_players_slug_team_season
@@ -31,4 +37,3 @@ FROM public.teams t
 WHERE p.primary_team_id = t.id 
   AND (p.team_name IS NULL OR p.team_name = '');
 
-COMMIT;
