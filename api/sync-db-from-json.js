@@ -25,9 +25,11 @@ function hashUuid(seed) {
 }
 
 function makeDeterministicPlayerId({ season, name, teamName, category }) {
+  // IMPORTANT: Do NOT include season in the seed
+  // Same player in different seasons must have SAME id
+  // This allows UPSERT to link all seasonal records to ONE master_id
   const seed = [
     "player",
-    normalizeTeamName(season || ""),
     normalizeTeamName(name || ""),
     normalizeTeamName(teamName || ""),
     normalizeTeamName(category || ""),
@@ -269,6 +271,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         primary_team_id: teamIdMap.get(key) || null,
         name: p.name,
         slug: p.slug,
+        team_name: p.team_name,  // IMPORTANT: include for composite key
         dorsal: p.dorsal,
         position: p.position,
         is_goalkeeper: Boolean(p.is_goalkeeper),
@@ -276,8 +279,10 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         season: p.season,
       };
     });
+    // Use composite key (slug, team_name, season) for UPSERT
+    // This ensures same player in same team/season gets updated, not duplicated
     const { error: playerErr } = await sb.from("players")
-      .upsert(playersWithTeamId, { onConflict: "id" });
+      .upsert(playersWithTeamId, { onConflict: "slug,team_name,season" });
     if (playerErr) {
       console.error("[sync] Error upserting players:", playerErr.message);
       syncErrors.push(`players: ${playerErr.message}`);
