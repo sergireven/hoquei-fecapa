@@ -295,24 +295,30 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       };
     });
     
-    // Use RPC function for bulk upsert + master rebuild (much faster, trigger-optimized)
-    // This disables the trigger during bulk insert, then rebuilds masters in batch
-    const { error: playerErr, data: playerResult } = await sb.rpc(
-      "upsert_players_and_rebuild_masters",
-      { players_data: playersWithTeamId }
-    );
+    // Batch UPSERT to avoid statement timeout
+    // Split into batches of 250 players each (trades memory for speed)
+    const BATCH_SIZE = 250;
+    let batchIndex = 0;
     
-    if (playerErr) {
-      console.error("[sync] Error upserting players:", playerErr.message);
-      syncErrors.push(`players: ${playerErr.message}`);
-    } else if (playerResult?.[0]?.error_message) {
-      console.error("[sync] RPC error:", playerResult[0].error_message);
-      syncErrors.push(`players-rpc: ${playerResult[0].error_message}`);
-    } else {
-      console.log(
-        `[sync] Players upserted: ${playerResult?.[0]?.upserted_count || "?"}, ` +
-        `masters: ${playerResult?.[0]?.master_count || "?"}`
-      );
+    for (let i = 0; i < playersWithTeamId.length; i += BATCH_SIZE) {
+      const batch = playersWithTeamId.slice(i, i + BATCH_SIZE);
+      batchIndex++;
+      
+      console.log(`[sync] Upserting player batch ${batchIndex}/${Math.ceil(playersWithTeamId.length / BATCH_SIZE)} (${batch.length} players)`);
+      
+      // Use direct UPSERT on each batch (not RPC to avoid RPC timeout)
+      const { error: playerErr } = await sb.from("players")
+        .upsert(batch, { onConflict: "slug,team_key,season" });
+      
+      if (playerErr) {
+        console.error(`[sync] Error upserting player batch ${batchIndex}:`, playerErr.message);
+        syncErrors.push(`players-batch-${batchIndex}: ${playerErr.message}`);
+        break;  // Stop on first error
+      }
+    }
+    
+    if (syncErrors.length === 0) {
+      console.log(`[sync] Successfully upserted ${playersWithTeamId.length} players in ${batchIndex} batches`);
     }
   }
 
