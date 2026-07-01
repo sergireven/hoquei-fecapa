@@ -93,7 +93,8 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
         if (!teamName) continue;
         // Extreu categoria de comp.name (e.g. "Aleví", "Benjamí")
         const category = extractCategoryFromCompName(comp.name || "");
-        const key = `${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+        // FIXED: team_key format should be club::team::category::season (4 parts, not 3)
+        const key = `${normalizeTeamName(clubName)}::${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
         if (seen.has(key)) continue;
         seen.add(key);
         teams.push({
@@ -157,9 +158,12 @@ function extractPlayersFromDb(db, season = "2025-26") {
     const category = primaryTeam?.cat || "";
     const dorsal = primaryTeam?.dorsal || player?.dorsal || "";  // Dorsal from team stats first, then player-level
     
+    // Extract club_name from team_name (remove category suffix like A, B, C)
+    const clubName = teamName.replace(/\s+[a-eA-E]$/, "").trim();
+    
     // Build team_key for consistent lookup and deduplication
-    // Format: "normalized_team::normalized_category::season"
-    const teamKey = `${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+    // FIXED: Format should be "club::team::category::season" (4 parts, matching CSV format)
+    const teamKey = `${normalizeTeamName(clubName)}::${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
     
     // Deduplication within season + team (to avoid duplicates in UPSERT)
     // This prevents the same player appearing twice in same team/season
