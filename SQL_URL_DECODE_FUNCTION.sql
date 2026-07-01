@@ -44,23 +44,25 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- Simplified: just handle common UTF-8 sequences
 CREATE OR REPLACE FUNCTION public.url_decode_simple(encoded TEXT)
 RETURNS TEXT AS $$
+DECLARE
+  result TEXT := encoded;
 BEGIN
-  RETURN
-    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-      encoded,
-      '%C3%91', 'Ñ'),   -- Ñ
-      '%C3%B1', 'ñ'),   -- ñ
-      '%C3%81', 'Á'),   -- Á
-      '%C3%A1', 'á'),   -- á
-      '%C3%89', 'É'),   -- É
-      '%C3%A9', 'é'),   -- é
-      '%C3%8D', 'Í'),   -- Í
-      '%C3%AD', 'í'),   -- í
-      '%C3%93', 'Ó'),   -- Ó
-      '%C3%B3', 'ó'),   -- ó
-      '%C3%9A', 'Ú'),   -- Ú
-      '%C3%BA', 'ú'),   -- ú
-      '+', ' ');        -- + to space
+  -- Apply replacements sequentially
+  result := REPLACE(result, '%C3%91', 'Ñ');   -- Ñ
+  result := REPLACE(result, '%C3%B1', 'ñ');   -- ñ
+  result := REPLACE(result, '%C3%81', 'Á');   -- Á
+  result := REPLACE(result, '%C3%A1', 'á');   -- á
+  result := REPLACE(result, '%C3%89', 'É');   -- É
+  result := REPLACE(result, '%C3%A9', 'é');   -- é
+  result := REPLACE(result, '%C3%8D', 'Í');   -- Í
+  result := REPLACE(result, '%C3%AD', 'í');   -- í
+  result := REPLACE(result, '%C3%93', 'Ó');   -- Ó
+  result := REPLACE(result, '%C3%B3', 'ó');   -- ó
+  result := REPLACE(result, '%C3%9A', 'Ú');   -- Ú
+  result := REPLACE(result, '%C3%BA', 'ú');   -- ú
+  result := REPLACE(result, '+', ' ');        -- + to space
+  
+  RETURN result;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
