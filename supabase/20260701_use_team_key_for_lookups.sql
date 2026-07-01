@@ -7,22 +7,22 @@
 ALTER TABLE public.players
   ADD COLUMN IF NOT EXISTS team_key TEXT;
 
--- 2. Populate team_key from existing team_name, category, season (if not already populated)
+-- 2. Backfill team_key from teams table (join by team_name, season)
 UPDATE public.players p
-SET team_key = CONCAT(
-  LOWER(REGEXP_REPLACE(p.team_name, '[^a-z0-9]+', '', 'g')),
-  '::',
-  LOWER(REGEXP_REPLACE(p.category, '[^a-z0-9]+', '', 'g')),
-  '::',
-  p.season
-)
-WHERE p.team_key IS NULL AND p.team_name IS NOT NULL;
+SET team_key = t.team_key
+FROM public.teams t
+WHERE p.team_key IS NULL 
+  AND p.team_name IS NOT NULL
+  AND p.season = t.season
+  AND LOWER(REGEXP_REPLACE(p.team_name, '[^a-z0-9]+', '', 'g')) 
+    = LOWER(REGEXP_REPLACE(t.team_name, '[^a-z0-9]+', '', 'g'));
 
--- 3. Drop old composite key if it exists
+-- 3. Drop old composite key constraint if it exists
 ALTER TABLE public.players
   DROP CONSTRAINT IF EXISTS "players_slug_team_name_season_key";
 
 -- 4. Create new composite unique key with team_key instead of team_name
+-- Note: This allows NULL team_key (for players without teams)
 ALTER TABLE public.players
   ADD CONSTRAINT "players_slug_team_key_season_key" UNIQUE (slug, team_key, season);
 
@@ -37,4 +37,7 @@ WHERE team_key IS NOT NULL
 UNION ALL
 SELECT 'Players missing team_key', COUNT(*)
 FROM public.players
-WHERE team_key IS NULL;
+WHERE team_key IS NULL
+UNION ALL
+SELECT 'Total players', COUNT(*)
+FROM public.players;
