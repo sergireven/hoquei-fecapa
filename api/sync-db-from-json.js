@@ -61,7 +61,7 @@ async function readJsonFile(filePath) {
 
 // Extreu clubs únics de categories + classifications
 function extractClubsFromCategories(categories) {
-  const clubs = new Map(); // normalizedName → { name, jok_key }
+  const clubs = new Map(); // normalizedName → { name, jok_id }
   for (const comps of Object.values(categories)) {
     for (const comp of comps) {
       if (!comp.classification) continue;
@@ -72,7 +72,7 @@ function extractClubsFromCategories(categories) {
         const clubName = teamName.replace(/\s+[a-eA-E]$/, "").trim();
         const normalized = normalizeClubName(clubName);
         if (!clubs.has(normalized)) {
-          clubs.set(normalized, { displayName: clubName, jok_key: row?.clubId || null });
+          clubs.set(normalized, { displayName: clubName, jok_id: row?.clubId || null });
         }
       }
     }
@@ -102,6 +102,7 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
           category: category || "",
           season: season,
           team_key: key,
+          jok_id: row?.teamId || null,  // jok.cat team ID
         });
       }
     }
@@ -231,7 +232,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   // 3. UPSERT clubs
   if (clubs.length) {
     const { error: clubErr } = await sb.from("clubs")
-      .upsert(clubs.map(c => ({ name: c.displayName, jok_key: c.jok_key })), { onConflict: "name" });
+      .upsert(clubs.map(c => ({ name: c.displayName, jok_id: c.jok_id })), { onConflict: "name" });
     if (clubErr) {
       console.error("[sync] Error upserting clubs:", clubErr.message);
       syncErrors.push(`clubs: ${clubErr.message}`);
@@ -255,6 +256,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       category: t.category,
       season: t.season,
       team_key: t.team_key,
+      jok_id: t.jok_id,  // jok.cat team ID
     }));
     const { error: teamErr } = await sb.from("teams")
       .upsert(teamsWithClubId, { onConflict: "club_id,team_name,category,season" });
