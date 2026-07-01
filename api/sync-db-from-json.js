@@ -294,14 +294,25 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         season: p.season,
       };
     });
-    // Use composite key (slug, team_key, season) for UPSERT
-    // Each player in each team in each season is unique
-    // player_master_id deduplication happens via database trigger
-    const { error: playerErr } = await sb.from("players")
-      .upsert(playersWithTeamId, { onConflict: "slug,team_key,season" });
+    
+    // Use RPC function for bulk upsert + master rebuild (much faster, trigger-optimized)
+    // This disables the trigger during bulk insert, then rebuilds masters in batch
+    const { error: playerErr, data: playerResult } = await sb.rpc(
+      "upsert_players_and_rebuild_masters",
+      { players_data: playersWithTeamId }
+    );
+    
     if (playerErr) {
       console.error("[sync] Error upserting players:", playerErr.message);
       syncErrors.push(`players: ${playerErr.message}`);
+    } else if (playerResult?.[0]?.error_message) {
+      console.error("[sync] RPC error:", playerResult[0].error_message);
+      syncErrors.push(`players-rpc: ${playerResult[0].error_message}`);
+    } else {
+      console.log(
+        `[sync] Players upserted: ${playerResult?.[0]?.upserted_count || "?"}, ` +
+        `masters: ${playerResult?.[0]?.master_count || "?"}`
+      );
     }
   }
 
