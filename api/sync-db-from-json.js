@@ -25,11 +25,12 @@ function hashUuid(seed) {
 }
 
 function makeDeterministicPlayerId({ season, name, teamName, category }) {
-  // IMPORTANT: Do NOT include season in the seed
-  // Same player in different seasons must have SAME id
-  // This allows UPSERT to link all seasonal records to ONE master_id
+  // IMPORTANT: Include season to ensure unique ids for same player in different seasons
+  // The player_master_id deduplication happens via the database trigger,
+  // which uses normalized master_key (without accents)
   const seed = [
     "player",
+    normalizeTeamName(season || ""),
     normalizeTeamName(name || ""),
     normalizeTeamName(teamName || ""),
     normalizeTeamName(category || ""),
@@ -108,6 +109,14 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
   return teams;
 }
 
+// Helper: Remove accents and normalize to ASCII
+function removeAccents(str) {
+  return String(str || "")
+    .normalize('NFD')  // Decompose accented chars: é → e + ´
+    .replace(/[\u0300-\u036f]/g, '')  // Remove diacritical marks
+    .trim();
+}
+
 // Heurística: extreu categoria de comp.name (e.g. "LNHP 2025-2026 - Aleví" → "Aleví")
 function extractCategoryFromCompName(compName) {
   const match = String(compName).match(/[-–]\s*(\w+)(\s+\(|\s*$)/);
@@ -132,8 +141,8 @@ function extractPlayersFromDb(db, season = "2025-26") {
     } catch (e) {
       // Falls back to raw if decode fails
     }
-    // Normalize: uppercase, keep + separator for consistency
-    normalizedSlug = normalizedSlug.toUpperCase().trim();
+    // Normalize: remove accents, uppercase, keep + separator for consistency
+    normalizedSlug = removeAccents(normalizedSlug).toUpperCase().trim();
     if (!normalizedSlug) continue;
     
     // name: displayable with spaces (from normalized slug)
@@ -280,7 +289,8 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       };
     });
     // Use composite key (slug, team_name, season) for UPSERT
-    // This ensures same player in same team/season gets updated, not duplicated
+    // Each player in each team in each season is unique
+    // player_master_id deduplication happens via database trigger
     const { error: playerErr } = await sb.from("players")
       .upsert(playersWithTeamId, { onConflict: "slug,team_name,season" });
     if (playerErr) {
