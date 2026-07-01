@@ -143,6 +143,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     const primaryTeam = teamStats[0];
     const teamName = primaryTeam?.team || "";
     const category = primaryTeam?.cat || "";
+    const dorsal = primaryTeam?.dorsal || player?.dorsal || "";  // Dorsal from team stats first, then player-level
     
     // Deduplication within season + team (to avoid duplicates in UPSERT)
     // This prevents the same player appearing twice in same team/season
@@ -164,7 +165,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     players.push({
       name: name,
       slug: normalizedSlug,  // CANONICAL slug with + (not spaces)
-      dorsal: player?.dorsal || "",
+      dorsal: dorsal,
       position: player?.position || "Jugador",
       is_goalkeeper: isGK,
       birth_date: birthDate,  // Now populated if available
@@ -249,8 +250,8 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
 
   if (players.length) {
     const playersWithTeamId = players.map(p => {
-      // Use slug (canonical form) for team lookup, NOT name (which may vary)
-      const key = `${normalizeTeamName(p.slug)}::${normalizeTeamName(p.team_name)}::${p.season}`;
+      // Look up team by team_name, category, and season (NOT slug)
+      const key = `${normalizeTeamName(p.team_name)}::${normalizeTeamName(p.category)}::${p.season}`;
       return {
         id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_name, category: p.category }),
         primary_team_id: teamIdMap.get(key) || null,
