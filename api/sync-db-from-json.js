@@ -186,6 +186,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     }
     
     players.push({
+      jok_id: jugId || null,  // jok.cat player ID (key from JSON)
       name: name,
       slug: normalizedSlug,  // CANONICAL slug with + (not spaces)
       dorsal: dorsal,
@@ -278,6 +279,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       return {
         id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_name, category: p.category }),
         primary_team_id: teamIdMap.get(key) || null,
+        jok_id: p.jok_id,  // jok.cat player ID for linking
         name: p.name,
         slug: p.slug,
         team_name: p.team_name,  // IMPORTANT: include for composite key
