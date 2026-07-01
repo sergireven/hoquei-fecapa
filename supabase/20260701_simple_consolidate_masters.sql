@@ -11,8 +11,12 @@ UPDATE public.players SET player_master_id = NULL;
 -- Grouping: all players with same normalized name + same birthdate = SAME master
 INSERT INTO public.player_masters (master_key, canonical_slug, canonical_name, canonical_birth_date)
 SELECT 
-  -- master_key: normalized slug + birth_date
-  public.normalize_identity_token(p.slug) || '::' || COALESCE(TO_CHAR(p.birth_date, 'YYYYMMDD'), 'unknown'),
+  -- master_key: normalized slug + birth_date (with fallbacks to prevent NULL)
+  COALESCE(
+    public.normalize_identity_token(p.slug),
+    public.normalize_identity_token(p.name),
+    'unknown-player'
+  ) || '::' || COALESCE(TO_CHAR(p.birth_date, 'YYYYMMDD'), 'unknown'),
   -- canonical_slug: pick longest slug (best representation)
   (array_agg(p.slug ORDER BY LENGTH(p.slug) DESC))[1],
   -- canonical_name: pick longest name (best display)
@@ -21,16 +25,24 @@ SELECT
   p.birth_date
 FROM public.players p
 GROUP BY 
-  public.normalize_identity_token(p.slug),
+  COALESCE(
+    public.normalize_identity_token(p.slug),
+    public.normalize_identity_token(p.name),
+    'unknown-player'
+  ),
   p.birth_date
 ON CONFLICT (master_key) DO NOTHING;
 
--- 3. Link all players to their master_id (simple join)
+-- 3. Link all players to their master_id (simple join with same master_key logic)
 UPDATE public.players p
 SET player_master_id = (
   SELECT pm.id
   FROM public.player_masters pm
-  WHERE pm.master_key = public.normalize_identity_token(p.slug) || '::' || COALESCE(TO_CHAR(p.birth_date, 'YYYYMMDD'), 'unknown')
+  WHERE pm.master_key = COALESCE(
+    public.normalize_identity_token(p.slug),
+    public.normalize_identity_token(p.name),
+    'unknown-player'
+  ) || '::' || COALESCE(TO_CHAR(p.birth_date, 'YYYYMMDD'), 'unknown')
 );
 
 -- 4. Verify: should have minimal masters, all players linked
