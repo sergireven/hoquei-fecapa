@@ -9,12 +9,19 @@ DELETE FROM public.player_masters
 WHERE master_key ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}::'
   AND master_key !~ '^unknown-player';
 
--- 2. Add jok_id column to players table
+-- 2. Add jok_id column to players table (nullable, without UNIQUE constraint)
 ALTER TABLE public.players
-  ADD COLUMN IF NOT EXISTS jok_id TEXT UNIQUE;
+  ADD COLUMN IF NOT EXISTS jok_id TEXT;
 
--- 3. Create index on jok_id for fast lookups
-CREATE INDEX IF NOT EXISTS idx_players_jok_id ON public.players (jok_id);
+-- 3. Create PARTIAL unique index on jok_id (only for non-NULL values)
+-- This allows multiple NULLs while ensuring unique jok_id values
+CREATE UNIQUE INDEX IF NOT EXISTS idx_players_jok_id_unique 
+  ON public.players (jok_id) 
+  WHERE jok_id IS NOT NULL;
+
+-- 4. Create regular index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_players_jok_id 
+  ON public.players (jok_id);
 
 -- 4. Verify cleanup: should show only 1 master for MARTÍ APARICIO CASAS now
 SELECT 
