@@ -120,39 +120,54 @@ function extractPlayersFromDb(db, season = "2025-26") {
   for (const jugId of Object.keys(jugadors)) {
     const player = jugadors[jugId];
     if (!player) continue;
-    // Extract raw slug (keep original format for matching/deduplication)
+    
+    // Extract and normalize slug (the CANONICAL identifier for this player)
     const rawSlug = String(player?.slug || "");
-    // Decode slug for display name
-    let decodedSlug = rawSlug;
+    let normalizedSlug = rawSlug;
     try {
-      decodedSlug = decodeURIComponent(rawSlug).toUpperCase();
+      // Decode URL encoding
+      normalizedSlug = decodeURIComponent(rawSlug);
     } catch (e) {
-      decodedSlug = rawSlug.toUpperCase();
+      // Falls back to raw if decode fails
     }
-    // name: displayable with spaces (decoded slug or explicit name)
-    const displayName = String(player?.name || decodedSlug || "").trim();
-    const name = displayName.replace(/\+/g, " ").trim();
+    // Normalize: uppercase, keep + separator for consistency
+    normalizedSlug = normalizedSlug.toUpperCase().trim();
+    if (!normalizedSlug) continue;
+    
+    // name: displayable with spaces (from normalized slug)
+    const name = normalizedSlug.replace(/\+/g, " ").trim();
     if (!name) continue;
-    // Team stats: si existeixen, pren el primer
+    
+    // Team stats: if present, use first
     const teamStats = Array.isArray(player?.teamStats) ? player.teamStats : [];
     const primaryTeam = teamStats[0];
     const teamName = primaryTeam?.team || "";
     const category = primaryTeam?.cat || "";
-    // Deduplication key: use displayName (with +) and lowercase
-    const key = `${normalizeTeamName(displayName)}::${normalizeTeamName(teamName)}::${season}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    
+    // Deduplication within season + team (to avoid duplicates in UPSERT)
+    // This prevents the same player appearing twice in same team/season
+    const dedupeKey = `${normalizeTeamName(normalizedSlug)}::${normalizeTeamName(teamName)}::${season}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    
     const isGK = Boolean(
       String(player?.position || "").toLowerCase().includes("port")
       || player?.isGK
       || player?.is_goalkeeper
     );
+    
+    // Extract birth date if available
+    const birthDate = player?.birth_date 
+      ? new Date(player.birth_date).toISOString().split('T')[0]  // Format as YYYY-MM-DD
+      : null;
+    
     players.push({
       name: name,
-      slug: displayName,  // Keep decoded slug with + for consistency
+      slug: normalizedSlug,  // CANONICAL slug with + (not spaces)
       dorsal: player?.dorsal || "",
       position: player?.position || "Jugador",
       is_goalkeeper: isGK,
+      birth_date: birthDate,  // Now populated if available
       team_name: teamName,
       category: category,
       season: season,
@@ -234,7 +249,8 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
 
   if (players.length) {
     const playersWithTeamId = players.map(p => {
-      const key = `${normalizeTeamName(p.name)}::${normalizeTeamName(p.team_name)}::${p.season}`;
+      // Use slug (canonical form) for team lookup, NOT name (which may vary)
+      const key = `${normalizeTeamName(p.slug)}::${normalizeTeamName(p.team_name)}::${p.season}`;
       return {
         id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_name, category: p.category }),
         primary_team_id: teamIdMap.get(key) || null,
@@ -243,6 +259,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
         dorsal: p.dorsal,
         position: p.position,
         is_goalkeeper: Boolean(p.is_goalkeeper),
+        birth_date: p.birth_date,  // NOW POPULATED from extraction
         season: p.season,
       };
     });
