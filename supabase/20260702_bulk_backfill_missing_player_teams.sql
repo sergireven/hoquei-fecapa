@@ -42,8 +42,6 @@ known_teams AS (
     t.team_name,
     t.category,
     t.jok_id AS team_jok_id,
-    COUNT(DISTINCT (LOWER(BTRIM(t.club_name)) || '||' || LOWER(BTRIM(t.team_name)) || '||' || LOWER(BTRIM(t.category))))
-      OVER (PARTITION BY p.jok_id) AS signature_count,
     ROW_NUMBER() OVER (
       PARTITION BY p.jok_id
       ORDER BY p.season DESC
@@ -51,6 +49,15 @@ known_teams AS (
   FROM public.players p
   JOIN public.teams t ON t.id = p.primary_team_id
   WHERE p.jok_id IS NOT NULL
+),
+signature_counts AS (
+  SELECT
+    p.jok_id,
+    COUNT(DISTINCT (LOWER(BTRIM(t.club_name)) || '||' || LOWER(BTRIM(t.team_name)) || '||' || LOWER(BTRIM(t.category)))) AS signature_count
+  FROM public.players p
+  JOIN public.teams t ON t.id = p.primary_team_id
+  WHERE p.jok_id IS NOT NULL
+  GROUP BY p.jok_id
 ),
 chosen AS (
   SELECT
@@ -61,7 +68,8 @@ chosen AS (
     kt.category,
     kt.team_jok_id
   FROM known_teams kt
-  WHERE kt.signature_count = 1
+  JOIN signature_counts sc ON sc.jok_id = kt.jok_id
+  WHERE sc.signature_count = 1
     AND kt.rn = 1
 ),
 resolved AS (
