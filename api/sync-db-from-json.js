@@ -14,6 +14,17 @@ const normalizeClubName = (name) => String(name || "").toLowerCase().trim().repl
 
 const normalizeTeamName = (name) => String(name || "").toLowerCase().trim();
 
+const extractNumericId = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d+)/);
+  return match ? match[1] : null;
+};
+
+const makeTeamKey = ({ clubName, teamName, category, season }) => {
+  return `${normalizeTeamName(clubName)}::${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+};
+
 function hashUuid(seed) {
   const hex = crypto.createHash("sha1").update(String(seed || "")).digest("hex");
   const chars = hex.slice(0, 32).split("");
@@ -72,7 +83,7 @@ function extractClubsFromCategories(categories) {
         const clubName = teamName.replace(/\s+[a-eA-E]$/, "").trim();
         const normalized = normalizeClubName(clubName);
         if (!clubs.has(normalized)) {
-          clubs.set(normalized, { displayName: clubName, jok_id: row?.clubId || null });
+          clubs.set(normalized, { displayName: clubName, jok_id: extractNumericId(row?.clubId) });
         }
       }
     }
@@ -93,13 +104,12 @@ function extractTeamsFromCategories(categories, season = "2025-26") {
         if (!teamName) continue;
         // Extreu categoria de comp.name (e.g. "Aleví", "Benjamí")
         const category = extractCategoryFromCompName(comp.name || "");
-        // FIXED: team_key format should be club::team::category::season (4 parts, not 3)
-        const key = `${normalizeTeamName(clubName)}::${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+        const key = makeTeamKey({ clubName, teamName, category, season });
         if (seen.has(key)) continue;
         seen.add(key);
         teams.push({
           club_name: clubName,
-          team_name: buildFullTeamName(clubName, teamName, season),
+          team_name: teamName,
           category: category || "",
           season: season,
           team_key: key,
@@ -130,6 +140,19 @@ function extractPlayersFromDb(db, season = "2025-26") {
   const players = [];
   const seen = new Set();
   const jugadors = db?.jugadors || {};
+  const teamJokIdByKey = new Map();
+
+  for (const comps of Object.values(db?.categories || {})) {
+    for (const comp of comps || []) {
+      const compCategory = extractCategoryFromCompName(comp?.name || "");
+      for (const row of comp?.classification || []) {
+        const tName = String(row?.team || "").trim();
+        if (!tName || !row?.teamId) continue;
+        const lookupKey = `${normalizeTeamName(tName)}::${normalizeTeamName(compCategory)}`;
+        if (!teamJokIdByKey.has(lookupKey)) teamJokIdByKey.set(lookupKey, String(row.teamId));
+      }
+    }
+  }
   for (const jugId of Object.keys(jugadors)) {
     const player = jugadors[jugId];
     if (!player) continue;
@@ -158,12 +181,10 @@ function extractPlayersFromDb(db, season = "2025-26") {
     const category = primaryTeam?.cat || "";
     const dorsal = primaryTeam?.dorsal || player?.dorsal || "";  // Dorsal from team stats first, then player-level
     
-    // Extract club_name from team_name (remove category suffix like A, B, C)
     const clubName = teamName.replace(/\s+[a-eA-E]$/, "").trim();
-    
-    // Build team_key for consistent lookup and deduplication
-    // FIXED: Format should be "club::team::category::season" (4 parts, matching CSV format)
-    const teamKey = `${normalizeTeamName(clubName)}::${normalizeTeamName(teamName)}::${normalizeTeamName(category)}::${season}`;
+    const teamKey = makeTeamKey({ clubName, teamName, category, season });
+    const teamJokLookupKey = `${normalizeTeamName(teamName)}::${normalizeTeamName(category)}`;
+    const teamJokId = teamJokIdByKey.get(teamJokLookupKey) || null;
     
     // Deduplication within season + team (to avoid duplicates in UPSERT)
     // This prevents the same player appearing twice in same team/season
@@ -203,6 +224,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
       is_goalkeeper: isGK,
       birth_date: birthDate,  // Now populated if available
       team_key: teamKey,  // Use team_key for consistent lookup (not full team_name)
+      team_jok_id: teamJokId,
       category: category,
       season: season,
     });
@@ -271,14 +293,16 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   }
 
   // 5. UPSERT players (necessita team_id FK)
-  const { data: teamRows, error: teamReadErr } = await sb.from("teams").select("id, team_key");
+  const { data: teamRows, error: teamReadErr } = await sb.from("teams").select("id, team_key, jok_id");
   if (teamReadErr) {
     console.error("[sync] Error reading teams:", teamReadErr.message);
     syncErrors.push(`teams-read: ${teamReadErr.message}`);
   }
   const teamIdMap = new Map();
+  const teamIdByJokMap = new Map();
   for (const t of teamRows || []) {
     teamIdMap.set(t.team_key, t.id);
+    if (t.jok_id) teamIdByJokMap.set(String(t.jok_id), t.id);
   }
 
   if (players.length) {
@@ -286,7 +310,7 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
       // Look up team by team_key (consistent with teams table)
       return {
         id: makeDeterministicPlayerId({ season: p.season, name: p.name, teamName: p.team_key, category: p.category }),
-        primary_team_id: teamIdMap.get(p.team_key) || null,
+        primary_team_id: teamIdByJokMap.get(String(p.team_jok_id || "")) || teamIdMap.get(p.team_key) || null,
         jok_id: p.jok_id,  // jok.cat player ID for linking
         name: p.name,
         slug: p.slug,
