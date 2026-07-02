@@ -66,6 +66,18 @@ function safeDecode(value) {
   }
 }
 
+function normalizeBirthDate(value) {
+  const raw = normalizeSpaces(value);
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const dd = String(m[1]).padStart(2, "0");
+  const mm = String(m[2]).padStart(2, "0");
+  const yyyy = m[3];
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function parseArgs(argv) {
   const out = { outDir: path.join(PUBLIC_DIR, "db-csv") };
   for (let i = 2; i < argv.length; i += 1) {
@@ -434,6 +446,7 @@ function extractAllFromSeason({ data, season, context }) {
     const slug = normalizeSpaces(player?.slug || "") || null;
 
     let primaryTeamId = null;
+    let resolvedTeamKey = null;
     let resolvedCategory = "";
 
     const teamStats = Array.isArray(player?.teamStats) ? player.teamStats : [];
@@ -447,6 +460,7 @@ function extractAllFromSeason({ data, season, context }) {
         const team = teams.get(teamKeyBase);
         if (team) {
           primaryTeamId = team.id;
+          resolvedTeamKey = team.team_key;
           resolvedCategory = tCat;
         }
       }
@@ -459,18 +473,28 @@ function extractAllFromSeason({ data, season, context }) {
       playerKey,
       () => ({
         id: makeId("player", playerSeed),
+        jok_id: sidgadId ? String(sidgadId) : null,
         primary_team_id: primaryTeamId,
+        player_master_id: null,
+        team_key: resolvedTeamKey,
         name: playerName,
         slug,
         dorsal: normalizeSpaces(player?.dorsal || ""),
         position: player?.position ? String(player.position) : "Jugador",
         is_goalkeeper: Boolean(player?.isGK || player?.is_goalkeeper),
+        birth_date: normalizeBirthDate(player?.birthDate || player?.birth_date),
         season,
         created_at: now,
         updated_at: now,
       }),
       (existing) => {
+        if (!existing.jok_id && sidgadId) existing.jok_id = String(sidgadId);
         if (!existing.primary_team_id && primaryTeamId) existing.primary_team_id = primaryTeamId;
+        if (!existing.team_key && resolvedTeamKey) existing.team_key = resolvedTeamKey;
+        if (!existing.birth_date) {
+          const parsedBirthDate = normalizeBirthDate(player?.birthDate || player?.birth_date);
+          if (parsedBirthDate) existing.birth_date = parsedBirthDate;
+        }
         if ((!existing.slug || existing.slug === "") && slug) existing.slug = slug;
       }
     );
@@ -485,6 +509,7 @@ function extractAllFromSeason({ data, season, context }) {
         if (teamCandidates.length === 1) {
           const entry = players.get(playerKey);
           entry.primary_team_id = teamCandidates[0].id;
+          entry.team_key = teamCandidates[0].team_key;
         }
       }
     }
@@ -700,7 +725,7 @@ async function main() {
 
   writeCsv(
     path.join(args.outDir, "players.csv"),
-    ["id", "primary_team_id", "name", "slug", "dorsal", "position", "is_goalkeeper", "season", "created_at", "updated_at"],
+    ["id", "jok_id", "primary_team_id", "player_master_id", "team_key", "name", "slug", "dorsal", "position", "is_goalkeeper", "birth_date", "season", "created_at", "updated_at"],
     playersRows
   );
 
