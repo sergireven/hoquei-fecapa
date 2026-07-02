@@ -90,6 +90,7 @@ async function importClubsAndTeams() {
       clubs.push({
         id: row.id,
         name: row.name,
+        jok_id: row.jok_id || null,
         jok_key: row.jok_key || null,
         created_at: row.created_at,
         updated_at: row.updated_at,

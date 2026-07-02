@@ -47,6 +47,13 @@ function normalizeNoDiacritics(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function extractNumericId(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d+)/);
+  return match ? match[1] : null;
+}
+
 function toIsoTimestamp() {
   return new Date().toISOString();
 }
@@ -342,11 +349,15 @@ function extractAllFromSeason({ data, season, context }) {
           () => ({
             id: clubId,
             name: clubName,
+            jok_id: extractNumericId(row?.clubId),
             jok_key: row?.clubId ? String(row.clubId) : null,
             created_at: now,
             updated_at: now,
           }),
           (existing) => {
+            if (!existing.jok_id) {
+              existing.jok_id = extractNumericId(row?.clubId);
+            }
             if (!existing.jok_key && row?.clubId) existing.jok_key = String(row.clubId);
           }
         );
@@ -365,9 +376,13 @@ function extractAllFromSeason({ data, season, context }) {
             category: compCategory,
             season: compSeason,
             team_key: teamKeyBase,
+            jok_id: row?.teamId ? String(row.teamId) : null,
             created_at: now,
             updated_at: now,
-          })
+          }),
+          (existing) => {
+            if (!existing.jok_id && row?.teamId) existing.jok_id = String(row.teamId);
+          }
         );
 
         const compTeamKey = `${competitionId}::${teamId}`;
@@ -673,13 +688,13 @@ async function main() {
 
   writeCsv(
     path.join(args.outDir, "clubs.csv"),
-    ["id", "name", "jok_key", "created_at", "updated_at"],
+    ["id", "name", "jok_id", "jok_key", "created_at", "updated_at"],
     clubsRows
   );
 
   writeCsv(
     path.join(args.outDir, "teams.csv"),
-    ["id", "club_id", "club_name", "team_name", "category", "season", "team_key", "created_at", "updated_at"],
+    ["id", "club_id", "club_name", "team_name", "category", "season", "team_key", "jok_id", "created_at", "updated_at"],
     teamsRows
   );
 
