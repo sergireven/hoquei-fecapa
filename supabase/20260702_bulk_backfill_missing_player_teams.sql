@@ -104,9 +104,12 @@ insert_missing_teams AS (
     NOW(),
     NOW()
   FROM resolved r
-  WHERE NOT EXISTS (
-    SELECT 1 FROM public.teams t WHERE t.team_key = r.target_team_key
-  )
+  ON CONFLICT (club_id, team_name, category, season)
+  DO UPDATE SET
+    team_key = EXCLUDED.team_key,
+    club_name = EXCLUDED.club_name,
+    jok_id = COALESCE(public.teams.jok_id, EXCLUDED.jok_id),
+    updated_at = NOW()
   RETURNING id
 )
 UPDATE public.players p
@@ -182,9 +185,12 @@ insert_missing_teams AS (
     NOW(),
     NOW()
   FROM nearest n
-  WHERE NOT EXISTS (
-    SELECT 1 FROM public.teams t WHERE t.team_key = n.target_team_key
-  )
+  ON CONFLICT (club_id, team_name, category, season)
+  DO UPDATE SET
+    team_key = EXCLUDED.team_key,
+    club_name = EXCLUDED.club_name,
+    jok_id = COALESCE(public.teams.jok_id, EXCLUDED.jok_id),
+    updated_at = NOW()
   RETURNING id
 )
 UPDATE public.players p
