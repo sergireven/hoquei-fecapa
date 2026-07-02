@@ -6,7 +6,7 @@ const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
-const { syncAllSeasonsToDatabase } = require("./sync-db-from-json");
+const { syncActiveSeasonsToDatabase } = require("./sync-db-from-json");
 
 function createSupabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
   const start = Date.now();
   try {
     const steps = [];
+    let syncResults = null;
 
     console.log("🏟️ Pas 1/5: actualitzant fecapa-categories.json...");
     runNodeStep("scraper-fecapa-categories.js", 290000);
@@ -66,12 +67,12 @@ module.exports = async (req, res) => {
       console.log("⏭️ Pas 5/5 omès: generate-ripollet.js no existeix");
     }
 
-    // Sincronitza JSON → Supabase (clubs, teams, players des de totes les temporades)
-    console.log("📊 Pas 6: sincronitzant dades JSON a Supabase...");
+    // Sincronitza JSON → Supabase (temporada actual/futures)
+    console.log("📊 Pas 6: sincronitzant temporada activa a Supabase...");
     const sb = createSupabaseClient();
     if (sb) {
       try {
-        const syncResults = await syncAllSeasonsToDatabase(sb, path.join(__dirname, "../public"));
+        syncResults = await syncActiveSeasonsToDatabase(sb, path.join(__dirname, "../public"));
         console.log("[cron] DB sync results:", JSON.stringify(syncResults, null, 2));
         steps.push("sync-db-from-json");
       } catch (syncErr) {
@@ -87,6 +88,7 @@ module.exports = async (req, res) => {
       ok: true,
       message: "Pipeline executat correctament",
       steps,
+      sync: syncResults,
       elapsed: elapsed + "s",
       updatedAt: new Date().toISOString()
     });

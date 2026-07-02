@@ -49,6 +49,36 @@ function makeDeterministicPlayerId({ season, name, teamName, category }) {
   return hashUuid(`hoquei-fecapa:${seed}`);
 }
 
+function getActiveSeasonLabel(date = new Date()) {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  const startYear = month >= 7 ? year : year - 1;
+  const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, "0");
+  return `${startYear}-${endYearTwoDigits}`;
+}
+
+function seasonStartYear(season) {
+  const y = parseInt(String(season || "").split("-")[0], 10);
+  return Number.isFinite(y) ? y : -1;
+}
+
+function canonicalSignature(team) {
+  return [
+    normalizeTeamName(team?.club_name || ""),
+    normalizeTeamName(team?.team_name || ""),
+    normalizeTeamName(team?.category || ""),
+  ].join("||");
+}
+
+function buildTeamKeyFromTeam(team, season) {
+  return [
+    normalizeTeamName(team?.club_name || ""),
+    normalizeTeamName(team?.team_name || ""),
+    normalizeTeamName(team?.category || ""),
+    String(season || "").trim(),
+  ].join("::");
+}
+
 // Construeix team_name harmonitzat: Club + Equip + Temporada
 // Exemple: "Club Hoquei Ripollet Prebenjamí B 2025-26"
 const buildFullTeamName = (clubName, teamName, season = "2025-26") => {
@@ -364,13 +394,207 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   return { ok: true, clubs: clubs.length, teams: teams.length, players: players.length };
 }
 
+async function reconcileMissingPlayerTeams(sb) {
+  const startedAt = Date.now();
+
+  const { count: beforeCount, error: beforeErr } = await sb
+    .from("players")
+    .select("id", { count: "exact", head: true })
+    .is("primary_team_id", null);
+  if (beforeErr) {
+    throw new Error(`Could not compute missing players before reconcile: ${beforeErr.message}`);
+  }
+  const beforeMissing = Number(beforeCount || 0);
+
+  const { data: unresolvedRaw, error: unresolvedErr } = await sb
+    .from("players")
+    .select("id,jok_id,player_master_id,season,team_key")
+    .is("primary_team_id", null);
+  if (unresolvedErr) {
+    throw new Error(`Could not load unresolved players: ${unresolvedErr.message}`);
+  }
+  const unresolved = (unresolvedRaw || []).filter(
+    (p) => p.team_key == null || String(p.team_key).trim() === ""
+  );
+  if (!unresolved?.length) {
+    return {
+      ok: true,
+      before_missing: beforeMissing,
+      after_missing: beforeMissing,
+      filled: 0,
+      elapsed_s: ((Date.now() - startedAt) / 1000).toFixed(1),
+      passes: { safe_jok_id: 0, fallback_jok_id: 0, safe_master_id: 0 },
+    };
+  }
+
+  const [{ data: knownPlayers, error: knownErr }, { data: teams, error: teamsErr }] = await Promise.all([
+    sb
+      .from("players")
+      .select("jok_id,player_master_id,season,primary_team_id")
+      .not("primary_team_id", "is", null),
+    sb
+      .from("teams")
+      .select("id,club_id,club_name,team_name,category,season,team_key,jok_id"),
+  ]);
+  if (knownErr) throw new Error(`Could not load known players: ${knownErr.message}`);
+  if (teamsErr) throw new Error(`Could not load teams: ${teamsErr.message}`);
+
+  const teamById = new Map((teams || []).map((t) => [t.id, t]));
+  const teamByKey = new Map((teams || []).map((t) => [t.team_key, t]));
+  const unresolvedById = new Map((unresolved || []).map((p) => [p.id, p]));
+
+  const jokSources = new Map();
+  const masterSources = new Map();
+  for (const kp of knownPlayers || []) {
+    if (!kp.jok_id && !kp.player_master_id) continue;
+    const team = teamById.get(kp.primary_team_id);
+    if (!team) continue;
+    const src = {
+      team,
+      source_year: seasonStartYear(kp.season),
+    };
+    if (kp.jok_id) {
+      const key = String(kp.jok_id);
+      if (!jokSources.has(key)) jokSources.set(key, []);
+      jokSources.get(key).push(src);
+    }
+    if (kp.player_master_id) {
+      const key = String(kp.player_master_id);
+      if (!masterSources.has(key)) masterSources.set(key, []);
+      masterSources.get(key).push(src);
+    }
+  }
+
+  const updates = new Map();
+  const teamCandidates = new Map();
+  const passCounters = { safe_jok_id: 0, fallback_jok_id: 0, safe_master_id: 0 };
+
+  const queueUpdate = (playerId, sourceTeam, targetSeason, counterName) => {
+    if (!unresolvedById.has(playerId) || updates.has(playerId)) return;
+    const targetTeamKey = buildTeamKeyFromTeam(sourceTeam, targetSeason);
+    updates.set(playerId, { playerId, targetTeamKey });
+    if (!teamCandidates.has(targetTeamKey)) {
+      teamCandidates.set(targetTeamKey, {
+        club_id: sourceTeam.club_id || null,
+        club_name: sourceTeam.club_name || "",
+        team_name: sourceTeam.team_name || "",
+        category: sourceTeam.category || "",
+        season: String(targetSeason || "").trim(),
+        team_key: targetTeamKey,
+        jok_id: sourceTeam.jok_id || null,
+      });
+    }
+    passCounters[counterName] += 1;
+  };
+
+  // Pass 1: safe by jok_id (single signature)
+  for (const p of unresolved || []) {
+    if (!p.jok_id) continue;
+    const sources = jokSources.get(String(p.jok_id)) || [];
+    if (!sources.length) continue;
+    const signatures = new Set(sources.map((s) => canonicalSignature(s.team)));
+    if (signatures.size !== 1) continue;
+    const latest = sources.slice().sort((a, b) => b.source_year - a.source_year)[0];
+    queueUpdate(p.id, latest.team, p.season, "safe_jok_id");
+  }
+
+  // Pass 2: nearest known season by jok_id
+  for (const p of unresolved || []) {
+    if (updates.has(p.id) || !p.jok_id) continue;
+    const sources = jokSources.get(String(p.jok_id)) || [];
+    if (!sources.length) continue;
+    const targetYear = seasonStartYear(p.season);
+    const best = sources
+      .slice()
+      .sort((a, b) => {
+        const aPreferPast = a.source_year <= targetYear ? 0 : 1;
+        const bPreferPast = b.source_year <= targetYear ? 0 : 1;
+        if (aPreferPast !== bPreferPast) return aPreferPast - bPreferPast;
+        const aDist = Math.abs(a.source_year - targetYear);
+        const bDist = Math.abs(b.source_year - targetYear);
+        if (aDist !== bDist) return aDist - bDist;
+        return b.source_year - a.source_year;
+      })[0];
+    queueUpdate(p.id, best.team, p.season, "fallback_jok_id");
+  }
+
+  // Pass 3: safe by player_master_id (single signature)
+  for (const p of unresolved || []) {
+    if (updates.has(p.id) || !p.player_master_id) continue;
+    const sources = masterSources.get(String(p.player_master_id)) || [];
+    if (!sources.length) continue;
+    const signatures = new Set(sources.map((s) => canonicalSignature(s.team)));
+    if (signatures.size !== 1) continue;
+    const latest = sources.slice().sort((a, b) => b.source_year - a.source_year)[0];
+    queueUpdate(p.id, latest.team, p.season, "safe_master_id");
+  }
+
+  const teamRows = [...teamCandidates.values()];
+  if (teamRows.length) {
+    const { error: upsertTeamsErr } = await sb
+      .from("teams")
+      .upsert(teamRows, { onConflict: "team_key" });
+    if (upsertTeamsErr) {
+      throw new Error(`Could not upsert candidate teams during reconcile: ${upsertTeamsErr.message}`);
+    }
+
+    const { data: refreshedTeams, error: refreshTeamsErr } = await sb
+      .from("teams")
+      .select("id,team_key");
+    if (refreshTeamsErr) {
+      throw new Error(`Could not refresh teams after reconcile upsert: ${refreshTeamsErr.message}`);
+    }
+    teamByKey.clear();
+    for (const t of refreshedTeams || []) teamByKey.set(t.team_key, t);
+  }
+
+  const playerRows = [];
+  for (const u of updates.values()) {
+    const t = teamByKey.get(u.targetTeamKey);
+    if (!t?.id) continue;
+    playerRows.push({ id: u.playerId, primary_team_id: t.id, team_key: u.targetTeamKey });
+  }
+
+  if (playerRows.length) {
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < playerRows.length; i += BATCH_SIZE) {
+      const batch = playerRows.slice(i, i + BATCH_SIZE);
+      const { error: upsertPlayersErr } = await sb
+        .from("players")
+        .upsert(batch, { onConflict: "id" });
+      if (upsertPlayersErr) {
+        throw new Error(`Could not update players during reconcile: ${upsertPlayersErr.message}`);
+      }
+    }
+  }
+
+  const { count: afterCount, error: afterErr } = await sb
+    .from("players")
+    .select("id", { count: "exact", head: true })
+    .is("primary_team_id", null);
+  if (afterErr) {
+    throw new Error(`Could not compute missing players after reconcile: ${afterErr.message}`);
+  }
+  const afterMissing = Number(afterCount || 0);
+
+  return {
+    ok: true,
+    before_missing: beforeMissing,
+    after_missing: afterMissing,
+    filled: Math.max(0, beforeMissing - afterMissing),
+    elapsed_s: ((Date.now() - startedAt) / 1000).toFixed(1),
+    passes: passCounters,
+  };
+}
+
 // Sincronitza TOTES les temporades
 async function syncAllSeasonsToDatabase(sb, publicDir = "./public") {
   const results = {};
+  const activeSeason = getActiveSeasonLabel();
 
   // 1. Sincronitza temporada actual (data.json)
   const currentDataPath = path.join(publicDir, "data.json");
-  results.current = await syncSeasonToDatabase(sb, "current", currentDataPath, "2025-26");
+  results.current = await syncSeasonToDatabase(sb, "current", currentDataPath, activeSeason);
 
   // 2. Sincronitza temporades anteriors (season-archive/{year}/data-{year}.json)
   const archiveDir = path.join(publicDir, "season-archive");
@@ -389,12 +613,38 @@ async function syncAllSeasonsToDatabase(sb, publicDir = "./public") {
     throw new Error(`DB sync failed for one or more seasons. ${summary}`);
   }
 
+  // Final automatic reconciliation pass so daily cron can recover unresolved links
+  results.reconcile = await reconcileMissingPlayerTeams(sb);
+
+  return results;
+}
+
+// Sincronitza només temporades actives (actual + futures)
+// Per ara, data.json representa la temporada activa i és l'única que es processa diàriament.
+async function syncActiveSeasonsToDatabase(sb, publicDir = "./public") {
+  const results = {};
+  const activeSeason = getActiveSeasonLabel();
+
+  const currentDataPath = path.join(publicDir, "data.json");
+  results.current = await syncSeasonToDatabase(sb, "current", currentDataPath, activeSeason);
+
+  if (!results.current?.ok) {
+    const reason = results.current?.error || "unknown error";
+    throw new Error(`DB sync failed for active season. current: ${reason}`);
+  }
+
+  // Final automatic reconciliation pass so daily cron can recover unresolved links
+  results.reconcile = await reconcileMissingPlayerTeams(sb);
+
   return results;
 }
 
 module.exports = {
+  getActiveSeasonLabel,
   syncSeasonToDatabase,
   syncAllSeasonsToDatabase,
+  syncActiveSeasonsToDatabase,
+  reconcileMissingPlayerTeams,
   extractClubsFromCategories,
   extractTeamsFromCategories,
   extractPlayersFromDb,
