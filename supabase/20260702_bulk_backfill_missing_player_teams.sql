@@ -89,21 +89,33 @@ resolved AS (
   FROM targets tg
   JOIN chosen ch ON ch.jok_id = tg.jok_id
 ),
+resolved_unique AS (
+  SELECT DISTINCT ON (club_id, team_name, category, target_season)
+    club_id,
+    club_name,
+    team_name,
+    category,
+    target_season,
+    target_team_key,
+    team_jok_id
+  FROM resolved
+  ORDER BY club_id, team_name, category, target_season, team_jok_id DESC NULLS LAST
+),
 insert_missing_teams AS (
   INSERT INTO public.teams (
     club_id, club_name, team_name, category, season, team_key, jok_id, created_at, updated_at
   )
-  SELECT DISTINCT
-    r.club_id,
-    r.club_name,
-    r.team_name,
-    r.category,
-    r.target_season,
-    r.target_team_key,
-    r.team_jok_id,
+  SELECT
+    ru.club_id,
+    ru.club_name,
+    ru.team_name,
+    ru.category,
+    ru.target_season,
+    ru.target_team_key,
+    ru.team_jok_id,
     NOW(),
     NOW()
-  FROM resolved r
+  FROM resolved_unique ru
   ON CONFLICT (club_id, team_name, category, season)
   DO UPDATE SET
     team_key = EXCLUDED.team_key,
@@ -170,21 +182,33 @@ nearest AS (
   JOIN known k ON k.jok_id = tg.jok_id
   ORDER BY tg.player_id, prefer_past, distance, k.source_year DESC
 ),
+nearest_unique AS (
+  SELECT DISTINCT ON (club_id, team_name, category, target_season)
+    club_id,
+    club_name,
+    team_name,
+    category,
+    target_season,
+    target_team_key,
+    team_jok_id
+  FROM nearest
+  ORDER BY club_id, team_name, category, target_season, team_jok_id DESC NULLS LAST
+),
 insert_missing_teams AS (
   INSERT INTO public.teams (
     club_id, club_name, team_name, category, season, team_key, jok_id, created_at, updated_at
   )
-  SELECT DISTINCT
-    n.club_id,
-    n.club_name,
-    n.team_name,
-    n.category,
-    n.target_season,
-    n.target_team_key,
-    n.team_jok_id,
+  SELECT
+    nu.club_id,
+    nu.club_name,
+    nu.team_name,
+    nu.category,
+    nu.target_season,
+    nu.target_team_key,
+    nu.team_jok_id,
     NOW(),
     NOW()
-  FROM nearest n
+  FROM nearest_unique nu
   ON CONFLICT (club_id, team_name, category, season)
   DO UPDATE SET
     team_key = EXCLUDED.team_key,
