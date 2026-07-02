@@ -66,11 +66,19 @@ Output esperado:
 
 ### 🔄 Sincronització manual (amb Supabase)
 
+**Mode recomanat (actiu: actual + futures):**
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+   https://app.vercel.app/api/sync-database?season=active
+```
+
 **Totes les temporades:**
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \
   https://app.vercel.app/api/sync-database?season=all
 ```
+
+Nota: `season=all` queda com a mode de manteniment/backfill puntual, no per al dia a dia.
 
 **Temporada actual:**
 ```bash
@@ -87,6 +95,48 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 ### 🤖 Automàtic
 - Ja integrat al cron nocturn (02:00 UTC)
 - S'executa automaticament després de scraper.js
+- El cron diari només sincronitza temporada activa (i futures quan n'hi hagi), no històric.
+
+## 🔁 End-to-End Diari (sense manual)
+
+Cada execució del cron fa aquest flux complet:
+
+1. Scraping categories (`jobs/scraper-fecapa-categories.js`)
+2. Scraping dades principals (`jobs/scraper.js`)
+3. Rebuild mapping (`jobs/build-entity-mapping.js`)
+4. Rebuild audit (`jobs/build-classification-audit.js`)
+5. Sync JSON → Supabase de temporada activa/futures (`api/sync-db-from-json.js`)
+6. Reconciliació automàtica de jugadors sense equip:
+    - pass safe per `jok_id` unívoc
+    - pass fallback per temporada més propera (`jok_id`)
+    - pass safe per `player_master_id` unívoc
+
+Això vol dir que clubs, equips i jugadors nous queden poblats diàriament a la BBDD sense executar SQL manual.
+
+### Camps de resposta clau del sync
+
+La resposta de `GET /api/sync-database?season=all` (i dels logs del cron) inclou `result.reconcile`:
+
+```json
+{
+   "ok": true,
+   "result": {
+      "current": { "ok": true },
+      "2024-25": { "ok": true },
+      "reconcile": {
+         "ok": true,
+         "before_missing": 3020,
+         "after_missing": 3004,
+         "filled": 16,
+         "passes": {
+            "safe_jok_id": 8,
+            "fallback_jok_id": 6,
+            "safe_master_id": 2
+         }
+      }
+   }
+}
+```
 
 ---
 

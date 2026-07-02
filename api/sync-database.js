@@ -2,6 +2,7 @@
  * /api/sync-database — Endpoint per sincronitzar JSON → Supabase
  * 
  * Ús:
+ *   GET /api/sync-database?season=active
  *   GET /api/sync-database?season=current
  *   GET /api/sync-database?season=2024-25
  *   GET /api/sync-database?season=all
@@ -11,7 +12,7 @@
 
 const { createClient } = require("@supabase/supabase-js");
 const path = require("path");
-const { syncSeasonToDatabase, syncAllSeasonsToDatabase } = require("./sync-db-from-json");
+const { getActiveSeasonLabel, syncSeasonToDatabase, syncAllSeasonsToDatabase, syncActiveSeasonsToDatabase } = require("./sync-db-from-json");
 
 function createSupabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -30,7 +31,7 @@ module.exports = async (req, res) => {
 
   const start = Date.now();
   try {
-    const season = String(req.query.season || "all").toLowerCase().trim();
+    const season = String(req.query.season || "active").toLowerCase().trim();
     const sb = createSupabaseClient();
     const publicDir = path.join(__dirname, "../public");
 
@@ -38,10 +39,13 @@ module.exports = async (req, res) => {
     if (season === "all") {
       console.log("[sync-api] Syncing all seasons...");
       result = await syncAllSeasonsToDatabase(sb, publicDir);
+    } else if (season === "active") {
+      console.log("[sync-api] Syncing active seasons (current/future)...");
+      result = await syncActiveSeasonsToDatabase(sb, publicDir);
     } else if (season === "current") {
       console.log("[sync-api] Syncing current season...");
       const dataPath = path.join(publicDir, "data.json");
-      result = await syncSeasonToDatabase(sb, "current", dataPath, "2025-26");
+      result = await syncSeasonToDatabase(sb, "current", dataPath, getActiveSeasonLabel());
     } else {
       // Parsed as specific year, e.g. "2024-25"
       const dataPath = path.join(publicDir, "season-archive", `data-${season}.json`);
