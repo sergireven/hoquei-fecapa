@@ -90,7 +90,7 @@ resolved AS (
   JOIN chosen ch ON ch.jok_id = tg.jok_id
 ),
 resolved_unique AS (
-  SELECT DISTINCT ON (club_id, team_name, category, target_season)
+  SELECT DISTINCT ON (target_team_key)
     club_id,
     club_name,
     team_name,
@@ -99,7 +99,7 @@ resolved_unique AS (
     target_team_key,
     team_jok_id
   FROM resolved
-  ORDER BY club_id, team_name, category, target_season, team_jok_id DESC NULLS LAST
+  ORDER BY target_team_key, team_jok_id DESC NULLS LAST
 ),
 insert_missing_teams AS (
   INSERT INTO public.teams (
@@ -116,12 +116,8 @@ insert_missing_teams AS (
     NOW(),
     NOW()
   FROM resolved_unique ru
-  ON CONFLICT (club_id, team_name, category, season)
-  DO UPDATE SET
-    team_key = EXCLUDED.team_key,
-    club_name = EXCLUDED.club_name,
-    jok_id = COALESCE(public.teams.jok_id, EXCLUDED.jok_id),
-    updated_at = NOW()
+  ON CONFLICT (team_key)
+  DO NOTHING
   RETURNING id
 )
 UPDATE public.players p
@@ -183,7 +179,7 @@ nearest AS (
   ORDER BY tg.player_id, prefer_past, distance, k.source_year DESC
 ),
 nearest_unique AS (
-  SELECT DISTINCT ON (club_id, team_name, category, target_season)
+  SELECT DISTINCT ON (target_team_key)
     club_id,
     club_name,
     team_name,
@@ -192,7 +188,7 @@ nearest_unique AS (
     target_team_key,
     team_jok_id
   FROM nearest
-  ORDER BY club_id, team_name, category, target_season, team_jok_id DESC NULLS LAST
+  ORDER BY target_team_key, team_jok_id DESC NULLS LAST
 ),
 insert_missing_teams AS (
   INSERT INTO public.teams (
@@ -209,12 +205,8 @@ insert_missing_teams AS (
     NOW(),
     NOW()
   FROM nearest_unique nu
-  ON CONFLICT (club_id, team_name, category, season)
-  DO UPDATE SET
-    team_key = EXCLUDED.team_key,
-    club_name = EXCLUDED.club_name,
-    jok_id = COALESCE(public.teams.jok_id, EXCLUDED.jok_id),
-    updated_at = NOW()
+  ON CONFLICT (team_key)
+  DO NOTHING
   RETURNING id
 )
 UPDATE public.players p
