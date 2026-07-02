@@ -7523,6 +7523,107 @@ function normalizePlayerIdentity(value) {
     .trim();
 }
 
+const playerMasterLookupCache = new Map();
+
+function scorePlayerIdentityCandidate(row, identity = {}) {
+  if (!row) return -1;
+  let score = 0;
+
+  const wantedJid = String(identity?.jid || "").trim();
+  const wantedSlug = normalizePlayerIdentity(identity?.slug || "");
+  const wantedName = normalizePlayerIdentity(identity?.name || "");
+  const activeSeason = String(getActiveSeasonLabel() || "").trim();
+
+  if (String(row?.player_master_id || "").trim()) score += 100;
+  if (wantedJid && String(row?.jok_id || "").trim() === wantedJid) score += 80;
+
+  const rowSlug = normalizePlayerIdentity(row?.slug ? decodeURIComponent(String(row.slug).replace(/\+/g, " ")) : "");
+  if (wantedSlug && rowSlug && rowSlug === wantedSlug) score += 40;
+
+  const rowName = normalizePlayerIdentity(row?.name || "");
+  if (wantedName && rowName && rowName === wantedName) score += 25;
+
+  if (activeSeason && String(row?.season || "").trim() === activeSeason) score += 10;
+  return score;
+}
+
+async function ensurePlayerMasterIdentity(player, identity = {}) {
+  if (!player || !_sb) return null;
+
+  const existingMasterId = String(player?.playerMasterId || player?.player_master_id || "").trim();
+  if (existingMasterId) return existingMasterId;
+
+  const jid = String(identity?.jid || "").trim();
+  const slug = String(identity?.slug || "").trim();
+  const name = String(identity?.name || "").trim();
+  const cacheKey = `${jid}::${normalizePlayerIdentity(slug)}::${normalizePlayerIdentity(name)}`;
+  if (playerMasterLookupCache.has(cacheKey)) {
+    const cached = playerMasterLookupCache.get(cacheKey) || null;
+    if (cached) {
+      player.playerMasterId = cached;
+      player.player_master_id = cached;
+    }
+    return cached;
+  }
+
+  const selected = [];
+  const selectedById = new Set();
+  const pushCandidates = rows => {
+    for (const row of (rows || [])) {
+      const key = String(row?.id || "").trim() || `${row?.jok_id || ""}::${row?.slug || ""}::${row?.season || ""}`;
+      if (!key || selectedById.has(key)) continue;
+      selectedById.add(key);
+      selected.push(row);
+    }
+  };
+
+  try {
+    if (jid) {
+      const byJokId = await fetchAllRows(() =>
+        _sb.from("players")
+          .select("id, jok_id, player_master_id, slug, name, season")
+          .eq("jok_id", jid)
+          .order("season", { ascending: false })
+      );
+      pushCandidates(byJokId);
+    }
+
+    if (slug) {
+      const bySlug = await fetchAllRows(() =>
+        _sb.from("players")
+          .select("id, jok_id, player_master_id, slug, name, season")
+          .eq("slug", slug)
+          .order("season", { ascending: false })
+      );
+      pushCandidates(bySlug);
+    }
+
+    if (!selected.length && name) {
+      const byName = await fetchAllRows(() =>
+        _sb.from("players")
+          .select("id, jok_id, player_master_id, slug, name, season")
+          .ilike("name", name)
+          .order("season", { ascending: false })
+      );
+      pushCandidates(byName);
+    }
+  } catch (err) {
+    console.warn("player master identity lookup failed:", err?.message || err);
+  }
+
+  const best = selected
+    .map(row => ({ row, score: scorePlayerIdentityCandidate(row, identity) }))
+    .sort((a, b) => b.score - a.score)[0]?.row || null;
+
+  const masterId = String(best?.player_master_id || "").trim() || null;
+  playerMasterLookupCache.set(cacheKey, masterId);
+  if (!masterId) return null;
+
+  player.playerMasterId = masterId;
+  player.player_master_id = masterId;
+  return masterId;
+}
+
 function getPlayerDisplayName(player) {
   if (!player) return "";
   const fromSlug = player?.slug
@@ -13553,6 +13654,12 @@ async function openPlayerModal(jid, fallbackName) {
                || fallbackName
                || "Jugador";
 
+  await ensurePlayerMasterIdentity(player, {
+    jid: activePlayerId,
+    slug: player?.slug || "",
+    name,
+  });
+
   // Team i categoria del teamStats principal
   const sourceTeamStats = await buildPlayerTeamStatsFromSources(player, activePlayerId, { seasonData: DB, seasonKey: activeSeasonKey });
   const fixedTeamStats = sourceTeamStats.length
@@ -13674,6 +13781,7 @@ async function openPlayerModal(jid, fallbackName) {
     let resolvedSeasonData = seasonData;
     let seasonPlayerRef = findPlayerInSeasonDataByIdentity(resolvedSeasonData, {
       jid: activePlayerId,
+      playerMasterId: player?.playerMasterId || player?.player_master_id || "",
       slug: player?.slug || "",
       name,
     });
@@ -13683,6 +13791,7 @@ async function openPlayerModal(jid, fallbackName) {
       if (fallbackSeasonData?.jugadors) {
         const fallbackRef = findPlayerInSeasonDataByIdentity(fallbackSeasonData, {
           jid: activePlayerId,
+          playerMasterId: player?.playerMasterId || player?.player_master_id || "",
           slug: player?.slug || "",
           name,
         });
