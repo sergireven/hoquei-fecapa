@@ -8633,8 +8633,9 @@ function applyClassificationSourceMerge() {
       };
     };
 
-    const chooseBestGroup = candidates => {
+    const chooseBestGroup = (candidates, options = {}) => {
       if (!Array.isArray(candidates) || !candidates.length) return null;
+      const requirePositiveOverlap = options?.requirePositiveOverlap === true;
       const scored = candidates.map(scoreGroup);
       scored.sort((a, b) => {
         if (a.hasRows !== b.hasRows) return (b.hasRows ? 1 : 0) - (a.hasRows ? 1 : 0);
@@ -8642,18 +8643,35 @@ function applyClassificationSourceMerge() {
         if (a.teamCount !== b.teamCount) return b.teamCount - a.teamCount;
         return 0;
       });
+      if (requirePositiveOverlap && scored.length > 1 && Number(scored[0]?.overlap || 0) <= 0) {
+        return null;
+      }
       return scored[0]?.group || null;
     };
 
+    const jokCompNameToken = (() => {
+      const n = String(jokComp?.name || "");
+      const plata = n.match(/PLATA\s+\d+/i);
+      if (plata?.[0]) return normalizeCompKey(plata[0]);
+      const orToken = n.match(/\bOR\s+\d+\b/i);
+      if (orToken?.[0]) return normalizeCompKey(orToken[0]);
+      return "";
+    })();
+
     const preferredToken = normalizeCompKey(pilot.preferredGroupToken || "");
-    if (preferredToken) {
-      const tokenMatches = groups.filter(g => normalizeCompKey(g?.groupName || "").includes(preferredToken));
+    const enforcedToken = jokCompNameToken || preferredToken;
+    if (enforcedToken) {
+      const tokenMatches = groups.filter(g => normalizeCompKey(g?.groupName || "").includes(enforcedToken));
       const preferred = chooseBestGroup(tokenMatches);
       if (preferred) return preferred;
+
+      // Safety: if we expect a tokenized group (e.g. "PLATA 8") and it is not present,
+      // keep jok.cat classification instead of contaminating with a different FECAPA group.
+      return null;
     }
 
-    const best = chooseBestGroup(groups);
-    return best || groups[0] || null;
+    const best = chooseBestGroup(groups, { requirePositiveOverlap: true });
+    return best || null;
   };
 
   const allFecapaComps = Object.values(fecapaCategoriesDB?.categories || {})
@@ -9926,6 +9944,12 @@ function renderTeamMatchDebugOverlay(entry) {
     const cat = String(entry?.categoryHint || entry?.categoryForProfile || "");
     const id = String(entry?.teamIdHint || entry?.teamIdForProfile || entry?.matchedTeamId || "");
     const comp = String(entry?.compIdHint || entry?.compId || "");
+    const hiddenKeys = new Set(["ts", "stage", "wantedTeam", "teamForProfile", "matchedTeamName", "categoryHint", "categoryForProfile", "teamIdHint", "teamIdForProfile", "matchedTeamId", "compIdHint", "compId"]);
+    const extras = Object.entries(entry || {})
+      .filter(([k, v]) => !hiddenKeys.has(k) && v != null && v !== "" && typeof v !== "object")
+      .slice(0, 10)
+      .map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(String(v))}</div>`)
+      .join("");
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
         <b style="color:#93c5fd">TEAM MATCH DEBUG</b>
@@ -9936,6 +9960,7 @@ function renderTeamMatchDebugOverlay(entry) {
       <div><b>cat:</b> ${esc(cat || "-")}</div>
       <div><b>teamId:</b> ${esc(id || "-")}</div>
       <div><b>compId:</b> ${esc(comp || "-")}</div>
+      ${extras}
     `;
   } catch (_) {
     // no-op
@@ -9982,7 +10007,10 @@ function resolveSelectedTeam(comp, teamName, teamIdHint = null) {
     }
   }
 
-  const wanted = String(teamName || "").trim();
+  const wantedRaw = String(teamName || "").trim();
+  const wanted = (/^[-–—]+$/.test(wantedRaw) || isPlaceholderTeamName(wantedRaw) || isDescansaTeamName(wantedRaw))
+    ? ""
+    : wantedRaw;
   if (!wanted) return { teamName: null, teamId: hint || null };
 
   const exactRows = rows.filter(r => teamMatchesCalendarExact(r?.team, wanted));
@@ -10000,6 +10028,67 @@ function resolveSelectedTeam(comp, teamName, teamIdHint = null) {
   }
 
   const best = findBestClassifRow(rows, wanted);
+  const bestIsReliable = !!best && (
+    teamMatchesCalendarExact(best?.team || "", wanted)
+    || teamMatchesLoose(best?.team || "", wanted)
+  );
+  if (!bestIsReliable && competitionHasCalendarTeam(comp, wanted)) {
+    const allCalendarTeams = [
+      ...new Set((comp?.calendar || []).flatMap(m => [m?.home, m?.away]).filter(Boolean)),
+      ...new Set((comp?.postSeasonPhases || []).flatMap(phase => (phase?.matches || []).flatMap(m => [m?.home, m?.away])).filter(Boolean)),
+    ];
+    const calendarAlias = allCalendarTeams.find(name => teamMatchesCalendarExact(name || "", wanted))
+      || allCalendarTeams.find(name => teamMatchesLoose(name || "", wanted))
+      || wanted;
+    const classifHasWanted = (rows || []).some(r => teamMatchesCalendarExact(r?.team || "", wanted));
+    const classifHasAlias = (rows || []).some(r => teamMatchesCalendarExact(r?.team || "", calendarAlias));
+    const resolvedByExactOrLoose = (rows || []).find(r =>
+      teamMatchesCalendarExact(r?.team || "", calendarAlias)
+      || teamMatchesLoose(r?.team || "", calendarAlias)
+    ) || null;
+    const aliasBase = normalizeTeamNameStrict(getTeamBase(calendarAlias || wanted || ""));
+    const aliasSuffix = extractTeamSuffix(calendarAlias || wanted || "");
+    const baseCandidates = aliasBase
+      ? (rows || []).filter(r => normalizeTeamNameStrict(getTeamBase(r?.team || "")) === aliasBase)
+      : [];
+    let resolvedByBase = null;
+    if (!resolvedByExactOrLoose && baseCandidates.length === 1) {
+      const only = baseCandidates[0];
+      const rowSuffix = extractTeamSuffix(only?.team || "");
+      if (!rowSuffix || !aliasSuffix || rowSuffix === aliasSuffix) {
+        resolvedByBase = only;
+      }
+    }
+    const resolvedClassifRow = resolvedByExactOrLoose || resolvedByBase;
+    teamMatchDebug("resolveSelectedTeam.calendarAliasFallback", {
+      compId: String(comp?.id || ""),
+      compName: String(comp?.name || ""),
+      wanted,
+      classifHasWanted,
+      classifHasAlias,
+      classifResolved: !!resolvedClassifRow,
+      classifResolvedBy: resolvedByExactOrLoose ? "exactOrLoose" : (resolvedByBase ? "baseUnique" : "none"),
+      calendarHasWanted: true,
+      matchedTeamName: String(resolvedClassifRow?.team || calendarAlias || wanted),
+      matchedTeamId: resolvedClassifRow?.teamId ? String(resolvedClassifRow.teamId) : (hint || null),
+    });
+    return {
+      teamName: String(resolvedClassifRow?.team || calendarAlias || wanted),
+      teamId: resolvedClassifRow?.teamId ? String(resolvedClassifRow.teamId) : (hint || null),
+    };
+  }
+  if (!bestIsReliable) {
+    teamMatchDebug("resolveSelectedTeam.noReliableMatch", {
+      compId: String(comp?.id || ""),
+      wanted,
+      fallbackTeamName: String(best?.team || ""),
+      hint: hint || null,
+    });
+    return {
+      teamName: null,
+      teamId: hint || null,
+    };
+  }
   teamMatchDebug("resolveSelectedTeam.bestRow", {
     compId: String(comp?.id || ""),
     wanted,
@@ -12208,10 +12297,17 @@ function resolveClubTeamContext(compId, teamName, teamId = null, categoryHint = 
 function gatherTeamProfileCompetitions(profile) {
   const out = [];
   const seen = new Set();
+  const profileCategoryKey = normalizeCompKey(profile?.identityCategory || profile?.category || "");
+  const profileIsPrebenjami = profileCategoryKey.includes("prebenjami")
+    || profileCategoryKey.includes("pb")
+    || profileCategoryKey.includes("iniciacio");
+  const profileIsBenjami = profileCategoryKey.includes("benjami") && !profileIsPrebenjami;
 
   for (const [category, comps] of Object.entries(DB?.categories || {})) {
     for (const comp of (comps || [])) {
       if (!comp || is3x3Competition(comp)) continue;
+      const compIsPrebenjami = isPrebenjamiCompetition(comp);
+      if ((profileIsBenjami || profileIsPrebenjami) && (compIsPrebenjami !== profileIsPrebenjami)) continue;
       const season = seasonFromComp(comp);
       if (season !== profile.season) continue;
       const compIdentityCategory = getIdentityCategoryForComp(comp, category, profile.teamName || "");
@@ -12251,7 +12347,19 @@ function gatherTeamProfileCompetitions(profile) {
       const teamAliases = [...new Set(matched.filter(n => teamMatchesCalendarExact(n, canonicalTeam) || teamMatchesLoose(n, canonicalTeam)))];
 
       const teamRow = (comp.classification || []).find(r => teamAliases.some(n => teamMatchesCalendarExact(r?.team || "", n))) || null;
+      const exactProfileRow = (comp.classification || []).find(r => teamMatchesCalendarExact(r?.team || "", profile.teamName || "")) || null;
       const regularRaw = (comp.calendar || []).filter(m => teamAliases.some(n => teamMatchesCalendarExact(m?.home || "", n) || teamMatchesCalendarExact(m?.away || "", n)));
+      const phaseRaw = normalizePostSeasonPhases(comp?.postSeasonPhases || []).flatMap(phase => phase?.matches || []);
+      const phaseMatchesForTeam = phaseRaw.filter(m => teamAliases.some(n => teamMatchesCalendarExact(m?.home || "", n) || teamMatchesCalendarExact(m?.away || "", n)));
+      const exactProfileRowHasStats = exactProfileRow
+        ? ["pj", "pg", "pe", "pp", "gf", "gc", "pts"].some(k => Number(exactProfileRow?.[k] || 0) > 0)
+        : false;
+      if (exactProfileRow && !regularRaw.length && !phaseMatchesForTeam.length && !exactProfileRowHasStats) continue;
+      const allCompMatchesRaw = [...(comp.calendar || []), ...phaseRaw];
+      const distinctTeamsInMatches = new Set(allCompMatchesRaw.flatMap(m => [String(m?.home || "").trim(), String(m?.away || "").trim()]).filter(Boolean));
+      const suspiciousFinalsClassification = (comp?.postSeasonPhases || []).length > 0
+        && (comp?.classification || []).length > Math.max(12, distinctTeamsInMatches.size + 6);
+      if (suspiciousFinalsClassification && !phaseMatchesForTeam.length && !regularRaw.length) continue;
       const regularSeen = new Set();
       const regular = [];
       for (const m of regularRaw) {
@@ -12270,14 +12378,29 @@ function gatherTeamProfileCompetitions(profile) {
       const future = regular.filter(m => m?.homeScore == null || m?.awayScore == null).sort((a,b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
       const phaseFuture = buildUpcomingPhaseMatchesForTeam(comp, teamAliases);
 
+      const phasePlayed = phaseMatchesForTeam.filter(m => m?.homeScore != null && m?.awayScore != null);
+      if (suspiciousFinalsClassification) {
+        // Team-centric integrity guard for inflated finals tables.
+        if (!exactProfileRow) continue;
+        if (!played.length && !phasePlayed.length) continue;
+      }
+
+      const rowPlayedCount = Number(teamRow?.pj || exactProfileRow?.pj || 0);
+      const playedCount = Math.max(played.length + phasePlayed.length, rowPlayedCount);
+      const matchCount = Math.max(regular.length + phaseMatchesForTeam.length, playedCount);
+      const allFuture = [...future, ...phaseFuture]
+        .sort((a,b) => parseMatchTimestamp(a?.date || "", comp?.name || "") - parseMatchTimestamp(b?.date || "", comp?.name || ""));
+
       out.push({
         comp,
         category,
+        canonicalTeam: teamRow?.team || exactProfileRow?.team || canonicalTeam || profile.teamName || "",
+        canonicalTeamId: teamRow?.teamId != null ? String(teamRow.teamId) : (exactProfileRow?.teamId != null ? String(exactProfileRow.teamId) : null),
         matched: teamAliases,
         teamRow,
-        matchCount: regular.length,
-        playedCount: played.length,
-        nextDate: future[0]?.date || "",
+        matchCount,
+        playedCount,
+        nextDate: allFuture[0]?.date || "",
         phaseFutureCount: phaseFuture.length,
       });
     }
@@ -12365,7 +12488,7 @@ async function renderTeamProfile() {
         ${e.nextDate ? `<span>Proper: <b style="color:#1a2035">${esc(e.nextDate)}</b></span>` : ""}
         ${e.phaseFutureCount ? `<span>Fases futures: <b style="color:#1a2035">${e.phaseFutureCount}</b></span>` : ""}
       </div>
-      <button onclick="openDetail('${esc(comp.id)}','${esc(e.matched[0] || teamProfile.teamName)}','classif','${esc(String(teamProfile.teamId||""))}')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
+      <button onclick="openDetailFromTeamProfile('${esc(comp.id)}','${esc(e.canonicalTeam || e.matched[0] || teamProfile.teamName)}','${esc(String(e.canonicalTeamId || teamProfile.teamId || ""))}')" style="background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#003da5;cursor:pointer">Obrir competició</button>
     </div>`;
   }).join("");
 
@@ -12392,24 +12515,46 @@ async function renderTeamProfile() {
 }
 
 function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, clubKeyHint = null, source = "home") {
+  const sanitizeTeamInput = value => {
+    const v = String(value || "").trim();
+    if (!v) return "";
+    if (/^[-–—]+$/.test(v)) return "";
+    if (isPlaceholderTeamName(v) || isDescansaTeamName(v)) return "";
+    return v;
+  };
+  const comp = findComp(compId);
+  let safeTeamName = sanitizeTeamInput(teamName);
+  let safeTeamId = String(teamId || "").trim();
+  if (/^[-–—]+$/.test(safeTeamId)) safeTeamId = "";
+
+  if (!safeTeamName && !safeTeamId) {
+    teamMatchDebug("openTeamProfile.invalidInput", {
+      compId: String(compId || ""),
+      teamName: String(teamName || ""),
+      teamId: teamId != null ? String(teamId) : null,
+      source: String(source || ""),
+    });
+    alert("No s'ha pogut identificar l'equip per obrir la fitxa.");
+    return;
+  }
+
   teamMatchDebug("openTeamProfile.entry", {
     compId: String(compId || ""),
-    teamName: String(teamName || ""),
-    teamId: teamId != null ? String(teamId) : null,
+    teamName: String(safeTeamName || ""),
+    teamId: safeTeamId || null,
     categoryHint: String(categoryHint || ""),
     source: String(source || ""),
   });
-  const ctx = resolveClubTeamContext(compId, teamName, teamId, categoryHint);
-  const comp = findComp(compId);
+  const ctx = resolveClubTeamContext(compId, safeTeamName, safeTeamId || null, categoryHint);
   const season = seasonFromComp(comp);
   const category = categoryHint || ctx.category || getCatForComp(comp) || "Altres";
   const identityCategory = categoryHint
-    ? getIdentityCategoryForComp(comp, category, ctx.teamName || teamName || "")
-    : (ctx.identityCategory || getIdentityCategoryForComp(comp, category, ctx.teamName || teamName || ""));
-  const letter = extractSquadLetter(ctx.teamName || teamName || "");
+    ? getIdentityCategoryForComp(comp, category, ctx.teamName || safeTeamName || "")
+    : (ctx.identityCategory || getIdentityCategoryForComp(comp, category, ctx.teamName || safeTeamName || ""));
+  const letter = extractSquadLetter(ctx.teamName || safeTeamName || "");
   const identity = buildStrongTeamIdentity({
     clubName: ctx.clubName,
-    teamName: ctx.teamName || teamName,
+    teamName: ctx.teamName || safeTeamName,
     identityCategory,
     letter,
     season,
@@ -12418,10 +12563,11 @@ function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, c
   teamProfile = {
     ...identity,
     compId: String(compId || ""),
-    teamName: ctx.teamName || teamName || "",
-    teamId: ctx.teamId || teamId || null,
+    teamName: ctx.teamName || safeTeamName || "",
+    teamId: ctx.teamId || safeTeamId || null,
     category,
     identityCategory,
+    source,
     clubKey: clubKeyHint || ctx.clubKey || null,
   };
   teamProfileReturnScreen = source;
@@ -12436,6 +12582,66 @@ function openTeamProfile(compId, teamName, teamId = null, categoryHint = null, c
 
 window.openTeamProfileFromClub = (compId, teamName, teamId = null, category = null, clubKey = null) => {
   openTeamProfile(compId, teamName, teamId, category, clubKey, "home");
+};
+
+window.openDetailFromTeamProfile = (compId, teamName, teamId = null) => {
+  const sanitize = value => {
+    const v = String(value || "").trim();
+    if (!v) return "";
+    if (/^[-–—]+$/.test(v)) return "";
+    if (isPlaceholderTeamName(v) || isDescansaTeamName(v)) return "";
+    return v;
+  };
+  const inputTeamName = sanitize(teamName);
+  const inputTeamId = sanitize(teamId);
+  const profileTeamName = sanitize(teamProfile?.teamName);
+  const profileTeamId = sanitize(teamProfile?.teamId);
+  const hasStrongTeamBinding = (comp, wantedTeamName, wantedTeamId) => {
+    if (!comp) return false;
+    const safeTeamName = sanitize(wantedTeamName);
+    const safeTeamId = sanitize(wantedTeamId);
+    if (safeTeamId && competitionHasClassificationTeamId(comp, safeTeamId)) return true;
+    if (!safeTeamName) return false;
+
+    const classRows = comp?.classification || [];
+    const hasClassifNameMatch = classRows.some(r =>
+      teamMatchesCalendarExact(r?.team || "", safeTeamName)
+      || teamMatchesLoose(r?.team || "", safeTeamName)
+    );
+    if (hasClassifNameMatch) return true;
+
+    // For competitions without usable classification rows, allow calendar-only binding.
+    if (!classRows.length && competitionHasCalendarTeam(comp, safeTeamName)) return true;
+    return false;
+  };
+
+  const clickedComp = findComp(compId);
+  const profileComp = findComp(teamProfile?.compId || "");
+  const finalTeamName = inputTeamName || profileTeamName;
+  const finalTeamId = inputTeamId || profileTeamId;
+  const clickedStrong = hasStrongTeamBinding(clickedComp, finalTeamName, finalTeamId);
+  const profileStrong = hasStrongTeamBinding(profileComp, finalTeamName, finalTeamId);
+  const rerouteToProfileComp = !!(teamProfile?.compId && profileStrong && !clickedStrong);
+  const finalCompId = rerouteToProfileComp ? String(teamProfile.compId) : String(compId || "");
+  const finalComp = findComp(finalCompId);
+  teamMatchDebug("teamProfile.openDetail.click", {
+    compId: String(compId || ""),
+    compName: String(clickedComp?.name || ""),
+    profileCompId: String(teamProfile?.compId || ""),
+    profileCompName: String(profileComp?.name || ""),
+    clickedStrong,
+    profileStrong,
+    rerouteToProfileComp,
+    finalCompId,
+    finalCompName: String(finalComp?.name || ""),
+    inputTeamName: inputTeamName || null,
+    inputTeamId: inputTeamId || null,
+    profileTeamName: profileTeamName || null,
+    profileTeamId: profileTeamId || null,
+    finalTeamName: finalTeamName || null,
+    finalTeamId: finalTeamId || null,
+  });
+  openDetail(finalCompId, finalTeamName || null, "classif", finalTeamId || null);
 };
 
 window.openTeamProfileFromClassif = (teamName, teamId = null) => {
@@ -13751,9 +13957,70 @@ async function ensurePilotFinalsForCurrentDetail(rawComp) {
 
 function openDetail(compId,teamName,tab,teamId=null){
   const rawComp = findComp(compId);
-  const selected = resolveSelectedTeam(rawComp, teamName || null, teamId || null);
-  detailComp = buildDetailCompView(rawComp, selected.teamName, selected.teamId);
-  const mergedSelected = resolveSelectedTeam(detailComp, selected.teamName, selected.teamId);
+  let preferredTeamName = String(teamName || "").trim();
+  if (/^[-–—]+$/.test(preferredTeamName) || isPlaceholderTeamName(preferredTeamName) || isDescansaTeamName(preferredTeamName)) {
+    preferredTeamName = "";
+  }
+  let preferredTeamId = String(teamId || "").trim();
+  if (/^[-–—]+$/.test(preferredTeamId)) preferredTeamId = "";
+
+  const teamScreenVisible = !!($("screen-team") && $("screen-team").style.display === "flex");
+  if (teamScreenVisible && teamProfile) {
+    const profileTeamName = String(teamProfile?.teamName || "").trim();
+    const profileTeamId = String(teamProfile?.teamId || "").trim();
+    const profileById = profileTeamId && competitionHasClassificationTeamId(rawComp, profileTeamId);
+    const profileByName = profileTeamName
+      && ((rawComp?.classification || []).some(r => teamMatchesCalendarExact(r?.team || "", profileTeamName))
+        || competitionHasCalendarTeam(rawComp, profileTeamName));
+    if (profileById || profileByName) {
+      preferredTeamName = profileTeamName;
+      preferredTeamId = profileById ? profileTeamId : "";
+      teamMatchDebug("openDetail.forceProfileTeamContext", {
+        compId: String(rawComp?.id || ""),
+        teamName: preferredTeamName || null,
+        teamId: preferredTeamId || null,
+      });
+    }
+  }
+
+  const providedTeamMatchesCompById = preferredTeamId
+    ? competitionHasClassificationTeamId(rawComp, preferredTeamId)
+    : false;
+  const providedTeamMatchesCompByName = preferredTeamName
+    ? ((rawComp?.classification || []).some(r => teamMatchesCalendarExact(r?.team || "", preferredTeamName))
+      || competitionHasCalendarTeam(rawComp, preferredTeamName))
+    : false;
+  if ((preferredTeamName || preferredTeamId) && !providedTeamMatchesCompById && !providedTeamMatchesCompByName) {
+    teamMatchDebug("openDetail.invalidTeamContext", {
+      compId: String(rawComp?.id || ""),
+      teamName: preferredTeamName || null,
+      teamId: preferredTeamId || null,
+    });
+    preferredTeamName = "";
+    preferredTeamId = "";
+  }
+
+  if (!preferredTeamName && !preferredTeamId && teamProfile) {
+    const profileTeamName = String(teamProfile?.teamName || "").trim();
+    const profileTeamId = String(teamProfile?.teamId || "").trim();
+    if (profileTeamId && competitionHasClassificationTeamId(rawComp, profileTeamId)) {
+      preferredTeamId = profileTeamId;
+      preferredTeamName = profileTeamName;
+    } else if (profileTeamName && competitionHasCalendarTeam(rawComp, profileTeamName)) {
+      preferredTeamName = profileTeamName;
+    }
+  }
+
+  const selected = resolveSelectedTeam(rawComp, preferredTeamName || null, preferredTeamId || null);
+  const selectedForDetail = (teamScreenVisible && !selected?.teamName && !selected?.teamId)
+    ? (teamMatchDebug("openDetail.unresolvedTeamFallbackNeutral", {
+        compId: String(rawComp?.id || ""),
+        preferredTeamName: preferredTeamName || null,
+        preferredTeamId: preferredTeamId || null,
+      }), { teamName: null, teamId: null })
+    : selected;
+  detailComp = buildDetailCompView(rawComp, selectedForDetail.teamName, selectedForDetail.teamId);
+  const mergedSelected = resolveSelectedTeam(detailComp, selectedForDetail.teamName, selectedForDetail.teamId);
   detailTeam = mergedSelected.teamName || null;
   detailTeamId = mergedSelected.teamId || null;
   detailTab=tab||"classif";
@@ -14264,7 +14531,7 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
     });
 
     closePlayerModal();
-    openTeamProfile(comp.id, teamForProfile, teamIdForProfile, resolvedCategoryForProfile, null, "home");
+    openTeamProfile(comp.id, teamForProfile, teamIdForProfile, resolvedCategoryForProfile, null, "player-modal");
   } catch (err) {
     teamMatchDebug("modal.error", {
       wantedTeam,
