@@ -9908,63 +9908,14 @@ function competitionHasClassificationTeamId(comp, teamId) {
 
 function ensureTeamMatchDebugDefaults() {
   if (typeof window === "undefined") return;
-  window.__TEAM_MATCH_DEBUG__ = true;
+  window.__TEAM_MATCH_DEBUG__ = false;
   if (!Array.isArray(window.__TEAM_MATCH_LOGS__)) {
     window.__TEAM_MATCH_LOGS__ = [];
   }
 }
 
 function renderTeamMatchDebugOverlay(entry) {
-  try {
-    if (!window.__TEAM_MATCH_DEBUG__) return;
-    let el = document.getElementById("team-match-debug-overlay");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "team-match-debug-overlay";
-      el.style.position = "fixed";
-      el.style.right = "10px";
-      el.style.bottom = "10px";
-      el.style.maxWidth = "min(92vw, 420px)";
-      el.style.maxHeight = "42vh";
-      el.style.overflow = "auto";
-      el.style.zIndex = "99999";
-      el.style.background = "rgba(15,23,42,.94)";
-      el.style.color = "#e2e8f0";
-      el.style.border = "1px solid rgba(148,163,184,.35)";
-      el.style.borderRadius = "10px";
-      el.style.padding = "8px 10px";
-      el.style.fontSize = "11px";
-      el.style.lineHeight = "1.35";
-      el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-      el.style.boxShadow = "0 6px 18px rgba(0,0,0,.35)";
-      document.body.appendChild(el);
-    }
-    const stage = String(entry?.stage || "");
-    const team = String(entry?.wantedTeam || entry?.teamForProfile || entry?.matchedTeamName || "");
-    const cat = String(entry?.categoryHint || entry?.categoryForProfile || "");
-    const id = String(entry?.teamIdHint || entry?.teamIdForProfile || entry?.matchedTeamId || "");
-    const comp = String(entry?.compIdHint || entry?.compId || "");
-    const hiddenKeys = new Set(["ts", "stage", "wantedTeam", "teamForProfile", "matchedTeamName", "categoryHint", "categoryForProfile", "teamIdHint", "teamIdForProfile", "matchedTeamId", "compIdHint", "compId"]);
-    const extras = Object.entries(entry || {})
-      .filter(([k, v]) => !hiddenKeys.has(k) && v != null && v !== "" && typeof v !== "object")
-      .slice(0, 10)
-      .map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(String(v))}</div>`)
-      .join("");
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-        <b style="color:#93c5fd">TEAM MATCH DEBUG</b>
-        <button onclick="window.__TEAM_MATCH_DEBUG__=false;const d=document.getElementById('team-match-debug-overlay');if(d)d.remove();" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:1px 6px;cursor:pointer;font-size:10px">amagar</button>
-      </div>
-      <div><b>stage:</b> ${esc(stage)}</div>
-      <div><b>team:</b> ${esc(team || "-")}</div>
-      <div><b>cat:</b> ${esc(cat || "-")}</div>
-      <div><b>teamId:</b> ${esc(id || "-")}</div>
-      <div><b>compId:</b> ${esc(comp || "-")}</div>
-      ${extras}
-    `;
-  } catch (_) {
-    // no-op
-  }
+  // Visual debug overlay intentionally disabled.
 }
 
 function teamMatchDebug(stage, payload = {}) {
@@ -12497,7 +12448,6 @@ async function renderTeamProfile() {
     : `<div style="text-align:center;padding:16px;color:#94a3b8">Jugadors no disponibles.</div>`;
 
   body.innerHTML = `
-    ${window.__TEAM_MATCH_DEBUG__ ? `<div style="background:#fff8e1;border:1px solid #facc15;border-radius:10px;padding:7px 10px;margin-bottom:10px;font-size:11px;color:#713f12;line-height:1.35"><b>Debug match equip</b><br/>stage: ${esc(String(lastDebug?.stage || "-"))}<br/>team: ${esc(String(lastDebug?.wantedTeam || lastDebug?.teamName || lastDebug?.teamForProfile || lastDebug?.matchedTeamName || "-"))}<br/>cat: ${esc(String(lastDebug?.categoryHint || lastDebug?.categoryForProfile || "-"))}<br/>teamId: ${esc(String(lastDebug?.teamIdHint || lastDebug?.teamId || lastDebug?.teamIdForProfile || lastDebug?.matchedTeamId || "-"))}<br/>compId: ${esc(String(lastDebug?.compIdHint || lastDebug?.compId || "-"))}${debugHistory}</div>` : ""}
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px">
       ${stat(comps.length, "Competicions")}
       ${stat(totals.gf, "Gols Fets", "#e5001c")}
