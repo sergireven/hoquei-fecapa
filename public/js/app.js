@@ -1698,7 +1698,7 @@ async function renderAdminClassificationSourcePilotsPanel(body) {
     const uniqueFecapa = new Set(pilots.map(p => String(p?.fecapaCompetitionId || "")).filter(Boolean)).size;
 
     const jokComps = Object.values(DB?.categories || {}).flat().filter(Boolean);
-    const jokById = new Map(jokComps.map(c => [String(c?.id || ""), c]));
+    const jokById = new Map(jokComps.map(c => [String(c?.jokCompId || c?.id || ""), c]));
 
     const fecapaComps = Object.values(fecapaModel?.categories || fecapaCategoriesDB?.categories || {})
       .flat()
@@ -6145,7 +6145,7 @@ async function renderAdminMappingHubPanel(body) {
   for (const [catKey, comps] of Object.entries(DB?.categories || {})) {
     for (const comp of comps || []) jokComps.push({ ...comp, _categoryKey: catKey });
   }
-  const jokById = new Map(jokComps.map(c => [String(c?.id || ""), c]));
+  const jokById = new Map(jokComps.map(c => [String(c?.jokCompId || c?.id || ""), c]));
 
   const fecapaComps = Object.values(fecapaModel?.categories || {}).flat().filter(Boolean);
   const fecapaById = new Map(fecapaComps.map(c => [String(c?.competitionId || ""), c]));
@@ -7336,7 +7336,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
 
   const competitions = await fetchAllRows(() =>
     _sb.from("competitions")
-      .select("id, name, category, season, is_finished")
+      .select("id, jok_comp_id, name, category, season, is_finished")
       .eq("season", key)
       .order("name", { ascending: true })
   );
@@ -7374,7 +7374,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
   for (const team of teams || []) {
     const clubDbId = String(team?.club_id || "").trim();
     if (!clubDbId || clubShieldByDbId[clubDbId]) continue;
-    const byName = fallbackShieldByClubName.get(normalizeClubNameForShieldMap(team?.club_name || ""));
+    const byName = fallbackShieldByClubName.get(normalizeClubNameForShieldMap(team?.team_name || ""));
     const fallbackShield = normalizeShieldKey(byName || "");
     if (fallbackShield) clubShieldByDbId[clubDbId] = fallbackShield;
   }
@@ -7420,6 +7420,7 @@ async function loadSeasonDataFromDatabase(seasonKey) {
 
     categories[categoryLabel].push({
       id: compId,
+      jokCompId: String(comp?.jok_comp_id || "").trim() || null,
       slug: "",
       name: String(comp?.name || "").trim(),
       classification: classRows,
@@ -7452,24 +7453,60 @@ async function loadSeasonDataFromDatabase(seasonKey) {
 
 async function loadSeasonDataForEntry(entry) {
   if (!entry?.dataUrl) throw new Error("Entrada de temporada invàlida");
+  dataSourceDebug("season.load.start", {
+    seasonKey: String(entry?.key || ""),
+    seasonLabel: String(entry?.label || ""),
+    dataUrl: String(entry?.dataUrl || ""),
+  });
 
   // Historical seasons are DB-first. JSON remains as fallback while migration is progressive.
   if (entry.key && entry.key !== "current") {
     try {
+      dataSourceDebug("season.load.db.try", { seasonKey: String(entry.key || "") });
       const fromDb = await loadSeasonDataFromDatabase(entry.key);
-      if (fromDb?.categories && Object.keys(fromDb.categories).length) return fromDb;
+      if (fromDb?.categories && Object.keys(fromDb.categories).length) {
+        dataSourceDebug("season.load.db.ok", {
+          seasonKey: String(entry.key || ""),
+          generatedFrom: String(fromDb?.generatedFrom || "supabase-db"),
+          totalComps: Number(fromDb?.totalComps || 0),
+        });
+        return fromDb;
+      }
+      dataSourceDebug("season.load.db.empty", { seasonKey: String(entry.key || "") });
     } catch (err) {
       console.warn(`[season] DB load failed for ${entry.key}:`, err?.message || err);
+      dataSourceDebug("season.load.db.error", {
+        seasonKey: String(entry.key || ""),
+        message: String(err?.message || err || ""),
+      });
     }
   }
 
   try {
     const primary = await fetchJsonFile(entry.dataUrl);
-    if (primary?.categories) return primary;
-  } catch {}
+    if (primary?.categories) {
+      dataSourceDebug("season.load.json.ok", {
+        seasonKey: String(entry?.key || ""),
+        generatedFrom: String(primary?.generatedFrom || "json"),
+      });
+      return primary;
+    }
+  } catch (err) {
+    dataSourceDebug("season.load.json.error", {
+      seasonKey: String(entry?.key || ""),
+      message: String(err?.message || err || ""),
+    });
+  }
 
   const fallback = await loadSeasonDataFromArchiveChunks(entry.key);
-  if (fallback?.categories) return fallback;
+  if (fallback?.categories) {
+    dataSourceDebug("season.load.archive.ok", {
+      seasonKey: String(entry?.key || ""),
+      generatedFrom: String(fallback?.generatedFrom || "archive-chunks"),
+      totalComps: Number(fallback?.totalComps || 0),
+    });
+    return fallback;
+  }
 
   throw new Error(`No s'ha pogut carregar la temporada ${entry?.label || entry?.key || ""}`.trim());
 }
@@ -7751,6 +7788,43 @@ function setGlobalLoadingState(isLoading, noteText = "Carregant dades...") {
   if (loading) loading.style.display = "none";
 }
 
+function ensureDataSourceDebugDefaults() {
+  if (typeof window === "undefined") return;
+  if (typeof window.__DATA_SOURCE_DEBUG__ !== "boolean") {
+    window.__DATA_SOURCE_DEBUG__ = true;
+  }
+  if (!Array.isArray(window.__DATA_SOURCE_LOGS__)) {
+    window.__DATA_SOURCE_LOGS__ = [];
+  }
+}
+
+function renderDataSourceDebugOverlay() {
+  if (typeof window === "undefined") return;
+  const el = document.getElementById("data-source-debug-overlay");
+  if (el) el.remove();
+}
+
+function dataSourceDebug(stage, payload = {}) {
+  try {
+    ensureDataSourceDebugDefaults();
+    if (!window.__DATA_SOURCE_DEBUG__) return;
+    const entry = {
+      ts: new Date().toISOString(),
+      stage: String(stage || ""),
+      ...payload,
+    };
+    window.__DATA_SOURCE_LOGS__.push(entry);
+    if (window.__DATA_SOURCE_LOGS__.length > 200) {
+      window.__DATA_SOURCE_LOGS__.splice(0, window.__DATA_SOURCE_LOGS__.length - 200);
+    }
+    window.__LAST_DATA_SOURCE_DEBUG__ = entry;
+    console.info("[data-source]", entry);
+    renderDataSourceDebugOverlay();
+  } catch (_) {
+    // no-op
+  }
+}
+
 async function loadSeasonCatalog() {
   let manifest = null;
   try {
@@ -7811,6 +7885,7 @@ async function switchActiveSeason(nextKey, options = {}) {
   }
 
   try {
+    const fromCache = seasonDataCache.has(nextKey);
     if (!seasonDataCache.has(nextKey)) {
       const data = await loadSeasonDataForEntry(target);
       if (!data?.categories) throw new Error(`Dataset invàlid per ${target.label}`);
@@ -7832,6 +7907,13 @@ async function switchActiveSeason(nextKey, options = {}) {
     detailTeamId = null;
     selectedClub = null;
     homeTab = "favs";
+    dataSourceDebug("season.switch.applied", {
+      seasonKey: String(nextKey || ""),
+      seasonLabel: String(target?.label || ""),
+      fromCache: String(fromCache),
+      generatedFrom: String(DB?.generatedFrom || "json"),
+      totalComps: Number(DB?.totalComps || 0),
+    });
     renderHome();
   } catch (err) {
     DB = prevDb;
@@ -8748,7 +8830,8 @@ function applyClassificationSourceMerge() {
         comp.classificationSource = "none";
       }
 
-      const pilot = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(comp.id));
+      const pilotCompId = String(comp?.jokCompId || comp?.id || "");
+      const pilot = getClassificationSourcePilots().find(p => String(p.jokCompId) === pilotCompId);
 
       const fecapaCandidates = collectFecapaCandidatesForComp(comp, pilot);
       const mergedPhases = normalizePostSeasonPhases(
@@ -8772,7 +8855,7 @@ function applyClassificationSourceMerge() {
       // No forcem FECAPA si el grup resolt no té classificació: mantenim jok.cat.
       if (!hasClassRows(fecapaRows)) {
         comp.classificationPilot = {
-          jokCompId: String(comp.id),
+          jokCompId: pilotCompId,
           fecapaCompetitionId: String(pilot.fecapaCompetitionId),
           fecapaGroupId: String(bestFecapaGroup.groupId || ""),
           fecapaGroupName: String(bestFecapaGroup.groupName || ""),
@@ -8785,7 +8868,7 @@ function applyClassificationSourceMerge() {
       comp.classification = fecapaRows;
       comp.classificationSource = "fecapa";
       comp.classificationPilot = {
-        jokCompId: String(comp.id),
+        jokCompId: pilotCompId,
         fecapaCompetitionId: String(pilot.fecapaCompetitionId),
         fecapaGroupId: String(bestFecapaGroup.groupId || ""),
         fecapaGroupName: String(bestFecapaGroup.groupName || ""),
@@ -8951,9 +9034,18 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
     if (fromDb && Object.keys(fromDb).length) {
       actesCache[key] = fromDb;
       actaDataSourceByCacheKey.set(key, "db");
+      dataSourceDebug("actes.load.db.ok", {
+        seasonKey: String(seasonKey || ""),
+        catSlug: String(normalizedSlug || ""),
+        rows: Number(Object.keys(fromDb || {}).length),
+      });
       indexSeasonActesLookup(actesCache[key], seasonKey);
       return actesCache[key];
     }
+    dataSourceDebug("actes.load.db.empty", {
+      seasonKey: String(seasonKey || ""),
+      catSlug: String(normalizedSlug || ""),
+    });
   }
 
   const baseUrl = getSeasonActesBaseUrl(seasonKey);
@@ -8963,9 +9055,20 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     actesCache[key] = await res.json();
     actaDataSourceByCacheKey.set(key, seasonUsesDatabaseDataset(seasonKey) ? "json-fallback" : "json");
+    dataSourceDebug("actes.load.json.ok", {
+      seasonKey: String(seasonKey || ""),
+      catSlug: String(normalizedSlug || ""),
+      source: String(actaDataSourceByCacheKey.get(key) || "json"),
+      rows: Number(Object.keys(actesCache[key] || {}).length),
+    });
   } catch(e) {
     actesCache[key] = {};
     actaDataSourceByCacheKey.set(key, "empty");
+    dataSourceDebug("actes.load.json.empty", {
+      seasonKey: String(seasonKey || ""),
+      catSlug: String(normalizedSlug || ""),
+      source: "empty",
+    });
   }
 
   indexSeasonActesLookup(actesCache[key], seasonKey);
@@ -11581,7 +11684,8 @@ function buildPlayerFavCard(jid) {
 }
 
 function buildClubFavCard(fav, clubMap) {
-  const club = clubMap?.get(fav.key) || clubMap?.get(decodeHtml(fav.key));
+  const resolved = resolveClubEntryByKey(clubMap, fav.key);
+  const club = resolved?.entry || null;
   const displayName = normalizeJokClubDisplayName(club?.displayName || fav.displayName);
   const clubId = club?.clubId || fav.clubId;
   const teamCount = club?.teams.length ?? 0;
@@ -11597,7 +11701,7 @@ function buildClubFavCard(fav, clubMap) {
         <button onclick="removeClubFav('${esc(fav.key)}')" style="background:none;border:none;color:#cbd5e1;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 11px">
-        <button onclick="selectClub('${esc(fav.key)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">🏟 Veure club</button>
+        <button onclick="selectClub('${esc(resolved?.key || fav.key)}')" style="flex:1;background:#f5f7fc;border:1px solid #e2e6ef;border-radius:8px;padding:7px;font-size:12px;font-weight:600;color:#003da5;cursor:pointer">🏟 Veure club</button>
       </div>
     </div>`;
 }
@@ -11770,7 +11874,8 @@ function semanticClubKey(name) {
 function rowsForClubMap(comp) {
   const classRows = (comp?.classification || [])
     .filter(r => r && String(r.team || "").trim())
-    .filter(r => !isDescansaTeamName(r.team) && !isPlaceholderTeamName(r.team));
+    .filter(r => !isDescansaTeamName(r.team) && !isPlaceholderTeamName(r.team))
+    .filter(r => !isCalendarFilterNoiseName(r.team));
   if (classRows.length) return classRows;
 
   const teamRows = (comp?.teams || [])
@@ -11784,7 +11889,8 @@ function rowsForClubMap(comp) {
         clubId,
       };
     })
-    .filter(r => String(r.team || "").trim() && !isDescansaTeamName(r.team));
+    .filter(r => String(r.team || "").trim() && !isDescansaTeamName(r.team))
+    .filter(r => !isPlaceholderTeamName(r.team) && !isCalendarFilterNoiseName(r.team));
 
   if (teamRows.length) return teamRows;
 
@@ -11794,7 +11900,7 @@ function rowsForClubMap(comp) {
     const pair = [m?.home, m?.away];
     for (const rawName of pair) {
       const team = normalizeJokClubDisplayName(rawName || "");
-      if (!team || isDescansaTeamName(team)) continue;
+      if (!team || isDescansaTeamName(team) || isPlaceholderTeamName(team) || isCalendarFilterNoiseName(team)) continue;
       const k = team.toLowerCase().replace(/\s+/g, " ").trim();
       if (!k || seen.has(k)) continue;
       seen.add(k);
@@ -11985,8 +12091,13 @@ function getIdentityCategoryForComp(comp, fallbackCategory = null, teamNameHint 
 }
 
 window.selectClub = function(key) {
-  const entry = buildClubMap().get(key);
-  if (entry) { selectedClub={key,...entry}; renderClubDashboard(); window.scrollTo(0,0); }
+  const clubMap = buildClubMap();
+  const resolved = resolveClubEntryByKey(clubMap, key);
+  if (resolved?.entry) {
+    selectedClub = { key: resolved.key, ...resolved.entry };
+    renderClubDashboard();
+    window.scrollTo(0,0);
+  }
 };
 
 function findClubKeyByTeamName(teamName) {
@@ -12074,7 +12185,7 @@ function renderClubDashboard() {
         return ts >= (Date.now() - (45 * 24 * 60 * 60 * 1000));
       })()
     );
-    if (allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
+    if (isCurrentSeasonView() && allOnlyActive && !isActive(comp) && !hasPendingTeamMatch) return "";
     const playedPct = getCompPlayedPct(comp);
     const statusFlag = (!isCurrentSeasonView() || forcedFinishedComp || (!hasPendingTeamMatch && playedPct >= 100))
       ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#ecfdf3;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:800;line-height:1;flex-shrink:0">✅ Acabada</span>`
@@ -13168,7 +13279,7 @@ function renderAllComps(cursor) {
   const allCats=["ALL",...topKeys];
 
   const filterComps = comps => comps.filter(c => {
-    if (allOnlyActive && !isActive(c)) return false;
+    if (isCurrentSeasonView() && allOnlyActive && !isActive(c)) return false;
     if (!allSearch) return true;
     const q = allSearch.toLowerCase();
     return c.name.toLowerCase().includes(q) || (c.classification || []).some(r => r.team && r.team.toLowerCase().includes(q));
@@ -13848,7 +13959,8 @@ function renderDetailHeaderMeta() {
   const phaseCount = (detailComp.postSeasonPhases || []).filter(p => (p?.matches || []).length > 0).length;
   const phaseMatchCount = normalizePostSeasonPhases(detailComp.postSeasonPhases || []).reduce((acc, p) => acc + ((p?.matches || []).length), 0);
   const isAdmin = profileHasRole(currentProfile, "admin");
-  const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === String(detailComp.id));
+  const detailPilotId = String(detailComp?.jokCompId || detailComp?.id || "");
+  const pilotCfg = getClassificationSourcePilots().find(p => String(p.jokCompId) === detailPilotId);
   const pilotMap = detailComp.classificationPilot || null;
   const mergeInfo = detailComp.detailMergeInfo || null;
   const pilotMeta = detailComp.finalsPilotMeta || null;
@@ -13869,7 +13981,8 @@ function renderDetailHeaderMeta() {
 
   const pilotSourcesInfo = pilotSources ? `<div><span style="font-weight:700;color:#1a2035">Fonts fases finals:</span> jok ${esc(String(pilotSources?.jok?.matchCount ?? 0))} · fecapa ${esc(String(pilotSources?.fecapa?.matchCount ?? 0))}</div>` : "";
   const adminMeta = isAdmin ? `<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e6ef;border-radius:10px;font-size:11px;color:#475569;line-height:1.45">
-    <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailComp.id || "?"))}</div>
+    <div><span style="font-weight:700;color:#1a2035">jok.cat:</span> ${esc(String(detailPilotId || "sense jok_comp_id"))}</div>
+    <div><span style="font-weight:700;color:#1a2035">comp DB:</span> ${esc(String(detailComp.id || "?"))}</div>
     ${actaSourceInfo}
     <div><span style="font-weight:700;color:#1a2035">FECAPA mapping:</span> ${pilotMap ? `comp ${esc(pilotMap.fecapaCompetitionId || "?")} · grup ${esc(pilotMap.fecapaGroupId || "?")} (${esc(pilotMap.fecapaGroupName || "-")})` : (pilotCfg ? `comp ${esc(pilotCfg.fecapaCompetitionId || "?")} · token ${esc(pilotCfg.preferredGroupToken || "-")}` : "sense mapping pilot")}</div>
     ${mergeInfo && mergeInfo.merged ? `<div><span style="font-weight:700;color:#1a2035">Vista fusionada:</span> classif de ${esc(mergeInfo.classificationFromCompId || "?")} · calendari de ${esc(mergeInfo.calendarFromCompId || "?")} · candidats: ${esc((mergeInfo.sameNameCompIds || []).join(", "))}</div>` : ""}
@@ -14289,7 +14402,21 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
   };
 
   const wantedTeam = sanitizeHint(teamName);
-  const wantedSeason = String(seasonKey || "").trim() || activeSeasonKey;
+  const resolveSeasonKeyFromInput = value => {
+    const raw = String(value || "").trim();
+    if (!raw) return String(activeSeasonKey || "current");
+    const byExact = (seasonCatalog || []).find(s => String(s?.key || "") === raw || String(s?.label || "") === raw);
+    if (byExact?.key) return String(byExact.key);
+
+    const token = raw.replace(/\//g, "-");
+    const byToken = (seasonCatalog || []).find(s => {
+      const key = String(s?.key || "");
+      const label = String(s?.label || "");
+      return key.includes(token) || label.includes(token);
+    });
+    return String(byToken?.key || raw);
+  };
+  const wantedSeason = resolveSeasonKeyFromInput(seasonKey);
   const wantedCategoryNorm = String(categoryHint || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -14325,8 +14452,15 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
     .toLowerCase()
     .trim();
 
-  const compMatchesCategory = comp => {
-    if (!wantedCategoryNorm) return true;
+  const teamMatchesByBase = (a, b) => {
+    const baseA = normalizeTeamNameStrict(getTeamBase(a || ""));
+    const baseB = normalizeTeamNameStrict(getTeamBase(b || ""));
+    if (!baseA || !baseB) return false;
+    return baseA === baseB;
+  };
+
+  const compMatchesCategory = (comp, strictCategory = true) => {
+    if (!strictCategory || !wantedCategoryNorm) return true;
     const compCatNorm = normalizeCategoryLocal(comp?.category || getCatForComp(comp) || "");
     const compIdentityNorm = normalizeCategoryLocal(getIdentityCategoryForComp(comp, comp?.category || getCatForComp(comp) || "", wantedTeam) || "");
     return (!compCatNorm && !compIdentityNorm)
@@ -14373,23 +14507,27 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
     return null;
   };
 
-  const hasTeamInComp = comp => {
+  const hasTeamInComp = (comp, strictCategory = true) => {
     if (!comp) return false;
-    if (!compMatchesCategory(comp)) return false;
+    if (!compMatchesCategory(comp, strictCategory)) return false;
     if (findRowByHints(comp)) return true;
     const inClassif = (comp.classification || []).some(r =>
       teamMatchesCalendarExact(r?.team || "", wantedTeam) || teamMatchesLoose(r?.team || "", wantedTeam)
     );
     if (inClassif) return true;
+    const inClassifByBase = (comp.classification || []).some(r => teamMatchesByBase(r?.team || "", wantedTeam));
+    if (inClassifByBase) return true;
     return (comp.calendar || []).some(m =>
       teamMatchesCalendarExact(m?.home || "", wantedTeam)
       || teamMatchesCalendarExact(m?.away || "", wantedTeam)
       || teamMatchesLoose(m?.home || "", wantedTeam)
       || teamMatchesLoose(m?.away || "", wantedTeam)
+      || teamMatchesByBase(m?.home || "", wantedTeam)
+      || teamMatchesByBase(m?.away || "", wantedTeam)
     );
   };
 
-  const resolveBestTeamComp = () => {
+  const resolveBestTeamComp = (strictCategory = true) => {
     const allComps = Object.values(DB?.categories || {}).flat();
     let bestComp = null;
     let bestTeamName = wantedTeam;
@@ -14397,7 +14535,7 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
 
     for (const comp of allComps) {
       if (!comp || is3x3Competition(comp)) continue;
-      if (!compMatchesCategory(comp)) continue;
+      if (!compMatchesCategory(comp, strictCategory)) continue;
       let score = 0;
       let candidateName = wantedTeam;
 
@@ -14409,16 +14547,23 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
 
       const exactClassif = (comp.classification || []).find(r => teamMatchesCalendarExact(r?.team || "", wantedTeam));
       const looseClassif = exactClassif ? null : (comp.classification || []).find(r => teamMatchesLoose(r?.team || "", wantedTeam));
-      if (exactClassif || looseClassif) {
+      const baseClassif = (exactClassif || looseClassif)
+        ? null
+        : (comp.classification || []).find(r => teamMatchesByBase(r?.team || "", wantedTeam));
+      if (exactClassif || looseClassif || baseClassif) {
         score += 1000;
-        candidateName = (exactClassif || looseClassif)?.team || wantedTeam;
+        candidateName = (exactClassif || looseClassif || baseClassif)?.team || wantedTeam;
       } else {
         const exactCal = (comp.calendar || []).find(m => teamMatchesCalendarExact(m?.home || "", wantedTeam) || teamMatchesCalendarExact(m?.away || "", wantedTeam));
         const looseCal = exactCal ? null : (comp.calendar || []).find(m => teamMatchesLoose(m?.home || "", wantedTeam) || teamMatchesLoose(m?.away || "", wantedTeam));
-        if (!exactCal && !looseCal) continue;
-        score += exactCal ? 800 : 600;
-        const m = exactCal || looseCal;
-        candidateName = teamMatchesLoose(m?.home || "", wantedTeam) ? (m?.home || wantedTeam) : (m?.away || wantedTeam);
+        const baseCal = (exactCal || looseCal)
+          ? null
+          : (comp.calendar || []).find(m => teamMatchesByBase(m?.home || "", wantedTeam) || teamMatchesByBase(m?.away || "", wantedTeam));
+        if (!exactCal && !looseCal && !baseCal) continue;
+        score += exactCal ? 800 : (looseCal ? 600 : 500);
+        const m = exactCal || looseCal || baseCal;
+        const homeMatches = teamMatchesLoose(m?.home || "", wantedTeam) || teamMatchesByBase(m?.home || "", wantedTeam);
+        candidateName = homeMatches ? (m?.home || wantedTeam) : (m?.away || wantedTeam);
       }
 
       score += competitionPriority(comp);
@@ -14440,10 +14585,20 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
     let comp = compIdHint ? findComp(compIdHint) : null;
     let teamForProfile = wantedTeam;
     let teamIdForProfile = wantedTeamId || null;
-    if (!comp || !hasTeamInComp(comp)) {
-      const best = resolveBestTeamComp();
+    if (!comp || !hasTeamInComp(comp, true)) {
+      const best = resolveBestTeamComp(true);
       comp = best.comp;
       teamForProfile = best.teamName || wantedTeam;
+    }
+
+    // Historical datasets can have category drifts across sources.
+    // Retry once without strict category gating before giving up.
+    if (!comp || !hasTeamInComp(comp, false)) {
+      const bestRelaxed = resolveBestTeamComp(false);
+      if (bestRelaxed?.comp) {
+        comp = bestRelaxed.comp;
+        teamForProfile = bestRelaxed.teamName || teamForProfile || wantedTeam;
+      }
     }
 
     if (!comp) {
@@ -14459,8 +14614,10 @@ window.openPlayerTeamFromModal = async (teamName, seasonKey = "", compIdHint = "
     const rowMatch = findRowByHints(comp) || (comp.classification || []).find(r =>
       teamMatchesCalendarExact(r?.team || "", teamForProfile)
       || teamMatchesLoose(r?.team || "", teamForProfile)
+      || teamMatchesByBase(r?.team || "", teamForProfile)
       || teamMatchesCalendarExact(r?.team || "", wantedTeam)
       || teamMatchesLoose(r?.team || "", wantedTeam)
+      || teamMatchesByBase(r?.team || "", wantedTeam)
     ) || null;
     if (rowMatch?.team) teamForProfile = rowMatch.team;
     if (rowMatch?.teamId != null) teamIdForProfile = String(rowMatch.teamId);
