@@ -443,41 +443,49 @@ function clearRememberedProfile() {
 }
 
 function clearAuthState() {
-  currentUser = null;
-  currentProfile = null;
-}
-
-async function getAuthenticatedUser() {
-  const { data, error } = await _sb.auth.getUser();
-  if (error) return null;
-  return data?.user || null;
-}
-
-function hasRecoveryParamsInUrl() {
-  const hashParams = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
-  const queryParams = new URLSearchParams(String(window.location.search || "").replace(/^\?/, ""));
-  const hashType = String(hashParams.get("type") || "").toLowerCase();
-  const queryType = String(queryParams.get("type") || "").toLowerCase();
-  const queryAction = String(queryParams.get("auth_action") || "").toLowerCase();
-  return hashType === "recovery" || queryType === "recovery" || queryAction === "recovery";
-}
-
-function buildRecoveryRedirectUrl() {
-  const url = new URL(window.location.origin + window.location.pathname);
-  url.searchParams.set("auth_action", "recovery");
-  return url.toString();
-}
-
-async function initAuth() {
-  if (!_sb) return;
-  clearRememberedProfile();
-  pendingRecoveryFlow = hasRecoveryParamsInUrl();
+  const body = $("home-body");
   try {
-    const user = await getAuthenticatedUser();
-    if (user) await _loadProfile(user);
-    else clearAuthState();
-  } catch {
-    clearAuthState();
+    runUserFeatureNotifications();
+    void hydrateActaLinksForFavoriteComps();
+    if (!favs.length && !clubFavs.length && !levelFavs.length && !playerFavs.length) {
+      body.innerHTML=`<div style="text-align:center;padding:48px 20px 32px">
+        <div style="font-size:48px;margin-bottom:12px">⭐</div>
+        <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#1a2035;margin-bottom:8px">Cap favorit afegit</h2>
+        <p style="color:#6b7a99;font-size:14px;line-height:1.6;margin-bottom:24px">Afegeix equips, nivells, clubs o jugadors.</p>
+        <button onclick="openPicker()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;cursor:pointer">+ Afegir el meu equip</button>
+      </div>`;
+      return;
+    }
+    const clubMap = clubFavs.length ? buildClubMap() : null;
+    const utilityButtons = `<div style="background:#fff;border:1.5px solid #e2e6ef;border-radius:12px;padding:10px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="openUserFavCalendarView()" style="flex:1;min-width:140px;background:${userFavView === "calendar" ? "#1a2035" : "#f8fafc"};color:${userFavView === "calendar" ? "#fff" : "#334155"};border:1.5px solid ${userFavView === "calendar" ? "#1a2035" : "#e2e6ef"};border-radius:9px;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer">📅 Calendari</button>
+      <button onclick="openUserFavConvocatoriesView()" style="flex:1;min-width:140px;background:${userFavView === "convocatories" ? "#1a2035" : "#f8fafc"};color:${userFavView === "convocatories" ? "#fff" : "#334155"};border:1.5px solid ${userFavView === "convocatories" ? "#1a2035" : "#e2e6ef"};border-radius:9px;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer">📣 Convocatòries</button>
+      ${userFavView !== "none" ? `<button onclick="closeUserFavUtilityView()" style="background:#fff;border:1.5px solid #e2e6ef;color:#64748b;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">Tancar</button>` : ""}
+    </div>`;
+    const utilityPanel = `<div id="user-favs-utility-panel" style="margin-bottom:${userFavView === "none" ? "0" : "12px"}"></div>`;
+    const hasAnyPrev = clubFavs.length || levelFavs.length || playerFavs.length;
+    const both = favs.length && hasAnyPrev;
+    const clubSection = clubFavs.length ? `
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin-bottom:8px">🏟 Clubs</div>
+      ${clubFavs.map(f=>buildClubFavCard(f,clubMap)).join("")}` : "";
+    const levelSection = levelFavs.length ? `
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${clubFavs.length?"16px":"0"} 0 8px">🧩 Nivells</div>
+      ${levelFavs.map(buildLevelFavCard).join("")}` : "";
+    const playerSection = playerFavs.length ? `
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${(clubFavs.length||levelFavs.length)?"16px":"0"} 0 8px">👤 Jugadors</div>
+      ${playerFavs.map(buildPlayerFavCard).join("")}` : "";
+    const teamSection = favs.length ? `
+      ${both?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:.08em;margin:${(clubFavs.length||levelFavs.length||playerFavs.length)?"16px":"0"} 0 8px">🏒 Equips</div>`:""}
+      ${favs.map(buildFavCard).join("")}` : "";
+    body.innerHTML = utilityButtons + utilityPanel + clubSection + levelSection + playerSection + teamSection;
+    renderUserFavUtilityPanel();
+  } catch (err) {
+    console.error("[favs] render failed", err);
+    body.innerHTML = `<div style="background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;border-radius:12px;padding:14px 12px;margin:8px 0">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">No hem pogut carregar Favorits</div>
+      <div style="font-size:13px;line-height:1.5;margin-bottom:10px">S'ha produït un error inesperat. Torna-ho a provar o recarrega la pàgina.</div>
+      <button onclick="renderHome()" style="background:#e5001c;border:none;color:#fff;font-weight:700;font-size:13px;padding:8px 12px;border-radius:9px;cursor:pointer">Reintentar</button>
+    </div>`;
   }
 
   _sb.auth.onAuthStateChange(async (event, session) => {
@@ -12005,6 +12013,45 @@ function buildClubMap() {
   }
 
   return clubMap;
+}
+
+function resolveClubEntryByKey(clubMap, rawKey) {
+  if (!(clubMap instanceof Map) || !clubMap.size) return null;
+
+  const inputKey = String(rawKey || "").trim();
+  if (!inputKey) return null;
+
+  const normalizeLookupKey = value => String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s+[a-e]$/, "")
+    .trim();
+
+  const directCandidates = [
+    inputKey,
+    decodeHtml(inputKey),
+    normalizeJokClubDisplayName(inputKey),
+    normalizeJokClubDisplayName(decodeHtml(inputKey)),
+  ].filter(Boolean);
+
+  for (const candidate of directCandidates) {
+    if (clubMap.has(candidate)) return { key: candidate, entry: clubMap.get(candidate) };
+    const normalized = normalizeLookupKey(candidate);
+    if (normalized && clubMap.has(normalized)) return { key: normalized, entry: clubMap.get(normalized) };
+  }
+
+  const target = normalizeLookupKey(normalizeJokClubDisplayName(decodeHtml(inputKey)));
+  if (!target) return null;
+
+  for (const [key, entry] of clubMap.entries()) {
+    const keyNorm = normalizeLookupKey(key);
+    const displayNorm = normalizeLookupKey(entry?.displayName || "");
+    if (keyNorm === target || displayNorm === target) {
+      return { key, entry };
+    }
+  }
+
+  return null;
 }
 
 function renderClubTab(cursor) {
