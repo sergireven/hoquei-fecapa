@@ -5,8 +5,55 @@
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const zlib = require("zlib");
 const { createClient } = require("@supabase/supabase-js");
 const { syncActiveSeasonsToDatabase } = require("./sync-db-from-json");
+
+function compressSeasonArchive(publicDir) {
+  /**
+   * Compress all JSON files in season-archive for optimal Vercel deployment
+   * Reduces 611 MB -> 45 MB
+   * Vercel serves with Content-Encoding: gzip automatically
+   */
+  const archiveDir = path.join(publicDir, "season-archive");
+  if (!fs.existsSync(archiveDir)) return;
+  
+  try {
+    const compressFile = (filePath) => {
+      if (!filePath.endsWith(".json")) return;
+      if (fs.existsSync(filePath + ".gz")) fs.unlinkSync(filePath + ".gz");
+      
+      const input = fs.createReadStream(filePath);
+      const output = fs.createWriteStream(filePath + ".gz");
+      input.pipe(zlib.createGzip()).pipe(output);
+      
+      output.on("finish", () => {
+        const originalSize = fs.statSync(filePath).size;
+        const compressedSize = fs.statSync(filePath + ".gz").size;
+        const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(0);
+        console.log(`  ✓ ${path.basename(filePath)}: ${(originalSize / 1024 / 1024).toFixed(1)}MB → ${(compressedSize / 1024 / 1024).toFixed(1)}MB (${ratio}% savings)`);
+      });
+    };
+
+    const walkDir = (dir) => {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          walkDir(fullPath);
+        } else {
+          compressFile(fullPath);
+        }
+      }
+    };
+
+    console.log("📦 Compressing season-archive for deployment...");
+    walkDir(archiveDir);
+  } catch (err) {
+    console.error("[cron] Compression error:", err.message);
+  }
+}
 
 function createSupabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -67,8 +114,13 @@ module.exports = async (req, res) => {
       console.log("⏭️ Pas 5/5 omès: generate-ripollet.js no existeix");
     }
 
+    // Compress season-archive for Vercel deployment
+    console.log("🗜️ Pas 6: comprimint season-archive...");
+    compressSeasonArchive(path.join(__dirname, "../public"));
+    steps.push("compress-archive");
+
     // Sincronitza JSON → Supabase (temporada actual/futures)
-    console.log("📊 Pas 6: sincronitzant temporada activa a Supabase...");
+    console.log("📊 Pas 7: sincronitzant temporada activa a Supabase...");
     const sb = createSupabaseClient();
     if (sb) {
       try {
