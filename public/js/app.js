@@ -14286,7 +14286,13 @@ async function openPlayerModal(jid, fallbackName) {
       name,
     });
 
-    if (!seasonPlayerRef && String(seasonData?.generatedFrom || "") === "supabase-db" && seasonKey && seasonKey !== "current") {
+    // Also trigger fallback when the DB player was found but has no acta sources.
+    // The DB player only has primary_team_id-based teamStats with count=0.
+    // The JSON/archive player has real acta sources and accurate teamStats (multiple teams, correct counts).
+    const dbPlayerLacksActaSources = seasonPlayerRef
+      && !(seasonPlayerRef.player?.sources || []).some(s => s?.type === "acta");
+
+    if ((!seasonPlayerRef || dbPlayerLacksActaSources) && String(seasonData?.generatedFrom || "") === "supabase-db" && seasonKey && seasonKey !== "current") {
       const fallbackSeasonData = await getSeasonPlayerFallbackData(seasonKey);
       if (fallbackSeasonData?.jugadors) {
         const fallbackRef = findPlayerInSeasonDataByIdentity(fallbackSeasonData, {
