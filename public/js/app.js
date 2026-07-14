@@ -7334,121 +7334,9 @@ async function loadSeasonDataFromDatabase(seasonKey) {
   const key = String(seasonKey || "").trim();
   if (!key || key === "current" || !_sb) return null;
 
-  const competitions = await fetchAllRows(() =>
-    _sb.from("competitions")
-      .select("id, jok_comp_id, name, category, season, is_finished")
-      .eq("season", key)
-      .order("name", { ascending: true })
-  );
-
-  if (!competitions.length) return null;
-
-  const teams = await fetchAllRows(() =>
-    _sb.from("teams")
-      .select("id, club_id, team_name, category, season")
-      .eq("season", key)
-      .order("team_name", { ascending: true })
-  );
-  const teamById = new Map((teams || []).map(t => [String(t.id || ""), t]));
-
-  const clubIds = [...new Set((teams || []).map(t => String(t?.club_id || "").trim()).filter(Boolean))];
-  const clubs = [];
-  for (const idsChunk of chunkArray(clubIds, 250)) {
-    const chunkRows = await fetchAllRows(() =>
-      _sb.from("clubs")
-        .select("id, name, jok_key")
-        .in("id", idsChunk)
-    );
-    clubs.push(...chunkRows);
-  }
-  const clubShieldByDbId = {};
-  for (const club of clubs) {
-    const clubDbId = String(club?.id || "").trim();
-    if (!clubDbId) continue;
-    const shieldKey = normalizeShieldKey(club?.jok_key || "");
-    if (shieldKey) clubShieldByDbId[clubDbId] = shieldKey;
-  }
-
-  const fallbackSeasonData = seasonDataCache.get("current") || DB;
-  const fallbackShieldByClubName = buildClubShieldMapFromSeasonData(fallbackSeasonData);
-  for (const team of teams || []) {
-    const clubDbId = String(team?.club_id || "").trim();
-    if (!clubDbId || clubShieldByDbId[clubDbId]) continue;
-    const byName = fallbackShieldByClubName.get(normalizeClubNameForShieldMap(team?.team_name || ""));
-    const fallbackShield = normalizeShieldKey(byName || "");
-    if (fallbackShield) clubShieldByDbId[clubDbId] = fallbackShield;
-  }
-
-  const clubIndex = {};
-  for (const team of teams || []) {
-    const teamDbId = String(team?.id || "").trim();
-    const clubDbId = String(team?.club_id || "").trim();
-    if (!teamDbId) continue;
-    clubIndex[teamDbId] = {
-      clubId: clubShieldByDbId[clubDbId] || clubDbId || null,
-      dbClubId: clubDbId || null,
-    };
-  }
-
-  const competitionIds = competitions.map(c => String(c.id || "")).filter(Boolean);
-  const competitionTeams = [];
-  for (const idsChunk of chunkArray(competitionIds, 250)) {
-    const chunkRows = await fetchAllRows(() =>
-      _sb.from("competition_teams")
-        .select("id, competition_id, team_id, league_position, matches_played, wins, draws, losses, points_for, points_against")
-        .in("competition_id", idsChunk)
-    );
-    competitionTeams.push(...chunkRows);
-  }
-
-  const compTeamsByCompId = new Map();
-  for (const row of competitionTeams) {
-    const compId = String(row?.competition_id || "");
-    if (!compId) continue;
-    if (!compTeamsByCompId.has(compId)) compTeamsByCompId.set(compId, []);
-    compTeamsByCompId.get(compId).push(row);
-  }
-
-  const categories = {};
-  for (const comp of competitions) {
-    const categoryLabel = String(comp?.category || "Altres").trim() || "Altres";
-    const compId = String(comp?.id || "").trim();
-    if (!compId) continue;
-
-    const classRows = buildDbCompetitionClassificationRows(compTeamsByCompId.get(compId) || [], teamById, clubShieldByDbId);
-    if (!categories[categoryLabel]) categories[categoryLabel] = [];
-
-    categories[categoryLabel].push({
-      id: compId,
-      jokCompId: String(comp?.jok_comp_id || "").trim() || null,
-      slug: "",
-      name: String(comp?.name || "").trim(),
-      classification: classRows,
-      calendar: [],
-      isFinished: comp?.is_finished === true,
-      source: "db",
-    });
-  }
-
-  const playersRows = await fetchAllRows(() =>
-    _sb.from("players")
-      .select("id, player_master_id, primary_team_id, name, slug, dorsal, position, is_goalkeeper, birth_date, season")
-      .eq("season", key)
-      .order("name", { ascending: true })
-  );
-
-  return {
-    updatedAt: new Date().toISOString(),
-    season: key,
-    totalComps: Object.values(categories).reduce((sum, comps) => sum + (Array.isArray(comps) ? comps.length : 0), 0),
-    totalActes: 0,
-    categories,
-    clubIndex,
-    clubShieldByDbId,
-    jugadors: buildDbPlayersIndex(playersRows, teamById, key),
-    actesIndex: {},
-    generatedFrom: "supabase-db",
-  };
+  // For historical seasons, skip DB and use JSON/archive directly
+  // This avoids hanging on slow/unavailable DB queries for past seasons
+  return null;
 }
 
 async function loadSeasonDataForEntry(entry) {
@@ -7485,6 +7373,10 @@ async function loadSeasonDataForEntry(entry) {
   try {
     const primary = await fetchJsonFile(entry.dataUrl);
     if (primary?.categories) {
+      // Ensure generatedFrom is set even if not in the JSON
+      if (!primary.generatedFrom) {
+        primary.generatedFrom = "json";
+      }
       dataSourceDebug("season.load.json.ok", {
         seasonKey: String(entry?.key || ""),
         generatedFrom: String(primary?.generatedFrom || "json"),
@@ -7500,6 +7392,10 @@ async function loadSeasonDataForEntry(entry) {
 
   const fallback = await loadSeasonDataFromArchiveChunks(entry.key);
   if (fallback?.categories) {
+    // Ensure generatedFrom is set
+    if (!fallback.generatedFrom) {
+      fallback.generatedFrom = "archive-chunks";
+    }
     dataSourceDebug("season.load.archive.ok", {
       seasonKey: String(entry?.key || ""),
       generatedFrom: String(fallback?.generatedFrom || "archive-chunks"),
@@ -7929,7 +7825,9 @@ async function switchActiveSeason(nextKey, options = {}) {
 async function getSeasonDataForKey(seasonKey) {
   const key = String(seasonKey || "").trim();
   if (!key) return null;
-  if (seasonDataCache.has(key)) return seasonDataCache.get(key) || null;
+  if (seasonDataCache.has(key)) {
+    return seasonDataCache.get(key) || null;
+  }
 
   const target = seasonCatalog.find(s => s.key === key);
   if (!target?.dataUrl) return null;
@@ -14289,24 +14187,9 @@ async function openPlayerModal(jid, fallbackName) {
     // Also trigger fallback when the DB player was found but has no acta sources.
     // The DB player only has primary_team_id-based teamStats with count=0.
     // The JSON/archive player has real acta sources and accurate teamStats (multiple teams, correct counts).
-    const dbPlayerLacksActaSources = seasonPlayerRef
-      && !(seasonPlayerRef.player?.sources || []).some(s => s?.type === "acta");
-
-    if ((!seasonPlayerRef || dbPlayerLacksActaSources) && String(seasonData?.generatedFrom || "") === "supabase-db" && seasonKey && seasonKey !== "current") {
-      const fallbackSeasonData = await getSeasonPlayerFallbackData(seasonKey);
-      if (fallbackSeasonData?.jugadors) {
-        const fallbackRef = findPlayerInSeasonDataByIdentity(fallbackSeasonData, {
-          jid: activePlayerId,
-          playerMasterId: player?.playerMasterId || player?.player_master_id || "",
-          slug: player?.slug || "",
-          name,
-        });
-        if (fallbackRef) {
-          resolvedSeasonData = fallbackSeasonData;
-          seasonPlayerRef = fallbackRef;
-        }
-      }
-    }
+    // The seasonData already comes from JSON fallback if DB has no acta sources
+    // (loadSeasonDataFromDatabase returns null for historical seasons)
+    // No secondary fallback needed - just use the loaded data
 
     const seasonPlayer = seasonPlayerRef?.player || null;
     if (!seasonPlayer) return [];
