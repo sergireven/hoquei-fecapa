@@ -8948,6 +8948,7 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
 
   const baseUrl = getSeasonActesBaseUrl(seasonKey);
   const fileUrl = `${baseUrl}/${normalizedSlug}.json`;
+  console.log(`[DEBUG] loadCatActes: seasonKey=${seasonKey}, slug=${normalizedSlug}, url=${fileUrl}`);
   try {
     const res = await fetch(`${fileUrl}?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
