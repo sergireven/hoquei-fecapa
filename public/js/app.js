@@ -14195,6 +14195,7 @@ async function openPlayerModal(jid, fallbackName) {
     if (!seasonPlayer) return [];
 
     const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData: resolvedSeasonData, seasonKey: seasonKey || activeSeasonKey });
+    console.log(`[DEBUG] seasonKey=${seasonKey}, fromSources=${fromSources.length}, sources=${seasonPlayer?.sources?.length}`);
     const teamStats = fromSources.length
       ? fromSources
       : normalizePlayerTeamStatsForDisplay(seasonPlayer, resolvedSeasonData);
