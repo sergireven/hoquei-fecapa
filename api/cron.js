@@ -5,66 +5,8 @@
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const { pipeline } = require("stream/promises");
-const zlib = require("zlib");
 const { createClient } = require("@supabase/supabase-js");
 const { syncActiveSeasonsToDatabase } = require("./sync-db-from-json");
-
-async function compressSeasonArchive(publicDir) {
-  /**
-   * Compress all JSON files in season-archive for optimal Vercel deployment
-   * Reduces 611 MB -> 45 MB
-   * Vercel serves with Content-Encoding: gzip automatically
-   */
-  const archiveDir = path.join(publicDir, "season-archive");
-  if (!fs.existsSync(archiveDir)) return;
-  
-  try {
-    const compressFile = async (filePath) => {
-      if (!filePath.endsWith(".json")) return;
-      
-      try {
-        const gzPath = filePath + ".gz";
-        if (fs.existsSync(gzPath)) fs.unlinkSync(gzPath);
-        
-        const input = fs.createReadStream(filePath);
-        const output = fs.createWriteStream(gzPath);
-        await pipeline(input, zlib.createGzip(), output);
-        
-        const originalSize = fs.statSync(filePath).size;
-        const compressedSize = fs.statSync(gzPath).size;
-        const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(0);
-        console.log(`  ✓ ${path.basename(filePath)}: ${(originalSize / 1024 / 1024).toFixed(1)}MB → ${(compressedSize / 1024 / 1024).toFixed(1)}MB (${ratio}% savings)`);
-      } catch (fileErr) {
-        console.warn(`  ⚠ Failed to compress ${filePath}:`, fileErr.message);
-      }
-    };
-
-    const walkDir = async (dir) => {
-      const files = fs.readdirSync(dir);
-      const tasks = [];
-      
-      for (const file of files) {
-        const fullPath = path.join(dir, file);
-        const stat = fs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          tasks.push(walkDir(fullPath));
-        } else {
-          tasks.push(compressFile(fullPath));
-        }
-      }
-      
-      await Promise.all(tasks);
-    };
-
-    console.log("📦 Compressing season-archive for deployment...");
-    await walkDir(archiveDir);
-    console.log("✅ Compression complete");
-  } catch (err) {
-    console.error("[cron] Compression error:", err.message);
-    throw err; // Fail the cron if compression fails
-  }
-}
 
 function createSupabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -125,13 +67,9 @@ module.exports = async (req, res) => {
       console.log("⏭️ Pas 5/5 omès: generate-ripollet.js no existeix");
     }
 
-    // Compress season-archive for Vercel deployment
-    console.log("🗜️ Pas 6: comprimint season-archive...");
-    await compressSeasonArchive(path.join(__dirname, "../public"));
-    steps.push("compress-archive");
-
     // Sincronitza JSON → Supabase (temporada actual/futures)
-    console.log("📊 Pas 7: sincronitzant temporada activa a Supabase...");
+    // NOTE: Pre-compressed .gz files already in public/season-archive deployed automatically
+    console.log("📊 Pas 6: sincronitzant temporada activa a Supabase...");
     const sb = createSupabaseClient();
     if (sb) {
       try {
