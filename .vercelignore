@@ -1,5 +1,3 @@
 public/debug-classif-*.html
 public/season-archive/**/*.json
 public/season-archive/*.json
-!public/season-archive/**/*.json.gz
-!public/season-archive/*.json.gz
