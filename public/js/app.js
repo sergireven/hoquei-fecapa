@@ -7029,6 +7029,7 @@ async function loadSeasonDataFromArchiveChunks(seasonKey) {
 
   const baseCandidates = [
     `./season-archive/data-${key}`,
+    `./season-archive/data-${key}.`,
   ];
 
   const categories = {};
