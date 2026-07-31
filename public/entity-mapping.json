@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-07-30T12:20:26.664Z",
+  "generatedAt": "2026-07-31T12:28:43.422Z",
   "rulesVersion": "v1",
   "summary": {
-    "competitions": 516,
-    "groups": 981,
-    "teams": 6273,
-    "clubs": 504,
+    "competitions": 517,
+    "groups": 983,
+    "teams": 6283,
+    "clubs": 503,
     "players": 9807,
     "actes": 18985
   },
@@ -3057,6 +3057,13 @@
         "category": "fem"
       },
       {
+        "canonicalId": "cmp_6bbe10af006b",
+        "source": "fecapa",
+        "sourceId": "4241",
+        "sourceName": "FINAL A 4 LLIGA CATALANA FEMENINA",
+        "category": "fem"
+      },
+      {
         "canonicalId": "cmp_a0e31b25bc18",
         "source": "fecapa",
         "sourceId": "3930",
@@ -3141,20 +3148,6 @@
         "category": "juvenil"
       },
       {
-        "canonicalId": "cmp_896aaa86d879",
-        "source": "fecapa",
-        "sourceId": "4713",
-        "sourceName": "JUVENIL COPA CATALANA PLATA FASE FINAL",
-        "category": "juvenil"
-      },
-      {
-        "canonicalId": "cmp_ec90a8900a04",
-        "source": "fecapa",
-        "sourceId": "4714",
-        "sourceName": "JUVENIL COPA FEDERACIÓ FASE FINAL",
-        "category": "juvenil"
-      },
-      {
         "canonicalId": "cmp_301691bf76df",
         "source": "fecapa",
         "sourceId": "4605",
@@ -3166,6 +3159,20 @@
         "source": "fecapa",
         "sourceId": "4719",
         "sourceName": "JUVENIL COPA CATALANA OR FASE FINAL",
+        "category": "juvenil"
+      },
+      {
+        "canonicalId": "cmp_896aaa86d879",
+        "source": "fecapa",
+        "sourceId": "4713",
+        "sourceName": "JUVENIL COPA CATALANA PLATA FASE FINAL",
+        "category": "juvenil"
+      },
+      {
+        "canonicalId": "cmp_ec90a8900a04",
+        "source": "fecapa",
+        "sourceId": "4714",
+        "sourceName": "JUVENIL COPA FEDERACIÓ FASE FINAL",
         "category": "juvenil"
       },
       {
@@ -3575,20 +3582,6 @@
         "category": "alevi"
       },
       {
-        "canonicalId": "cmp_aec90149823c",
-        "source": "fecapa",
-        "sourceId": "4709",
-        "sourceName": "ALEVÍ COPA CATALANA PLATA FASE FINAL",
-        "category": "alevi"
-      },
-      {
-        "canonicalId": "cmp_04d317798b5c",
-        "source": "fecapa",
-        "sourceId": "4710",
-        "sourceName": "ALEVÍ COPA FEDERACIÓ FASE FINAL",
-        "category": "alevi"
-      },
-      {
         "canonicalId": "cmp_1ab4c1f33d91",
         "source": "fecapa",
         "sourceId": "4603",
@@ -3600,6 +3593,20 @@
         "source": "fecapa",
         "sourceId": "4717",
         "sourceName": "ALEVÍ COPA CATALANA OR FASE FINAL",
+        "category": "alevi"
+      },
+      {
+        "canonicalId": "cmp_aec90149823c",
+        "source": "fecapa",
+        "sourceId": "4709",
+        "sourceName": "ALEVÍ COPA CATALANA PLATA FASE FINAL",
+        "category": "alevi"
+      },
+      {
+        "canonicalId": "cmp_04d317798b5c",
+        "source": "fecapa",
+        "sourceId": "4710",
+        "sourceName": "ALEVÍ COPA FEDERACIÓ FASE FINAL",
         "category": "alevi"
       },
       {
@@ -7546,6 +7553,22 @@
         "groupName": "ELIMINATÒRIES ASCENS A 1CAT FEM"
       },
       {
+        "canonicalId": "grp_0b7cebf335e8",
+        "competitionCanonicalId": "cmp_6bbe10af006b",
+        "source": "fecapa",
+        "sourceId": "4241-GRUP-1",
+        "sourceName": "FASE DE GRUPS LLIGA CATALANA FEMENINA",
+        "groupName": "FASE DE GRUPS LLIGA CATALANA FEMENINA"
+      },
+      {
+        "canonicalId": "grp_b8e7234a85ec",
+        "competitionCanonicalId": "cmp_6bbe10af006b",
+        "source": "fecapa",
+        "sourceId": "4241-GRUP-4",
+        "sourceName": "FINAL A 4 LLIGA CATALANA FEMENINA",
+        "groupName": "FINAL A 4 LLIGA CATALANA FEMENINA"
+      },
+      {
         "canonicalId": "grp_c41a96666ee0",
         "competitionCanonicalId": "cmp_a0e31b25bc18",
         "source": "fecapa",
@@ -8314,6 +8337,150 @@
         "groupName": "FASE DE GRUPS COPA ELIT JUVENIL"
       },
       {
+        "canonicalId": "grp_a671f243f62f",
+        "competitionCanonicalId": "cmp_301691bf76df",
+        "source": "fecapa",
+        "sourceId": "4605-GRUP-1",
+        "sourceName": "FASE DE GRUPS COPA ELIT JUVENIL",
+        "groupName": "FASE DE GRUPS COPA ELIT JUVENIL"
+      },
+      {
+        "canonicalId": "grp_604d1364246f",
+        "competitionCanonicalId": "cmp_301691bf76df",
+        "source": "fecapa",
+        "sourceId": "4605-GRUP-2",
+        "sourceName": "FASES FINALS COPA ELIT JUVENIL",
+        "groupName": "FASES FINALS COPA ELIT JUVENIL"
+      },
+      {
+        "canonicalId": "grp_ef6aeebec29f",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-1",
+        "sourceName": "FASES FINALS COPA CATALANA JUVENIL",
+        "groupName": "FASES FINALS COPA CATALANA JUVENIL"
+      },
+      {
+        "canonicalId": "grp_b1c42a546bef",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-2",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL OR",
+        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL OR"
+      },
+      {
+        "canonicalId": "grp_c844bcb4ffb8",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-3",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL",
+        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL"
+      },
+      {
+        "canonicalId": "grp_b81ed868c8fc",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-PLATA-4",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL PLATA",
+        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL PLATA"
+      },
+      {
+        "canonicalId": "grp_84a44d388146",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-1",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 1",
+        "groupName": "JUVENIL COPA CATALANA GRUP 1"
+      },
+      {
+        "canonicalId": "grp_24d6c586cb86",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-2",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 2",
+        "groupName": "JUVENIL COPA CATALANA GRUP 2"
+      },
+      {
+        "canonicalId": "grp_71c1a16f5dd8",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-3",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 3",
+        "groupName": "JUVENIL COPA CATALANA GRUP 3"
+      },
+      {
+        "canonicalId": "grp_45db1b29be18",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-4",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 4",
+        "groupName": "JUVENIL COPA CATALANA GRUP 4"
+      },
+      {
+        "canonicalId": "grp_a2936a685ecd",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-5",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 5",
+        "groupName": "JUVENIL COPA CATALANA GRUP 5"
+      },
+      {
+        "canonicalId": "grp_f9bacf0e056b",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-GRUP-6",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 6",
+        "groupName": "JUVENIL COPA CATALANA GRUP 6"
+      },
+      {
+        "canonicalId": "grp_6b7602dfa2b1",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-7",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 7 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 7 OR"
+      },
+      {
+        "canonicalId": "grp_f43433dbdf2c",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-8",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 8 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 8 OR"
+      },
+      {
+        "canonicalId": "grp_39e24e836840",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-9",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 9 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 9 OR"
+      },
+      {
+        "canonicalId": "grp_6945f8642268",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-10",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 10 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 10 OR"
+      },
+      {
+        "canonicalId": "grp_2c0ee9a3b48b",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-11",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 11 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 11 OR"
+      },
+      {
+        "canonicalId": "grp_22a4797e747c",
+        "competitionCanonicalId": "cmp_792c5e47689f",
+        "source": "fecapa",
+        "sourceId": "4719-OR-12",
+        "sourceName": "JUVENIL COPA CATALANA GRUP 12 OR",
+        "groupName": "JUVENIL COPA CATALANA GRUP 12 OR"
+      },
+      {
         "canonicalId": "grp_adc21bf7d4c2",
         "competitionCanonicalId": "cmp_896aaa86d879",
         "source": "fecapa",
@@ -8496,150 +8663,6 @@
         "sourceId": "4714-GRUP-5",
         "sourceName": "JUVENIL COPA FEDERACIÓ GRUP 5",
         "groupName": "JUVENIL COPA FEDERACIÓ GRUP 5"
-      },
-      {
-        "canonicalId": "grp_a671f243f62f",
-        "competitionCanonicalId": "cmp_301691bf76df",
-        "source": "fecapa",
-        "sourceId": "4605-GRUP-1",
-        "sourceName": "FASE DE GRUPS COPA ELIT JUVENIL",
-        "groupName": "FASE DE GRUPS COPA ELIT JUVENIL"
-      },
-      {
-        "canonicalId": "grp_604d1364246f",
-        "competitionCanonicalId": "cmp_301691bf76df",
-        "source": "fecapa",
-        "sourceId": "4605-GRUP-2",
-        "sourceName": "FASES FINALS COPA ELIT JUVENIL",
-        "groupName": "FASES FINALS COPA ELIT JUVENIL"
-      },
-      {
-        "canonicalId": "grp_ef6aeebec29f",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-1",
-        "sourceName": "FASES FINALS COPA CATALANA JUVENIL",
-        "groupName": "FASES FINALS COPA CATALANA JUVENIL"
-      },
-      {
-        "canonicalId": "grp_b1c42a546bef",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-2",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL OR",
-        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL OR"
-      },
-      {
-        "canonicalId": "grp_c844bcb4ffb8",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-3",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL",
-        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL"
-      },
-      {
-        "canonicalId": "grp_b81ed868c8fc",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-PLATA-4",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA JUVENIL PLATA",
-        "groupName": "ELIMINATÒRIES COPA CATALANA JUVENIL PLATA"
-      },
-      {
-        "canonicalId": "grp_84a44d388146",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-1",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 1",
-        "groupName": "JUVENIL COPA CATALANA GRUP 1"
-      },
-      {
-        "canonicalId": "grp_24d6c586cb86",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-2",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 2",
-        "groupName": "JUVENIL COPA CATALANA GRUP 2"
-      },
-      {
-        "canonicalId": "grp_71c1a16f5dd8",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-3",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 3",
-        "groupName": "JUVENIL COPA CATALANA GRUP 3"
-      },
-      {
-        "canonicalId": "grp_45db1b29be18",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-4",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 4",
-        "groupName": "JUVENIL COPA CATALANA GRUP 4"
-      },
-      {
-        "canonicalId": "grp_a2936a685ecd",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-5",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 5",
-        "groupName": "JUVENIL COPA CATALANA GRUP 5"
-      },
-      {
-        "canonicalId": "grp_f9bacf0e056b",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-GRUP-6",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 6",
-        "groupName": "JUVENIL COPA CATALANA GRUP 6"
-      },
-      {
-        "canonicalId": "grp_6b7602dfa2b1",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-7",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 7 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 7 OR"
-      },
-      {
-        "canonicalId": "grp_f43433dbdf2c",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-8",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 8 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 8 OR"
-      },
-      {
-        "canonicalId": "grp_39e24e836840",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-9",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 9 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 9 OR"
-      },
-      {
-        "canonicalId": "grp_6945f8642268",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-10",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 10 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 10 OR"
-      },
-      {
-        "canonicalId": "grp_2c0ee9a3b48b",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-11",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 11 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 11 OR"
-      },
-      {
-        "canonicalId": "grp_22a4797e747c",
-        "competitionCanonicalId": "cmp_792c5e47689f",
-        "source": "fecapa",
-        "sourceId": "4719-OR-12",
-        "sourceName": "JUVENIL COPA CATALANA GRUP 12 OR",
-        "groupName": "JUVENIL COPA CATALANA GRUP 12 OR"
       },
       {
         "canonicalId": "grp_dc8044964261",
@@ -10930,6 +10953,214 @@
         "groupName": "FASE DE GRUPS COPA ELIT ALEVÍ"
       },
       {
+        "canonicalId": "grp_c2368347b84e",
+        "competitionCanonicalId": "cmp_1ab4c1f33d91",
+        "source": "fecapa",
+        "sourceId": "4603-GRUP-1",
+        "sourceName": "FASE DE GRUPS COPA ELIT ALEVÍ",
+        "groupName": "FASE DE GRUPS COPA ELIT ALEVÍ"
+      },
+      {
+        "canonicalId": "grp_43a57c06b722",
+        "competitionCanonicalId": "cmp_1ab4c1f33d91",
+        "source": "fecapa",
+        "sourceId": "4603-GRUP-2",
+        "sourceName": "FASES FINALS COPA ELIT ALEVÍ",
+        "groupName": "FASES FINALS COPA ELIT ALEVÍ"
+      },
+      {
+        "canonicalId": "grp_86ecdc790200",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-1",
+        "sourceName": "FASES FINALS COPA CATALANA ALEVÍ",
+        "groupName": "FASES FINALS COPA CATALANA ALEVÍ"
+      },
+      {
+        "canonicalId": "grp_7825a8558d78",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-2",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ",
+        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ"
+      },
+      {
+        "canonicalId": "grp_29dc33e67dea",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-3",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ OR",
+        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ OR"
+      },
+      {
+        "canonicalId": "grp_f6439b92c659",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-PLATA-4",
+        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ PLATA",
+        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ PLATA"
+      },
+      {
+        "canonicalId": "grp_090f512a3850",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-1",
+        "sourceName": "ALEVI COPA CATALANA GRUP 1",
+        "groupName": "ALEVI COPA CATALANA GRUP 1"
+      },
+      {
+        "canonicalId": "grp_2fce05015706",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-2",
+        "sourceName": "ALEVI COPA CATALANA GRUP 2",
+        "groupName": "ALEVI COPA CATALANA GRUP 2"
+      },
+      {
+        "canonicalId": "grp_545224a4c3b8",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-3",
+        "sourceName": "ALEVI COPA CATALANA GRUP 3",
+        "groupName": "ALEVI COPA CATALANA GRUP 3"
+      },
+      {
+        "canonicalId": "grp_3ed54d40b60d",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-4",
+        "sourceName": "ALEVI COPA CATALANA GRUP 4",
+        "groupName": "ALEVI COPA CATALANA GRUP 4"
+      },
+      {
+        "canonicalId": "grp_7858f6ca20dc",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-5",
+        "sourceName": "ALEVI COPA CATALANA GRUP 5",
+        "groupName": "ALEVI COPA CATALANA GRUP 5"
+      },
+      {
+        "canonicalId": "grp_7a7f44240ce7",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-6",
+        "sourceName": "ALEVI COPA CATALANA GRUP 6",
+        "groupName": "ALEVI COPA CATALANA GRUP 6"
+      },
+      {
+        "canonicalId": "grp_4702e94c69f6",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-7",
+        "sourceName": "ALEVI COPA CATALANA GRUP 7",
+        "groupName": "ALEVI COPA CATALANA GRUP 7"
+      },
+      {
+        "canonicalId": "grp_58f16bdbbcfa",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-8",
+        "sourceName": "ALEVI COPA CATALANA GRUP 8",
+        "groupName": "ALEVI COPA CATALANA GRUP 8"
+      },
+      {
+        "canonicalId": "grp_9c9838d26022",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-9",
+        "sourceName": "ALEVI COPA CATALANA GRUP 9",
+        "groupName": "ALEVI COPA CATALANA GRUP 9"
+      },
+      {
+        "canonicalId": "grp_b492c7b6daa9",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-GRUP-10",
+        "sourceName": "ALEVI COPA CATALANA GRUP 10",
+        "groupName": "ALEVI COPA CATALANA GRUP 10"
+      },
+      {
+        "canonicalId": "grp_b81915df6bb8",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-11",
+        "sourceName": "ALEVI COPA CATALANA GRUP 11 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 11 OR"
+      },
+      {
+        "canonicalId": "grp_c7dc593581da",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-12",
+        "sourceName": "ALEVI COPA CATALANA GRUP 12 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 12 OR"
+      },
+      {
+        "canonicalId": "grp_c538f8b6648d",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-13",
+        "sourceName": "ALEVI COPA CATALANA GRUP 13 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 13 OR"
+      },
+      {
+        "canonicalId": "grp_46c1d32cbba1",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-14",
+        "sourceName": "ALEVI COPA CATALANA GRUP 14 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 14 OR"
+      },
+      {
+        "canonicalId": "grp_06d9bf8a88fc",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-15",
+        "sourceName": "ALEVI COPA CATALANA GRUP 15 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 15 OR"
+      },
+      {
+        "canonicalId": "grp_4275abf71564",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-16",
+        "sourceName": "ALEVI COPA CATALANA GRUP 16 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 16 OR"
+      },
+      {
+        "canonicalId": "grp_f4154d8a06c6",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-17",
+        "sourceName": "ALEVI COPA CATALANA GRUP 17 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 17 OR"
+      },
+      {
+        "canonicalId": "grp_ece0461ca421",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-18",
+        "sourceName": "ALEVI COPA CATALANA GRUP 18 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 18 OR"
+      },
+      {
+        "canonicalId": "grp_e738f6346770",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-19",
+        "sourceName": "ALEVI COPA CATALANA GRUP 19 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 19 OR"
+      },
+      {
+        "canonicalId": "grp_59c395e28efe",
+        "competitionCanonicalId": "cmp_95c0517db0cd",
+        "source": "fecapa",
+        "sourceId": "4717-OR-20",
+        "sourceName": "ALEVI COPA CATALANA GRUP 20 OR",
+        "groupName": "ALEVI COPA CATALANA GRUP 20 OR"
+      },
+      {
         "canonicalId": "grp_f6ced336121f",
         "competitionCanonicalId": "cmp_aec90149823c",
         "source": "fecapa",
@@ -11216,214 +11447,6 @@
         "sourceId": "4710-GRUP-10",
         "sourceName": "ALEVI COPA FEDERACIÓ GRUP 10",
         "groupName": "ALEVI COPA FEDERACIÓ GRUP 10"
-      },
-      {
-        "canonicalId": "grp_c2368347b84e",
-        "competitionCanonicalId": "cmp_1ab4c1f33d91",
-        "source": "fecapa",
-        "sourceId": "4603-GRUP-1",
-        "sourceName": "FASE DE GRUPS COPA ELIT ALEVÍ",
-        "groupName": "FASE DE GRUPS COPA ELIT ALEVÍ"
-      },
-      {
-        "canonicalId": "grp_43a57c06b722",
-        "competitionCanonicalId": "cmp_1ab4c1f33d91",
-        "source": "fecapa",
-        "sourceId": "4603-GRUP-2",
-        "sourceName": "FASES FINALS COPA ELIT ALEVÍ",
-        "groupName": "FASES FINALS COPA ELIT ALEVÍ"
-      },
-      {
-        "canonicalId": "grp_86ecdc790200",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-1",
-        "sourceName": "FASES FINALS COPA CATALANA ALEVÍ",
-        "groupName": "FASES FINALS COPA CATALANA ALEVÍ"
-      },
-      {
-        "canonicalId": "grp_7825a8558d78",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-2",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ",
-        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ"
-      },
-      {
-        "canonicalId": "grp_29dc33e67dea",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-3",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ OR",
-        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ OR"
-      },
-      {
-        "canonicalId": "grp_f6439b92c659",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-PLATA-4",
-        "sourceName": "ELIMINATÒRIES COPA CATALANA ALEVÍ PLATA",
-        "groupName": "ELIMINATÒRIES COPA CATALANA ALEVÍ PLATA"
-      },
-      {
-        "canonicalId": "grp_090f512a3850",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-1",
-        "sourceName": "ALEVI COPA CATALANA GRUP 1",
-        "groupName": "ALEVI COPA CATALANA GRUP 1"
-      },
-      {
-        "canonicalId": "grp_2fce05015706",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-2",
-        "sourceName": "ALEVI COPA CATALANA GRUP 2",
-        "groupName": "ALEVI COPA CATALANA GRUP 2"
-      },
-      {
-        "canonicalId": "grp_545224a4c3b8",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-3",
-        "sourceName": "ALEVI COPA CATALANA GRUP 3",
-        "groupName": "ALEVI COPA CATALANA GRUP 3"
-      },
-      {
-        "canonicalId": "grp_3ed54d40b60d",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-4",
-        "sourceName": "ALEVI COPA CATALANA GRUP 4",
-        "groupName": "ALEVI COPA CATALANA GRUP 4"
-      },
-      {
-        "canonicalId": "grp_7858f6ca20dc",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-5",
-        "sourceName": "ALEVI COPA CATALANA GRUP 5",
-        "groupName": "ALEVI COPA CATALANA GRUP 5"
-      },
-      {
-        "canonicalId": "grp_7a7f44240ce7",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-6",
-        "sourceName": "ALEVI COPA CATALANA GRUP 6",
-        "groupName": "ALEVI COPA CATALANA GRUP 6"
-      },
-      {
-        "canonicalId": "grp_4702e94c69f6",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-7",
-        "sourceName": "ALEVI COPA CATALANA GRUP 7",
-        "groupName": "ALEVI COPA CATALANA GRUP 7"
-      },
-      {
-        "canonicalId": "grp_58f16bdbbcfa",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-8",
-        "sourceName": "ALEVI COPA CATALANA GRUP 8",
-        "groupName": "ALEVI COPA CATALANA GRUP 8"
-      },
-      {
-        "canonicalId": "grp_9c9838d26022",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-9",
-        "sourceName": "ALEVI COPA CATALANA GRUP 9",
-        "groupName": "ALEVI COPA CATALANA GRUP 9"
-      },
-      {
-        "canonicalId": "grp_b492c7b6daa9",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-GRUP-10",
-        "sourceName": "ALEVI COPA CATALANA GRUP 10",
-        "groupName": "ALEVI COPA CATALANA GRUP 10"
-      },
-      {
-        "canonicalId": "grp_b81915df6bb8",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-11",
-        "sourceName": "ALEVI COPA CATALANA GRUP 11 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 11 OR"
-      },
-      {
-        "canonicalId": "grp_c7dc593581da",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-12",
-        "sourceName": "ALEVI COPA CATALANA GRUP 12 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 12 OR"
-      },
-      {
-        "canonicalId": "grp_c538f8b6648d",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-13",
-        "sourceName": "ALEVI COPA CATALANA GRUP 13 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 13 OR"
-      },
-      {
-        "canonicalId": "grp_46c1d32cbba1",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-14",
-        "sourceName": "ALEVI COPA CATALANA GRUP 14 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 14 OR"
-      },
-      {
-        "canonicalId": "grp_06d9bf8a88fc",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-15",
-        "sourceName": "ALEVI COPA CATALANA GRUP 15 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 15 OR"
-      },
-      {
-        "canonicalId": "grp_4275abf71564",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-16",
-        "sourceName": "ALEVI COPA CATALANA GRUP 16 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 16 OR"
-      },
-      {
-        "canonicalId": "grp_f4154d8a06c6",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-17",
-        "sourceName": "ALEVI COPA CATALANA GRUP 17 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 17 OR"
-      },
-      {
-        "canonicalId": "grp_ece0461ca421",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-18",
-        "sourceName": "ALEVI COPA CATALANA GRUP 18 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 18 OR"
-      },
-      {
-        "canonicalId": "grp_e738f6346770",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-19",
-        "sourceName": "ALEVI COPA CATALANA GRUP 19 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 19 OR"
-      },
-      {
-        "canonicalId": "grp_59c395e28efe",
-        "competitionCanonicalId": "cmp_95c0517db0cd",
-        "source": "fecapa",
-        "sourceId": "4717-OR-20",
-        "sourceName": "ALEVI COPA CATALANA GRUP 20 OR",
-        "groupName": "ALEVI COPA CATALANA GRUP 20 OR"
       },
       {
         "canonicalId": "grp_e22f5af566f7",
@@ -14780,11 +14803,11 @@
         "competitionCanonicalId": "cmp_65577efd8aa6"
       },
       {
-        "canonicalId": "team_1293229b603a",
-        "clubCanonicalId": "club_7907b866812f",
+        "canonicalId": "team_22bf836cddde",
+        "clubCanonicalId": "club_f0a5477309e4",
         "source": "jok",
         "sourceId": "9347",
-        "sourceName": "Cerdanyola Club D&#039;hoquei",
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
         "competitionCanonicalId": "cmp_bb7b88cc0e6a"
       },
       {
@@ -14804,14 +14827,6 @@
         "competitionCanonicalId": "cmp_bb7b88cc0e6a"
       },
       {
-        "canonicalId": "team_9d09834e3cb8",
-        "clubCanonicalId": "club_01988934cfac",
-        "source": "jok",
-        "sourceId": "10017",
-        "sourceName": "MARTINELIA MANLLEU",
-        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
-      },
-      {
         "canonicalId": "team_5f700da6758e",
         "clubCanonicalId": "club_c4412f535fd3",
         "source": "jok",
@@ -14825,30 +14840,6 @@
         "source": "jok",
         "sourceId": "10187",
         "sourceName": "HOQUEI CLUB SALT",
-        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
-      },
-      {
-        "canonicalId": "team_1384fc8dbf63",
-        "clubCanonicalId": "club_5f575dbb35b5",
-        "source": "jok",
-        "sourceId": "10402",
-        "sourceName": "Oxigen Sant Cugat",
-        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
-      },
-      {
-        "canonicalId": "team_ecf272308eed",
-        "clubCanonicalId": "club_7ab1e615374b",
-        "source": "jok",
-        "sourceId": "9601",
-        "sourceName": "SHUM SELVAFIL",
-        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
-      },
-      {
-        "canonicalId": "team_22bf836cddde",
-        "clubCanonicalId": "club_f0a5477309e4",
-        "source": "jok",
-        "sourceId": "9347",
-        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
         "competitionCanonicalId": "cmp_bb7b88cc0e6a"
       },
       {
@@ -14860,11 +14851,27 @@
         "competitionCanonicalId": "cmp_bb7b88cc0e6a"
       },
       {
-        "canonicalId": "team_1293229b603a",
-        "clubCanonicalId": "club_7907b866812f",
+        "canonicalId": "team_ecf272308eed",
+        "clubCanonicalId": "club_7ab1e615374b",
+        "source": "jok",
+        "sourceId": "9601",
+        "sourceName": "SHUM SELVAFIL",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
+      },
+      {
+        "canonicalId": "team_9d09834e3cb8",
+        "clubCanonicalId": "club_01988934cfac",
+        "source": "jok",
+        "sourceId": "10017",
+        "sourceName": "MARTINELIA MANLLEU",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a"
+      },
+      {
+        "canonicalId": "team_22bf836cddde",
+        "clubCanonicalId": "club_f0a5477309e4",
         "source": "jok",
         "sourceId": "9347",
-        "sourceName": "Cerdanyola Club D&#039;hoquei",
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
         "competitionCanonicalId": "cmp_77990d3c140f"
       },
       {
@@ -14897,22 +14904,6 @@
         "source": "jok",
         "sourceId": "10124",
         "sourceName": "ROTOTANK BIGUES I RIELLS",
-        "competitionCanonicalId": "cmp_77990d3c140f"
-      },
-      {
-        "canonicalId": "team_1384fc8dbf63",
-        "clubCanonicalId": "club_5f575dbb35b5",
-        "source": "jok",
-        "sourceId": "10402",
-        "sourceName": "Oxigen Sant Cugat",
-        "competitionCanonicalId": "cmp_77990d3c140f"
-      },
-      {
-        "canonicalId": "team_22bf836cddde",
-        "clubCanonicalId": "club_f0a5477309e4",
-        "source": "jok",
-        "sourceId": "9347",
-        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
         "competitionCanonicalId": "cmp_77990d3c140f"
       },
       {
@@ -18364,14 +18355,6 @@
         "competitionCanonicalId": "cmp_50ce8ba0c8f1"
       },
       {
-        "canonicalId": "team_5ac3dad4108d",
-        "clubCanonicalId": "club_56d012fe8780",
-        "source": "jok",
-        "sourceId": "9190",
-        "sourceName": "BARÇA",
-        "competitionCanonicalId": "cmp_50ce8ba0c8f1"
-      },
-      {
         "canonicalId": "team_89f44f1bcd64",
         "clubCanonicalId": "club_b523cc735bf9",
         "source": "jok",
@@ -18393,6 +18376,14 @@
         "source": "jok",
         "sourceId": "9803",
         "sourceName": "IGUALADA HC A",
+        "competitionCanonicalId": "cmp_50ce8ba0c8f1"
+      },
+      {
+        "canonicalId": "team_5ac3dad4108d",
+        "clubCanonicalId": "club_56d012fe8780",
+        "source": "jok",
+        "sourceId": "9190",
+        "sourceName": "BARÇA",
         "competitionCanonicalId": "cmp_50ce8ba0c8f1"
       },
       {
@@ -18460,11 +18451,11 @@
         "competitionCanonicalId": "cmp_8bb7b5aa32c1"
       },
       {
-        "canonicalId": "team_8f9c9e0c754f",
-        "clubCanonicalId": "club_f84156c4f197",
+        "canonicalId": "team_e4efb631f569",
+        "clubCanonicalId": "club_0071e1ba9826",
         "source": "jok",
-        "sourceId": "8945",
-        "sourceName": "GEIEG A",
+        "sourceId": "9494",
+        "sourceName": "CH CALDES RECAM LÀSER C",
         "competitionCanonicalId": "cmp_c7c7fd0ee71a"
       },
       {
@@ -18473,14 +18464,6 @@
         "source": "jok",
         "sourceId": "9749",
         "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_c7c7fd0ee71a"
-      },
-      {
-        "canonicalId": "team_e4efb631f569",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": "9494",
-        "sourceName": "CH CALDES RECAM LÀSER C",
         "competitionCanonicalId": "cmp_c7c7fd0ee71a"
       },
       {
@@ -18505,6 +18488,14 @@
         "source": "jok",
         "sourceId": "9662",
         "sourceName": "PATÍ VIC A",
+        "competitionCanonicalId": "cmp_c7c7fd0ee71a"
+      },
+      {
+        "canonicalId": "team_8f9c9e0c754f",
+        "clubCanonicalId": "club_f84156c4f197",
+        "source": "jok",
+        "sourceId": "8945",
+        "sourceName": "GEIEG A",
         "competitionCanonicalId": "cmp_c7c7fd0ee71a"
       },
       {
@@ -21500,11 +21491,11 @@
         "competitionCanonicalId": "cmp_8b27f3817499"
       },
       {
-        "canonicalId": "team_0ca4564dab21",
-        "clubCanonicalId": "club_e5c8f497af18",
+        "canonicalId": "team_d0badc08083f",
+        "clubCanonicalId": "club_f11fcfa16b25",
         "source": "jok",
-        "sourceId": "9091",
-        "sourceName": "CLUB PATI CUBELLES A",
+        "sourceId": "10078",
+        "sourceName": "CHP SANT FELIU A",
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
@@ -21532,11 +21523,11 @@
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
-        "canonicalId": "team_d0badc08083f",
-        "clubCanonicalId": "club_f11fcfa16b25",
+        "canonicalId": "team_0ca4564dab21",
+        "clubCanonicalId": "club_e5c8f497af18",
         "source": "jok",
-        "sourceId": "10078",
-        "sourceName": "CHP SANT FELIU A",
+        "sourceId": "9091",
+        "sourceName": "CLUB PATI CUBELLES A",
         "competitionCanonicalId": "cmp_7a4f6f85e9d2"
       },
       {
@@ -23796,22 +23787,6 @@
         "competitionCanonicalId": "cmp_89b6fa3c7f2b"
       },
       {
-        "canonicalId": "team_dafde47c7a41",
-        "clubCanonicalId": "club_57f8d6362ef0",
-        "source": "jok",
-        "sourceId": "9722",
-        "sourceName": "CP RIUDOMS C",
-        "competitionCanonicalId": "cmp_89b6fa3c7f2b"
-      },
-      {
-        "canonicalId": "team_95035a271fbf",
-        "clubCanonicalId": "club_2fe61408af08",
-        "source": "jok",
-        "sourceId": "9478",
-        "sourceName": "HOQUEI CASAL ESPLUGA",
-        "competitionCanonicalId": "cmp_89b6fa3c7f2b"
-      },
-      {
         "canonicalId": "team_988ac110d27e",
         "clubCanonicalId": "club_c4412f535fd3",
         "source": "jok",
@@ -23841,6 +23816,22 @@
         "source": "jok",
         "sourceId": "9882",
         "sourceName": "MOLLET HC B",
+        "competitionCanonicalId": "cmp_89b6fa3c7f2b"
+      },
+      {
+        "canonicalId": "team_dafde47c7a41",
+        "clubCanonicalId": "club_57f8d6362ef0",
+        "source": "jok",
+        "sourceId": "9722",
+        "sourceName": "CP RIUDOMS C",
+        "competitionCanonicalId": "cmp_89b6fa3c7f2b"
+      },
+      {
+        "canonicalId": "team_95035a271fbf",
+        "clubCanonicalId": "club_2fe61408af08",
+        "source": "jok",
+        "sourceId": "9478",
+        "sourceName": "HOQUEI CASAL ESPLUGA",
         "competitionCanonicalId": "cmp_89b6fa3c7f2b"
       },
       {
@@ -27844,11 +27835,11 @@
         "competitionCanonicalId": "cmp_750cbe9add97"
       },
       {
-        "canonicalId": "team_61282d24f08c",
-        "clubCanonicalId": "club_2091b7100233",
+        "canonicalId": "team_30b3251142ba",
+        "clubCanonicalId": "club_50fffcb1292c",
         "source": "jok",
-        "sourceId": "10186",
-        "sourceName": "HOQUEI CLUB SALT B",
+        "sourceId": "10262",
+        "sourceName": "CLUB PATÍ VOLTREGÀ D",
         "competitionCanonicalId": "cmp_aec90149823c"
       },
       {
@@ -27940,14 +27931,6 @@
         "competitionCanonicalId": "cmp_aec90149823c"
       },
       {
-        "canonicalId": "team_30b3251142ba",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "jok",
-        "sourceId": "10262",
-        "sourceName": "CLUB PATÍ VOLTREGÀ D",
-        "competitionCanonicalId": "cmp_aec90149823c"
-      },
-      {
         "canonicalId": "team_73837189a32f",
         "clubCanonicalId": "club_b282ce4f3bb7",
         "source": "jok",
@@ -27977,6 +27960,14 @@
         "source": "jok",
         "sourceId": "8967",
         "sourceName": "HOQUEI CLUB SENTMENAT B",
+        "competitionCanonicalId": "cmp_aec90149823c"
+      },
+      {
+        "canonicalId": "team_61282d24f08c",
+        "clubCanonicalId": "club_2091b7100233",
+        "source": "jok",
+        "sourceId": "10186",
+        "sourceName": "HOQUEI CLUB SALT B",
         "competitionCanonicalId": "cmp_aec90149823c"
       },
       {
@@ -31004,11 +30995,11 @@
         "competitionCanonicalId": "cmp_19460b552930"
       },
       {
-        "canonicalId": "team_d60394d9d3ec",
-        "clubCanonicalId": "club_f008445dfa79",
+        "canonicalId": "team_94d4db03bb87",
+        "clubCanonicalId": "club_cc05a1d34b39",
         "source": "jok",
-        "sourceId": "9750",
-        "sourceName": "INNOAESTHETICS HC SANT JUST A",
+        "sourceId": "9613",
+        "sourceName": "CLUB HOQUEI FARNERS",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -31041,6 +31032,14 @@
         "source": "jok",
         "sourceId": "9147",
         "sourceName": "CHP MCDONALD'S  AMPOSTA A",
+        "competitionCanonicalId": "cmp_f9b0e34d00a4"
+      },
+      {
+        "canonicalId": "team_d60394d9d3ec",
+        "clubCanonicalId": "club_f008445dfa79",
+        "source": "jok",
+        "sourceId": "9750",
+        "sourceName": "INNOAESTHETICS HC SANT JUST A",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -31105,14 +31104,6 @@
         "source": "jok",
         "sourceId": "8950",
         "sourceName": "GEIEG",
-        "competitionCanonicalId": "cmp_f9b0e34d00a4"
-      },
-      {
-        "canonicalId": "team_94d4db03bb87",
-        "clubCanonicalId": "club_cc05a1d34b39",
-        "source": "jok",
-        "sourceId": "9613",
-        "sourceName": "CLUB HOQUEI FARNERS",
         "competitionCanonicalId": "cmp_f9b0e34d00a4"
       },
       {
@@ -38180,19 +38171,19 @@
         "competitionCanonicalId": "cmp_40e3a83f1466"
       },
       {
-        "canonicalId": "team_9d09834e3cb8",
-        "clubCanonicalId": "club_01988934cfac",
-        "source": "jok",
-        "sourceId": "10031",
-        "sourceName": "MARTINELIA MANLLEU",
-        "competitionCanonicalId": "cmp_40e3a83f1466"
-      },
-      {
         "canonicalId": "team_7a811ffe97fe",
         "clubCanonicalId": "club_b0d61ab464a0",
         "source": "jok",
         "sourceId": "10093",
         "sourceName": "HOQUEI CLUB CASTELLAR",
+        "competitionCanonicalId": "cmp_40e3a83f1466"
+      },
+      {
+        "canonicalId": "team_9d09834e3cb8",
+        "clubCanonicalId": "club_01988934cfac",
+        "source": "jok",
+        "sourceId": "10031",
+        "sourceName": "MARTINELIA MANLLEU",
         "competitionCanonicalId": "cmp_40e3a83f1466"
       },
       {
@@ -40974,6 +40965,132 @@
         "sourceName": "CEH SABADELL",
         "competitionCanonicalId": "cmp_13c0d811d26d",
         "groupCanonicalId": "grp_7605e7fbfd00"
+      },
+      {
+        "canonicalId": "team_22bf836cddde",
+        "clubCanonicalId": "club_f0a5477309e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_9a8b8614f3d2",
+        "clubCanonicalId": "club_2091b7100233",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB SALT",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_5ab39d078646",
+        "clubCanonicalId": "club_bea61754af35",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ TORRELLES",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_144de5f34168",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_5f700da6758e",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_445035dbed6c",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_58b6a805f784"
+      },
+      {
+        "canonicalId": "team_22bf836cddde",
+        "clubCanonicalId": "club_f0a5477309e4",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CERDANYOLA CLUB D'HOQUEI",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_144de5f34168",
+        "clubCanonicalId": "club_7cca336f085f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "GENERALI HC PALAU",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_5ab39d078646",
+        "clubCanonicalId": "club_bea61754af35",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ TORRELLES",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_5f700da6758e",
+        "clubCanonicalId": "club_c4412f535fd3",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "ROTOTANK BIGUES I RIELLS",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_9a8b8614f3d2",
+        "clubCanonicalId": "club_2091b7100233",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB SALT",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_445035dbed6c",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_ecf272308eed",
+        "clubCanonicalId": "club_7ab1e615374b",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "SHUM SELVAFIL",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
+      },
+      {
+        "canonicalId": "team_9d09834e3cb8",
+        "clubCanonicalId": "club_01988934cfac",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MARTINELIA MANLLEU",
+        "competitionCanonicalId": "cmp_bb7b88cc0e6a",
+        "groupCanonicalId": "grp_a649e1a4cf6c"
       },
       {
         "canonicalId": "team_51652a4a82e2",
@@ -65164,48 +65281,6 @@
         "sourceName": "CP CONGRES"
       },
       {
-        "canonicalId": "club_7907b866812f",
-        "source": "jok",
-        "sourceId": "244.png",
-        "sourceName": "CERDANYOLA CLUB D 039 HOQUEI"
-      },
-      {
-        "canonicalId": "club_7cca336f085f",
-        "source": "jok",
-        "sourceId": "271_1.png",
-        "sourceName": "GENERALI HC PALAU"
-      },
-      {
-        "canonicalId": "club_bea61754af35",
-        "source": "jok",
-        "sourceId": "392_1.png",
-        "sourceName": "CLUB PATI TORRELLES"
-      },
-      {
-        "canonicalId": "club_01988934cfac",
-        "source": "jok",
-        "sourceId": "259.png",
-        "sourceName": "MARTINELIA MANLLEU"
-      },
-      {
-        "canonicalId": "club_c4412f535fd3",
-        "source": "jok",
-        "sourceId": "236.gif",
-        "sourceName": "ROTOTANK BIGUES I RIELLS"
-      },
-      {
-        "canonicalId": "club_2091b7100233",
-        "source": "jok",
-        "sourceId": "318_1.png",
-        "sourceName": "HOQUEI CLUB SALT"
-      },
-      {
-        "canonicalId": "club_7ab1e615374b",
-        "source": "jok",
-        "sourceId": "320_1.gif",
-        "sourceName": "SHUM SELVAFIL"
-      },
-      {
         "canonicalId": "club_6b88548742f3",
         "source": "jok",
         "sourceId": null,
@@ -65566,6 +65641,12 @@
         "sourceName": "CHP MARTORELL"
       },
       {
+        "canonicalId": "club_bea61754af35",
+        "source": "jok",
+        "sourceId": "392_1.png",
+        "sourceName": "CLUB PATI TORRELLES"
+      },
+      {
         "canonicalId": "club_8c89cc685807",
         "source": "jok",
         "sourceId": "246_1.png",
@@ -65588,6 +65669,12 @@
         "source": "jok",
         "sourceId": "275.png",
         "sourceName": "CLUB HOQUEI PRAT"
+      },
+      {
+        "canonicalId": "club_7cca336f085f",
+        "source": "jok",
+        "sourceId": "271_1.png",
+        "sourceName": "GENERALI HC PALAU"
       },
       {
         "canonicalId": "club_26654629610e",
@@ -65668,6 +65755,12 @@
         "sourceName": "CH MATARO"
       },
       {
+        "canonicalId": "club_c4412f535fd3",
+        "source": "jok",
+        "sourceId": "236.gif",
+        "sourceName": "ROTOTANK BIGUES I RIELLS"
+      },
+      {
         "canonicalId": "club_f1c45ec173c5",
         "source": "jok",
         "sourceId": "303_1.png",
@@ -65704,6 +65797,12 @@
         "sourceName": "HOQUEI PATINS TONA"
       },
       {
+        "canonicalId": "club_01988934cfac",
+        "source": "jok",
+        "sourceId": "259.png",
+        "sourceName": "MARTINELIA MANLLEU"
+      },
+      {
         "canonicalId": "club_03fc77632c44",
         "source": "jok",
         "sourceId": "280.png",
@@ -65732,6 +65831,12 @@
         "source": "jok",
         "sourceId": "612_1.png",
         "sourceName": "MONTESQUIU"
+      },
+      {
+        "canonicalId": "club_2091b7100233",
+        "source": "jok",
+        "sourceId": "318_1.png",
+        "sourceName": "HOQUEI CLUB SALT"
       },
       {
         "canonicalId": "club_8d3f81784378",
@@ -65906,6 +66011,12 @@
         "source": "jok",
         "sourceId": "254_7.png",
         "sourceName": "UNIO ESPORTIVA LA GARRIGA"
+      },
+      {
+        "canonicalId": "club_7907b866812f",
+        "source": "jok",
+        "sourceId": "244.png",
+        "sourceName": "CERDANYOLA CLUB D 039 HOQUEI"
       },
       {
         "canonicalId": "club_552d6d8f9d37",
@@ -152339,7 +152450,7 @@
         "canonicalId": "acta_7975e30bdd36",
         "source": "jok",
         "sourceId": "111509",
-        "sourceName": "Cp Sant Celoni vs Cerdanyola Club D'hoquei",
+        "sourceName": "Cp Sant Celoni vs Cerdanyola Club Dhoquei",
         "compSourceId": "4005",
         "compName": "2ª CATALANA GRUP A 9"
       },
@@ -158603,7 +158714,7 @@
         "canonicalId": "acta_ba48710aaa1d",
         "source": "jok",
         "sourceId": "114709",
-        "sourceName": "Hc Montbui vs Laumont Hoquei Tàrrega",
+        "sourceName": "Laumont Hoquei Tàrrega vs Hc Montbui",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 17"
       },
@@ -158667,7 +158778,7 @@
         "canonicalId": "acta_4ae55de9a0f9",
         "source": "jok",
         "sourceId": "114717",
-        "sourceName": "Joi Moner Cp Sant Ramon A vs Laumont Hoquei Tàrrega",
+        "sourceName": "Laumont Hoquei Tàrrega vs Joi Moner Cp Sant Ramon A",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 18"
       },
@@ -158723,7 +158834,7 @@
         "canonicalId": "acta_2afdf1b03d18",
         "source": "jok",
         "sourceId": "114726",
-        "sourceName": "Laumont Hoquei Tàrrega vs Ribes Cp A",
+        "sourceName": "Ribes Cp A vs Laumont Hoquei Tàrrega",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 19"
       },
@@ -158843,7 +158954,7 @@
         "canonicalId": "acta_f9443cf4e078",
         "source": "jok",
         "sourceId": "114743",
-        "sourceName": "Ch Juneda A vs Laumont Hoquei Tàrrega",
+        "sourceName": "Laumont Hoquei Tàrrega vs Ch Juneda A",
         "compSourceId": "4051",
         "compName": "3ª CATALANA GRUP A 21"
       },
@@ -162611,7 +162722,7 @@
         "canonicalId": "acta_0f4d5dac9456",
         "source": "jok",
         "sourceId": "115320",
-        "sourceName": "Capellades Hc vs Club Olesa Pati",
+        "sourceName": "Club Olesa Pati vs Capellades Hc",
         "compSourceId": "4054",
         "compName": "3ª CATALANA GRUP D 3"
       },
@@ -163443,7 +163554,7 @@
         "canonicalId": "acta_49781f5e2e77",
         "source": "jok",
         "sourceId": "115433",
-        "sourceName": "Capellades Hc vs Ceh Olímpic Reus",
+        "sourceName": "Ceh Olímpic Reus vs Capellades Hc",
         "compSourceId": "4054",
         "compName": "3ª CATALANA GRUP D 17"
       },
@@ -163483,7 +163594,7 @@
         "canonicalId": "acta_0ced5b40b1d1",
         "source": "jok",
         "sourceId": "115440",
-        "sourceName": "Club Olesa Pati vs Capellades Hc",
+        "sourceName": "Capellades Hc vs Club Olesa Pati",
         "compSourceId": "4054",
         "compName": "3ª CATALANA GRUP D 18"
       },
@@ -193315,7 +193426,7 @@
         "canonicalId": "acta_30cd897fab36",
         "source": "jok",
         "sourceId": "121003",
-        "sourceName": "Cerdanyola Club Dhoquei vs Martinelia Manlleu",
+        "sourceName": "Cerdanyola Club D'hoquei vs Martinelia Manlleu",
         "compSourceId": "4124",
         "compName": "FEM 19 6"
       },
@@ -193411,7 +193522,7 @@
         "canonicalId": "acta_3e52726201b4",
         "source": "jok",
         "sourceId": "121015",
-        "sourceName": "Martinelia Manlleu vs Generali Hc Palau",
+        "sourceName": "Generali Hc Palau vs Martinelia Manlleu",
         "compSourceId": "4124",
         "compName": "FEM 19 9"
       },
