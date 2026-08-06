@@ -24673,11 +24673,11 @@
   },
   "44950": {
     "sidgadId": "44950",
-    "name": "INFA ROCA ZARAGOZA POL",
+    "name": "0 ROCA ZARAGOZA POL",
     "birthDate": "24/08/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-17T13:49:56.288Z"
+    "fetchedAt": "2026-08-06T12:07:37.822Z"
   },
   "44951": {
     "sidgadId": "44951",
@@ -26641,11 +26641,11 @@
   },
   "48618": {
     "sidgadId": "48618",
-    "name": "INFU MORENO DIAZ MARC",
+    "name": "MORENO DIAZ MARC",
     "birthDate": "14/02/2011",
-    "registeredTeam": null,
+    "registeredTeam": "TGN",
     "isGK": false,
-    "fetchedAt": "2026-06-21T11:15:59.854Z"
+    "fetchedAt": "2026-08-06T12:07:37.920Z"
   },
   "48619": {
     "sidgadId": "48619",
@@ -28041,11 +28041,11 @@
   },
   "49511": {
     "sidgadId": "49511",
-    "name": "INFA CARROLL MARTINEZ ROBERT",
+    "name": "0 CARROLL MARTINEZ ROBERT",
     "birthDate": "03/02/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-17T13:49:59.657Z"
+    "fetchedAt": "2026-08-06T12:07:38.026Z"
   },
   "49512": {
     "sidgadId": "49512",
@@ -28921,11 +28921,11 @@
   },
   "51358": {
     "sidgadId": "51358",
-    "name": "INFB SERRAT  ARAU GUILLEM",
+    "name": "0 SERRAT  ARAU GUILLEM",
     "birthDate": "22/03/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-21T11:16:00.702Z"
+    "fetchedAt": "2026-08-06T12:07:38.130Z"
   },
   "51359": {
     "sidgadId": "51359",
@@ -29937,11 +29937,11 @@
   },
   "53370": {
     "sidgadId": "53370",
-    "name": "INFB MESTRE NIETO ALEXANDRE AGUSTI",
+    "name": "0 MESTRE NIETO ALEXANDRE AGUSTI",
     "birthDate": "15/08/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-21T11:16:02.050Z"
+    "fetchedAt": "2026-08-06T12:07:38.236Z"
   },
   "53371": {
     "sidgadId": "53371",
@@ -31905,11 +31905,11 @@
   },
   "54269": {
     "sidgadId": "54269",
-    "name": "INFA REDONDO SERRA JAN",
+    "name": "REDONDO SERRA JAN",
     "birthDate": "05/08/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-17T13:50:03.380Z"
+    "fetchedAt": "2026-08-06T12:07:38.350Z"
   },
   "54280": {
     "sidgadId": "54280",
@@ -41757,7 +41757,7 @@
     "birthDate": "14/05/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:09:58.206Z"
+    "fetchedAt": "2026-08-06T12:07:38.459Z"
   },
   "63871": {
     "sidgadId": "63871",
@@ -42197,7 +42197,7 @@
     "birthDate": "16/04/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:09:58.814Z"
+    "fetchedAt": "2026-08-06T12:07:38.558Z"
   },
   "64231": {
     "sidgadId": "64231",
@@ -43681,11 +43681,11 @@
   },
   "66137": {
     "sidgadId": "66137",
-    "name": "INFU CABESTANY SAEZ GUILLEM",
+    "name": "0 CABESTANY SAEZ GUILLEM",
     "birthDate": "01/01/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-14T15:51:27.926Z"
+    "fetchedAt": "2026-08-06T12:07:38.664Z"
   },
   "66138": {
     "sidgadId": "66138",
@@ -44461,7 +44461,7 @@
     "birthDate": "04/04/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:00.052Z"
+    "fetchedAt": "2026-08-06T12:07:38.770Z"
   },
   "66516": {
     "sidgadId": "66516",
@@ -44613,7 +44613,7 @@
     "birthDate": "16/06/2015",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-06-20T18:10:00.286Z"
+    "fetchedAt": "2026-08-06T12:07:38.872Z"
   },
   "66567": {
     "sidgadId": "66567",
@@ -46421,7 +46421,7 @@
     "birthDate": "23/05/2016",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:01.086Z"
+    "fetchedAt": "2026-08-06T12:07:38.974Z"
   },
   "67513": {
     "sidgadId": "67513",
@@ -46429,7 +46429,7 @@
     "birthDate": "20/03/2016",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:01.180Z"
+    "fetchedAt": "2026-08-06T12:07:39.075Z"
   },
   "67514": {
     "sidgadId": "67514",
@@ -49997,7 +49997,7 @@
     "birthDate": "18/03/2016",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:06.163Z"
+    "fetchedAt": "2026-08-06T12:07:39.175Z"
   },
   "70308": {
     "sidgadId": "70308",
@@ -51869,7 +51869,7 @@
     "birthDate": "01/01/2016",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:07.786Z"
+    "fetchedAt": "2026-08-06T12:07:39.274Z"
   },
   "71605": {
     "sidgadId": "71605",
@@ -52069,7 +52069,7 @@
     "birthDate": "08/06/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-06-20T18:10:08.207Z"
+    "fetchedAt": "2026-08-06T12:07:39.376Z"
   },
   "72001": {
     "sidgadId": "72001",
@@ -74145,11 +74145,11 @@
   },
   "88387": {
     "sidgadId": "88387",
-    "name": "INFA MORALES ZAPATA - BACUR THIAGO VALENTIN",
+    "name": "MORALES ZAPATA - BACUR THIAGO VALENTIN",
     "birthDate": "30/07/2011",
-    "registeredTeam": null,
+    "registeredTeam": "TGN",
     "isGK": false,
-    "fetchedAt": "2026-06-28T18:04:32.446Z"
+    "fetchedAt": "2026-08-06T12:07:39.482Z"
   },
   "88396": {
     "sidgadId": "88396",
@@ -80550,6 +80550,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-08-02T09:54:58.842Z"
+  },
+  "10001801": {
+    "sidgadId": "10001801",
+    "name": "CARRERAS BORRAS JUDITH",
+    "birthDate": "30/07/2011",
+    "registeredTeam": "GIR",
+    "isGK": false,
+    "fetchedAt": "2026-08-06T12:07:39.575Z"
   },
   "10001812": {
     "sidgadId": "10001812",
@@ -96171,6 +96179,36 @@
     "120975",
     "120976",
     "120977",
-    "120980"
+    "120980",
+    "145080",
+    "145081",
+    "145077",
+    "145078",
+    "145079",
+    "145082",
+    "145050",
+    "145051",
+    "145052",
+    "145053",
+    "145054",
+    "145055",
+    "145056",
+    "145057",
+    "145058",
+    "145059",
+    "145060",
+    "145061",
+    "145706",
+    "145711",
+    "145707",
+    "145712",
+    "145708",
+    "145713",
+    "145709",
+    "145714",
+    "145710",
+    "145715",
+    "145716",
+    "145717"
   ]
 }
