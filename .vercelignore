@@ -1,2 +1,3 @@
-public/debug-classif-*.html
-
+# Exclude heavy historical archive from Vercel upload package.
+# These files are generated and can be refreshed by automation.
+public/season-archive/**
