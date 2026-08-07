@@ -8947,7 +8947,6 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
 
   const baseUrl = getSeasonActesBaseUrl(seasonKey);
   const fileUrl = `${baseUrl}/${normalizedSlug}.json`;
-  console.log(`[DEBUG] loadCatActes: seasonKey=${seasonKey}, slug=${normalizedSlug}, url=${fileUrl}`);
   try {
     const res = await fetch(`${fileUrl}?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -14195,7 +14194,6 @@ async function openPlayerModal(jid, fallbackName) {
     if (!seasonPlayer) return [];
 
     const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData: resolvedSeasonData, seasonKey: seasonKey || activeSeasonKey });
-    console.log(`[DEBUG] seasonKey=${seasonKey}, fromSources=${fromSources.length}, sources=${seasonPlayer?.sources?.length}`);
     const teamStats = fromSources.length
       ? fromSources
       : normalizePlayerTeamStatsForDisplay(seasonPlayer, resolvedSeasonData);
