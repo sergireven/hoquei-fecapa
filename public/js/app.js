@@ -7762,19 +7762,28 @@ async function loadSeasonCatalog() {
     }))
     .filter(s => s.key && s.dataUrl);
 
-  const catalogEntries = normalized.length ? normalized : fallbackNormalized;
+  const catalogEntries = (normalized.length ? normalized : fallbackNormalized)
+    .filter(s => s.key !== "current")
+    .map(s => ({
+      ...s,
+      actesBaseUrl: s.actesBaseUrl || inferArchiveActesBaseUrl(s.key),
+    }));
+
+  const dedupedCatalogEntries = [];
+  const seenSeasonKeys = new Set();
+  for (const entry of catalogEntries) {
+    const normalizedKey = String(entry.key || "").trim();
+    if (!normalizedKey || seenSeasonKeys.has(normalizedKey)) continue;
+    seenSeasonKeys.add(normalizedKey);
+    dedupedCatalogEntries.push(entry);
+  }
 
   seasonCatalog = [{
     key: "current",
     label: getSeasonLabelFromData(DB, "Actual"),
     dataUrl: DATA_URL,
     actesBaseUrl: "./actes",
-  }, ...catalogEntries
-    .filter(s => s.key !== "current")
-    .map(s => ({
-      ...s,
-      actesBaseUrl: s.actesBaseUrl || inferArchiveActesBaseUrl(s.key),
-    }))];
+  }, ...dedupedCatalogEntries];
 
   // Always start app on current season; previous selection should not override startup default.
   activeSeasonKey = "current";
