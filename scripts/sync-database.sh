@@ -41,7 +41,8 @@ const season = process.env.SEASON;
     } else if (season === 'current') {
       console.log('📊 Loading CURRENT season from ./public/data.json');
       const dataPath = path.join(publicDir, 'data.json');
-      result = await syncSeasonToDatabase(sb, 'current', dataPath, '2025-26');
+      const currentSeason = process.env.FECAPA_SEASON || process.env.JOK_SEASON || '2026-27';
+      result = await syncSeasonToDatabase(sb, 'current', dataPath, currentSeason);
     } else {
       console.log(`📊 Loading season ${season} from ./public/season-archive/data-${season}.json`);
       const dataPath = path.join(publicDir, 'season-archive', `data-${season}.json`);

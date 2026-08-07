@@ -18,7 +18,7 @@ jobs:
       contents: write
     env:
       NODE_ENV: production
-      JOK_SEASON: "2025-26"
+      JOK_SEASON: "2026-27"
 
     steps:
       - name: Checkout repositori

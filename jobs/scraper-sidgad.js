@@ -12,11 +12,14 @@ const puppeteer = require("puppeteer");
 const fs        = require("fs").promises;
 const path      = require("path");
 
+const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
+
 const CACHE_FILE   = path.join(__dirname, "../public/jugadors-sidgad.json");
 const COMP_FILE    = path.join(__dirname, "../public/competicions-sidgad.json");
 const PORTAL_URL   = "https://www.hoqueipatins.fecapa.cat/";
 const SERVER_BASE  = "https://www.server2.sidgad.es/fecapa/";
-const TEMP_ID      = "39";    // temporada 2025-26
+const TEMP_ID      = "39";
+const CURRENT_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env);
 const IDM          = "1";
 const MAX_MATCHES  = 300;     // partits a processar per execució
 const MAX_PROFILES = 200;     // perfils a enriquir per execució
