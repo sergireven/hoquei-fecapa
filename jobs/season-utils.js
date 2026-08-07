@@ -1,7 +1,7 @@
 function inferSeasonLabel(date = new Date()) {
   const resolvedDate = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(resolvedDate.getTime())) {
-    return '2025-26';
+    return '2026-27';
   }
 
   const year = resolvedDate.getFullYear();
@@ -15,7 +15,9 @@ function inferSeasonLabel(date = new Date()) {
 function getCurrentSeasonLabelFromEnvOrDate(env = process.env, date = new Date()) {
   const explicit = String(env?.JOK_SEASON || env?.FECAPA_SEASON || '').trim();
   if (explicit) return explicit;
-  return inferSeasonLabel(date);
+
+  const fallbackSeason = process.env.CI ? '2026-27' : inferSeasonLabel(date);
+  return fallbackSeason;
 }
 
 function isSeasonLabelMatchingCurrentSeason(seasonLabel, env = process.env, date = new Date()) {
