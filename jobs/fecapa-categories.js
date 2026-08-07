@@ -4,9 +4,12 @@ const https = require("https");
 const http = require("http");
 const puppeteer = require("puppeteer");
 
+const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
+
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
-const TEMP_ID = "39"; // temporada 2025-26
+const TEMP_ID = "39";
+const CURRENT_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env);
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
 const DATA_FILE = path.join(__dirname, "../public/data.json");
 const CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
@@ -738,12 +741,10 @@ function buildGroupId(competitionId, groupName, fallbackOrder) {
 
 function isCompetitionFinishedOverride(competitionName) {
   const seasonMatch = String(competitionName || "").match(/\((\d{4}-\d{2})\)\s*$/);
-  if (seasonMatch) return seasonMatch[1] === "2025-26";
+  const resolvedCurrentSeason = getCurrentSeasonLabelFromEnvOrDate(process.env);
+  if (seasonMatch) return seasonMatch[1] === resolvedCurrentSeason;
 
-  const now = new Date();
-  const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  const inferredSeason = `${startYear}-${String(startYear + 1).slice(-2)}`;
-  return inferredSeason === "2025-26";
+  return resolvedCurrentSeason === CURRENT_SEASON;
 }
 
 function annotateCompetitionNoMatches(compData) {

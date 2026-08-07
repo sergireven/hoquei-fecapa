@@ -7,11 +7,12 @@ const fs    = require("fs").promises;
 const path  = require("path");
 const https = require("https");
 const http  = require("http");
+const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
 const FECAPA_CATEGORIES_FILE = path.join(__dirname, "../public/fecapa-categories.json");
-const TARGET_SEASON = String(process.env.JOK_SEASON || "2025-26").trim();
+const TARGET_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env).trim();
 const ALLOW_ABSOLUTE_OUTPUT = process.env.JOK_ALLOW_ABSOLUTE_OUTPUT === "1";
 
 function resolveOutputPathFromEnv(value, fallback) {

@@ -194,7 +194,10 @@ function inferRegionalLevel(name) {
 }
 
 function shouldMarkCompetitionFinished(season) {
-  return String(season || "").trim() === "2025-26";
+  const normalized = String(season || "").trim();
+  if (!normalized) return false;
+  const current = String(require('./season-utils').getCurrentSeasonLabelFromEnvOrDate(process.env)).trim();
+  return normalized === current;
 }
 
 function normalizeClubFromTeam(teamName) {
@@ -274,7 +277,10 @@ function deriveStats(row) {
 
 function getSeasonInputs() {
   const inputs = [];
-  inputs.push({ season: "2025-26", filePath: path.join(PUBLIC_DIR, "data.json"), key: "current" });
+  const currentSeason = String(require('./season-utils').getCurrentSeasonLabelFromEnvOrDate(process.env)).trim();
+  if (currentSeason) {
+    inputs.push({ season: currentSeason, filePath: path.join(PUBLIC_DIR, "data.json"), key: "current" });
+  }
 
   if (fs.existsSync(MANIFEST_PATH)) {
     const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));

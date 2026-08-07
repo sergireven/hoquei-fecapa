@@ -6941,6 +6941,18 @@ function getSeasonLabelFromData(data, fallback = "Temporada") {
   return fallback;
 }
 
+function getResolvedCurrentSeasonLabel() {
+  const fromContext = getSeasonLabelFromData(DB, "");
+  if (typeof fromContext === "string" && fromContext.trim()) return fromContext.trim();
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const startYear = month >= 7 ? year : year - 1;
+  const endYear = startYear + 1;
+  return `${startYear}-${String(endYear).slice(-2)}`;
+}
+
 function stripSeasonSuffix(name) {
   return String(name || "")
     .replace(/\s*\((?:20\d{2})-(?:\d{2,4})\)\s*$/, "")
@@ -7001,10 +7013,12 @@ const ARCHIVE_CHUNK_CATEGORY_LABELS = {
 };
 
 const DEFAULT_ARCHIVE_SEASONS = [
-  { key: "2024-25", label: "2024-25" },
-  { key: "2023-24", label: "2023-24" },
-  { key: "2022-23", label: "2022-23" },
-  { key: "2021-22", label: "2021-22" },
+  { key: "2026-27", label: "2026-27", dataUrl: "./data.json", actesBaseUrl: "./actes" },
+  { key: "2025-26", label: "2025-26", dataUrl: "./season-archive/data-2025-26.json", actesBaseUrl: "./season-archive/actes/2025-26" },
+  { key: "2024-25", label: "2024-25", dataUrl: "./season-archive/data-2024-25.json", actesBaseUrl: "./season-archive/actes/2024-25" },
+  { key: "2023-24", label: "2023-24", dataUrl: "./season-archive/data-2023-24.json", actesBaseUrl: "./season-archive/actes/2023-24" },
+  { key: "2022-23", label: "2022-23", dataUrl: "./season-archive/data-2022-23.json", actesBaseUrl: "./season-archive/actes/2022-23" },
+  { key: "2021-22", label: "2021-22", dataUrl: "./season-archive/data-2021-22.json", actesBaseUrl: "./season-archive/actes/2021-22" },
 ];
 
 function extractPlayerIdFromActaRow(row) {
@@ -9613,7 +9627,9 @@ function isCompetitionFinished(comp) {
   if (!comp) return false;
   if (comp?.isFinished === true) return true;
   const seasonMatch = String(comp?.name || "").match(/\((\d{4}-\d{2})\)\s*$/);
-  return Boolean(seasonMatch && seasonMatch[1] === "2025-26");
+  const seasonLabel = seasonMatch ? seasonMatch[1] : "";
+  const currentSeasonLabel = getResolvedCurrentSeasonLabel();
+  return Boolean(seasonLabel && seasonLabel === currentSeasonLabel);
 }
 
 const isActive = comp => {
