@@ -19,5 +19,5 @@
     "@supabase/supabase-js": "^2.57.0",
     "puppeteer": "^22.0.0"
   },
-  "engines": { "node": ">=18" }
+  "engines": { "node": ">=22" }
 }
