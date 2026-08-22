@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T10:52:25.322Z",
+  "generatedAt": "2026-08-22T08:41:09.947Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 107,
@@ -4381,22 +4381,6 @@
         "competitionCanonicalId": "cmp_c13b7ead1680"
       },
       {
-        "canonicalId": "team_e68909baaaaa",
-        "clubCanonicalId": "club_660abeecc14e",
-        "source": "jok",
-        "sourceId": "12604",
-        "sourceName": "CLUB PATI VILAFRANCA AKO",
-        "competitionCanonicalId": "cmp_c13b7ead1680"
-      },
-      {
-        "canonicalId": "team_5225104f7767",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "jok",
-        "sourceId": "12159",
-        "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_c13b7ead1680"
-      },
-      {
         "canonicalId": "team_cbcf6b58d484",
         "clubCanonicalId": "club_50fffcb1292c",
         "source": "jok",
@@ -4410,6 +4394,22 @@
         "source": "jok",
         "sourceId": "11349",
         "sourceName": "SFERIC",
+        "competitionCanonicalId": "cmp_c13b7ead1680"
+      },
+      {
+        "canonicalId": "team_e68909baaaaa",
+        "clubCanonicalId": "club_660abeecc14e",
+        "source": "jok",
+        "sourceId": "12604",
+        "sourceName": "CLUB PATI VILAFRANCA AKO",
+        "competitionCanonicalId": "cmp_c13b7ead1680"
+      },
+      {
+        "canonicalId": "team_5225104f7767",
+        "clubCanonicalId": "club_f008445dfa79",
+        "source": "jok",
+        "sourceId": "12159",
+        "sourceName": "INNOAESTHETICS HC SANT JUST",
         "competitionCanonicalId": "cmp_c13b7ead1680"
       },
       {
@@ -5045,22 +5045,6 @@
         "competitionCanonicalId": "cmp_4a6d670ff094"
       },
       {
-        "canonicalId": "team_96dfb81c9763",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "jok",
-        "sourceId": "11785",
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR",
-        "competitionCanonicalId": "cmp_1d2dae771447"
-      },
-      {
-        "canonicalId": "team_ba305ab8c00d",
-        "clubCanonicalId": "club_c06980d310b6",
-        "source": "jok",
-        "sourceId": "11707",
-        "sourceName": "HCSENTMENAT",
-        "competitionCanonicalId": "cmp_1d2dae771447"
-      },
-      {
         "canonicalId": "team_e6370f1b24a8",
         "clubCanonicalId": "club_9af913379bb0",
         "source": "jok",
@@ -5074,6 +5058,22 @@
         "source": "jok",
         "sourceId": "11657",
         "sourceName": "CLUB PATÍ RODA",
+        "competitionCanonicalId": "cmp_1d2dae771447"
+      },
+      {
+        "canonicalId": "team_96dfb81c9763",
+        "clubCanonicalId": "club_beeaf4175f3b",
+        "source": "jok",
+        "sourceId": "11785",
+        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR",
+        "competitionCanonicalId": "cmp_1d2dae771447"
+      },
+      {
+        "canonicalId": "team_ba305ab8c00d",
+        "clubCanonicalId": "club_c06980d310b6",
+        "source": "jok",
+        "sourceId": "11707",
+        "sourceName": "HCSENTMENAT",
         "competitionCanonicalId": "cmp_1d2dae771447"
       },
       {
@@ -5109,22 +5109,6 @@
         "competitionCanonicalId": "cmp_1d2dae771447"
       },
       {
-        "canonicalId": "team_e76b40b2a768",
-        "clubCanonicalId": "club_ecbe09dacfa0",
-        "source": "jok",
-        "sourceId": "12361",
-        "sourceName": "CP SUBUR SITGES",
-        "competitionCanonicalId": "cmp_1d2dae771447"
-      },
-      {
-        "canonicalId": "team_64670073929b",
-        "clubCanonicalId": "club_c08b45637227",
-        "source": "jok",
-        "sourceId": "11123",
-        "sourceName": "CP JONQUERENC",
-        "competitionCanonicalId": "cmp_1d2dae771447"
-      },
-      {
         "canonicalId": "team_db9427c4378c",
         "clubCanonicalId": "club_512016680d47",
         "source": "jok",
@@ -5138,6 +5122,22 @@
         "source": "jok",
         "sourceId": "12095",
         "sourceName": "CLUB PATÍ VILAFRANCA AKO",
+        "competitionCanonicalId": "cmp_1d2dae771447"
+      },
+      {
+        "canonicalId": "team_e76b40b2a768",
+        "clubCanonicalId": "club_ecbe09dacfa0",
+        "source": "jok",
+        "sourceId": "12361",
+        "sourceName": "CP SUBUR SITGES",
+        "competitionCanonicalId": "cmp_1d2dae771447"
+      },
+      {
+        "canonicalId": "team_64670073929b",
+        "clubCanonicalId": "club_c08b45637227",
+        "source": "jok",
+        "sourceId": "11123",
+        "sourceName": "CP JONQUERENC",
         "competitionCanonicalId": "cmp_1d2dae771447"
       },
       {
@@ -5269,6 +5269,22 @@
         "competitionCanonicalId": "cmp_045dfc9ed2c1"
       },
       {
+        "canonicalId": "team_a1984f369b23",
+        "clubCanonicalId": "club_dadc3acb728d",
+        "source": "jok",
+        "sourceId": "12509",
+        "sourceName": "REUS DEPORTIU BRASILIA",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "jok",
+        "sourceId": "11971",
+        "sourceName": "CH CALDES RECAM LÀSER",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
         "canonicalId": "team_5ac3dad4108d",
         "clubCanonicalId": "club_56d012fe8780",
         "source": "jok",
@@ -5282,38 +5298,6 @@
         "source": "jok",
         "sourceId": "12612",
         "sourceName": "PAS ALCOI",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_cbcf6b58d484",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "jok",
-        "sourceId": "12465",
-        "sourceName": "CLUB PATÍ VOLTREGÀ",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_2866997ac615",
-        "clubCanonicalId": "club_d2b7a5720b48",
-        "source": "jok",
-        "sourceId": "11191",
-        "sourceName": "CH LLORET VILA ESPORTIVA",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_5e76fc8edd76",
-        "clubCanonicalId": "club_d8c2ea552e4c",
-        "source": "jok",
-        "sourceId": "12486",
-        "sourceName": "CALAFELL LA MENORQUINA",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_fb22b2475cdd",
-        "clubCanonicalId": "club_ca32203937dd",
-        "source": "jok",
-        "sourceId": "11560",
-        "sourceName": "SHUM FRIT RAVICH",
         "competitionCanonicalId": "cmp_0f70a01bc823"
       },
       {
@@ -5333,22 +5317,6 @@
         "competitionCanonicalId": "cmp_0f70a01bc823"
       },
       {
-        "canonicalId": "team_a1984f369b23",
-        "clubCanonicalId": "club_dadc3acb728d",
-        "source": "jok",
-        "sourceId": "12509",
-        "sourceName": "REUS DEPORTIU BRASILIA",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_bcbcd60d8218",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": "11971",
-        "sourceName": "CH CALDES RECAM LÀSER",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
         "canonicalId": "team_c100231d79f9",
         "clubCanonicalId": "club_e2a869c04690",
         "source": "jok",
@@ -5362,6 +5330,38 @@
         "source": "jok",
         "sourceId": "12303",
         "sourceName": "PONS LLEIDA",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_5e76fc8edd76",
+        "clubCanonicalId": "club_d8c2ea552e4c",
+        "source": "jok",
+        "sourceId": "12486",
+        "sourceName": "CALAFELL LA MENORQUINA",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_fb22b2475cdd",
+        "clubCanonicalId": "club_ca32203937dd",
+        "source": "jok",
+        "sourceId": "11560",
+        "sourceName": "SHUM FRIT RAVICH",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_cbcf6b58d484",
+        "clubCanonicalId": "club_50fffcb1292c",
+        "source": "jok",
+        "sourceId": "12465",
+        "sourceName": "CLUB PATÍ VOLTREGÀ",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_2866997ac615",
+        "clubCanonicalId": "club_d2b7a5720b48",
+        "source": "jok",
+        "sourceId": "11191",
+        "sourceName": "CH LLORET VILA ESPORTIVA",
         "competitionCanonicalId": "cmp_0f70a01bc823"
       },
       {
@@ -33423,6 +33423,12 @@
         "sourceName": "CLUB PATI CUBELLES"
       },
       {
+        "canonicalId": "club_95dd4a05a629",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "SFERIC"
+      },
+      {
         "canonicalId": "club_660abeecc14e",
         "source": "jok",
         "sourceId": null,
@@ -33433,12 +33439,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "INNOAESTHETICS HC SANT JUST"
-      },
-      {
-        "canonicalId": "club_95dd4a05a629",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "SFERIC"
       },
       {
         "canonicalId": "club_f11fcfa16b25",
@@ -33675,16 +33675,16 @@
         "sourceName": "CHP MCDONALD S AMPOSTA"
       },
       {
-        "canonicalId": "club_beeaf4175f3b",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATI MALGRAT GRUP ESCOBAR"
-      },
-      {
         "canonicalId": "club_9af913379bb0",
         "source": "jok",
         "sourceId": null,
         "sourceName": "CH FIGUERES"
+      },
+      {
+        "canonicalId": "club_beeaf4175f3b",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB PATI MALGRAT GRUP ESCOBAR"
       },
       {
         "canonicalId": "club_c3f09e470074",
@@ -33705,6 +33705,12 @@
         "sourceName": "CPI SANT IGNASI"
       },
       {
+        "canonicalId": "club_512016680d47",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "HOQUEI BANYOLES"
+      },
+      {
         "canonicalId": "club_ecbe09dacfa0",
         "source": "jok",
         "sourceId": null,
@@ -33715,12 +33721,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CP JONQUERENC"
-      },
-      {
-        "canonicalId": "club_512016680d47",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI BANYOLES"
       },
       {
         "canonicalId": "club_559c2ea035a0",
@@ -33765,16 +33765,22 @@
         "sourceName": "CP TARADELL"
       },
       {
+        "canonicalId": "club_dadc3acb728d",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "REUS DEPORTIU BRASILIA"
+      },
+      {
         "canonicalId": "club_0f6b67f750fe",
         "source": "jok",
         "sourceId": null,
         "sourceName": "PAS ALCOI"
       },
       {
-        "canonicalId": "club_d2b7a5720b48",
+        "canonicalId": "club_a7f12df63586",
         "source": "jok",
         "sourceId": null,
-        "sourceName": "CH LLORET VILA ESPORTIVA"
+        "sourceName": "PONS LLEIDA"
       },
       {
         "canonicalId": "club_d8c2ea552e4c",
@@ -33789,16 +33795,10 @@
         "sourceName": "SHUM FRIT RAVICH"
       },
       {
-        "canonicalId": "club_dadc3acb728d",
+        "canonicalId": "club_d2b7a5720b48",
         "source": "jok",
         "sourceId": null,
-        "sourceName": "REUS DEPORTIU BRASILIA"
-      },
-      {
-        "canonicalId": "club_a7f12df63586",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "PONS LLEIDA"
+        "sourceName": "CH LLORET VILA ESPORTIVA"
       },
       {
         "canonicalId": "club_15bcff4d27a9",
