@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       season:
-        description: "Temporada objectiu (ex: 2025-26)"
+        description: "Temporada objectiu (ex: 2026-27)"
         required: true
-        default: "2025-26"
+        default: "2026-27"
       mode:
         description: "Mode scrape"
         required: true

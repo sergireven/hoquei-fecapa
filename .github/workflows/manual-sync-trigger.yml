@@ -166,7 +166,7 @@ jobs:
             if (season === 'all') {
               result = await syncAllSeasonsToDatabase(sb, publicDir);
             } else if (season === 'current') {
-              result = await syncSeasonToDatabase(sb, 'current', path.join(publicDir, 'data.json'), '2025-26');
+              result = await syncSeasonToDatabase(sb, 'current', path.join(publicDir, 'data.json'), '2026-27');
             } else {
               result = await syncSeasonToDatabase(sb, season, path.join(publicDir, 'season-archive', `data-${season}.json`), season);
             }
