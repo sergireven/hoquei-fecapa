@@ -7744,6 +7744,7 @@ async function loadSeasonCatalog() {
 
   const fromManifest = Array.isArray(manifest?.seasons) ? manifest.seasons : [];
   const sourceSeasons = fromManifest.length ? fromManifest : DEFAULT_ARCHIVE_SEASONS;
+  const currentSeasonText = getSeasonLabelFromData(DB, "2026-27");
 
   const normalized = sourceSeasons
     .map((s, idx) => ({
@@ -7753,7 +7754,9 @@ async function loadSeasonCatalog() {
       actesBaseUrl: normalizeActesBaseUrl(s?.actesBaseUrl || s?.actesUrl || `./season-archive/actes/${String(s?.key || s?.season || "").trim()}`),
     }))
     .filter(s => s.key && s.dataUrl)
-    .filter(s => s.key !== "current");
+    .filter(s => s.key !== "current")
+    .filter(s => String(s.key || "") !== String(currentSeasonText || ""))
+    .filter(s => String(s.label || "") !== String(currentSeasonText || ""));
 
   const catalogEntries = [];
   const seenSeasonKeys = new Set();
@@ -7769,7 +7772,7 @@ async function loadSeasonCatalog() {
 
   seasonCatalog = [{
     key: "current",
-    label: getSeasonLabelFromData(DB, "Actual"),
+    label: `Actual · ${currentSeasonText}`,
     dataUrl: DATA_URL,
     actesBaseUrl: "./actes",
   }, ...catalogEntries];
@@ -11733,24 +11736,36 @@ window.openLevelFav = nodeKey => {
 };
 
 const FAV_CLUBS_KEY = "hoquei_club_favs_v1";
+function clubCanonicalKey(rawKey, fallbackDisplay = "") {
+  const composed = String(rawKey || fallbackDisplay || "").trim();
+  if (!composed) return "";
+  return normalizeClubLookupKey(composed)
+    || normalizeClubLookupKey(normalizeJokClubDisplayName(composed))
+    || String(composed).toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 let clubFavs = [];
 try { clubFavs = JSON.parse(localStorage.getItem(FAV_CLUBS_KEY)||"[]"); } catch {}
 const saveClubFavs = () => localStorage.setItem(FAV_CLUBS_KEY, JSON.stringify(clubFavs));
-const isClubFav = key => clubFavs.some(f=>f.key===key);
+const isClubFav = key => clubFavs.some(f => clubCanonicalKey(f.key || f.displayName || "") === clubCanonicalKey(key || ""));
 function toggleClubFav(key, displayName, clubId) {
-  if (isClubFav(key)) {
-    clubFavs = clubFavs.filter(f=>f.key!==key);
-    _removeFavFromCloud("club", key);
+  const canonical = clubCanonicalKey(key, displayName);
+  if (!canonical) return;
+
+  if (isClubFav(canonical)) {
+    clubFavs = clubFavs.filter(f => clubCanonicalKey(f.key || f.displayName || "") !== canonical);
+    _removeFavFromCloud("club", canonical);
   } else {
-    clubFavs.push({key, displayName, clubId});
-    _syncFavToCloud("club", key, {key,displayName,clubId});
+    clubFavs.push({ key: canonical, displayName, clubId });
+    _syncFavToCloud("club", canonical, { key: canonical, displayName, clubId });
   }
   saveClubFavs();
 }
 window.removeClubFav = key => {
-  clubFavs = clubFavs.filter(f=>f.key!==key);
+  const canonical = clubCanonicalKey(key);
+  clubFavs = clubFavs.filter(f => clubCanonicalKey(f.key || f.displayName || "") !== canonical);
   saveClubFavs();
-  _removeFavFromCloud("club", key);
+  _removeFavFromCloud("club", canonical);
   renderHome();
 };
 
@@ -11926,9 +11941,13 @@ function resolveClubEntryByKey(clubMap, rawKey) {
   if (!inputKey) return null;
 
   const normalizeLookupKey = value => String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/\s+/g, " ")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+[a-e]$/, "")
+    .replace(/\s+/g, " ")
     .trim();
 
   const directCandidates = [
@@ -11936,12 +11955,13 @@ function resolveClubEntryByKey(clubMap, rawKey) {
     decodeHtml(inputKey),
     normalizeJokClubDisplayName(inputKey),
     normalizeJokClubDisplayName(decodeHtml(inputKey)),
+    clubCanonicalKey(inputKey),
   ].filter(Boolean);
 
   for (const candidate of directCandidates) {
+    const exact = normalizeLookupKey(candidate);
     if (clubMap.has(candidate)) return { key: candidate, entry: clubMap.get(candidate) };
-    const normalized = normalizeLookupKey(candidate);
-    if (normalized && clubMap.has(normalized)) return { key: normalized, entry: clubMap.get(normalized) };
+    if (exact && clubMap.has(exact)) return { key: exact, entry: clubMap.get(exact) };
   }
 
   const target = normalizeLookupKey(normalizeJokClubDisplayName(decodeHtml(inputKey)));
@@ -11950,7 +11970,8 @@ function resolveClubEntryByKey(clubMap, rawKey) {
   for (const [key, entry] of clubMap.entries()) {
     const keyNorm = normalizeLookupKey(key);
     const displayNorm = normalizeLookupKey(entry?.displayName || "");
-    if (keyNorm === target || displayNorm === target) {
+    const canonicalNorm = normalizeLookupKey(clubCanonicalKey(entry?.displayName || key));
+    if (keyNorm === target || displayNorm === target || canonicalNorm === target) {
       return { key, entry };
     }
   }
