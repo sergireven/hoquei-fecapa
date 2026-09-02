@@ -8,6 +8,7 @@ const path  = require("path");
 const https = require("https");
 const http  = require("http");
 const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
+const { mergeFecapaCompetitionsIntoCategories } = require("./fecapa-merge");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
@@ -36,6 +37,7 @@ const OUTPUT_ACTES_DIR = process.env.JOK_ACTES_DIR
   ? resolveOutputPathFromEnv(process.env.JOK_ACTES_DIR, path.join(__dirname, "../public/actes"))
   : path.join(__dirname, "../public/actes");
 const SKIP_ACTA_ENRICH = process.env.JOK_SKIP_ACTA_ENRICH === "1";
+const ALLOW_INSECURE_TLS = process.env.FECAPA_ALLOW_INSECURE_TLS === "1" || process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";
 const DELAY_MS  = 0;
 const sleep     = ms => new Promise(r => setTimeout(r, ms));
 const ACTA_CONCURRENCY   = 4;
@@ -52,7 +54,8 @@ function fetchText(url, redirectsLeft = 5) {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "ca,es;q=0.9,en;q=0.8",
         "Accept-Encoding": "identity",
-      }
+      },
+      ...(url.startsWith("https") && ALLOW_INSECURE_TLS ? { rejectUnauthorized: false } : {}),
     }, (res) => {
       if ([301,302,303,307,308].includes(res.statusCode) && res.headers.location) {
         if (redirectsLeft <= 0) return reject(new Error("Too many redirects"));
@@ -2503,6 +2506,22 @@ async function main() {
     actes,
     jugadors,
   };
+
+  let fecapaCategories = {};
+  try {
+    const fecapaRaw = JSON.parse(await fs.readFile(FECAPA_CATEGORIES_FILE, "utf8"));
+    fecapaCategories = fecapaRaw?.categories || {};
+    if (Object.keys(fecapaCategories).length > 0) {
+      const mergedCategories = mergeFecapaCompetitionsIntoCategories({
+        categories: output.categories,
+        fecapaCategories: { categories: fecapaCategories },
+      });
+      output.categories = mergedCategories;
+      console.log(`   🧩 FECAPA merge: ${Object.values(fecapaCategories).reduce((sum, comps) => sum + (Array.isArray(comps) ? comps.length : 0), 0)} competicions integrades`);
+    }
+  } catch {
+    console.log("   ℹ️  fecapa-categories.json no disponible per merge de competicions");
+  }
 
   migrateActes(output);
   if (SKIP_ACTA_ENRICH) {
