@@ -7744,38 +7744,27 @@ async function loadSeasonCatalog() {
 
   const fromManifest = Array.isArray(manifest?.seasons) ? manifest.seasons : [];
   const sourceSeasons = fromManifest.length ? fromManifest : DEFAULT_ARCHIVE_SEASONS;
-  const normalized = fromManifest
-    .map((s, idx) => ({
-      key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
-      label: String(s?.label || s?.season || `Arxiu ${idx + 1}`).trim(),
-      dataUrl: String(s?.dataUrl || "").trim(),
-      actesBaseUrl: normalizeActesBaseUrl(s?.actesBaseUrl || s?.actesUrl || ""),
-    }))
-    .filter(s => s.key && s.dataUrl);
 
-  const fallbackNormalized = sourceSeasons
+  const normalized = sourceSeasons
     .map((s, idx) => ({
       key: String(s?.key || s?.season || `archive-${idx + 1}`).trim(),
       label: String(s?.label || s?.season || `Arxiu ${idx + 1}`).trim(),
-      dataUrl: String(s?.dataUrl || `./season-archive/data-${String(s?.key || s?.season || "").trim()}.json`).trim(),
+      dataUrl: String(s?.dataUrl || "").trim() || `./season-archive/data-${String(s?.key || s?.season || "").trim()}.json`,
       actesBaseUrl: normalizeActesBaseUrl(s?.actesBaseUrl || s?.actesUrl || `./season-archive/actes/${String(s?.key || s?.season || "").trim()}`),
     }))
-    .filter(s => s.key && s.dataUrl);
+    .filter(s => s.key && s.dataUrl)
+    .filter(s => s.key !== "current");
 
-  const catalogEntries = (normalized.length ? normalized : fallbackNormalized)
-    .filter(s => s.key !== "current")
-    .map(s => ({
-      ...s,
-      actesBaseUrl: s.actesBaseUrl || inferArchiveActesBaseUrl(s.key),
-    }));
-
-  const dedupedCatalogEntries = [];
+  const catalogEntries = [];
   const seenSeasonKeys = new Set();
-  for (const entry of catalogEntries) {
+  for (const entry of normalized) {
     const normalizedKey = String(entry.key || "").trim();
     if (!normalizedKey || seenSeasonKeys.has(normalizedKey)) continue;
     seenSeasonKeys.add(normalizedKey);
-    dedupedCatalogEntries.push(entry);
+    catalogEntries.push({
+      ...entry,
+      actesBaseUrl: entry.actesBaseUrl || inferArchiveActesBaseUrl(entry.key),
+    });
   }
 
   seasonCatalog = [{
@@ -7783,7 +7772,7 @@ async function loadSeasonCatalog() {
     label: getSeasonLabelFromData(DB, "Actual"),
     dataUrl: DATA_URL,
     actesBaseUrl: "./actes",
-  }, ...dedupedCatalogEntries];
+  }, ...catalogEntries];
 
   // Always start app on current season; previous selection should not override startup default.
   activeSeasonKey = "current";
@@ -12062,23 +12051,45 @@ window.selectClub = function(key) {
   }
 };
 
+function normalizeClubLookupKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+[a-e]$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function findClubKeyByTeamName(teamName) {
   const wanted = String(teamName || "").trim();
   if (!wanted) return null;
 
   const map = buildClubMap();
+  const normalizedWanted = normalizeClubLookupKey(wanted);
   const strictWanted = normalizeTeamNameStrict(wanted);
+
   for (const [key, club] of map.entries()) {
+    const clubKey = normalizeClubLookupKey(key);
+    const displayKey = normalizeClubLookupKey(club?.displayName || "");
+    if (clubKey === normalizedWanted || displayKey === normalizedWanted) return key;
+
     const teams = club?.teams || [];
     const match = teams.some(t => {
       const name = String(t?.teamName || "");
       if (!name) return false;
-      return normalizeTeamNameStrict(name) === strictWanted || teamMatchesLoose(name, wanted);
+      return normalizeTeamNameStrict(name) === strictWanted
+        || teamMatchesLoose(name, wanted)
+        || normalizeClubLookupKey(name) === normalizedWanted
+        || normalizeClubLookupKey(name).includes(normalizedWanted)
+        || normalizedWanted.includes(normalizeClubLookupKey(name));
     });
     if (match) return key;
   }
 
-  const fallbackKey = wanted.toLowerCase().replace(/\s+[a-e]$/, "").trim();
+  const fallbackKey = normalizedWanted;
   return map.has(fallbackKey) ? fallbackKey : null;
 }
 
@@ -12106,6 +12117,10 @@ window.openClubFromClassif = teamName => {
 
 function renderClubDashboard() {
   const club = selectedClub;
+  if (!club || !Array.isArray(club.teams) || !club.teams.length) {
+    $("home-body").innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8">No s'ha pogut carregar el club seleccionat.</div>`;
+    return;
+  }
 
   // Hydrate finals calendars for this club in background so status/next matches are accurate.
   const pilotComps = [...new Set((club?.teams || []).map(t => String(t?.compId || "")).filter(Boolean))]
