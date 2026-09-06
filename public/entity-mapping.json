@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-06T19:06:15.599Z",
+  "generatedAt": "2026-09-06T22:14:14.040Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 222,
-    "groups": 522,
-    "teams": 5249,
-    "clubs": 450,
+    "groups": 524,
+    "teams": 5133,
+    "clubs": 439,
     "players": 9815,
     "actes": 9185
   },
@@ -2592,18 +2592,10 @@
         "groupName": "MAIN_GROUP"
       },
       {
-        "canonicalId": "grp_51f8e75bddd1",
-        "competitionCanonicalId": "cmp_228cd19e9fee",
-        "source": "fecapa",
-        "sourceId": "3923-GRUP-1",
-        "sourceName": "PLAYOFF NACIONAL CATALANA MASCULINA",
-        "groupName": "PLAYOFF NACIONAL CATALANA MASCULINA"
-      },
-      {
         "canonicalId": "grp_aeaaf416f436",
         "competitionCanonicalId": "cmp_228cd19e9fee",
         "source": "fecapa",
-        "sourceId": "3923-GRUP-2",
+        "sourceId": "3923-GRUP-1",
         "sourceName": "NACIONAL CATALANA MASCULINA",
         "groupName": "NACIONAL CATALANA MASCULINA"
       },
@@ -4488,12 +4480,12 @@
         "groupName": "BCN PREBENJAMI OR 3"
       },
       {
-        "canonicalId": "grp_3096f1224e14",
+        "canonicalId": "grp_807e6e2f79c2",
         "competitionCanonicalId": "cmp_dbc32d3ea566",
         "source": "fecapa",
-        "sourceId": "4300-GRUP-4",
-        "sourceName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA",
-        "groupName": "CLASIFICACIÓN CLASSIFICATION CLASSIFICACIÓ CLASSIFICA"
+        "sourceId": "4300-GRUP-0",
+        "sourceName": "0",
+        "groupName": "0"
       },
       {
         "canonicalId": "grp_a1f052cee4e3",
@@ -5704,6 +5696,30 @@
         "groupName": "FASE DE GRUPS COPA ELIT ALEVÍ"
       },
       {
+        "canonicalId": "grp_aac088d04374",
+        "competitionCanonicalId": "cmp_9476ab10e608",
+        "source": "fecapa",
+        "sourceId": "4202-GRUP-4",
+        "sourceName": "FINAL A 4 LCV",
+        "groupName": "FINAL A 4 LCV"
+      },
+      {
+        "canonicalId": "grp_446aa4f595b3",
+        "competitionCanonicalId": "cmp_9476ab10e608",
+        "source": "fecapa",
+        "sourceId": "4202-GRUP-A",
+        "sourceName": "ELIMINATÒRIA ASCENS PERMANÈNCIA GRUP A-B",
+        "groupName": "ELIMINATÒRIA ASCENS PERMANÈNCIA GRUP A-B"
+      },
+      {
+        "canonicalId": "grp_2698d4fbb99f",
+        "competitionCanonicalId": "cmp_9476ab10e608",
+        "source": "fecapa",
+        "sourceId": "4202-GRUP-B",
+        "sourceName": "ELIMINATÒRIA ASCENS PERMANÈNCIA GRUP B-C",
+        "groupName": "ELIMINATÒRIA ASCENS PERMANÈNCIA GRUP B-C"
+      },
+      {
         "canonicalId": "grp_e22f5af566f7",
         "competitionCanonicalId": "cmp_9476ab10e608",
         "source": "fecapa",
@@ -5842,22 +5858,6 @@
         "competitionCanonicalId": "cmp_6823c274d4a6"
       },
       {
-        "canonicalId": "team_bb0082f4ba02",
-        "clubCanonicalId": "club_d01b9cbee146",
-        "source": "jok",
-        "sourceId": "12476",
-        "sourceName": "CH JUNEDA",
-        "competitionCanonicalId": "cmp_6823c274d4a6"
-      },
-      {
-        "canonicalId": "team_d907d607e1db",
-        "clubCanonicalId": "club_02b6c367aada",
-        "source": "jok",
-        "sourceId": "11816",
-        "sourceName": "JOIERIA MONER SANT RAMON",
-        "competitionCanonicalId": "cmp_6823c274d4a6"
-      },
-      {
         "canonicalId": "team_c100231d79f9",
         "clubCanonicalId": "club_e2a869c04690",
         "source": "jok",
@@ -5871,6 +5871,22 @@
         "source": "jok",
         "sourceId": "12570",
         "sourceName": "VICIO PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_6823c274d4a6"
+      },
+      {
+        "canonicalId": "team_bb0082f4ba02",
+        "clubCanonicalId": "club_d01b9cbee146",
+        "source": "jok",
+        "sourceId": "12476",
+        "sourceName": "CH JUNEDA",
+        "competitionCanonicalId": "cmp_6823c274d4a6"
+      },
+      {
+        "canonicalId": "team_d907d607e1db",
+        "clubCanonicalId": "club_02b6c367aada",
+        "source": "jok",
+        "sourceId": "11816",
+        "sourceName": "JOIERIA MONER SANT RAMON",
         "competitionCanonicalId": "cmp_6823c274d4a6"
       },
       {
@@ -6000,6 +6016,134 @@
         "sourceId": "12312",
         "sourceName": "AMETLLER ORIGEN CP VILAFRANCA",
         "competitionCanonicalId": "cmp_5c953462d235"
+      },
+      {
+        "canonicalId": "team_397ce3fc1b46",
+        "clubCanonicalId": "club_a3497563bad5",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI MOLLERUSSA",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_7a811ffe97fe",
+        "clubCanonicalId": "club_b0d61ab464a0",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB CASTELLAR",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LÀSER",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_38e7c1a8e711",
+        "clubCanonicalId": "club_9046a384b9a5",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB RIPOLL",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_f9a8518299bf",
+        "clubCanonicalId": "club_c2ee5045d5f0",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP BELL-LLOC",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_adffe44c3f86",
+        "clubCanonicalId": "club_1c5bccf08ef9",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CADÍ CADÍ",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_5ac3dad4108d",
+        "clubCanonicalId": "club_56d012fe8780",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "BARÇA",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_445035dbed6c",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_056c13b0680b",
+        "clubCanonicalId": "club_14cddb039370",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_c100231d79f9",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_0cfc755586c6",
+        "clubCanonicalId": "club_60deb82038fd",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ VOLTREGÀ - MASIES",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_2dea0850e927",
+        "clubCanonicalId": "club_ea04dedcddff",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TARADELL",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_917e1fb531d5",
+        "clubCanonicalId": "club_e9fc4c99a938",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE VENDRELL",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_7313eac1984b",
+        "clubCanonicalId": "club_f11fcfa16b25",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
+      },
+      {
+        "canonicalId": "team_a402ce1df29c",
+        "clubCanonicalId": "club_4ed40fda811a",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI",
+        "competitionCanonicalId": "cmp_228cd19e9fee"
       },
       {
         "canonicalId": "team_39046a5bef99",
@@ -12954,22 +13098,6 @@
         "competitionCanonicalId": "cmp_e71a052751ef"
       },
       {
-        "canonicalId": "team_bf2e775a8104",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "jok",
-        "sourceId": "12169",
-        "sourceName": "INNOAESTHETICS HC SANT JUST D",
-        "competitionCanonicalId": "cmp_c18afb99f886"
-      },
-      {
-        "canonicalId": "team_7e39a8e89a6f",
-        "clubCanonicalId": "club_69829089785e",
-        "source": "jok",
-        "sourceId": "11259",
-        "sourceName": "CP MASQUEFA",
-        "competitionCanonicalId": "cmp_c18afb99f886"
-      },
-      {
         "canonicalId": "team_17f788afc727",
         "clubCanonicalId": "club_2bfef9bcf76c",
         "source": "jok",
@@ -12983,6 +13111,22 @@
         "source": "jok",
         "sourceId": "12505",
         "sourceName": "HOQUEI CLUB CASTELLAR  C",
+        "competitionCanonicalId": "cmp_c18afb99f886"
+      },
+      {
+        "canonicalId": "team_bf2e775a8104",
+        "clubCanonicalId": "club_f008445dfa79",
+        "source": "jok",
+        "sourceId": "12169",
+        "sourceName": "INNOAESTHETICS HC SANT JUST D",
+        "competitionCanonicalId": "cmp_c18afb99f886"
+      },
+      {
+        "canonicalId": "team_7e39a8e89a6f",
+        "clubCanonicalId": "club_69829089785e",
+        "source": "jok",
+        "sourceId": "11259",
+        "sourceName": "CP MASQUEFA",
         "competitionCanonicalId": "cmp_c18afb99f886"
       },
       {
@@ -15242,22 +15386,6 @@
         "competitionCanonicalId": "cmp_3110c7fb6c62"
       },
       {
-        "canonicalId": "team_1c2108880051",
-        "clubCanonicalId": "club_681da85c95a3",
-        "source": "jok",
-        "sourceId": "12439",
-        "sourceName": "CH RIPOLLET C",
-        "competitionCanonicalId": "cmp_3110c7fb6c62"
-      },
-      {
-        "canonicalId": "team_94cedebb2eb4",
-        "clubCanonicalId": "club_0b7bc534cb09",
-        "source": "jok",
-        "sourceId": "11345",
-        "sourceName": "FUTBOL CLUB MARTINENC A A",
-        "competitionCanonicalId": "cmp_3110c7fb6c62"
-      },
-      {
         "canonicalId": "team_7d459cf4a8c9",
         "clubCanonicalId": "club_a580b725af25",
         "source": "jok",
@@ -15271,6 +15399,22 @@
         "source": "jok",
         "sourceId": "12371",
         "sourceName": "MARISTES SANT JOAN",
+        "competitionCanonicalId": "cmp_3110c7fb6c62"
+      },
+      {
+        "canonicalId": "team_1c2108880051",
+        "clubCanonicalId": "club_681da85c95a3",
+        "source": "jok",
+        "sourceId": "12439",
+        "sourceName": "CH RIPOLLET C",
+        "competitionCanonicalId": "cmp_3110c7fb6c62"
+      },
+      {
+        "canonicalId": "team_94cedebb2eb4",
+        "clubCanonicalId": "club_0b7bc534cb09",
+        "source": "jok",
+        "sourceId": "11345",
+        "sourceName": "FUTBOL CLUB MARTINENC A A",
         "competitionCanonicalId": "cmp_3110c7fb6c62"
       },
       {
@@ -18144,246 +18288,6 @@
         "sourceId": null,
         "sourceName": "HOQUEI CLUB RIPOLL B",
         "competitionCanonicalId": "cmp_885d233eb3a9"
-      },
-      {
-        "canonicalId": "team_2dc560bea7f3",
-        "clubCanonicalId": "club_3618894dd9d3",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI RIPOLLET A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_215b158e48d1",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_36237453f444",
-        "clubCanonicalId": "club_efc73ec43f2d",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "SANT JOSEP SANT SADURNI A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_5d514adb7a87",
-        "clubCanonicalId": "club_0f290d442971",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_e6b1db04ef9e",
-        "clubCanonicalId": "club_477a7c1271c2",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP RIUDEBITLLES A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_31da95e3d3b2",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT C",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_4290ddc73707",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ VOLTREGÀ A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_dc3046c00dec",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_cb7df6b2cb04",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT B",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_e76b40b2a768",
-        "clubCanonicalId": "club_ecbe09dacfa0",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP SUBUR SITGES",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_362302a7ce5c",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_3fb31669d18d",
-        "clubCanonicalId": "club_dec96fc71830",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CH MATARÓ A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_91fce4dfd589",
-        "clubCanonicalId": "club_e2a869c04690",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_9cca5cd7c22a",
-        "clubCanonicalId": "club_a47a9b235044",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MASQUEFA A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_66ee6f7b8c8b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "MOLLET HC A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_2102046881d4",
-        "clubCanonicalId": "club_69be4a547919",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "JOIERIA MONER CP SANT RAMON A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_f8acef34497e",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_20254ddc1646",
-        "clubCanonicalId": "club_01988934cfac",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "MARTINELIA MANLLEU A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_d60394d9d3ec",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "INNOAESTHETICS HC SANT JUST A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_3e8efb2a5a3b",
-        "clubCanonicalId": "club_748dcaedf46a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "PATÍ VIC",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_36b2a97017b9",
-        "clubCanonicalId": "club_14cddb039370",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_6d011ae83b9d",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER B",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_b6f543453cfd",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_67cdfd5aa478",
-        "clubCanonicalId": "club_8b0b74c5676c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_285bc702486e",
-        "clubCanonicalId": "club_d33bbed2f7ec",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CPI SANT IGNASI A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_ac571beb5eda",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_db51a695c99b",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU B",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_6a2d6f508968",
-        "clubCanonicalId": "club_34680237e3a0",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "UEH BARBERÀ",
-        "competitionCanonicalId": "cmp_804712ace1bd"
-      },
-      {
-        "canonicalId": "team_1283eb697e48",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU A",
-        "competitionCanonicalId": "cmp_804712ace1bd"
       },
       {
         "canonicalId": "team_22bf836cddde",
@@ -22322,238 +22226,6 @@
         "competitionCanonicalId": "cmp_38881cf3a817"
       },
       {
-        "canonicalId": "team_00a348a07b43",
-        "clubCanonicalId": "club_22fce501b176",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI PATINS TONA",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_f83f2499bb3e",
-        "clubCanonicalId": "club_b561f7fffc1a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE NOIA VETERANS",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_5225104f7767",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_b175391befb7",
-        "clubCanonicalId": "club_29a09faf7875",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "FCBETERANS",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_7a811ffe97fe",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_215b158e48d1",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT A",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_8a3afc65e6a9",
-        "clubCanonicalId": "club_d1587372a824",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP CORBERA",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_fe0a45fea2cd",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU B",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_917e1fb531d5",
-        "clubCanonicalId": "club_e9fc4c99a938",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_528d4e08a354",
-        "clubCanonicalId": "club_95dd4a05a629",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "SFERIC",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_a0949c439cf5",
-        "clubCanonicalId": "club_89552740863c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CANET",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_7f7db94248e2",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_7b828ddd9e21",
-        "clubCanonicalId": "club_35fb23f91c41",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PREMIÀ",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_33d81fcf0b51",
-        "clubCanonicalId": "club_189dbed74134",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB SENTMENAT",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_7313eac1984b",
-        "clubCanonicalId": "club_f11fcfa16b25",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_bed4ff88f949",
-        "clubCanonicalId": "club_b523cc735bf9",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ CALAFELL",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_f6472ef45609",
-        "clubCanonicalId": "club_79e445d029b2",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "FUTBOL CLUB CUATRO VIENTOS",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_d0594d35e9fa",
-        "clubCanonicalId": "club_f8e8dcaa685a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PRAT",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_546323d4e33b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "MOLLET HC",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_a05133977063",
-        "clubCanonicalId": "club_90339fc82d07",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "UNIÓ ESPORTIVA D'HORTA",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_39046a5bef99",
-        "clubCanonicalId": "club_dec96fc71830",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CH MATARÓ",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_96dfb81c9763",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_559a6ff121bb",
-        "clubCanonicalId": "club_6e528a782953",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "ESPANYOL CERDANYOLA +35",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_d9756178f342",
-        "clubCanonicalId": "club_c39404c9a24f",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB TENNIS BARCINO B",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_cb7df6b2cb04",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT B",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_144de5f34168",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_1b12c50e3099",
-        "clubCanonicalId": "club_3618894dd9d3",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI RIPOLLET",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
-        "canonicalId": "team_a402ce1df29c",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI",
-        "competitionCanonicalId": "cmp_9476ab10e608"
-      },
-      {
         "canonicalId": "team_d57df4848aab",
         "clubCanonicalId": "club_f84156c4f197",
         "source": "jok",
@@ -22666,22 +22338,6 @@
         "competitionCanonicalId": "cmp_db26be3eb984"
       },
       {
-        "canonicalId": "team_cbcf6b58d484",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "jok",
-        "sourceId": "12469",
-        "sourceName": "CLUB PATÍ VOLTREGÀ",
-        "competitionCanonicalId": "cmp_db26be3eb984"
-      },
-      {
-        "canonicalId": "team_1c0e28e72357",
-        "clubCanonicalId": "club_e65deb9983e2",
-        "source": "jok",
-        "sourceId": "12004",
-        "sourceName": "FARNERS",
-        "competitionCanonicalId": "cmp_db26be3eb984"
-      },
-      {
         "canonicalId": "team_7a811ffe97fe",
         "clubCanonicalId": "club_b0d61ab464a0",
         "source": "jok",
@@ -22711,6 +22367,22 @@
         "source": "jok",
         "sourceId": "11844",
         "sourceName": "CE TORRELAVIT FONT PACKAGING",
+        "competitionCanonicalId": "cmp_db26be3eb984"
+      },
+      {
+        "canonicalId": "team_cbcf6b58d484",
+        "clubCanonicalId": "club_50fffcb1292c",
+        "source": "jok",
+        "sourceId": "12469",
+        "sourceName": "CLUB PATÍ VOLTREGÀ",
+        "competitionCanonicalId": "cmp_db26be3eb984"
+      },
+      {
+        "canonicalId": "team_1c0e28e72357",
+        "clubCanonicalId": "club_e65deb9983e2",
+        "source": "jok",
+        "sourceId": "12004",
+        "sourceName": "FARNERS",
         "competitionCanonicalId": "cmp_db26be3eb984"
       },
       {
@@ -22890,22 +22562,6 @@
         "competitionCanonicalId": "cmp_1aa27416cc47"
       },
       {
-        "canonicalId": "team_bcbcd60d8218",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": "11975",
-        "sourceName": "CH CALDES RECAM LÀSER",
-        "competitionCanonicalId": "cmp_1aa27416cc47"
-      },
-      {
-        "canonicalId": "team_cb75d4f2d2a2",
-        "clubCanonicalId": "club_46ccdb1af584",
-        "source": "jok",
-        "sourceId": "12327",
-        "sourceName": "CAPELLADES",
-        "competitionCanonicalId": "cmp_1aa27416cc47"
-      },
-      {
         "canonicalId": "team_39046a5bef99",
         "clubCanonicalId": "club_dec96fc71830",
         "source": "jok",
@@ -22919,6 +22575,22 @@
         "source": "jok",
         "sourceId": "12493",
         "sourceName": "CLUB PATI CALAFELL",
+        "competitionCanonicalId": "cmp_1aa27416cc47"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "jok",
+        "sourceId": "11975",
+        "sourceName": "CH CALDES RECAM LÀSER",
+        "competitionCanonicalId": "cmp_1aa27416cc47"
+      },
+      {
+        "canonicalId": "team_cb75d4f2d2a2",
+        "clubCanonicalId": "club_46ccdb1af584",
+        "source": "jok",
+        "sourceId": "12327",
+        "sourceName": "CAPELLADES",
         "competitionCanonicalId": "cmp_1aa27416cc47"
       },
       {
@@ -23402,22 +23074,6 @@
         "competitionCanonicalId": "cmp_0f70a01bc823"
       },
       {
-        "canonicalId": "team_a1984f369b23",
-        "clubCanonicalId": "club_dadc3acb728d",
-        "source": "jok",
-        "sourceId": "12509",
-        "sourceName": "REUS DEPORTIU BRASILIA",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
-        "canonicalId": "team_bcbcd60d8218",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "jok",
-        "sourceId": "11971",
-        "sourceName": "CH CALDES RECAM LÀSER",
-        "competitionCanonicalId": "cmp_0f70a01bc823"
-      },
-      {
         "canonicalId": "team_c100231d79f9",
         "clubCanonicalId": "club_e2a869c04690",
         "source": "jok",
@@ -23447,6 +23103,22 @@
         "source": "jok",
         "sourceId": "11560",
         "sourceName": "SHUM FRIT RAVICH",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_a1984f369b23",
+        "clubCanonicalId": "club_dadc3acb728d",
+        "source": "jok",
+        "sourceId": "12509",
+        "sourceName": "REUS DEPORTIU BRASILIA",
+        "competitionCanonicalId": "cmp_0f70a01bc823"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "jok",
+        "sourceId": "11971",
+        "sourceName": "CH CALDES RECAM LÀSER",
         "competitionCanonicalId": "cmp_0f70a01bc823"
       },
       {
@@ -23600,6 +23272,150 @@
         "sourceId": "12123",
         "sourceName": "VICIO PHC SANT CUGAT",
         "competitionCanonicalId": "cmp_ba33189938eb"
+      },
+      {
+        "canonicalId": "team_397ce3fc1b46",
+        "clubCanonicalId": "club_a3497563bad5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI MOLLERUSSA",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_47434763c9a2",
+        "clubCanonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_7a811ffe97fe",
+        "clubCanonicalId": "club_b0d61ab464a0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB CASTELLAR",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_bcbcd60d8218",
+        "clubCanonicalId": "club_0071e1ba9826",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LÀSER",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_38e7c1a8e711",
+        "clubCanonicalId": "club_9046a384b9a5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB RIPOLL",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_f9a8518299bf",
+        "clubCanonicalId": "club_c2ee5045d5f0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP BELL-LLOC",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_adffe44c3f86",
+        "clubCanonicalId": "club_1c5bccf08ef9",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CADÍ CADÍ",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_5ac3dad4108d",
+        "clubCanonicalId": "club_56d012fe8780",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "BARÇA",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_445035dbed6c",
+        "clubCanonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_056c13b0680b",
+        "clubCanonicalId": "club_14cddb039370",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_c100231d79f9",
+        "clubCanonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_0cfc755586c6",
+        "clubCanonicalId": "club_60deb82038fd",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ VOLTREGÀ - MASIES",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_2dea0850e927",
+        "clubCanonicalId": "club_ea04dedcddff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TARADELL",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_917e1fb531d5",
+        "clubCanonicalId": "club_e9fc4c99a938",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE VENDRELL",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_7313eac1984b",
+        "clubCanonicalId": "club_f11fcfa16b25",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
+      },
+      {
+        "canonicalId": "team_a402ce1df29c",
+        "clubCanonicalId": "club_4ed40fda811a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI",
+        "competitionCanonicalId": "cmp_228cd19e9fee",
+        "groupCanonicalId": "grp_aeaaf416f436"
       },
       {
         "canonicalId": "team_997410e0e988",
@@ -40081,546 +39897,6 @@
         "groupCanonicalId": "grp_703c93084559"
       },
       {
-        "canonicalId": "team_2dc560bea7f3",
-        "clubCanonicalId": "club_3618894dd9d3",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI RIPOLLET A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_215b158e48d1",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_36237453f444",
-        "clubCanonicalId": "club_efc73ec43f2d",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "SANT JOSEP SANT SADURNI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_5d514adb7a87",
-        "clubCanonicalId": "club_0f290d442971",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_e6b1db04ef9e",
-        "clubCanonicalId": "club_477a7c1271c2",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP RIUDEBITLLES A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_31da95e3d3b2",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT C",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_4290ddc73707",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ VOLTREGÀ A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_dc3046c00dec",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_cb7df6b2cb04",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_e76b40b2a768",
-        "clubCanonicalId": "club_ecbe09dacfa0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SUBUR SITGES",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_f797d1397b3b"
-      },
-      {
-        "canonicalId": "team_362302a7ce5c",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_3fb31669d18d",
-        "clubCanonicalId": "club_dec96fc71830",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH MATARÓ A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_91fce4dfd589",
-        "clubCanonicalId": "club_e2a869c04690",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_9cca5cd7c22a",
-        "clubCanonicalId": "club_a47a9b235044",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MASQUEFA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_66ee6f7b8c8b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MOLLET HC A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_2102046881d4",
-        "clubCanonicalId": "club_69be4a547919",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "JOIERIA MONER CP SANT RAMON A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_f8acef34497e",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_20254ddc1646",
-        "clubCanonicalId": "club_01988934cfac",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MARTINELIA MANLLEU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_d60394d9d3ec",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "INNOAESTHETICS HC SANT JUST A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_3e8efb2a5a3b",
-        "clubCanonicalId": "club_748dcaedf46a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "PATÍ VIC",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_9a6bbd2fb459"
-      },
-      {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_36b2a97017b9",
-        "clubCanonicalId": "club_14cddb039370",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_6d011ae83b9d",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_b6f543453cfd",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_67cdfd5aa478",
-        "clubCanonicalId": "club_8b0b74c5676c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_285bc702486e",
-        "clubCanonicalId": "club_d33bbed2f7ec",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CPI SANT IGNASI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_ac571beb5eda",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_db51a695c99b",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_6a2d6f508968",
-        "clubCanonicalId": "club_34680237e3a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "UEH BARBERÀ",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_1283eb697e48",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_6581a8e8ffab"
-      },
-      {
-        "canonicalId": "team_215b158e48d1",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_20254ddc1646",
-        "clubCanonicalId": "club_01988934cfac",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MARTINELIA MANLLEU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_285bc702486e",
-        "clubCanonicalId": "club_d33bbed2f7ec",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CPI SANT IGNASI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_1283eb697e48",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_2dc560bea7f3",
-        "clubCanonicalId": "club_3618894dd9d3",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI RIPOLLET A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_e76b40b2a768",
-        "clubCanonicalId": "club_ecbe09dacfa0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SUBUR SITGES",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_36237453f444",
-        "clubCanonicalId": "club_efc73ec43f2d",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "SANT JOSEP SANT SADURNI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_2102046881d4",
-        "clubCanonicalId": "club_69be4a547919",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "JOIERIA MONER CP SANT RAMON A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_4290ddc73707",
-        "clubCanonicalId": "club_50fffcb1292c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ VOLTREGÀ A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_66ee6f7b8c8b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MOLLET HC A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_6d011ae83b9d",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_e6b1db04ef9e",
-        "clubCanonicalId": "club_477a7c1271c2",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP RIUDEBITLLES A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_b6f543453cfd",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_6a2d6f508968",
-        "clubCanonicalId": "club_34680237e3a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "UEH BARBERÀ",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_362302a7ce5c",
-        "clubCanonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LÀSER A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_9cca5cd7c22a",
-        "clubCanonicalId": "club_a47a9b235044",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MASQUEFA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_ac571beb5eda",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_67cdfd5aa478",
-        "clubCanonicalId": "club_8b0b74c5676c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_5d514adb7a87",
-        "clubCanonicalId": "club_0f290d442971",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI SANTA PERPÈTUA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_dc3046c00dec",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_f8acef34497e",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_31da95e3d3b2",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT C",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_3fb31669d18d",
-        "clubCanonicalId": "club_dec96fc71830",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH MATARÓ A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_d60394d9d3ec",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "INNOAESTHETICS HC SANT JUST A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_db51a695c99b",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_cb7df6b2cb04",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT B",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_91fce4dfd589",
-        "clubCanonicalId": "club_e2a869c04690",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_3e8efb2a5a3b",
-        "clubCanonicalId": "club_748dcaedf46a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "PATÍ VIC",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
-        "canonicalId": "team_36b2a97017b9",
-        "clubCanonicalId": "club_14cddb039370",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA A",
-        "competitionCanonicalId": "cmp_dbc32d3ea566",
-        "groupCanonicalId": "grp_3096f1224e14"
-      },
-      {
         "canonicalId": "team_22bf836cddde",
         "clubCanonicalId": "club_f0a5477309e4",
         "source": "fecapa",
@@ -50368,267 +49644,6 @@
         "groupCanonicalId": "grp_84839a8a0ed3"
       },
       {
-        "canonicalId": "team_00a348a07b43",
-        "clubCanonicalId": "club_22fce501b176",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI PATINS TONA",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_f83f2499bb3e",
-        "clubCanonicalId": "club_b561f7fffc1a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA VETERANS",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_d046b4c45d9f",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU A",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_5225104f7767",
-        "clubCanonicalId": "club_f008445dfa79",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_b175391befb7",
-        "clubCanonicalId": "club_29a09faf7875",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "FCBETERANS",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_7a811ffe97fe",
-        "clubCanonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_215b158e48d1",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT A",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_8a3afc65e6a9",
-        "clubCanonicalId": "club_d1587372a824",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CORBERA",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_fe0a45fea2cd",
-        "clubCanonicalId": "club_e98f8216c953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CONGRÉS-LA SAGRERA ES MOU B",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_917e1fb531d5",
-        "clubCanonicalId": "club_e9fc4c99a938",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_528d4e08a354",
-        "clubCanonicalId": "club_95dd4a05a629",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "SFERIC",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_a0949c439cf5",
-        "clubCanonicalId": "club_89552740863c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CANET",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_7f7db94248e2",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_7b828ddd9e21",
-        "clubCanonicalId": "club_35fb23f91c41",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PREMIÀ",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_33d81fcf0b51",
-        "clubCanonicalId": "club_189dbed74134",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB SENTMENAT",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_7313eac1984b",
-        "clubCanonicalId": "club_f11fcfa16b25",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_bed4ff88f949",
-        "clubCanonicalId": "club_b523cc735bf9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ CALAFELL",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_f6472ef45609",
-        "clubCanonicalId": "club_79e445d029b2",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "FUTBOL CLUB CUATRO VIENTOS",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_d0594d35e9fa",
-        "clubCanonicalId": "club_f8e8dcaa685a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PRAT",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_546323d4e33b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MOLLET HC",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_a05133977063",
-        "clubCanonicalId": "club_90339fc82d07",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "UNIÓ ESPORTIVA D'HORTA",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_39046a5bef99",
-        "clubCanonicalId": "club_dec96fc71830",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH MATARÓ",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_1dbc53b656e1"
-      },
-      {
-        "canonicalId": "team_96dfb81c9763",
-        "clubCanonicalId": "club_beeaf4175f3b",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ MALGRAT GRUP ESCOBAR",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_559a6ff121bb",
-        "clubCanonicalId": "club_6e528a782953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "ESPANYOL CERDANYOLA +35",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_d9756178f342",
-        "clubCanonicalId": "club_c39404c9a24f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB TENNIS BARCINO B",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_cb7df6b2cb04",
-        "clubCanonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT B",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_144de5f34168",
-        "clubCanonicalId": "club_7cca336f085f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "GENERALI HC PALAU",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_1b12c50e3099",
-        "clubCanonicalId": "club_3618894dd9d3",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI RIPOLLET",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
-        "canonicalId": "team_a402ce1df29c",
-        "clubCanonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
         "canonicalId": "team_d57df4848aab",
         "clubCanonicalId": "club_f84156c4f197",
         "source": "fecapa",
@@ -50829,18 +49844,6 @@
         "sourceName": "BARCA"
       },
       {
-        "canonicalId": "club_d01b9cbee146",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CH JUNEDA"
-      },
-      {
-        "canonicalId": "club_02b6c367aada",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "JOIERIA MONER SANT RAMON"
-      },
-      {
         "canonicalId": "club_e2a869c04690",
         "source": "jok",
         "sourceId": null,
@@ -50851,6 +49854,18 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "VICIO PHC SANT CUGAT"
+      },
+      {
+        "canonicalId": "club_d01b9cbee146",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CH JUNEDA"
+      },
+      {
+        "canonicalId": "club_02b6c367aada",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "JOIERIA MONER SANT RAMON"
       },
       {
         "canonicalId": "club_c4412f535fd3",
@@ -50937,6 +49952,66 @@
         "sourceName": "AMETLLER ORIGEN CP VILAFRANCA"
       },
       {
+        "canonicalId": "club_a3497563bad5",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI MOLLERUSSA"
+      },
+      {
+        "canonicalId": "club_8b0b74c5676c",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET"
+      },
+      {
+        "canonicalId": "club_c2ee5045d5f0",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP BELL LLOC"
+      },
+      {
+        "canonicalId": "club_1c5bccf08ef9",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CADI CADI"
+      },
+      {
+        "canonicalId": "club_6ad7d2e99cf8",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT"
+      },
+      {
+        "canonicalId": "club_14cddb039370",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA"
+      },
+      {
+        "canonicalId": "club_ea04dedcddff",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TARADELL"
+      },
+      {
+        "canonicalId": "club_e9fc4c99a938",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE VENDRELL"
+      },
+      {
+        "canonicalId": "club_f11fcfa16b25",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU"
+      },
+      {
+        "canonicalId": "club_4ed40fda811a",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI"
+      },
+      {
         "canonicalId": "club_dec96fc71830",
         "source": "jok",
         "sourceId": null,
@@ -50959,12 +50034,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CP VILAFRANCA BYACCUOR"
-      },
-      {
-        "canonicalId": "club_6ad7d2e99cf8",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT"
       },
       {
         "canonicalId": "club_d35aad2505c1",
@@ -51031,12 +50100,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CLUB PATI MALGRAT GRUP ESCOBAR"
-      },
-      {
-        "canonicalId": "club_4ed40fda811a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI"
       },
       {
         "canonicalId": "club_189dbed74134",
@@ -51115,12 +50178,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "INNOAESTHETICS HC SANT JUST"
-      },
-      {
-        "canonicalId": "club_14cddb039370",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA"
       },
       {
         "canonicalId": "club_2091b7100233",
@@ -51207,22 +50264,10 @@
         "sourceName": "CP SUBUR SITGES"
       },
       {
-        "canonicalId": "club_a3497563bad5",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI MOLLERUSSA"
-      },
-      {
         "canonicalId": "club_4d4ff902d46c",
         "source": "jok",
         "sourceId": null,
         "sourceName": "HC VALLS INTEC ENGINYERIA"
-      },
-      {
-        "canonicalId": "club_e9fc4c99a938",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL"
       },
       {
         "canonicalId": "club_559c2ea035a0",
@@ -51247,12 +50292,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CLUB PATI MASQUEFA"
-      },
-      {
-        "canonicalId": "club_c2ee5045d5f0",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP BELL LLOC"
       },
       {
         "canonicalId": "club_0f290d442971",
@@ -51303,12 +50342,6 @@
         "sourceName": "HOQUEI FIGUERES"
       },
       {
-        "canonicalId": "club_ea04dedcddff",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TARADELL"
-      },
-      {
         "canonicalId": "club_1f82480a6f0a",
         "source": "jok",
         "sourceId": null,
@@ -51337,12 +50370,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CP BLANES"
-      },
-      {
-        "canonicalId": "club_f11fcfa16b25",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU"
       },
       {
         "canonicalId": "club_f8e8dcaa685a",
@@ -51379,12 +50406,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CEH SABADELL"
-      },
-      {
-        "canonicalId": "club_8b0b74c5676c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET"
       },
       {
         "canonicalId": "club_9d8488e244a2",
@@ -51499,12 +50520,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CP CALDES"
-      },
-      {
-        "canonicalId": "club_1c5bccf08ef9",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CADI CADI"
       },
       {
         "canonicalId": "club_d33bbed2f7ec",
@@ -52119,48 +51134,6 @@
         "sourceName": "HC SANT JUST"
       },
       {
-        "canonicalId": "club_b561f7fffc1a",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE NOIA VETERANS"
-      },
-      {
-        "canonicalId": "club_29a09faf7875",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "FCBETERANS"
-      },
-      {
-        "canonicalId": "club_89552740863c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CANET"
-      },
-      {
-        "canonicalId": "club_35fb23f91c41",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PREMIA"
-      },
-      {
-        "canonicalId": "club_79e445d029b2",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "FUTBOL CLUB CUATRO VIENTOS"
-      },
-      {
-        "canonicalId": "club_6e528a782953",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "ESPANYOL CERDANYOLA 35"
-      },
-      {
-        "canonicalId": "club_c39404c9a24f",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CLUB TENNIS BARCINO"
-      },
-      {
         "canonicalId": "club_24a99d5d685a",
         "source": "jok",
         "sourceId": null,
@@ -52189,6 +51162,12 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "CLUB HOQUEI PREMIA MASTER"
+      },
+      {
+        "canonicalId": "club_c39404c9a24f",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CLUB TENNIS BARCINO"
       },
       {
         "canonicalId": "club_ba98e20d1d20",
@@ -52251,16 +51230,16 @@
         "sourceName": "CH LLORET VILA ESPORTIVA"
       },
       {
-        "canonicalId": "club_dadc3acb728d",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "REUS DEPORTIU BRASILIA"
-      },
-      {
         "canonicalId": "club_d8c2ea552e4c",
         "source": "jok",
         "sourceId": null,
         "sourceName": "CALAFELL LA MENORQUINA"
+      },
+      {
+        "canonicalId": "club_dadc3acb728d",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "REUS DEPORTIU BRASILIA"
       },
       {
         "canonicalId": "club_0f6b67f750fe",
@@ -52285,6 +51264,102 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "SDESPANYOL"
+      },
+      {
+        "canonicalId": "club_a3497563bad5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI MOLLERUSSA"
+      },
+      {
+        "canonicalId": "club_8b0b74c5676c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE NOIA FREIXENET"
+      },
+      {
+        "canonicalId": "club_b0d61ab464a0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB CASTELLAR"
+      },
+      {
+        "canonicalId": "club_0071e1ba9826",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CH CALDES RECAM LASER"
+      },
+      {
+        "canonicalId": "club_9046a384b9a5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "HOQUEI CLUB RIPOLL"
+      },
+      {
+        "canonicalId": "club_c2ee5045d5f0",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP BELL LLOC"
+      },
+      {
+        "canonicalId": "club_1c5bccf08ef9",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI CADI CADI"
+      },
+      {
+        "canonicalId": "club_56d012fe8780",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "BARCA"
+      },
+      {
+        "canonicalId": "club_6ad7d2e99cf8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "OXIGEN PHC SANT CUGAT"
+      },
+      {
+        "canonicalId": "club_14cddb039370",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP VILANOVA"
+      },
+      {
+        "canonicalId": "club_e2a869c04690",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "IGUALADA HC"
+      },
+      {
+        "canonicalId": "club_60deb82038fd",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI VOLTREGA MASIES"
+      },
+      {
+        "canonicalId": "club_ea04dedcddff",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATI TARADELL"
+      },
+      {
+        "canonicalId": "club_e9fc4c99a938",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE VENDRELL"
+      },
+      {
+        "canonicalId": "club_f11fcfa16b25",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CHP SANT FELIU"
+      },
+      {
+        "canonicalId": "club_4ed40fda811a",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CP SANT CELONI"
       },
       {
         "canonicalId": "club_b96f5bafa01e",
@@ -52327,12 +51402,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "ANDORRA HOQUEI CLUB"
-      },
-      {
-        "canonicalId": "club_0071e1ba9826",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CH CALDES RECAM LASER"
       },
       {
         "canonicalId": "club_1e7e3d9fe69c",
@@ -52381,12 +51450,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB PATI MALGRAT GRUP ESCOBAR"
-      },
-      {
-        "canonicalId": "club_4ed40fda811a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP SANT CELONI"
       },
       {
         "canonicalId": "club_71db361eaba3",
@@ -52485,18 +51548,6 @@
         "sourceName": "INNOAESTHETICS HC SANT JUST"
       },
       {
-        "canonicalId": "club_14cddb039370",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP VILANOVA"
-      },
-      {
-        "canonicalId": "club_e2a869c04690",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "IGUALADA HC"
-      },
-      {
         "canonicalId": "club_f0a5477309e4",
         "source": "fecapa",
         "sourceId": null,
@@ -52527,34 +51578,16 @@
         "sourceName": "CEH OLIMPIC REUS"
       },
       {
-        "canonicalId": "club_b0d61ab464a0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB CASTELLAR"
-      },
-      {
         "canonicalId": "club_ecbe09dacfa0",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CP SUBUR SITGES"
       },
       {
-        "canonicalId": "club_a3497563bad5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI MOLLERUSSA"
-      },
-      {
         "canonicalId": "club_4d4ff902d46c",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "HC VALLS INTEC ENGINYERIA"
-      },
-      {
-        "canonicalId": "club_e9fc4c99a938",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE VENDRELL"
       },
       {
         "canonicalId": "club_559c2ea035a0",
@@ -52567,12 +51600,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CE TORRELAVIT FONT PACKAGING"
-      },
-      {
-        "canonicalId": "club_6ad7d2e99cf8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "OXIGEN PHC SANT CUGAT"
       },
       {
         "canonicalId": "club_f0f323c328f7",
@@ -52597,12 +51624,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB PATI MASQUEFA"
-      },
-      {
-        "canonicalId": "club_c2ee5045d5f0",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP BELL LLOC"
       },
       {
         "canonicalId": "club_0f290d442971",
@@ -52665,12 +51686,6 @@
         "sourceName": "HOQUEI FIGUERES"
       },
       {
-        "canonicalId": "club_ea04dedcddff",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATI TARADELL"
-      },
-      {
         "canonicalId": "club_1f82480a6f0a",
         "source": "fecapa",
         "sourceId": null,
@@ -52699,12 +51714,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CH SANT JORDI DESVALLS"
-      },
-      {
-        "canonicalId": "club_8b0b74c5676c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA FREIXENET"
       },
       {
         "canonicalId": "club_9d8488e244a2",
@@ -52777,12 +51786,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "FUTBOL CLUB MARTINENC"
-      },
-      {
-        "canonicalId": "club_f11fcfa16b25",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CHP SANT FELIU"
       },
       {
         "canonicalId": "club_c4412f535fd3",
@@ -52873,12 +51876,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB HOQUEI NAVARCLES"
-      },
-      {
-        "canonicalId": "club_1c5bccf08ef9",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CADI CADI"
       },
       {
         "canonicalId": "club_f8e8dcaa685a",
@@ -52987,12 +51984,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CHCASTELLET"
-      },
-      {
-        "canonicalId": "club_9046a384b9a5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "HOQUEI CLUB RIPOLL"
       },
       {
         "canonicalId": "club_1dbd402b3d33",
@@ -53125,12 +52116,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "HOQUEI ALPICAT VILA SANA"
-      },
-      {
-        "canonicalId": "club_56d012fe8780",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "BARCA"
       },
       {
         "canonicalId": "club_33628bd521c2",
@@ -53379,48 +52364,6 @@
         "sourceName": "TECMON FDCASSANENC"
       },
       {
-        "canonicalId": "club_b561f7fffc1a",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE NOIA VETERANS"
-      },
-      {
-        "canonicalId": "club_29a09faf7875",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "FCBETERANS"
-      },
-      {
-        "canonicalId": "club_89552740863c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI CANET"
-      },
-      {
-        "canonicalId": "club_35fb23f91c41",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI PREMIA"
-      },
-      {
-        "canonicalId": "club_79e445d029b2",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "FUTBOL CLUB CUATRO VIENTOS"
-      },
-      {
-        "canonicalId": "club_6e528a782953",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "ESPANYOL CERDANYOLA 35"
-      },
-      {
-        "canonicalId": "club_c39404c9a24f",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB TENNIS BARCINO"
-      },
-      {
         "canonicalId": "club_24a99d5d685a",
         "source": "fecapa",
         "sourceId": null,
@@ -53449,6 +52392,12 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CLUB HOQUEI PREMIA MASTER"
+      },
+      {
+        "canonicalId": "club_c39404c9a24f",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB TENNIS BARCINO"
       },
       {
         "canonicalId": "club_ba98e20d1d20",
@@ -113743,17 +112692,17 @@
         "compName": "ALEVÍ PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_ec932aa6fe7c",
+        "canonicalId": "acta_4c275bbf0748",
         "source": "jok",
-        "sourceId": "479048801133011275",
+        "sourceId": "479048801187811627",
         "sourceName": "vs",
         "compSourceId": "4880",
         "compName": "ALEVÍ PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_4c275bbf0748",
+        "canonicalId": "acta_ec932aa6fe7c",
         "source": "jok",
-        "sourceId": "479048801187811627",
+        "sourceId": "479048801133011275",
         "sourceName": "vs",
         "compSourceId": "4880",
         "compName": "ALEVÍ PLATA 3 (2026-27)"
@@ -114359,17 +113308,17 @@
         "compName": "ALEVÍ PLATA 4 (2026-27)"
       },
       {
-        "canonicalId": "acta_6af2c87a311c",
+        "canonicalId": "acta_3e72e310bcee",
         "source": "jok",
-        "sourceId": "479048811243911345",
+        "sourceId": "479048811143712371",
         "sourceName": "vs",
         "compSourceId": "4881",
         "compName": "ALEVÍ PLATA 4 (2026-27)"
       },
       {
-        "canonicalId": "acta_3e72e310bcee",
+        "canonicalId": "acta_6af2c87a311c",
         "source": "jok",
-        "sourceId": "479048811143712371",
+        "sourceId": "479048811243911345",
         "sourceName": "vs",
         "compSourceId": "4881",
         "compName": "ALEVÍ PLATA 4 (2026-27)"
@@ -114999,17 +113948,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_ec24d409bebc",
+        "canonicalId": "acta_206cd61e21ff",
         "source": "jok",
-        "sourceId": "479048821154411558",
+        "sourceId": "479048821217212112",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_206cd61e21ff",
+        "canonicalId": "acta_ec24d409bebc",
         "source": "jok",
-        "sourceId": "479048821217212112",
+        "sourceId": "479048821154411558",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -115047,17 +113996,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_a3fbebe7859a",
+        "canonicalId": "acta_0694619cab42",
         "source": "jok",
-        "sourceId": "479048821192712172",
+        "sourceId": "479048821155812331",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_0694619cab42",
+        "canonicalId": "acta_a3fbebe7859a",
         "source": "jok",
-        "sourceId": "479048821155812331",
+        "sourceId": "479048821192712172",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -115247,17 +114196,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_4cbf0a0c1dcd",
+        "canonicalId": "acta_1056bac3b047",
         "source": "jok",
-        "sourceId": "479048821192711953",
+        "sourceId": "479048821155812151",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_1056bac3b047",
+        "canonicalId": "acta_4cbf0a0c1dcd",
         "source": "jok",
-        "sourceId": "479048821155812151",
+        "sourceId": "479048821192711953",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -115335,17 +114284,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_cac43eb79fb4",
+        "canonicalId": "acta_210a6323b98b",
         "source": "jok",
-        "sourceId": "479048821154412331",
+        "sourceId": "479048821217212258",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_210a6323b98b",
+        "canonicalId": "acta_cac43eb79fb4",
         "source": "jok",
-        "sourceId": "479048821217212258",
+        "sourceId": "479048821154412331",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -115431,17 +114380,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_731370f68083",
+        "canonicalId": "acta_d5a110039ec6",
         "source": "jok",
-        "sourceId": "479048821217211837",
+        "sourceId": "479048821154411953",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_d5a110039ec6",
+        "canonicalId": "acta_731370f68083",
         "source": "jok",
-        "sourceId": "479048821154411953",
+        "sourceId": "479048821217211837",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -115527,17 +114476,17 @@
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_75a8afb31f12",
+        "canonicalId": "acta_ee789f44a456",
         "source": "jok",
-        "sourceId": "479048821217211261",
+        "sourceId": "479048821154412151",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_ee789f44a456",
+        "canonicalId": "acta_75a8afb31f12",
         "source": "jok",
-        "sourceId": "479048821154412151",
+        "sourceId": "479048821217211261",
         "sourceName": "vs",
         "compSourceId": "4882",
         "compName": "ALEVÍ PLATA 5 (2026-27)"
@@ -116263,17 +115212,17 @@
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_0504883f0556",
+        "canonicalId": "acta_7a817c072a68",
         "source": "jok",
-        "sourceId": "479048841205512561",
+        "sourceId": "479048841174312450",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_7a817c072a68",
+        "canonicalId": "acta_0504883f0556",
         "source": "jok",
-        "sourceId": "479048841174312450",
+        "sourceId": "479048841205512561",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
@@ -116463,17 +115412,17 @@
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_9af9f1d72539",
+        "canonicalId": "acta_e7a1c6123657",
         "source": "jok",
-        "sourceId": "479048841174311675",
+        "sourceId": "479048841224612450",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_e7a1c6123657",
+        "canonicalId": "acta_9af9f1d72539",
         "source": "jok",
-        "sourceId": "479048841224612450",
+        "sourceId": "479048841174311675",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
@@ -116551,6 +115500,14 @@
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
+        "canonicalId": "acta_b3fb350c273c",
+        "source": "jok",
+        "sourceId": "479048841245011585",
+        "sourceName": "vs",
+        "compSourceId": "4884",
+        "compName": "ALEVÍ PLATA 7 (2026-27)"
+      },
+      {
         "canonicalId": "acta_46e65098a82d",
         "source": "jok",
         "sourceId": "479048841174312495",
@@ -116562,14 +115519,6 @@
         "canonicalId": "acta_1b26f2afd5d8",
         "source": "jok",
         "sourceId": "479048841224612348",
-        "sourceName": "vs",
-        "compSourceId": "4884",
-        "compName": "ALEVÍ PLATA 7 (2026-27)"
-      },
-      {
-        "canonicalId": "acta_b3fb350c273c",
-        "source": "jok",
-        "sourceId": "479048841245011585",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
@@ -116695,17 +115644,17 @@
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_b32213b04779",
+        "canonicalId": "acta_c434854e805c",
         "source": "jok",
-        "sourceId": "479048841205512246",
+        "sourceId": "479048841174312069",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_c434854e805c",
+        "canonicalId": "acta_b32213b04779",
         "source": "jok",
-        "sourceId": "479048841174312069",
+        "sourceId": "479048841205512246",
         "sourceName": "vs",
         "compSourceId": "4884",
         "compName": "ALEVÍ PLATA 7 (2026-27)"
@@ -117527,14 +116476,6 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_0eeec739dad7",
-        "source": "jok",
-        "sourceId": "477648661246912004",
-        "sourceName": "vs",
-        "compSourceId": "4866",
-        "compName": "1ª CATALANA GRUP A (2026-27)"
-      },
-      {
         "canonicalId": "acta_3fbd42b29f7e",
         "source": "jok",
         "sourceId": "477648661247911110",
@@ -117546,6 +116487,14 @@
         "canonicalId": "acta_39239bd16f17",
         "source": "jok",
         "sourceId": "477648661137111844",
+        "sourceName": "vs",
+        "compSourceId": "4866",
+        "compName": "1ª CATALANA GRUP A (2026-27)"
+      },
+      {
+        "canonicalId": "acta_0eeec739dad7",
+        "source": "jok",
+        "sourceId": "477648661246912004",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -117591,17 +116540,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_d0fbacfdd56a",
+        "canonicalId": "acta_e9bc6f89ec24",
         "source": "jok",
-        "sourceId": "477648661129211318",
+        "sourceId": "477648661184412479",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_e9bc6f89ec24",
+        "canonicalId": "acta_d0fbacfdd56a",
         "source": "jok",
-        "sourceId": "477648661184412479",
+        "sourceId": "477648661129211318",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -117615,17 +116564,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_9f3e72b319f2",
+        "canonicalId": "acta_f4ce0c0b6a79",
         "source": "jok",
-        "sourceId": "477648661113911371",
+        "sourceId": "477648661148912469",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_f4ce0c0b6a79",
+        "canonicalId": "acta_9f3e72b319f2",
         "source": "jok",
-        "sourceId": "477648661148912469",
+        "sourceId": "477648661113911371",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -117967,17 +116916,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_50e77fc08824",
+        "canonicalId": "acta_c8ab45ef8e01",
         "source": "jok",
-        "sourceId": "477648661113912012",
+        "sourceId": "477648661148911292",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_c8ab45ef8e01",
+        "canonicalId": "acta_50e77fc08824",
         "source": "jok",
-        "sourceId": "477648661148911292",
+        "sourceId": "477648661113912012",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -118223,17 +117172,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_fce8d7db353d",
+        "canonicalId": "acta_6c62ea77eac0",
         "source": "jok",
-        "sourceId": "477648661111012004",
+        "sourceId": "477648661201211292",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_6c62ea77eac0",
+        "canonicalId": "acta_fce8d7db353d",
         "source": "jok",
-        "sourceId": "477648661201211292",
+        "sourceId": "477648661111012004",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -118391,17 +117340,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_a8157bf158c8",
+        "canonicalId": "acta_8f8383e772fc",
         "source": "jok",
-        "sourceId": "477648661148912479",
+        "sourceId": "477648661113912115",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_8f8383e772fc",
+        "canonicalId": "acta_a8157bf158c8",
         "source": "jok",
-        "sourceId": "477648661113912115",
+        "sourceId": "477648661148912479",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -118679,17 +117628,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_e18a5bee07dd",
+        "canonicalId": "acta_8186f6dc48f6",
         "source": "jok",
-        "sourceId": "477648661148911457",
+        "sourceId": "477648661113912469",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_8186f6dc48f6",
+        "canonicalId": "acta_e18a5bee07dd",
         "source": "jok",
-        "sourceId": "477648661113912469",
+        "sourceId": "477648661148911457",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -118935,17 +117884,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_76b6e0593131",
+        "canonicalId": "acta_32fb4a60a110",
         "source": "jok",
-        "sourceId": "477648661111012115",
+        "sourceId": "477648661201211457",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_32fb4a60a110",
+        "canonicalId": "acta_76b6e0593131",
         "source": "jok",
-        "sourceId": "477648661201211457",
+        "sourceId": "477648661111012115",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -119079,17 +118028,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_7b5f0e1c9ab0",
+        "canonicalId": "acta_7cebfaf73f8b",
         "source": "jok",
-        "sourceId": "477648661201212469",
+        "sourceId": "477648661111011457",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_7cebfaf73f8b",
+        "canonicalId": "acta_7b5f0e1c9ab0",
         "source": "jok",
-        "sourceId": "477648661111011457",
+        "sourceId": "477648661201212469",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -119223,17 +118172,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_12cd66576a17",
+        "canonicalId": "acta_79ea31cf9159",
         "source": "jok",
-        "sourceId": "477648661201211139",
+        "sourceId": "477648661111012469",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_79ea31cf9159",
+        "canonicalId": "acta_12cd66576a17",
         "source": "jok",
-        "sourceId": "477648661111012469",
+        "sourceId": "477648661201211139",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -119375,17 +118324,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_59b45d39bd94",
+        "canonicalId": "acta_8c792e6a9ccf",
         "source": "jok",
-        "sourceId": "477648661201211489",
+        "sourceId": "477648661111011139",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_8c792e6a9ccf",
+        "canonicalId": "acta_59b45d39bd94",
         "source": "jok",
-        "sourceId": "477648661111011139",
+        "sourceId": "477648661201211489",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -119519,17 +118468,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_7c6367df95c7",
+        "canonicalId": "acta_191f37b378c0",
         "source": "jok",
-        "sourceId": "477648661111011489",
+        "sourceId": "477648661201211846",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_191f37b378c0",
+        "canonicalId": "acta_7c6367df95c7",
         "source": "jok",
-        "sourceId": "477648661201211846",
+        "sourceId": "477648661111011489",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -119687,17 +118636,17 @@
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_7391ecf6d8ae",
+        "canonicalId": "acta_b3df20d2b1a2",
         "source": "jok",
-        "sourceId": "477648661113911920",
+        "sourceId": "477648661148911556",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_b3df20d2b1a2",
+        "canonicalId": "acta_7391ecf6d8ae",
         "source": "jok",
-        "sourceId": "477648661148911556",
+        "sourceId": "477648661113911920",
         "sourceName": "vs",
         "compSourceId": "4866",
         "compName": "1ª CATALANA GRUP A (2026-27)"
@@ -120015,17 +118964,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_8abfa790ccd6",
+        "canonicalId": "acta_b8f4ad4f8672",
         "source": "jok",
-        "sourceId": "477648671197512327",
+        "sourceId": "477648671186712493",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_b8f4ad4f8672",
+        "canonicalId": "acta_8abfa790ccd6",
         "source": "jok",
-        "sourceId": "477648671186712493",
+        "sourceId": "477648671197512327",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120135,17 +119084,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_1588ba14e202",
+        "canonicalId": "acta_60870b41d3b4",
         "source": "jok",
-        "sourceId": "477648671142712313",
+        "sourceId": "477648671136011192",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_60870b41d3b4",
+        "canonicalId": "acta_1588ba14e202",
         "source": "jok",
-        "sourceId": "477648671136011192",
+        "sourceId": "477648671142712313",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120279,17 +119228,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_fe4e9be81503",
+        "canonicalId": "acta_542609702b21",
         "source": "jok",
-        "sourceId": "477648671136012327",
+        "sourceId": "477648671142711867",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_542609702b21",
+        "canonicalId": "acta_fe4e9be81503",
         "source": "jok",
-        "sourceId": "477648671142711867",
+        "sourceId": "477648671136012327",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120359,17 +119308,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_0fbd3538a15f",
+        "canonicalId": "acta_388d0913bd11",
         "source": "jok",
-        "sourceId": "477648671231311975",
+        "sourceId": "477648671186712218",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_388d0913bd11",
+        "canonicalId": "acta_0fbd3538a15f",
         "source": "jok",
-        "sourceId": "477648671186712218",
+        "sourceId": "477648671231311975",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120511,17 +119460,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_3b7dfdba8713",
+        "canonicalId": "acta_aca4b1500a57",
         "source": "jok",
-        "sourceId": "477648671231312292",
+        "sourceId": "477648671186712384",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_aca4b1500a57",
+        "canonicalId": "acta_3b7dfdba8713",
         "source": "jok",
-        "sourceId": "477648671186712384",
+        "sourceId": "477648671231312292",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120551,17 +119500,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_0b1a87ff1374",
+        "canonicalId": "acta_92f006c78963",
         "source": "jok",
-        "sourceId": "477648671119212403",
+        "sourceId": "477648671238412218",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_92f006c78963",
+        "canonicalId": "acta_0b1a87ff1374",
         "source": "jok",
-        "sourceId": "477648671238412218",
+        "sourceId": "477648671119212403",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120647,17 +119596,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_7cdd439c8efb",
+        "canonicalId": "acta_8859d3b32b1e",
         "source": "jok",
-        "sourceId": "477648671231311360",
+        "sourceId": "477648671186712304",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_8859d3b32b1e",
+        "canonicalId": "acta_7cdd439c8efb",
         "source": "jok",
-        "sourceId": "477648671186712304",
+        "sourceId": "477648671231311360",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120711,9 +119660,9 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_05fab4daf521",
+        "canonicalId": "acta_2cab3b60baea",
         "source": "jok",
-        "sourceId": "477648671190412493",
+        "sourceId": "477648671142712384",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120727,17 +119676,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_2c8561aaf0cb",
+        "canonicalId": "acta_05fab4daf521",
         "source": "jok",
-        "sourceId": "477648671232712403",
+        "sourceId": "477648671190412493",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_2cab3b60baea",
+        "canonicalId": "acta_2c8561aaf0cb",
         "source": "jok",
-        "sourceId": "477648671142712384",
+        "sourceId": "477648671232712403",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120847,22 +119796,6 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_44a26370e1c9",
-        "source": "jok",
-        "sourceId": "477648671232711219",
-        "sourceName": "vs",
-        "compSourceId": "4867",
-        "compName": "1ª CATALANA GRUP B (2026-27)"
-      },
-      {
-        "canonicalId": "acta_02a5e101168d",
-        "source": "jok",
-        "sourceId": "477648671142712292",
-        "sourceName": "vs",
-        "compSourceId": "4867",
-        "compName": "1ª CATALANA GRUP B (2026-27)"
-      },
-      {
         "canonicalId": "acta_63341b043248",
         "source": "jok",
         "sourceId": "477648671190411587",
@@ -120874,6 +119807,22 @@
         "canonicalId": "acta_5d46a885f116",
         "source": "jok",
         "sourceId": "477648671136011975",
+        "sourceName": "vs",
+        "compSourceId": "4867",
+        "compName": "1ª CATALANA GRUP B (2026-27)"
+      },
+      {
+        "canonicalId": "acta_44a26370e1c9",
+        "source": "jok",
+        "sourceId": "477648671232711219",
+        "sourceName": "vs",
+        "compSourceId": "4867",
+        "compName": "1ª CATALANA GRUP B (2026-27)"
+      },
+      {
+        "canonicalId": "acta_02a5e101168d",
+        "source": "jok",
+        "sourceId": "477648671142712292",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -120991,14 +119940,6 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_8da3836042cd",
-        "source": "jok",
-        "sourceId": "477648671190411867",
-        "sourceName": "vs",
-        "compSourceId": "4867",
-        "compName": "1ª CATALANA GRUP B (2026-27)"
-      },
-      {
         "canonicalId": "acta_1649de3fceac",
         "source": "jok",
         "sourceId": "477648671232712313",
@@ -121018,6 +119959,14 @@
         "canonicalId": "acta_13c8d36eecdc",
         "source": "jok",
         "sourceId": "477648671136012292",
+        "sourceName": "vs",
+        "compSourceId": "4867",
+        "compName": "1ª CATALANA GRUP B (2026-27)"
+      },
+      {
+        "canonicalId": "acta_8da3836042cd",
+        "source": "jok",
+        "sourceId": "477648671190411867",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121135,14 +120084,6 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_9be2c6275efe",
-        "source": "jok",
-        "sourceId": "477648671232712218",
-        "sourceName": "vs",
-        "compSourceId": "4867",
-        "compName": "1ª CATALANA GRUP B (2026-27)"
-      },
-      {
         "canonicalId": "acta_291ce410a3ca",
         "source": "jok",
         "sourceId": "477648671136011427",
@@ -121154,6 +120095,14 @@
         "canonicalId": "acta_19210ed1daf7",
         "source": "jok",
         "sourceId": "477648671190411975",
+        "sourceName": "vs",
+        "compSourceId": "4867",
+        "compName": "1ª CATALANA GRUP B (2026-27)"
+      },
+      {
+        "canonicalId": "acta_9be2c6275efe",
+        "source": "jok",
+        "sourceId": "477648671232712218",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121215,17 +120164,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_3f018975ea1e",
+        "canonicalId": "acta_8d1c1501a640",
         "source": "jok",
-        "sourceId": "477648671190412384",
+        "sourceId": "477648671232711975",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_8d1c1501a640",
+        "canonicalId": "acta_3f018975ea1e",
         "source": "jok",
-        "sourceId": "477648671232711975",
+        "sourceId": "477648671190412384",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121311,17 +120260,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_4f8342b2e10c",
+        "canonicalId": "acta_c5963c843a72",
         "source": "jok",
-        "sourceId": "477648671186711219",
+        "sourceId": "477648671231311587",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_c5963c843a72",
+        "canonicalId": "acta_4f8342b2e10c",
         "source": "jok",
-        "sourceId": "477648671231311587",
+        "sourceId": "477648671186711219",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121431,17 +120380,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_b2a08d814aba",
+        "canonicalId": "acta_5fc1cf47738c",
         "source": "jok",
-        "sourceId": "477648671142711761",
+        "sourceId": "477648671136011904",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_5fc1cf47738c",
+        "canonicalId": "acta_b2a08d814aba",
         "source": "jok",
-        "sourceId": "477648671136011904",
+        "sourceId": "477648671142711761",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121503,17 +120452,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_44b315901cbf",
+        "canonicalId": "acta_e4d81a2b07f2",
         "source": "jok",
-        "sourceId": "477648671190411658",
+        "sourceId": "477648671232711360",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_e4d81a2b07f2",
+        "canonicalId": "acta_44b315901cbf",
         "source": "jok",
-        "sourceId": "477648671232711360",
+        "sourceId": "477648671190411658",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121639,17 +120588,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_21a8756a7813",
+        "canonicalId": "acta_e00ef0444afc",
         "source": "jok",
-        "sourceId": "477648671190411192",
+        "sourceId": "477648671232711761",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_e00ef0444afc",
+        "canonicalId": "acta_21a8756a7813",
         "source": "jok",
-        "sourceId": "477648671232711761",
+        "sourceId": "477648671190411192",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121663,17 +120612,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_1d2cce372201",
+        "canonicalId": "acta_0eac2301753e",
         "source": "jok",
-        "sourceId": "477648671186711975",
+        "sourceId": "477648671231312384",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_0eac2301753e",
+        "canonicalId": "acta_1d2cce372201",
         "source": "jok",
-        "sourceId": "477648671231312384",
+        "sourceId": "477648671186711975",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -121847,17 +120796,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_e222986fbecb",
+        "canonicalId": "acta_5e1c2f4ea6a0",
         "source": "jok",
-        "sourceId": "477648671238411975",
+        "sourceId": "477648671119212493",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_5e1c2f4ea6a0",
+        "canonicalId": "acta_e222986fbecb",
         "source": "jok",
-        "sourceId": "477648671119212493",
+        "sourceId": "477648671238411975",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -122215,17 +121164,17 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_ee91ce5f12ac",
+        "canonicalId": "acta_d773ab424daf",
         "source": "jok",
-        "sourceId": "477648671230411427",
+        "sourceId": "477648671158712403",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_d773ab424daf",
+        "canonicalId": "acta_ee91ce5f12ac",
         "source": "jok",
-        "sourceId": "477648671158712403",
+        "sourceId": "477648671230411427",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -122287,14 +121236,6 @@
         "compName": "1ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_b50f3a84ba0c",
-        "source": "jok",
-        "sourceId": "477648671136012304",
-        "sourceName": "vs",
-        "compSourceId": "4867",
-        "compName": "1ª CATALANA GRUP B (2026-27)"
-      },
-      {
         "canonicalId": "acta_25641ae65d49",
         "source": "jok",
         "sourceId": "477648671232711867",
@@ -122306,6 +121247,14 @@
         "canonicalId": "acta_ff62235b507e",
         "source": "jok",
         "sourceId": "477648671190412218",
+        "sourceName": "vs",
+        "compSourceId": "4867",
+        "compName": "1ª CATALANA GRUP B (2026-27)"
+      },
+      {
+        "canonicalId": "acta_b50f3a84ba0c",
+        "source": "jok",
+        "sourceId": "477648671136012304",
         "sourceName": "vs",
         "compSourceId": "4867",
         "compName": "1ª CATALANA GRUP B (2026-27)"
@@ -123735,17 +122684,17 @@
         "compName": "2ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_c4acbcb79ae2",
+        "canonicalId": "acta_498b2c34d83b",
         "source": "jok",
-        "sourceId": "477948701122011350",
+        "sourceId": "477948701114112483",
         "sourceName": "vs",
         "compSourceId": "4870",
         "compName": "2ª CATALANA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_498b2c34d83b",
+        "canonicalId": "acta_c4acbcb79ae2",
         "source": "jok",
-        "sourceId": "477948701114112483",
+        "sourceId": "477948701122011350",
         "sourceName": "vs",
         "compSourceId": "4870",
         "compName": "2ª CATALANA GRUP A (2026-27)"
@@ -124239,17 +123188,17 @@
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_291728e9a078",
+        "canonicalId": "acta_46d5b6de3747",
         "source": "jok",
-        "sourceId": "477948711238512253",
+        "sourceId": "477948711184711317",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_46d5b6de3747",
+        "canonicalId": "acta_291728e9a078",
         "source": "jok",
-        "sourceId": "477948711184711317",
+        "sourceId": "477948711238512253",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
@@ -124999,17 +123948,17 @@
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_b359e6f8205a",
+        "canonicalId": "acta_1844b2cfa2aa",
         "source": "jok",
-        "sourceId": "477948711150811441",
+        "sourceId": "477948711197611937",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_1844b2cfa2aa",
+        "canonicalId": "acta_b359e6f8205a",
         "source": "jok",
-        "sourceId": "477948711197611937",
+        "sourceId": "477948711150811441",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
@@ -125023,17 +123972,17 @@
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_24e0fcbfda74",
+        "canonicalId": "acta_819fd1ec75c3",
         "source": "jok",
-        "sourceId": "477948711184711869",
+        "sourceId": "477948711238511483",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_819fd1ec75c3",
+        "canonicalId": "acta_24e0fcbfda74",
         "source": "jok",
-        "sourceId": "477948711238511483",
+        "sourceId": "477948711184711869",
         "sourceName": "vs",
         "compSourceId": "4871",
         "compName": "2ª CATALANA GRUP B (2026-27)"
@@ -125447,17 +124396,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_7389e7861596",
+        "canonicalId": "acta_37036993ec4a",
         "source": "jok",
-        "sourceId": "477948721178512361",
+        "sourceId": "477948721258011707",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_37036993ec4a",
+        "canonicalId": "acta_7389e7861596",
         "source": "jok",
-        "sourceId": "477948721258011707",
+        "sourceId": "477948721178512361",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125575,6 +124524,14 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
+        "canonicalId": "acta_598c1198989c",
+        "source": "jok",
+        "sourceId": "477948721232412361",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
         "canonicalId": "acta_24da77ad9525",
         "source": "jok",
         "sourceId": "477948721157811657",
@@ -125586,14 +124543,6 @@
         "canonicalId": "acta_c45f5ae71584",
         "source": "jok",
         "sourceId": "477948721194011123",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
-        "canonicalId": "acta_598c1198989c",
-        "source": "jok",
-        "sourceId": "477948721232412361",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125647,17 +124596,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_5e8a4d46b4ad",
+        "canonicalId": "acta_3eb5540467e5",
         "source": "jok",
-        "sourceId": "477948721165712095",
+        "sourceId": "477948721168711828",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_3eb5540467e5",
+        "canonicalId": "acta_5e8a4d46b4ad",
         "source": "jok",
-        "sourceId": "477948721168711828",
+        "sourceId": "477948721165712095",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125727,14 +124676,6 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_cb33e89ef5c5",
-        "source": "jok",
-        "sourceId": "477948721258011940",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
         "canonicalId": "acta_f376d0988f10",
         "source": "jok",
         "sourceId": "477948721112311828",
@@ -125743,9 +124684,9 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_036d1fdf647b",
+        "canonicalId": "acta_cb33e89ef5c5",
         "source": "jok",
-        "sourceId": "477948721232411817",
+        "sourceId": "477948721258011940",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125759,9 +124700,9 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_7f4e38104f2f",
+        "canonicalId": "acta_036d1fdf647b",
         "source": "jok",
-        "sourceId": "477948721168711785",
+        "sourceId": "477948721232411817",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125770,6 +124711,14 @@
         "canonicalId": "acta_dcda592ebf5d",
         "source": "jok",
         "sourceId": "477948721165712328",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
+        "canonicalId": "acta_7f4e38104f2f",
+        "source": "jok",
+        "sourceId": "477948721168711785",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -125951,17 +124900,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_c62dd199705f",
+        "canonicalId": "acta_95ee157dbca4",
         "source": "jok",
-        "sourceId": "477948721178511123",
+        "sourceId": "477948721258012328",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_95ee157dbca4",
+        "canonicalId": "acta_c62dd199705f",
         "source": "jok",
-        "sourceId": "477948721258012328",
+        "sourceId": "477948721178511123",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126095,17 +125044,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_60a4495104dc",
+        "canonicalId": "acta_2ce3d70353c6",
         "source": "jok",
-        "sourceId": "477948721168712324",
+        "sourceId": "477948721165712580",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_2ce3d70353c6",
+        "canonicalId": "acta_60a4495104dc",
         "source": "jok",
-        "sourceId": "477948721165712580",
+        "sourceId": "477948721168712324",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126122,6 +125071,14 @@
         "canonicalId": "acta_8e2d4da46bf6",
         "source": "jok",
         "sourceId": "477948721178512095",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
+        "canonicalId": "acta_c42ffffc971e",
+        "source": "jok",
+        "sourceId": "477948721232411657",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126146,14 +125103,6 @@
         "canonicalId": "acta_6c3a77a5e583",
         "source": "jok",
         "sourceId": "477948721157811828",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
-        "canonicalId": "acta_c42ffffc971e",
-        "source": "jok",
-        "sourceId": "477948721232411657",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126247,6 +125196,14 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
+        "canonicalId": "acta_6c69d3c039e6",
+        "source": "jok",
+        "sourceId": "477948721232411707",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
         "canonicalId": "acta_662a2840cb3e",
         "source": "jok",
         "sourceId": "477948721194011657",
@@ -126258,14 +125215,6 @@
         "canonicalId": "acta_925db8c82545",
         "source": "jok",
         "sourceId": "477948721157811687",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
-        "canonicalId": "acta_6c69d3c039e6",
-        "source": "jok",
-        "sourceId": "477948721232411707",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126359,6 +125308,14 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
+        "canonicalId": "acta_229059f5c7c4",
+        "source": "jok",
+        "sourceId": "477948721157811123",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
         "canonicalId": "acta_1236baa9c425",
         "source": "jok",
         "sourceId": "477948721232412580",
@@ -126370,14 +125327,6 @@
         "canonicalId": "acta_46e5263126f8",
         "source": "jok",
         "sourceId": "477948721194011707",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
-        "canonicalId": "acta_229059f5c7c4",
-        "source": "jok",
-        "sourceId": "477948721157811123",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126415,17 +125364,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_4e0616a1f125",
+        "canonicalId": "acta_7268f3f634c0",
         "source": "jok",
-        "sourceId": "477948721232411785",
+        "sourceId": "477948721236111940",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_7268f3f634c0",
+        "canonicalId": "acta_4e0616a1f125",
         "source": "jok",
-        "sourceId": "477948721236111940",
+        "sourceId": "477948721232411785",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126479,17 +125428,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_68e090a45271",
+        "canonicalId": "acta_ba5c3e77bac8",
         "source": "jok",
-        "sourceId": "477948721157812361",
+        "sourceId": "477948721194012580",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_ba5c3e77bac8",
+        "canonicalId": "acta_68e090a45271",
         "source": "jok",
-        "sourceId": "477948721194012580",
+        "sourceId": "477948721157812361",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126591,17 +125540,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_b4775ee29e7c",
+        "canonicalId": "acta_13c44cfca096",
         "source": "jok",
-        "sourceId": "477948721194011817",
+        "sourceId": "477948721157812324",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_13c44cfca096",
+        "canonicalId": "acta_b4775ee29e7c",
         "source": "jok",
-        "sourceId": "477948721157812324",
+        "sourceId": "477948721194011817",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126639,6 +125588,14 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
+        "canonicalId": "acta_8cb7082763b0",
+        "source": "jok",
+        "sourceId": "477948721194011785",
+        "sourceName": "vs",
+        "compSourceId": "4872",
+        "compName": "2ª CATALANA GRUP C (2026-27)"
+      },
+      {
         "canonicalId": "acta_0be1df8828ef",
         "source": "jok",
         "sourceId": "477948721232412095",
@@ -126650,14 +125607,6 @@
         "canonicalId": "acta_090b35df4a04",
         "source": "jok",
         "sourceId": "477948721236112328",
-        "sourceName": "vs",
-        "compSourceId": "4872",
-        "compName": "2ª CATALANA GRUP C (2026-27)"
-      },
-      {
-        "canonicalId": "acta_8cb7082763b0",
-        "source": "jok",
-        "sourceId": "477948721194011785",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -126711,17 +125660,17 @@
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_99fc89961cfc",
+        "canonicalId": "acta_99cb8a1c8729",
         "source": "jok",
-        "sourceId": "477948721168712361",
+        "sourceId": "477948721165711707",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
       },
       {
-        "canonicalId": "acta_99cb8a1c8729",
+        "canonicalId": "acta_99fc89961cfc",
         "source": "jok",
-        "sourceId": "477948721165711707",
+        "sourceId": "477948721168712361",
         "sourceName": "vs",
         "compSourceId": "4872",
         "compName": "2ª CATALANA GRUP C (2026-27)"
@@ -127071,17 +126020,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_3d7f930ff0a6",
+        "canonicalId": "acta_8931b2850ded",
         "source": "jok",
-        "sourceId": "477948731141311536",
+        "sourceId": "477948731135711668",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_8931b2850ded",
+        "canonicalId": "acta_3d7f930ff0a6",
         "source": "jok",
-        "sourceId": "477948731135711668",
+        "sourceId": "477948731141311536",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127151,17 +126100,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_dff34a685497",
+        "canonicalId": "acta_037ccb0090d1",
         "source": "jok",
-        "sourceId": "477948731118511413",
+        "sourceId": "477948731156211392",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_037ccb0090d1",
+        "canonicalId": "acta_dff34a685497",
         "source": "jok",
-        "sourceId": "477948731156211392",
+        "sourceId": "477948731118511413",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127263,17 +126212,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_e3d1be7148c4",
+        "canonicalId": "acta_113293b5b938",
         "source": "jok",
-        "sourceId": "477948731156212014",
+        "sourceId": "477948731118511392",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_113293b5b938",
+        "canonicalId": "acta_e3d1be7148c4",
         "source": "jok",
-        "sourceId": "477948731118511392",
+        "sourceId": "477948731156212014",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127351,17 +126300,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_f9855b100ef2",
+        "canonicalId": "acta_a93e84a2fd66",
         "source": "jok",
-        "sourceId": "477948731141311293",
+        "sourceId": "477948731135712584",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_a93e84a2fd66",
+        "canonicalId": "acta_f9855b100ef2",
         "source": "jok",
-        "sourceId": "477948731135712584",
+        "sourceId": "477948731141311293",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127375,17 +126324,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_85034926019a",
+        "canonicalId": "acta_a4b3258ffe02",
         "source": "jok",
-        "sourceId": "477948731118512014",
+        "sourceId": "477948731156211445",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_a4b3258ffe02",
+        "canonicalId": "acta_85034926019a",
         "source": "jok",
-        "sourceId": "477948731156211445",
+        "sourceId": "477948731118512014",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127487,17 +126436,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_503f3a6f0c6b",
+        "canonicalId": "acta_519274fba5ad",
         "source": "jok",
-        "sourceId": "477948731156211668",
+        "sourceId": "477948731118511445",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_519274fba5ad",
+        "canonicalId": "acta_503f3a6f0c6b",
         "source": "jok",
-        "sourceId": "477948731118511445",
+        "sourceId": "477948731156211668",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127519,17 +126468,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_72018daad9fa",
+        "canonicalId": "acta_d95cd2951277",
         "source": "jok",
-        "sourceId": "477948731135711445",
+        "sourceId": "477948731141312014",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_d95cd2951277",
+        "canonicalId": "acta_72018daad9fa",
         "source": "jok",
-        "sourceId": "477948731141312014",
+        "sourceId": "477948731135711445",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127743,17 +126692,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_d9e023705e36",
+        "canonicalId": "acta_aae07bc1b6ef",
         "source": "jok",
-        "sourceId": "477948731135711185",
+        "sourceId": "477948731141311562",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_aae07bc1b6ef",
+        "canonicalId": "acta_d9e023705e36",
         "source": "jok",
-        "sourceId": "477948731141311562",
+        "sourceId": "477948731135711185",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -127935,17 +126884,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_ec6d232f8232",
+        "canonicalId": "acta_6642bba3dfcb",
         "source": "jok",
-        "sourceId": "477948731118511293",
+        "sourceId": "477948731156212584",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_6642bba3dfcb",
+        "canonicalId": "acta_ec6d232f8232",
         "source": "jok",
-        "sourceId": "477948731156212584",
+        "sourceId": "477948731118511293",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -128159,17 +127108,17 @@
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_9cacbdd42244",
+        "canonicalId": "acta_52fb689a03b7",
         "source": "jok",
-        "sourceId": "477948731156211555",
+        "sourceId": "477948731118512494",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
       },
       {
-        "canonicalId": "acta_52fb689a03b7",
+        "canonicalId": "acta_9cacbdd42244",
         "source": "jok",
-        "sourceId": "477948731118512494",
+        "sourceId": "477948731156211555",
         "sourceName": "vs",
         "compSourceId": "4873",
         "compName": "2ª CATALANA GRUP D (2026-27)"
@@ -128247,14 +127196,6 @@
         "compName": "FASE DE GRUPS FRIT RAVICH LLIGA CATALANA (2026-27)"
       },
       {
-        "canonicalId": "acta_78a082aacbe7",
-        "source": "jok",
-        "sourceId": "485848591250911971",
-        "sourceName": "vs",
-        "compSourceId": "4859",
-        "compName": "FASE DE GRUPS FRIT RAVICH LLIGA CATALANA (2026-27)"
-      },
-      {
         "canonicalId": "acta_a74966a155fc",
         "source": "jok",
         "sourceId": "485848591207412303",
@@ -128266,6 +127207,14 @@
         "canonicalId": "acta_d4c6fbc3f30c",
         "source": "jok",
         "sourceId": "485848591248611560",
+        "sourceName": "vs",
+        "compSourceId": "4859",
+        "compName": "FASE DE GRUPS FRIT RAVICH LLIGA CATALANA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_78a082aacbe7",
+        "source": "jok",
+        "sourceId": "485848591250911971",
         "sourceName": "vs",
         "compSourceId": "4859",
         "compName": "FASE DE GRUPS FRIT RAVICH LLIGA CATALANA (2026-27)"
@@ -147871,17 +146820,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_9b40e22332e6",
+        "canonicalId": "acta_255cd17226ea",
         "source": "jok",
-        "sourceId": "477848681171012459",
+        "sourceId": "477848681118612293",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_255cd17226ea",
+        "canonicalId": "acta_9b40e22332e6",
         "source": "jok",
-        "sourceId": "477848681118612293",
+        "sourceId": "477848681171012459",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
@@ -148215,17 +147164,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_8c297bba21fa",
+        "canonicalId": "acta_010c268a99de",
         "source": "jok",
-        "sourceId": "477848681118611604",
+        "sourceId": "477848681171012003",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_010c268a99de",
+        "canonicalId": "acta_8c297bba21fa",
         "source": "jok",
-        "sourceId": "477848681171012003",
+        "sourceId": "477848681118611604",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
@@ -148447,17 +147396,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_88cb08365b92",
+        "canonicalId": "acta_bbee5a27e8e5",
         "source": "jok",
-        "sourceId": "477848681118611972",
+        "sourceId": "477848681171012293",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_bbee5a27e8e5",
+        "canonicalId": "acta_88cb08365b92",
         "source": "jok",
-        "sourceId": "477848681171012293",
+        "sourceId": "477848681118611972",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
@@ -148599,17 +147548,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_11fef0d5753f",
+        "canonicalId": "acta_56e435aaa3c2",
         "source": "jok",
-        "sourceId": "477848681193911710",
+        "sourceId": "477848681233811269",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_56e435aaa3c2",
+        "canonicalId": "acta_11fef0d5753f",
         "source": "jok",
-        "sourceId": "477848681233811269",
+        "sourceId": "477848681193911710",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
@@ -148887,17 +147836,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_4735971c6f8f",
+        "canonicalId": "acta_3b2c04b7a63d",
         "source": "jok",
-        "sourceId": "477848681171012301",
+        "sourceId": "477848681118612003",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
       },
       {
-        "canonicalId": "acta_3b2c04b7a63d",
+        "canonicalId": "acta_4735971c6f8f",
         "source": "jok",
-        "sourceId": "477848681118612003",
+        "sourceId": "477848681171012301",
         "sourceName": "vs",
         "compSourceId": "4868",
         "compName": "1ª CATALANA FEMENINA GRUP A (2026-27)"
@@ -149215,17 +148164,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_7938b106c03a",
+        "canonicalId": "acta_d4843ce4fd19",
         "source": "jok",
-        "sourceId": "477848691120712040",
+        "sourceId": "477848691140212470",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_d4843ce4fd19",
+        "canonicalId": "acta_7938b106c03a",
         "source": "jok",
-        "sourceId": "477848691140212470",
+        "sourceId": "477848691120712040",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -149359,17 +148308,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_aa5cff9fd3df",
+        "canonicalId": "acta_8920931184cd",
         "source": "jok",
-        "sourceId": "477848691260411207",
+        "sourceId": "477848691247011490",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_8920931184cd",
+        "canonicalId": "acta_aa5cff9fd3df",
         "source": "jok",
-        "sourceId": "477848691247011490",
+        "sourceId": "477848691260411207",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -149735,17 +148684,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_2909c5e750b4",
+        "canonicalId": "acta_c5b7f55295da",
         "source": "jok",
-        "sourceId": "477848691247012583",
+        "sourceId": "477848691260411349",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_c5b7f55295da",
+        "canonicalId": "acta_2909c5e750b4",
         "source": "jok",
-        "sourceId": "477848691260411349",
+        "sourceId": "477848691247012583",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -149839,17 +148788,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_914d4a88409b",
+        "canonicalId": "acta_c77258f1683a",
         "source": "jok",
-        "sourceId": "477848691247011402",
+        "sourceId": "477848691260411868",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_c77258f1683a",
+        "canonicalId": "acta_914d4a88409b",
         "source": "jok",
-        "sourceId": "477848691260411868",
+        "sourceId": "477848691247011402",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -149935,17 +148884,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_01cf4c4dc9bd",
+        "canonicalId": "acta_a1fe6957db21",
         "source": "jok",
-        "sourceId": "477848691247011207",
+        "sourceId": "477848691260411484",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_a1fe6957db21",
+        "canonicalId": "acta_01cf4c4dc9bd",
         "source": "jok",
-        "sourceId": "477848691260411484",
+        "sourceId": "477848691247011207",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -150031,17 +148980,17 @@
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_fde4d568476d",
+        "canonicalId": "acta_cdcfc4164be8",
         "source": "jok",
-        "sourceId": "477848691260411490",
+        "sourceId": "477848691247011140",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
       },
       {
-        "canonicalId": "acta_cdcfc4164be8",
+        "canonicalId": "acta_fde4d568476d",
         "source": "jok",
-        "sourceId": "477848691247011140",
+        "sourceId": "477848691260411490",
         "sourceName": "vs",
         "compSourceId": "4869",
         "compName": "1ª CATALANA FEMENINA GRUP B (2026-27)"
@@ -151695,17 +150644,17 @@
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_262ccd72cb45",
+        "canonicalId": "acta_e6233e827bb2",
         "source": "jok",
-        "sourceId": "478748891133911702",
+        "sourceId": "478748891162811327",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_e6233e827bb2",
+        "canonicalId": "acta_262ccd72cb45",
         "source": "jok",
-        "sourceId": "478748891162811327",
+        "sourceId": "478748891133911702",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
@@ -151751,17 +150700,17 @@
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_c4e9cc88bf57",
+        "canonicalId": "acta_7ae6302cfdb0",
         "source": "jok",
-        "sourceId": "478748891223111339",
+        "sourceId": "478748891195012203",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_7ae6302cfdb0",
+        "canonicalId": "acta_c4e9cc88bf57",
         "source": "jok",
-        "sourceId": "478748891195012203",
+        "sourceId": "478748891223111339",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
@@ -151791,17 +150740,17 @@
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_1473777e833e",
+        "canonicalId": "acta_e2605d8a6cab",
         "source": "jok",
-        "sourceId": "478748891133912373",
+        "sourceId": "478748891162812231",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_e2605d8a6cab",
+        "canonicalId": "acta_1473777e833e",
         "source": "jok",
-        "sourceId": "478748891162812231",
+        "sourceId": "478748891133912373",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
@@ -151887,17 +150836,17 @@
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_dfb703debb9f",
+        "canonicalId": "acta_facd5fe2582e",
         "source": "jok",
-        "sourceId": "478748891162811118",
+        "sourceId": "478748891133911495",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
       },
       {
-        "canonicalId": "acta_facd5fe2582e",
+        "canonicalId": "acta_dfb703debb9f",
         "source": "jok",
-        "sourceId": "478748891133911495",
+        "sourceId": "478748891162811118",
         "sourceName": "vs",
         "compSourceId": "4889",
         "compName": "INFANTIL PLATA 3 (2026-27)"
@@ -152999,17 +151948,17 @@
         "compName": "INFANTIL PLATA 4 (2026-27)"
       },
       {
-        "canonicalId": "acta_9bd6cfee74f0",
+        "canonicalId": "acta_7480dce6809f",
         "source": "jok",
-        "sourceId": "478748911216911259",
+        "sourceId": "478748911154212505",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_7480dce6809f",
+        "canonicalId": "acta_9bd6cfee74f0",
         "source": "jok",
-        "sourceId": "478748911154212505",
+        "sourceId": "478748911216911259",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
@@ -153071,17 +152020,17 @@
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_2d6fb32e6bcc",
+        "canonicalId": "acta_74a49483e4fd",
         "source": "jok",
-        "sourceId": "478748911183411570",
+        "sourceId": "478748911170111347",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_74a49483e4fd",
+        "canonicalId": "acta_2d6fb32e6bcc",
         "source": "jok",
-        "sourceId": "478748911170111347",
+        "sourceId": "478748911183411570",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
@@ -153431,17 +152380,17 @@
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_e26defbd1437",
+        "canonicalId": "acta_d73fa1509f43",
         "source": "jok",
-        "sourceId": "478748911154212257",
+        "sourceId": "478748911216911919",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_d73fa1509f43",
+        "canonicalId": "acta_e26defbd1437",
         "source": "jok",
-        "sourceId": "478748911216911919",
+        "sourceId": "478748911154212257",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
@@ -153527,17 +152476,17 @@
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_432170bc5cfa",
+        "canonicalId": "acta_f47b6f06e6f5",
         "source": "jok",
-        "sourceId": "478748911154211919",
+        "sourceId": "478748911216912505",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
       },
       {
-        "canonicalId": "acta_f47b6f06e6f5",
+        "canonicalId": "acta_432170bc5cfa",
         "source": "jok",
-        "sourceId": "478748911216912505",
+        "sourceId": "478748911154211919",
         "sourceName": "vs",
         "compSourceId": "4891",
         "compName": "INFANTIL PLATA 5 (2026-27)"
@@ -153935,17 +152884,17 @@
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_265510351d1f",
+        "canonicalId": "acta_d0bb1fd2a422",
         "source": "jok",
-        "sourceId": "478748921179512307",
+        "sourceId": "478748921175412519",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_d0bb1fd2a422",
+        "canonicalId": "acta_265510351d1f",
         "source": "jok",
-        "sourceId": "478748921175412519",
+        "sourceId": "478748921179512307",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
@@ -154471,14 +153420,6 @@
         "compName": "INFANTIL PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_2d8dc9110ecc",
-        "source": "jok",
-        "sourceId": "478749371241511112",
-        "sourceName": "vs",
-        "compSourceId": "4937",
-        "compName": "INFANTIL PLATA 7 (2026-27)"
-      },
-      {
         "canonicalId": "acta_49a2ca089e12",
         "source": "jok",
         "sourceId": "478749371264712268",
@@ -154487,9 +153428,9 @@
         "compName": "INFANTIL PLATA 7 (2026-27)"
       },
       {
-        "canonicalId": "acta_da794e4d32ac",
+        "canonicalId": "acta_2d8dc9110ecc",
         "source": "jok",
-        "sourceId": "478749371205211543",
+        "sourceId": "478749371241511112",
         "sourceName": "vs",
         "compSourceId": "4937",
         "compName": "INFANTIL PLATA 7 (2026-27)"
@@ -154498,6 +153439,14 @@
         "canonicalId": "acta_3dc26c31432b",
         "source": "jok",
         "sourceId": "478749371252211432",
+        "sourceName": "vs",
+        "compSourceId": "4937",
+        "compName": "INFANTIL PLATA 7 (2026-27)"
+      },
+      {
+        "canonicalId": "acta_da794e4d32ac",
+        "source": "jok",
+        "sourceId": "478749371205211543",
         "sourceName": "vs",
         "compSourceId": "4937",
         "compName": "INFANTIL PLATA 7 (2026-27)"
@@ -156271,17 +155220,17 @@
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_bee54bc8e005",
+        "canonicalId": "acta_055ba7e4bb86",
         "source": "jok",
-        "sourceId": "478548941251412342",
+        "sourceId": "478548941231411286",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_055ba7e4bb86",
+        "canonicalId": "acta_bee54bc8e005",
         "source": "jok",
-        "sourceId": "478548941231411286",
+        "sourceId": "478548941251412342",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
@@ -156615,17 +155564,17 @@
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_aabbbabe988b",
+        "canonicalId": "acta_3622b8d65d8b",
         "source": "jok",
-        "sourceId": "478548941231411539",
+        "sourceId": "478548941251412106",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_3622b8d65d8b",
+        "canonicalId": "acta_aabbbabe988b",
         "source": "jok",
-        "sourceId": "478548941251412106",
+        "sourceId": "478548941231411539",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
@@ -156823,17 +155772,17 @@
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_6af1d8fdc0a6",
+        "canonicalId": "acta_d064caa0a47f",
         "source": "jok",
-        "sourceId": "478548941251411364",
+        "sourceId": "478548941231411752",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
       },
       {
-        "canonicalId": "acta_d064caa0a47f",
+        "canonicalId": "acta_6af1d8fdc0a6",
         "source": "jok",
-        "sourceId": "478548941231411752",
+        "sourceId": "478548941251411364",
         "sourceName": "vs",
         "compSourceId": "4894",
         "compName": "JUVENIL PLATA 1 (2026-27)"
@@ -159303,17 +158252,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_ed60ad6e1798",
+        "canonicalId": "acta_486f422cd7aa",
         "source": "jok",
-        "sourceId": "477448641247611816",
+        "sourceId": "477448641207712570",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_486f422cd7aa",
+        "canonicalId": "acta_ed60ad6e1798",
         "source": "jok",
-        "sourceId": "477448641207712570",
+        "sourceId": "477448641247611816",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159415,14 +158364,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_3a5ed2994f6e",
-        "source": "jok",
-        "sourceId": "477448641196612467",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_3759751996a9",
         "source": "jok",
         "sourceId": "477448641161211169",
@@ -159431,9 +158372,9 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_3d9632b85b07",
+        "canonicalId": "acta_3a5ed2994f6e",
         "source": "jok",
-        "sourceId": "477448641247611973",
+        "sourceId": "477448641196612467",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159442,6 +158383,14 @@
         "canonicalId": "acta_5d4bf9594759",
         "source": "jok",
         "sourceId": "477448641207711588",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_3d9632b85b07",
+        "source": "jok",
+        "sourceId": "477448641247611973",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159519,14 +158468,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_2e5b84b7bcef",
-        "source": "jok",
-        "sourceId": "477448641232611816",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_cf90a40838d7",
         "source": "jok",
         "sourceId": "477448641247711973",
@@ -159543,9 +158484,9 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_ddf8c7a69b47",
+        "canonicalId": "acta_2e5b84b7bcef",
         "source": "jok",
-        "sourceId": "477448641196612250",
+        "sourceId": "477448641232611816",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159559,9 +158500,9 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_4371f1377e16",
+        "canonicalId": "acta_ddf8c7a69b47",
         "source": "jok",
-        "sourceId": "477448641207711561",
+        "sourceId": "477448641196612250",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159570,6 +158511,14 @@
         "canonicalId": "acta_dfada8c308c8",
         "source": "jok",
         "sourceId": "477448641247612570",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_4371f1377e16",
+        "source": "jok",
+        "sourceId": "477448641207711561",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159647,14 +158596,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_e3654feb6178",
-        "source": "jok",
-        "sourceId": "477448641163012250",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_7b5bbcb5f45f",
         "source": "jok",
         "sourceId": "477448641247712570",
@@ -159666,6 +158607,14 @@
         "canonicalId": "acta_9d9988c149ad",
         "source": "jok",
         "sourceId": "477448641232611973",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_e3654feb6178",
+        "source": "jok",
+        "sourceId": "477448641163012250",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159687,17 +158636,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_dff8bd158200",
+        "canonicalId": "acta_475563a169f0",
         "source": "jok",
-        "sourceId": "477448641207711612",
+        "sourceId": "477448641247611561",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_475563a169f0",
+        "canonicalId": "acta_dff8bd158200",
         "source": "jok",
-        "sourceId": "477448641247611561",
+        "sourceId": "477448641207711612",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159775,6 +158724,14 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
+        "canonicalId": "acta_a5a770220b32",
+        "source": "jok",
+        "sourceId": "477448641232612570",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
         "canonicalId": "acta_84d2acae7efe",
         "source": "jok",
         "sourceId": "477448641247711561",
@@ -159786,14 +158743,6 @@
         "canonicalId": "acta_5abb619bf13b",
         "source": "jok",
         "sourceId": "477448641163011169",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
-        "canonicalId": "acta_a5a770220b32",
-        "source": "jok",
-        "sourceId": "477448641232612570",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -159879,17 +158828,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_61da43c274cf",
+        "canonicalId": "acta_e0e0419c32e2",
         "source": "jok",
-        "sourceId": "477448641247611244",
+        "sourceId": "477448641197311816",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_e0e0419c32e2",
+        "canonicalId": "acta_61da43c274cf",
         "source": "jok",
-        "sourceId": "477448641197311816",
+        "sourceId": "477448641247611244",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160071,17 +159020,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_aa35acf6f3f5",
+        "canonicalId": "acta_f323f0ccfae4",
         "source": "jok",
-        "sourceId": "477448641207712477",
+        "sourceId": "477448641197311169",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_f323f0ccfae4",
+        "canonicalId": "acta_aa35acf6f3f5",
         "source": "jok",
-        "sourceId": "477448641197311169",
+        "sourceId": "477448641207712477",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160151,17 +159100,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_0469bb3d8fb9",
+        "canonicalId": "acta_608373fb9228",
         "source": "jok",
-        "sourceId": "477448641232612477",
+        "sourceId": "477448641163011244",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_608373fb9228",
+        "canonicalId": "acta_0469bb3d8fb9",
         "source": "jok",
-        "sourceId": "477448641163011244",
+        "sourceId": "477448641232612477",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160543,14 +159492,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_557a36d90412",
-        "source": "jok",
-        "sourceId": "477448641247711169",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_8d00cfc9b1a0",
         "source": "jok",
         "sourceId": "477448641163011816",
@@ -160562,6 +159503,14 @@
         "canonicalId": "acta_f772d497fa40",
         "source": "jok",
         "sourceId": "477448641232612250",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_557a36d90412",
+        "source": "jok",
+        "sourceId": "477448641247711169",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160583,17 +159532,17 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_ed3f9f582b65",
+        "canonicalId": "acta_9bf4f7100b6c",
         "source": "jok",
-        "sourceId": "477448641207712467",
+        "sourceId": "477448641247611588",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_9bf4f7100b6c",
+        "canonicalId": "acta_ed3f9f582b65",
         "source": "jok",
-        "sourceId": "477448641247611588",
+        "sourceId": "477448641207712467",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160671,9 +159620,9 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_fff99ebdf4d6",
+        "canonicalId": "acta_fcd76fcf05ac",
         "source": "jok",
-        "sourceId": "477448641163011973",
+        "sourceId": "477448641232611169",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160687,9 +159636,9 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_fcd76fcf05ac",
+        "canonicalId": "acta_fff99ebdf4d6",
         "source": "jok",
-        "sourceId": "477448641232611169",
+        "sourceId": "477448641163011973",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160799,14 +159748,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_f1fa5a638494",
-        "source": "jok",
-        "sourceId": "477448641163012570",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_d0f4c2806a6f",
         "source": "jok",
         "sourceId": "477448641232611588",
@@ -160818,6 +159759,14 @@
         "canonicalId": "acta_d612241c57f8",
         "source": "jok",
         "sourceId": "477448641247711612",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_f1fa5a638494",
+        "source": "jok",
+        "sourceId": "477448641163012570",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -160919,14 +159868,6 @@
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
       {
-        "canonicalId": "acta_bdf26cc00690",
-        "source": "jok",
-        "sourceId": "477448641232611612",
-        "sourceName": "vs",
-        "compSourceId": "4864",
-        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
-      },
-      {
         "canonicalId": "acta_ebf0885dfb19",
         "source": "jok",
         "sourceId": "477448641247711244",
@@ -160938,6 +159879,14 @@
         "canonicalId": "acta_2153b6d13295",
         "source": "jok",
         "sourceId": "477448641163011561",
+        "sourceName": "vs",
+        "compSourceId": "4864",
+        "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
+      },
+      {
+        "canonicalId": "acta_bdf26cc00690",
+        "source": "jok",
+        "sourceId": "477448641232611612",
         "sourceName": "vs",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
@@ -161647,17 +160596,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_9e420e39010e",
+        "canonicalId": "acta_029ce304d619",
         "source": "jok",
-        "sourceId": "477548651184511485",
+        "sourceId": "477548651224911709",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_029ce304d619",
+        "canonicalId": "acta_9e420e39010e",
         "source": "jok",
-        "sourceId": "477548651224911709",
+        "sourceId": "477548651184511485",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -161751,17 +160700,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_f68e6d38d116",
+        "canonicalId": "acta_370419f4c83c",
         "source": "jok",
-        "sourceId": "477548651153411485",
+        "sourceId": "477548651148811605",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_370419f4c83c",
+        "canonicalId": "acta_f68e6d38d116",
         "source": "jok",
-        "sourceId": "477548651148811605",
+        "sourceId": "477548651153411485",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -161879,17 +160828,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_afaaee243fbd",
+        "canonicalId": "acta_f3cc95326c2f",
         "source": "jok",
-        "sourceId": "477548651148811974",
+        "sourceId": "477548651153411845",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_f3cc95326c2f",
+        "canonicalId": "acta_afaaee243fbd",
         "source": "jok",
-        "sourceId": "477548651153411845",
+        "sourceId": "477548651148811974",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162039,17 +160988,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_5596952703d8",
+        "canonicalId": "acta_d140f7d06498",
         "source": "jok",
-        "sourceId": "477548651219412312",
+        "sourceId": "477548651193812571",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_d140f7d06498",
+        "canonicalId": "acta_5596952703d8",
         "source": "jok",
-        "sourceId": "477548651193812571",
+        "sourceId": "477548651219412312",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162407,17 +161356,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_b18bf1ec481b",
+        "canonicalId": "acta_3505846f6c8e",
         "source": "jok",
-        "sourceId": "477548651148811206",
+        "sourceId": "477548651153412194",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_3505846f6c8e",
+        "canonicalId": "acta_b18bf1ec481b",
         "source": "jok",
-        "sourceId": "477548651153412194",
+        "sourceId": "477548651148811206",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162527,17 +161476,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_b855cd872ec4",
+        "canonicalId": "acta_542618cbf6b7",
         "source": "jok",
-        "sourceId": "477548651148811709",
+        "sourceId": "477548651153411605",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_542618cbf6b7",
+        "canonicalId": "acta_b855cd872ec4",
         "source": "jok",
-        "sourceId": "477548651153411605",
+        "sourceId": "477548651148811709",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162775,17 +161724,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_892e26bb3a72",
+        "canonicalId": "acta_31fa602cb084",
         "source": "jok",
-        "sourceId": "477548651153411507",
+        "sourceId": "477548651148812312",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_31fa602cb084",
+        "canonicalId": "acta_892e26bb3a72",
         "source": "jok",
-        "sourceId": "477548651148812312",
+        "sourceId": "477548651153411507",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162903,17 +161852,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_1e425beee866",
+        "canonicalId": "acta_091b201d3ddb",
         "source": "jok",
-        "sourceId": "477548651148811485",
+        "sourceId": "477548651153412571",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_091b201d3ddb",
+        "canonicalId": "acta_1e425beee866",
         "source": "jok",
-        "sourceId": "477548651153412571",
+        "sourceId": "477548651148811485",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
@@ -162935,17 +161884,17 @@
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_68b27c651d04",
+        "canonicalId": "acta_1a9dbe998dce",
         "source": "jok",
-        "sourceId": "477548651193811845",
+        "sourceId": "477548651219411605",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },
       {
-        "canonicalId": "acta_1a9dbe998dce",
+        "canonicalId": "acta_68b27c651d04",
         "source": "jok",
-        "sourceId": "477548651219411605",
+        "sourceId": "477548651193811845",
         "sourceName": "vs",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
