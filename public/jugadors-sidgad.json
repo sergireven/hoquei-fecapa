@@ -12241,11 +12241,11 @@
   },
   "23023": {
     "sidgadId": "23023",
-    "name": "NOGAREDA CARMONA ROC",
+    "name": "JUNA NOGAREDA CARMONA ROC",
     "birthDate": "31/07/2007",
-    "registeredTeam": "IHC",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:00.975Z"
+    "fetchedAt": "2026-09-11T14:14:38.767Z"
   },
   "23024": {
     "sidgadId": "23024",
@@ -12573,7 +12573,7 @@
     "birthDate": "24/06/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-01T12:04:02.143Z"
+    "fetchedAt": "2026-09-11T14:14:38.873Z"
   },
   "25079": {
     "sidgadId": "25079",
@@ -14101,7 +14101,7 @@
     "birthDate": "24/05/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:03.792Z"
+    "fetchedAt": "2026-09-11T14:14:38.977Z"
   },
   "27072": {
     "sidgadId": "27072",
@@ -14141,7 +14141,7 @@
     "birthDate": "11/06/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:46.968Z"
+    "fetchedAt": "2026-09-11T14:14:39.079Z"
   },
   "27236": {
     "sidgadId": "27236",
@@ -14269,7 +14269,7 @@
     "birthDate": "13/01/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:47.486Z"
+    "fetchedAt": "2026-09-11T14:14:39.180Z"
   },
   "27471": {
     "sidgadId": "27471",
@@ -14309,7 +14309,7 @@
     "birthDate": "21/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:04.340Z"
+    "fetchedAt": "2026-09-11T14:14:39.282Z"
   },
   "27544": {
     "sidgadId": "27544",
@@ -14317,7 +14317,7 @@
     "birthDate": "20/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:04.451Z"
+    "fetchedAt": "2026-09-11T14:14:39.382Z"
   },
   "27545": {
     "sidgadId": "27545",
@@ -14325,7 +14325,7 @@
     "birthDate": "08/02/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:04.561Z"
+    "fetchedAt": "2026-09-11T14:14:39.483Z"
   },
   "27554": {
     "sidgadId": "27554",
@@ -14373,7 +14373,7 @@
     "birthDate": "24/07/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:47.973Z"
+    "fetchedAt": "2026-09-11T14:14:39.609Z"
   },
   "27622": {
     "sidgadId": "27622",
@@ -14829,7 +14829,7 @@
     "birthDate": "25/09/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:05.325Z"
+    "fetchedAt": "2026-09-11T14:14:39.723Z"
   },
   "29572": {
     "sidgadId": "29572",
@@ -14853,7 +14853,7 @@
     "birthDate": "13/08/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:05.437Z"
+    "fetchedAt": "2026-09-11T14:14:39.828Z"
   },
   "29625": {
     "sidgadId": "29625",
@@ -14893,7 +14893,7 @@
     "birthDate": "21/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:05.062Z"
+    "fetchedAt": "2026-09-11T14:14:39.931Z"
   },
   "29887": {
     "sidgadId": "29887",
@@ -14981,7 +14981,7 @@
     "birthDate": "25/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:48.934Z"
+    "fetchedAt": "2026-09-11T14:14:40.038Z"
   },
   "30217": {
     "sidgadId": "30217",
@@ -15165,7 +15165,7 @@
     "birthDate": "19/02/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-07-29T12:08:37.520Z"
+    "fetchedAt": "2026-09-11T14:14:40.148Z"
   },
   "30396": {
     "sidgadId": "30396",
@@ -15261,7 +15261,7 @@
     "birthDate": "24/09/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-01T12:04:06.097Z"
+    "fetchedAt": "2026-09-11T14:14:40.256Z"
   },
   "30503": {
     "sidgadId": "30503",
@@ -15269,7 +15269,7 @@
     "birthDate": "24/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:06.216Z"
+    "fetchedAt": "2026-09-11T14:14:40.363Z"
   },
   "30546": {
     "sidgadId": "30546",
@@ -15433,11 +15433,11 @@
   },
   "30660": {
     "sidgadId": "30660",
-    "name": "BAUTISTA GUTIEVA MIGUEL ANGEL",
+    "name": "JUNA BAUTISTA GUTIEVA MIGUEL ANGEL",
     "birthDate": "27/08/2007",
-    "registeredTeam": "IHC",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:05.539Z"
+    "fetchedAt": "2026-09-11T14:14:40.469Z"
   },
   "30666": {
     "sidgadId": "30666",
@@ -15641,11 +15641,11 @@
   },
   "30937": {
     "sidgadId": "30937",
-    "name": "ORUS CABANILLAS MARC",
+    "name": "JUNU ORUS CABANILLAS MARC",
     "birthDate": "03/04/2008",
-    "registeredTeam": "BAR",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:06.190Z"
+    "fetchedAt": "2026-09-11T14:14:40.578Z"
   },
   "30940": {
     "sidgadId": "30940",
@@ -15661,7 +15661,7 @@
     "birthDate": "19/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:49.723Z"
+    "fetchedAt": "2026-09-11T14:14:40.683Z"
   },
   "30942": {
     "sidgadId": "30942",
@@ -15885,7 +15885,7 @@
     "birthDate": "18/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:50.196Z"
+    "fetchedAt": "2026-09-11T14:14:40.790Z"
   },
   "31277": {
     "sidgadId": "31277",
@@ -16405,7 +16405,7 @@
     "birthDate": "28/06/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-01T12:04:07.977Z"
+    "fetchedAt": "2026-09-11T14:14:40.900Z"
   },
   "32004": {
     "sidgadId": "32004",
@@ -16437,7 +16437,7 @@
     "birthDate": "16/03/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-07-29T12:08:39.009Z"
+    "fetchedAt": "2026-09-11T14:14:41.024Z"
   },
   "32039": {
     "sidgadId": "32039",
@@ -16509,7 +16509,7 @@
     "birthDate": "17/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:51.353Z"
+    "fetchedAt": "2026-09-11T14:14:41.131Z"
   },
   "32117": {
     "sidgadId": "32117",
@@ -16613,7 +16613,7 @@
     "birthDate": "27/11/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-29T12:08:39.170Z"
+    "fetchedAt": "2026-09-11T14:14:41.240Z"
   },
   "32306": {
     "sidgadId": "32306",
@@ -16621,7 +16621,7 @@
     "birthDate": "19/01/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:51.692Z"
+    "fetchedAt": "2026-09-11T14:14:41.343Z"
   },
   "32371": {
     "sidgadId": "32371",
@@ -16797,7 +16797,7 @@
     "birthDate": "18/04/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:08.446Z"
+    "fetchedAt": "2026-09-11T14:14:41.451Z"
   },
   "33035": {
     "sidgadId": "33035",
@@ -16821,7 +16821,7 @@
     "birthDate": "14/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:08.556Z"
+    "fetchedAt": "2026-09-11T14:14:41.561Z"
   },
   "33225": {
     "sidgadId": "33225",
@@ -16921,11 +16921,11 @@
   },
   "33864": {
     "sidgadId": "33864",
-    "name": "JUNU CARRERA GARCIA IAGO",
+    "name": "CARRERA GARCIA IAGO",
     "birthDate": "23/04/2008",
-    "registeredTeam": null,
+    "registeredTeam": "CCH",
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:52.009Z"
+    "fetchedAt": "2026-09-11T14:14:41.660Z"
   },
   "33899": {
     "sidgadId": "33899",
@@ -17141,7 +17141,7 @@
     "birthDate": "20/07/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:08.883Z"
+    "fetchedAt": "2026-09-11T14:14:41.759Z"
   },
   "34704": {
     "sidgadId": "34704",
@@ -17189,7 +17189,7 @@
     "birthDate": "04/06/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:08.994Z"
+    "fetchedAt": "2026-09-11T14:14:41.865Z"
   },
   "34734": {
     "sidgadId": "34734",
@@ -17265,11 +17265,11 @@
   },
   "34807": {
     "sidgadId": "34807",
-    "name": "JUNU GROS TORREBADELLA MARC",
+    "name": "GROS TORREBADELLA MARC",
     "birthDate": "21/09/2007",
-    "registeredTeam": null,
+    "registeredTeam": "CCH",
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:09.105Z"
+    "fetchedAt": "2026-09-11T14:14:41.969Z"
   },
   "34810": {
     "sidgadId": "34810",
@@ -17309,7 +17309,7 @@
     "birthDate": "22/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:52.633Z"
+    "fetchedAt": "2026-09-11T14:14:42.076Z"
   },
   "34818": {
     "sidgadId": "34818",
@@ -17413,7 +17413,7 @@
     "birthDate": "13/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:52.787Z"
+    "fetchedAt": "2026-09-11T14:14:42.190Z"
   },
   "34907": {
     "sidgadId": "34907",
@@ -17453,7 +17453,7 @@
     "birthDate": "14/03/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-01T12:04:09.326Z"
+    "fetchedAt": "2026-09-11T14:14:42.301Z"
   },
   "34927": {
     "sidgadId": "34927",
@@ -17485,7 +17485,7 @@
     "birthDate": "12/12/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-29T12:08:39.496Z"
+    "fetchedAt": "2026-09-11T14:14:42.407Z"
   },
   "34997": {
     "sidgadId": "34997",
@@ -17533,7 +17533,7 @@
     "birthDate": "24/06/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:07.601Z"
+    "fetchedAt": "2026-09-11T14:14:42.514Z"
   },
   "35037": {
     "sidgadId": "35037",
@@ -17565,7 +17565,7 @@
     "birthDate": "04/01/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:07.767Z"
+    "fetchedAt": "2026-09-11T14:14:42.621Z"
   },
   "35064": {
     "sidgadId": "35064",
@@ -17653,7 +17653,7 @@
     "birthDate": "04/06/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:09.438Z"
+    "fetchedAt": "2026-09-11T14:14:42.724Z"
   },
   "35129": {
     "sidgadId": "35129",
@@ -17661,7 +17661,7 @@
     "birthDate": "21/12/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:09.567Z"
+    "fetchedAt": "2026-09-11T14:14:42.839Z"
   },
   "35179": {
     "sidgadId": "35179",
@@ -17821,7 +17821,7 @@
     "birthDate": "26/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:07.933Z"
+    "fetchedAt": "2026-09-11T14:14:42.944Z"
   },
   "35357": {
     "sidgadId": "35357",
@@ -17861,7 +17861,7 @@
     "birthDate": "03/10/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-01T12:04:09.787Z"
+    "fetchedAt": "2026-09-11T14:14:43.048Z"
   },
   "35445": {
     "sidgadId": "35445",
@@ -17929,11 +17929,11 @@
   },
   "35530": {
     "sidgadId": "35530",
-    "name": "JUNU VAN MULDERS LAVILLA GUILLEM",
+    "name": "VAN MULDERS LAVILLA GUILLEM",
     "birthDate": "25/06/2008",
-    "registeredTeam": null,
+    "registeredTeam": "CCH",
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:09.923Z"
+    "fetchedAt": "2026-09-11T14:14:43.153Z"
   },
   "35531": {
     "sidgadId": "35531",
@@ -17949,7 +17949,7 @@
     "birthDate": "17/10/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:08.430Z"
+    "fetchedAt": "2026-09-11T14:14:43.266Z"
   },
   "35535": {
     "sidgadId": "35535",
@@ -17989,7 +17989,7 @@
     "birthDate": "20/12/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:53.279Z"
+    "fetchedAt": "2026-09-11T14:14:43.369Z"
   },
   "35592": {
     "sidgadId": "35592",
@@ -18037,7 +18037,7 @@
     "birthDate": "19/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:10.035Z"
+    "fetchedAt": "2026-09-11T14:14:43.479Z"
   },
   "35634": {
     "sidgadId": "35634",
@@ -18068,8 +18068,8 @@
     "name": "JUNA AGUADO ALVAREZ MARCOS",
     "birthDate": "22/03/2007",
     "registeredTeam": null,
-    "isGK": false,
-    "fetchedAt": "2026-08-01T12:04:10.150Z"
+    "isGK": true,
+    "fetchedAt": "2026-09-11T14:14:43.586Z"
   },
   "35713": {
     "sidgadId": "35713",
@@ -18229,7 +18229,7 @@
     "birthDate": "15/09/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:53.450Z"
+    "fetchedAt": "2026-09-11T14:14:43.685Z"
   },
   "35962": {
     "sidgadId": "35962",
@@ -18349,7 +18349,7 @@
     "birthDate": "03/09/2010",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:53.918Z"
+    "fetchedAt": "2026-09-11T14:14:43.788Z"
   },
   "36155": {
     "sidgadId": "36155",
@@ -18357,7 +18357,7 @@
     "birthDate": "02/02/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:54.080Z"
+    "fetchedAt": "2026-09-11T14:14:43.891Z"
   },
   "36156": {
     "sidgadId": "36156",
@@ -18365,7 +18365,7 @@
     "birthDate": "12/03/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:54.242Z"
+    "fetchedAt": "2026-09-11T14:14:44.004Z"
   },
   "36157": {
     "sidgadId": "36157",
@@ -18373,15 +18373,15 @@
     "birthDate": "18/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:54.399Z"
+    "fetchedAt": "2026-09-11T14:14:44.102Z"
   },
   "36158": {
     "sidgadId": "36158",
-    "name": "BERENT ARMENGOL JAN",
+    "name": "JUNA BERENT ARMENGOL JAN",
     "birthDate": "04/02/2008",
-    "registeredTeam": "IHC",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:09.121Z"
+    "fetchedAt": "2026-09-11T14:14:44.217Z"
   },
   "36160": {
     "sidgadId": "36160",
@@ -18397,7 +18397,7 @@
     "birthDate": "19/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:54.556Z"
+    "fetchedAt": "2026-09-11T14:14:44.325Z"
   },
   "36163": {
     "sidgadId": "36163",
@@ -18405,7 +18405,7 @@
     "birthDate": "09/04/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:54.713Z"
+    "fetchedAt": "2026-09-11T14:14:44.433Z"
   },
   "36195": {
     "sidgadId": "36195",
@@ -18421,7 +18421,7 @@
     "birthDate": "18/03/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-29T12:08:40.159Z"
+    "fetchedAt": "2026-09-11T14:14:44.610Z"
   },
   "36212": {
     "sidgadId": "36212",
@@ -18445,7 +18445,7 @@
     "birthDate": "04/03/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-29T12:08:40.326Z"
+    "fetchedAt": "2026-09-11T14:14:44.728Z"
   },
   "36219": {
     "sidgadId": "36219",
@@ -18501,7 +18501,7 @@
     "birthDate": "23/03/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:55.189Z"
+    "fetchedAt": "2026-09-11T14:14:44.829Z"
   },
   "36358": {
     "sidgadId": "36358",
@@ -18613,7 +18613,7 @@
     "birthDate": "10/04/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:09.297Z"
+    "fetchedAt": "2026-09-11T14:14:44.942Z"
   },
   "36593": {
     "sidgadId": "36593",
@@ -18725,7 +18725,7 @@
     "birthDate": "15/12/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:55.347Z"
+    "fetchedAt": "2026-09-11T14:14:45.058Z"
   },
   "36747": {
     "sidgadId": "36747",
@@ -18737,11 +18737,11 @@
   },
   "36748": {
     "sidgadId": "36748",
-    "name": "JUN FERRER ALLEGRONI JORDI ANDREU",
+    "name": "JUNU FERRER ALLEGRONI JORDI ANDREU",
     "birthDate": "31/01/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:55.506Z"
+    "fetchedAt": "2026-09-11T14:14:45.158Z"
   },
   "36750": {
     "sidgadId": "36750",
@@ -18765,7 +18765,7 @@
     "birthDate": "05/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:55.661Z"
+    "fetchedAt": "2026-09-11T14:14:45.262Z"
   },
   "36778": {
     "sidgadId": "36778",
@@ -18805,7 +18805,7 @@
     "birthDate": "27/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:55.977Z"
+    "fetchedAt": "2026-09-11T14:14:45.360Z"
   },
   "36786": {
     "sidgadId": "36786",
@@ -18893,7 +18893,7 @@
     "birthDate": "13/03/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:56.137Z"
+    "fetchedAt": "2026-09-11T14:14:45.465Z"
   },
   "36869": {
     "sidgadId": "36869",
@@ -18901,7 +18901,7 @@
     "birthDate": "24/05/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:56.300Z"
+    "fetchedAt": "2026-09-11T14:14:45.570Z"
   },
   "37007": {
     "sidgadId": "37007",
@@ -18917,7 +18917,7 @@
     "birthDate": "23/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:56.464Z"
+    "fetchedAt": "2026-09-11T14:14:45.675Z"
   },
   "37013": {
     "sidgadId": "37013",
@@ -18957,7 +18957,7 @@
     "birthDate": "01/09/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:56.942Z"
+    "fetchedAt": "2026-09-11T14:14:45.776Z"
   },
   "37307": {
     "sidgadId": "37307",
@@ -18973,7 +18973,7 @@
     "birthDate": "16/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:57.108Z"
+    "fetchedAt": "2026-09-11T14:14:45.877Z"
   },
   "37406": {
     "sidgadId": "37406",
@@ -18997,7 +18997,7 @@
     "birthDate": "28/09/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:57.261Z"
+    "fetchedAt": "2026-09-11T14:14:45.977Z"
   },
   "37471": {
     "sidgadId": "37471",
@@ -19141,7 +19141,7 @@
     "birthDate": "22/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:57.424Z"
+    "fetchedAt": "2026-09-11T14:14:46.086Z"
   },
   "38148": {
     "sidgadId": "38148",
@@ -19157,7 +19157,7 @@
     "birthDate": "01/02/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:57.583Z"
+    "fetchedAt": "2026-09-11T14:14:46.193Z"
   },
   "38295": {
     "sidgadId": "38295",
@@ -19181,7 +19181,7 @@
     "birthDate": "19/03/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:57.887Z"
+    "fetchedAt": "2026-09-11T14:14:46.297Z"
   },
   "38618": {
     "sidgadId": "38618",
@@ -19245,7 +19245,7 @@
     "birthDate": "22/08/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:58.378Z"
+    "fetchedAt": "2026-09-11T14:14:46.397Z"
   },
   "38862": {
     "sidgadId": "38862",
@@ -19261,7 +19261,7 @@
     "birthDate": "30/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:58.529Z"
+    "fetchedAt": "2026-09-11T14:14:46.503Z"
   },
   "39054": {
     "sidgadId": "39054",
@@ -19317,7 +19317,7 @@
     "birthDate": "27/06/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:58.697Z"
+    "fetchedAt": "2026-09-11T14:14:46.607Z"
   },
   "39114": {
     "sidgadId": "39114",
@@ -19517,7 +19517,7 @@
     "birthDate": "03/09/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:58.859Z"
+    "fetchedAt": "2026-09-11T14:14:46.711Z"
   },
   "39230": {
     "sidgadId": "39230",
@@ -19565,7 +19565,7 @@
     "birthDate": "04/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:59.018Z"
+    "fetchedAt": "2026-09-11T14:14:46.820Z"
   },
   "39238": {
     "sidgadId": "39238",
@@ -19629,7 +19629,7 @@
     "birthDate": "30/09/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:59.177Z"
+    "fetchedAt": "2026-09-11T14:14:46.930Z"
   },
   "39259": {
     "sidgadId": "39259",
@@ -19645,7 +19645,7 @@
     "birthDate": "17/02/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:59.343Z"
+    "fetchedAt": "2026-09-11T14:14:47.037Z"
   },
   "39263": {
     "sidgadId": "39263",
@@ -19717,7 +19717,7 @@
     "birthDate": "22/01/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:32:59.498Z"
+    "fetchedAt": "2026-09-11T14:14:47.142Z"
   },
   "39285": {
     "sidgadId": "39285",
@@ -19757,7 +19757,7 @@
     "birthDate": "29/02/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:09.788Z"
+    "fetchedAt": "2026-09-11T14:14:47.249Z"
   },
   "39298": {
     "sidgadId": "39298",
@@ -19777,11 +19777,11 @@
   },
   "39302": {
     "sidgadId": "39302",
-    "name": "LUNA CALAF ABEL",
+    "name": "JUNU LUNA CALAF ABEL",
     "birthDate": "21/09/2007",
-    "registeredTeam": "CEV",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:09.951Z"
+    "fetchedAt": "2026-09-11T14:14:47.354Z"
   },
   "39303": {
     "sidgadId": "39303",
@@ -19829,15 +19829,15 @@
     "birthDate": "24/10/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:59.658Z"
+    "fetchedAt": "2026-09-11T14:14:47.460Z"
   },
   "39328": {
     "sidgadId": "39328",
-    "name": "JUNU GOENAGA CLOTET ROGER",
+    "name": "JUNA GOENAGA CLOTET ROGER",
     "birthDate": "02/10/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:59.819Z"
+    "fetchedAt": "2026-09-11T14:14:47.573Z"
   },
   "39341": {
     "sidgadId": "39341",
@@ -19937,11 +19937,11 @@
   },
   "39401": {
     "sidgadId": "39401",
-    "name": "JUNA BERTRAN CUSCÓ ORIOL",
+    "name": "BERTRAN CUSCÓ ORIOL",
     "birthDate": "11/05/2007",
-    "registeredTeam": null,
+    "registeredTeam": "LEAA",
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:00.459Z"
+    "fetchedAt": "2026-09-11T14:14:47.678Z"
   },
   "39402": {
     "sidgadId": "39402",
@@ -19949,7 +19949,7 @@
     "birthDate": "02/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:00.618Z"
+    "fetchedAt": "2026-09-11T14:14:47.779Z"
   },
   "39403": {
     "sidgadId": "39403",
@@ -19957,7 +19957,7 @@
     "birthDate": "06/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:00.773Z"
+    "fetchedAt": "2026-09-11T14:14:47.891Z"
   },
   "39409": {
     "sidgadId": "39409",
@@ -20021,7 +20021,7 @@
     "birthDate": "19/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:01.415Z"
+    "fetchedAt": "2026-09-11T14:14:48.015Z"
   },
   "39439": {
     "sidgadId": "39439",
@@ -20133,15 +20133,15 @@
     "birthDate": "19/12/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:01.902Z"
+    "fetchedAt": "2026-09-11T14:14:48.121Z"
   },
   "39524": {
     "sidgadId": "39524",
-    "name": "JURADO LIRA MARC",
+    "name": "JUNA JURADO LIRA MARC",
     "birthDate": "05/02/2007",
-    "registeredTeam": "CPV",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:10.106Z"
+    "fetchedAt": "2026-09-11T14:14:48.233Z"
   },
   "39525": {
     "sidgadId": "39525",
@@ -20157,7 +20157,7 @@
     "birthDate": "26/09/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:02.075Z"
+    "fetchedAt": "2026-09-11T14:14:48.344Z"
   },
   "39540": {
     "sidgadId": "39540",
@@ -20165,7 +20165,7 @@
     "birthDate": "01/04/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:02.231Z"
+    "fetchedAt": "2026-09-11T14:14:48.450Z"
   },
   "39541": {
     "sidgadId": "39541",
@@ -20173,7 +20173,7 @@
     "birthDate": "14/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:02.396Z"
+    "fetchedAt": "2026-09-11T14:14:48.557Z"
   },
   "39542": {
     "sidgadId": "39542",
@@ -20197,7 +20197,7 @@
     "birthDate": "05/05/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:33:02.555Z"
+    "fetchedAt": "2026-09-11T14:14:48.673Z"
   },
   "39545": {
     "sidgadId": "39545",
@@ -20221,7 +20221,7 @@
     "birthDate": "08/09/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:02.720Z"
+    "fetchedAt": "2026-09-11T14:14:48.781Z"
   },
   "39550": {
     "sidgadId": "39550",
@@ -20229,7 +20229,7 @@
     "birthDate": "27/02/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:02.879Z"
+    "fetchedAt": "2026-09-11T14:14:48.879Z"
   },
   "39553": {
     "sidgadId": "39553",
@@ -20253,7 +20253,7 @@
     "birthDate": "20/05/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:10.278Z"
+    "fetchedAt": "2026-09-11T14:14:48.990Z"
   },
   "39561": {
     "sidgadId": "39561",
@@ -20269,7 +20269,7 @@
     "birthDate": "15/12/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-29T12:08:40.501Z"
+    "fetchedAt": "2026-09-11T14:14:49.103Z"
   },
   "39564": {
     "sidgadId": "39564",
@@ -20397,7 +20397,7 @@
     "birthDate": "20/08/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:33:03.190Z"
+    "fetchedAt": "2026-09-11T14:14:49.219Z"
   },
   "39637": {
     "sidgadId": "39637",
@@ -20413,7 +20413,7 @@
     "birthDate": "27/04/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:10.618Z"
+    "fetchedAt": "2026-09-11T14:14:49.321Z"
   },
   "39650": {
     "sidgadId": "39650",
@@ -20485,7 +20485,7 @@
     "birthDate": "04/06/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:10.781Z"
+    "fetchedAt": "2026-09-11T14:14:49.427Z"
   },
   "39696": {
     "sidgadId": "39696",
@@ -20493,15 +20493,15 @@
     "birthDate": "04/06/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:10.936Z"
+    "fetchedAt": "2026-09-11T14:14:49.533Z"
   },
   "39698": {
     "sidgadId": "39698",
-    "name": "MATA RÀFOLS EDUARD",
+    "name": "JUNU MATA RÀFOLS EDUARD",
     "birthDate": "11/03/2008",
-    "registeredTeam": "BAR",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:11.107Z"
+    "fetchedAt": "2026-09-11T14:14:49.668Z"
   },
   "39700": {
     "sidgadId": "39700",
@@ -20509,7 +20509,7 @@
     "birthDate": "05/09/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-03T12:58:54.920Z"
+    "fetchedAt": "2026-09-11T14:14:49.785Z"
   },
   "39702": {
     "sidgadId": "39702",
@@ -20525,7 +20525,7 @@
     "birthDate": "05/12/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-03T12:58:55.045Z"
+    "fetchedAt": "2026-09-11T14:14:49.902Z"
   },
   "39707": {
     "sidgadId": "39707",
@@ -20533,7 +20533,7 @@
     "birthDate": "04/03/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:03.515Z"
+    "fetchedAt": "2026-09-11T14:14:50.002Z"
   },
   "39715": {
     "sidgadId": "39715",
@@ -20557,7 +20557,7 @@
     "birthDate": "17/07/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:11.262Z"
+    "fetchedAt": "2026-09-11T14:14:50.108Z"
   },
   "39741": {
     "sidgadId": "39741",
@@ -20565,7 +20565,7 @@
     "birthDate": "05/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:03.676Z"
+    "fetchedAt": "2026-09-11T14:14:50.211Z"
   },
   "39754": {
     "sidgadId": "39754",
@@ -20701,7 +20701,7 @@
     "birthDate": "15/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:04.018Z"
+    "fetchedAt": "2026-09-11T14:14:50.320Z"
   },
   "39890": {
     "sidgadId": "39890",
@@ -20709,7 +20709,7 @@
     "birthDate": "03/01/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:04.180Z"
+    "fetchedAt": "2026-09-11T14:14:50.423Z"
   },
   "39891": {
     "sidgadId": "39891",
@@ -20717,7 +20717,7 @@
     "birthDate": "23/06/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:04.361Z"
+    "fetchedAt": "2026-09-11T14:14:50.530Z"
   },
   "39892": {
     "sidgadId": "39892",
@@ -20725,7 +20725,7 @@
     "birthDate": "20/05/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:04.533Z"
+    "fetchedAt": "2026-09-11T14:14:50.636Z"
   },
   "39893": {
     "sidgadId": "39893",
@@ -20741,7 +20741,7 @@
     "birthDate": "15/06/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:04.713Z"
+    "fetchedAt": "2026-09-11T14:14:50.740Z"
   },
   "39901": {
     "sidgadId": "39901",
@@ -20797,7 +20797,7 @@
     "birthDate": "17/02/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T14:33:05.573Z"
+    "fetchedAt": "2026-09-11T14:14:50.842Z"
   },
   "39937": {
     "sidgadId": "39937",
@@ -20813,7 +20813,7 @@
     "birthDate": "26/04/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:33:05.751Z"
+    "fetchedAt": "2026-09-11T14:14:50.945Z"
   },
   "39942": {
     "sidgadId": "39942",
@@ -20837,7 +20837,7 @@
     "birthDate": "30/09/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:11.418Z"
+    "fetchedAt": "2026-09-11T14:14:51.051Z"
   },
   "39977": {
     "sidgadId": "39977",
@@ -20885,7 +20885,7 @@
     "birthDate": "28/08/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:11.575Z"
+    "fetchedAt": "2026-09-11T14:14:51.166Z"
   },
   "40033": {
     "sidgadId": "40033",
@@ -20989,7 +20989,7 @@
     "birthDate": "05/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:11.738Z"
+    "fetchedAt": "2026-09-11T14:14:51.283Z"
   },
   "40090": {
     "sidgadId": "40090",
@@ -21101,7 +21101,7 @@
     "birthDate": "02/12/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:11.901Z"
+    "fetchedAt": "2026-09-11T14:14:51.388Z"
   },
   "40223": {
     "sidgadId": "40223",
@@ -21421,7 +21421,7 @@
     "birthDate": "05/03/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:11.493Z"
+    "fetchedAt": "2026-09-11T14:14:51.490Z"
   },
   "40767": {
     "sidgadId": "40767",
@@ -21805,7 +21805,7 @@
     "birthDate": "17/10/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:12.220Z"
+    "fetchedAt": "2026-09-11T14:14:51.593Z"
   },
   "41153": {
     "sidgadId": "41153",
@@ -22077,7 +22077,7 @@
     "birthDate": "29/11/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:12.016Z"
+    "fetchedAt": "2026-09-11T14:14:51.697Z"
   },
   "41864": {
     "sidgadId": "41864",
@@ -22293,7 +22293,7 @@
     "birthDate": "02/04/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:12.389Z"
+    "fetchedAt": "2026-09-11T14:14:51.802Z"
   },
   "43391": {
     "sidgadId": "43391",
@@ -22549,7 +22549,7 @@
     "birthDate": "23/01/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:12.700Z"
+    "fetchedAt": "2026-09-11T14:14:51.904Z"
   },
   "43688": {
     "sidgadId": "43688",
@@ -23173,7 +23173,7 @@
     "birthDate": "15/04/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:12.867Z"
+    "fetchedAt": "2026-09-11T14:14:52.009Z"
   },
   "43915": {
     "sidgadId": "43915",
@@ -23213,7 +23213,7 @@
     "birthDate": "26/09/2008",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:13.040Z"
+    "fetchedAt": "2026-09-11T14:14:52.119Z"
   },
   "43922": {
     "sidgadId": "43922",
@@ -23229,7 +23229,7 @@
     "birthDate": "30/04/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:13.214Z"
+    "fetchedAt": "2026-09-11T14:14:52.235Z"
   },
   "43925": {
     "sidgadId": "43925",
@@ -23461,7 +23461,7 @@
     "birthDate": "12/06/2007",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-07-25T15:03:53.220Z"
+    "fetchedAt": "2026-09-11T14:14:52.337Z"
   },
   "44081": {
     "sidgadId": "44081",
@@ -23485,7 +23485,7 @@
     "birthDate": "13/11/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:13.377Z"
+    "fetchedAt": "2026-09-11T14:14:52.439Z"
   },
   "44105": {
     "sidgadId": "44105",
@@ -23845,7 +23845,7 @@
     "birthDate": "06/09/2009",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-07-18T17:54:50.247Z"
+    "fetchedAt": "2026-09-11T14:14:52.546Z"
   },
   "44325": {
     "sidgadId": "44325",
@@ -23949,7 +23949,7 @@
     "birthDate": "10/12/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:13.693Z"
+    "fetchedAt": "2026-09-11T14:14:52.665Z"
   },
   "44400": {
     "sidgadId": "44400",
@@ -24293,7 +24293,7 @@
     "birthDate": "21/01/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T17:27:13.863Z"
+    "fetchedAt": "2026-09-11T14:14:52.767Z"
   },
   "44632": {
     "sidgadId": "44632",
@@ -24341,7 +24341,7 @@
     "birthDate": "30/09/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:50.447Z"
+    "fetchedAt": "2026-09-11T14:14:52.870Z"
   },
   "44653": {
     "sidgadId": "44653",
@@ -24357,7 +24357,7 @@
     "birthDate": "24/11/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:50.659Z"
+    "fetchedAt": "2026-09-11T14:14:52.982Z"
   },
   "44660": {
     "sidgadId": "44660",
@@ -24701,7 +24701,7 @@
     "birthDate": "11/11/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:14.347Z"
+    "fetchedAt": "2026-09-11T14:14:53.086Z"
   },
   "44950": {
     "sidgadId": "44950",
@@ -24845,7 +24845,7 @@
     "birthDate": "30/12/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-25T15:03:53.408Z"
+    "fetchedAt": "2026-09-11T14:14:53.193Z"
   },
   "45205": {
     "sidgadId": "45205",
@@ -25181,7 +25181,7 @@
     "birthDate": "14/10/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:51.275Z"
+    "fetchedAt": "2026-09-11T14:14:53.314Z"
   },
   "45750": {
     "sidgadId": "45750",
@@ -27069,7 +27069,7 @@
     "birthDate": "21/04/2009",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T20:30:19.641Z"
+    "fetchedAt": "2026-09-11T14:14:53.430Z"
   },
   "48823": {
     "sidgadId": "48823",
@@ -27405,7 +27405,7 @@
     "birthDate": "07/01/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:53.814Z"
+    "fetchedAt": "2026-09-11T14:14:53.536Z"
   },
   "49048": {
     "sidgadId": "49048",
@@ -27533,7 +27533,7 @@
     "birthDate": "09/06/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:20.932Z"
+    "fetchedAt": "2026-09-11T14:14:53.634Z"
   },
   "49137": {
     "sidgadId": "49137",
@@ -27549,7 +27549,7 @@
     "birthDate": "26/12/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:21.057Z"
+    "fetchedAt": "2026-09-11T14:14:53.736Z"
   },
   "49139": {
     "sidgadId": "49139",
@@ -28309,7 +28309,7 @@
     "birthDate": "26/10/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:54.953Z"
+    "fetchedAt": "2026-09-11T14:14:53.834Z"
   },
   "49672": {
     "sidgadId": "49672",
@@ -28549,7 +28549,7 @@
     "birthDate": "15/09/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:24.193Z"
+    "fetchedAt": "2026-09-11T14:14:53.930Z"
   },
   "50102": {
     "sidgadId": "50102",
@@ -31029,7 +31029,7 @@
     "birthDate": "12/02/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:30.446Z"
+    "fetchedAt": "2026-09-11T14:14:54.027Z"
   },
   "53844": {
     "sidgadId": "53844",
@@ -31261,7 +31261,7 @@
     "birthDate": "07/07/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:31.214Z"
+    "fetchedAt": "2026-09-11T14:14:54.122Z"
   },
   "53937": {
     "sidgadId": "53937",
@@ -31365,7 +31365,7 @@
     "birthDate": "16/10/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:54:57.024Z"
+    "fetchedAt": "2026-09-11T14:14:54.222Z"
   },
   "53972": {
     "sidgadId": "53972",
@@ -32020,8 +32020,8 @@
     "name": "JUVA CASTIGNANI GUILLAMET PAU",
     "birthDate": "25/08/2010",
     "registeredTeam": null,
-    "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:14.172Z"
+    "isGK": false,
+    "fetchedAt": "2026-09-11T14:14:54.325Z"
   },
   "54307": {
     "sidgadId": "54307",
@@ -33197,7 +33197,7 @@
     "birthDate": "23/04/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T20:30:35.145Z"
+    "fetchedAt": "2026-09-11T14:14:54.425Z"
   },
   "55130": {
     "sidgadId": "55130",
@@ -42709,7 +42709,7 @@
     "birthDate": "26/06/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-09T20:33:21.577Z"
+    "fetchedAt": "2026-09-11T14:14:54.527Z"
   },
   "65020": {
     "sidgadId": "65020",
@@ -44237,7 +44237,7 @@
     "birthDate": "22/09/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:55:06.128Z"
+    "fetchedAt": "2026-09-11T14:14:54.628Z"
   },
   "66388": {
     "sidgadId": "66388",
@@ -44301,7 +44301,7 @@
     "birthDate": "22/09/2010",
     "registeredTeam": "EUSA",
     "isGK": false,
-    "fetchedAt": "2026-05-16T06:22:59.477Z"
+    "fetchedAt": "2026-09-11T14:14:54.720Z"
   },
   "66441": {
     "sidgadId": "66441",
@@ -77157,7 +77157,7 @@
     "birthDate": "28/05/2009",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-08T17:27:17.002Z"
+    "fetchedAt": "2026-09-11T14:14:54.823Z"
   },
   "89712": {
     "sidgadId": "89712",
@@ -79165,7 +79165,7 @@
     "birthDate": "14/04/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-18T17:55:07.919Z"
+    "fetchedAt": "2026-09-11T14:14:54.926Z"
   },
   "91551": {
     "sidgadId": "91551",
@@ -87235,6 +87235,306 @@
     "124311",
     "124316",
     "124314",
-    "124315"
+    "124315",
+    "145459",
+    "145460",
+    "145461",
+    "145462",
+    "145464",
+    "145466",
+    "145465",
+    "145463",
+    "145550",
+    "145554",
+    "145553",
+    "145552",
+    "145598",
+    "144799",
+    "144804",
+    "144794",
+    "144793",
+    "144796",
+    "144795",
+    "144798",
+    "144797",
+    "144671",
+    "144672",
+    "144670",
+    "144669",
+    "138659",
+    "138660",
+    "138661",
+    "138663",
+    "138662",
+    "138664",
+    "138666",
+    "138667",
+    "138665",
+    "138670",
+    "138669",
+    "138668",
+    "138672",
+    "138671",
+    "138673",
+    "138675",
+    "138674",
+    "138676",
+    "138678",
+    "138677",
+    "138679",
+    "138681",
+    "138680",
+    "138682",
+    "138683",
+    "138684",
+    "138685",
+    "138686",
+    "138687",
+    "138688",
+    "138690",
+    "138691",
+    "138689",
+    "138694",
+    "138692",
+    "138693",
+    "138695",
+    "138697",
+    "138696",
+    "138700",
+    "138698",
+    "138699",
+    "138703",
+    "138702",
+    "138701",
+    "138704",
+    "138706",
+    "138705",
+    "138707",
+    "138709",
+    "138712",
+    "138710",
+    "138711",
+    "138713",
+    "138714",
+    "138715",
+    "138716",
+    "138718",
+    "138717",
+    "138734",
+    "138720",
+    "138721",
+    "138723",
+    "138722",
+    "138724",
+    "138725",
+    "138727",
+    "138726",
+    "138729",
+    "138728",
+    "138730",
+    "138747",
+    "138731",
+    "138733",
+    "138719",
+    "138735",
+    "138736",
+    "138738",
+    "138739",
+    "138737",
+    "138742",
+    "138740",
+    "138741",
+    "138743",
+    "138745",
+    "138744",
+    "138732",
+    "138748",
+    "138746",
+    "138751",
+    "138749",
+    "138750",
+    "138753",
+    "138754",
+    "138752",
+    "138755",
+    "138757",
+    "138756",
+    "138760",
+    "138759",
+    "138773",
+    "138763",
+    "138761",
+    "138762",
+    "138764",
+    "138765",
+    "138766",
+    "138767",
+    "138768",
+    "138769",
+    "138772",
+    "138770",
+    "138771",
+    "138774",
+    "138758",
+    "138775",
+    "138776",
+    "138777",
+    "138778",
+    "136052",
+    "136053",
+    "136051",
+    "136056",
+    "136057",
+    "136058",
+    "136061",
+    "136060",
+    "136059",
+    "136064",
+    "136066",
+    "136065",
+    "136067",
+    "136069",
+    "136068",
+    "136074",
+    "136073",
+    "136072",
+    "136075",
+    "136076",
+    "136077",
+    "136079",
+    "136080",
+    "136081",
+    "136086",
+    "136084",
+    "136085",
+    "136089",
+    "136087",
+    "136088",
+    "136093",
+    "136094",
+    "136092",
+    "136095",
+    "136096",
+    "136097",
+    "136100",
+    "136102",
+    "136101",
+    "136103",
+    "136105",
+    "136104",
+    "136109",
+    "136107",
+    "136108",
+    "136114",
+    "136141",
+    "136112",
+    "136117",
+    "136115",
+    "136116",
+    "136150",
+    "136120",
+    "136121",
+    "136125",
+    "136124",
+    "136123",
+    "136130",
+    "136128",
+    "136129",
+    "136131",
+    "136133",
+    "136132",
+    "136135",
+    "136136",
+    "136137",
+    "136140",
+    "136142",
+    "136113",
+    "136143",
+    "136145",
+    "136144",
+    "136122",
+    "136149",
+    "136148",
+    "136151",
+    "136153",
+    "136152",
+    "136158",
+    "136156",
+    "136157",
+    "136159",
+    "136160",
+    "136161",
+    "135941",
+    "135939",
+    "135944",
+    "135946",
+    "135947",
+    "135948",
+    "135980",
+    "135953",
+    "135955",
+    "135956",
+    "135957",
+    "135960",
+    "135961",
+    "135963",
+    "135964",
+    "135969",
+    "135967",
+    "135972",
+    "135974",
+    "135976",
+    "135975",
+    "135981",
+    "135952",
+    "135985",
+    "135984",
+    "135983",
+    "135988",
+    "135989",
+    "135992",
+    "135991",
+    "135997",
+    "135995",
+    "135996",
+    "136001",
+    "136000",
+    "136002",
+    "136031",
+    "136004",
+    "136005",
+    "136008",
+    "136009",
+    "136038",
+    "136012",
+    "136011",
+    "136013",
+    "136018",
+    "136017",
+    "136016",
+    "136020",
+    "136019",
+    "136021",
+    "136023",
+    "136024",
+    "136025",
+    "136028",
+    "136029",
+    "136030",
+    "136003",
+    "136032",
+    "136033",
+    "136010",
+    "136037",
+    "136036",
+    "136040",
+    "136039",
+    "136044",
+    "136046",
+    "136045",
+    "136047",
+    "136049",
+    "136048",
+    "118968"
   ]
 }
