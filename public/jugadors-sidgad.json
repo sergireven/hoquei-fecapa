@@ -40277,7 +40277,7 @@
     "birthDate": "04/12/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-25T15:03:54.465Z"
+    "fetchedAt": "2026-09-20T22:13:36.481Z"
   },
   "62868": {
     "sidgadId": "62868",
@@ -40285,7 +40285,7 @@
     "birthDate": "04/12/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-07-25T15:03:54.624Z"
+    "fetchedAt": "2026-09-20T22:13:36.589Z"
   },
   "62869": {
     "sidgadId": "62869",
@@ -55329,11 +55329,11 @@
   },
   "74654": {
     "sidgadId": "74654",
-    "name": "BENU( MARGALEF MUÑOZ XÈNIA",
+    "name": "BENU MARGALEF MUÑOZ XÈNIA",
     "birthDate": "06/04/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-18T10:36:54.528Z"
+    "fetchedAt": "2026-09-20T22:13:36.701Z"
   },
   "74655": {
     "sidgadId": "74655",
@@ -56873,11 +56873,11 @@
   },
   "75222": {
     "sidgadId": "75222",
-    "name": "BENU( CARDIEL FIGUERAS BERTA",
+    "name": "BENU CARDIEL FIGUERAS BERTA",
     "birthDate": "03/08/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-18T10:36:56.302Z"
+    "fetchedAt": "2026-09-20T22:13:36.814Z"
   },
   "75226": {
     "sidgadId": "75226",
@@ -60305,11 +60305,11 @@
   },
   "78614": {
     "sidgadId": "78614",
-    "name": "BENU( SOBREVALS SALMONS CARLA",
+    "name": "BENA SOBREVALS SALMONS CARLA",
     "birthDate": "12/08/2015",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-18T10:36:57.740Z"
+    "fetchedAt": "2026-09-20T22:13:36.928Z"
   },
   "78615": {
     "sidgadId": "78615",
@@ -93767,6 +93767,33 @@
     "130676",
     "130679",
     "130681",
-    "130682"
+    "130682",
+    "144088",
+    "144089",
+    "144090",
+    "144093",
+    "144091",
+    "144092",
+    "144095",
+    "144094",
+    "144096",
+    "144098",
+    "144099",
+    "144097",
+    "144102",
+    "144100",
+    "144101",
+    "145706",
+    "145711",
+    "145707",
+    "145712",
+    "145708",
+    "145713",
+    "145709",
+    "145714",
+    "145710",
+    "145715",
+    "145716",
+    "145717"
   ]
 }
