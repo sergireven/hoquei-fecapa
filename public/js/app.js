@@ -6959,6 +6959,17 @@ function stripSeasonSuffix(name) {
     .trim();
 }
 
+function getCompetitionSeasonLabel(comp) {
+  const source = `${String(comp?.name || "")} ${String(comp?.slug || "")}`;
+  const match = source.match(/(?:^|[\s_(])((?:20\d{2})-(?:\d{2,4}))(?:$|[\s_)]|[-])/i);
+  return match?.[1] ? String(match[1]).trim() : "";
+}
+
+function competitionBelongsToActiveSeason(comp) {
+  const seasonLabel = getCompetitionSeasonLabel(comp);
+  return !seasonLabel || seasonLabel === getActiveSeasonLabel();
+}
+
 async function fetchJsonFile(url) {
   const raw = String(url || "").trim();
   const urls = [raw];
@@ -7655,7 +7666,8 @@ function loadSelectedSeasonKey() {
 
 function getActiveSeasonLabel() {
   const item = seasonCatalog.find(s => s.key === activeSeasonKey) || seasonCatalog[0] || null;
-  return item?.label || getSeasonLabelFromData(DB, "Temporada");
+  if (activeSeasonKey === "current") return getSeasonLabelFromData(DB, "Temporada");
+  return item?.key || item?.label || getSeasonLabelFromData(DB, "Temporada");
 }
 
 function getActiveSeasonEntry() {
@@ -8827,7 +8839,7 @@ function findComp(compId) {
   if (!DB) return null;
   const wanted = String(compId || "");
   for (const comps of Object.values(DB.categories)) {
-    const c = comps.find(c => String(c?.id || "") === wanted);
+    const c = comps.find(c => String(c?.id || "") === wanted && competitionBelongsToActiveSeason(c));
     if (c) return c;
   }
   return null;
@@ -13196,6 +13208,7 @@ function buildCompsHierarchy() {
   const seen = new Set();
   for (const comps of Object.values(DB.categories || {})) {
     for (const comp of comps) {
+      if (!competitionBelongsToActiveSeason(comp)) continue;
       if (is3x3Competition(comp)) continue;
       if (!comp?.id || seen.has(comp.id)) continue;
       seen.add(comp.id);

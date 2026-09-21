@@ -163,11 +163,12 @@ function parseCompetitionList(html, seasonLabel = TARGET_SEASON) {
 
   // Extract only target season block using indexOf (more reliable than regex on large HTML)
   const seasonStart = html.indexOf(`data-season="${seasonLabel}"`);
+  if (seasonStart === -1) {
+    return comps;
+  }
   const nextSeasonIdx = seasonStart !== -1 ? html.indexOf('data-season="', seasonStart + 1) : -1;
   const seasonEnd   = nextSeasonIdx !== -1 ? nextSeasonIdx : -1;
-  const block = seasonStart !== -1
-    ? html.slice(seasonStart, seasonEnd !== -1 ? seasonEnd : html.length)
-    : html; // fallback to full html
+  const block = html.slice(seasonStart, seasonEnd !== -1 ? seasonEnd : html.length);
 
   // Find all competition links (works with both relative and absolute URLs)
   // <a href="https://jok.cat/competicio/4301/slug" ...> or <a href="/competicio/4301/slug">
@@ -2365,6 +2366,8 @@ async function main() {
   });
 
   if (allComps.length === 0) {
+    console.error(`❌ No s'han trobat competicions del bloc de temporada ${TARGET_SEASON}.`);
+    console.error("   El scraper no continuarà amb cap bloc d'una temporada anterior.");
     // Show raw HTML snippet around season section for debugging
     if (seasonPos > -1) {
       console.log(`\n   HTML al voltant de ${TARGET_SEASON}:`);
