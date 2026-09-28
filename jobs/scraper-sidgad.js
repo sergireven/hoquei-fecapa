@@ -18,7 +18,6 @@ const CACHE_FILE   = path.join(__dirname, "../public/jugadors-sidgad.json");
 const COMP_FILE    = path.join(__dirname, "../public/competicions-sidgad.json");
 const PORTAL_URL   = "https://www.hoqueipatins.fecapa.cat/";
 const SERVER_BASE  = "https://www.server2.sidgad.es/fecapa/";
-const TEMP_ID      = "39";
 const CURRENT_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env);
 const IDM          = "1";
 const MAX_MATCHES  = 300;     // partits a processar per execució
@@ -28,6 +27,30 @@ const STALE_MS     = 30 * 24 * 60 * 60 * 1000;
 async function loadCache() {
   try { return JSON.parse(await fs.readFile(CACHE_FILE, "utf8")); }
   catch { return {}; }
+}
+
+async function selectPortalSeason(page, seasonLabel) {
+  const seasonId = await page.evaluate((season) => {
+    const targetName = String(season || "").replace(/-/g, "/");
+    const option = [...document.querySelectorAll(".select_temporada")].find(
+      item => String(item.getAttribute("temp_name") || "").trim() === targetName
+    );
+    if (!option) return "";
+
+    const targetId = String(option.getAttribute("id_temp") || "").trim();
+    const activeId = String(document.getElementById("temp_activa")?.value || "").trim();
+    if (activeId !== targetId) option.click();
+    return targetId;
+  }, seasonLabel);
+
+  if (!seasonId) throw new Error(`FECAPA portal has no season selector for ${seasonLabel}`);
+
+  await page.waitForFunction(
+    expectedId => String(document.getElementById("temp_activa")?.value || "").trim() === expectedId,
+    { timeout: 10000 },
+    seasonId
+  );
+  return seasonId;
 }
 async function saveCache(cache) {
   await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true });
@@ -325,9 +348,12 @@ async function main() {
     await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
     console.log("   Portal carregat ✓");
 
+    const portalTempId = await selectPortalSeason(page, CURRENT_SEASON);
+    console.log(`[sidgad] Temporada objectiu ${CURRENT_SEASON} (portal tempId=${portalTempId})`);
+
     // ── 1. Obtenir IDs de competicions ───────────────────────
     const comps = await page.$$eval(
-      `.listado_competiciones_fila.temp_${TEMP_ID}`,
+      `.listado_competicions_fila.temp_${portalTempId}`,
       els => els.map(el => {
         const cfg = el.getAttribute("config_params") || "";
         return {
@@ -339,7 +365,7 @@ async function main() {
     );
     const compIds = comps.map(c => c.id);
     const compNames = Object.fromEntries(comps.map(c => [c.id, c.name]));
-    console.log(`   Competicions temporada ${TEMP_ID}: ${compIds.length}`);
+    console.log(`   Competicions temporada ${portalTempId}: ${compIds.length}`);
 
     // ── 2. Recollir resultats i classificació per competició ──
     // Clic a cada competició → calendari carrega a #tab_modal_contenido_competicion
@@ -932,9 +958,9 @@ async function main() {
 
     for (const [sidgadId, info] of toFetch) {
       try {
-        const profileUrl = `${SERVER_BASE}profiles/fecapa_profileseason_${sidgadId}_${IDM}_${TEMP_ID}.php`;
+        const profileUrl = `${SERVER_BASE}profiles/fecapa_profileseason_${sidgadId}_${IDM}_${portalTempId}.php`;
         const html = await jqLoad(page, "sidgad_thickbox_right_content", profileUrl,
-          { idm: IDM, idc: "0", id_player: sidgadId, team_id: "0", temp_name: "2025/26" }, 8000);
+          { idm: IDM, idc: "0", id_player: sidgadId, team_id: "0", temp_name: CURRENT_SEASON.replace(/-/g, "/") }, 8000);
 
         // Debug: primer perfil
         if (!debugProfileLogged && html && html.length > 50) {
