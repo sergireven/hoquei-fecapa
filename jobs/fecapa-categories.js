@@ -629,37 +629,6 @@ async function loadDataFile() {
   return null;
 }
 
-<<<<<<< HEAD
-async function selectPortalSeason(page, seasonLabel) {
-  const seasonId = await page.evaluate((season) => {
-    const targetName = String(season || "").replace(/-/g, "/");
-    const option = [...document.querySelectorAll(".select_temporada")].find(
-      (item) => String(item.getAttribute("temp_name") || "").trim() === targetName
-    );
-    if (!option) return "";
-
-    const targetId = String(option.getAttribute("id_temp") || "").trim();
-    const activeId = String(document.getElementById("temp_activa")?.value || "").trim();
-    if (activeId !== targetId) {
-      option.click();
-      if (typeof window.$j === "function") window.$j(option).trigger("click");
-    }
-    return targetId;
-  }, seasonLabel);
-
-  if (!seasonId) {
-    throw new Error(`FECAPA portal has no season selector for ${seasonLabel}`);
-  }
-
-  await page.waitForFunction(
-    (expectedId) => String(document.getElementById("temp_activa")?.value || "").trim() === expectedId,
-    { timeout: 10000 },
-    seasonId
-  );
-  return seasonId;
-}
-
-=======
 async function selectPortalSeason(page, seasonLabel) {
   const seasonId = await page.evaluate((season) => {
     const targetName = String(season || "").replace(/-/g, "/");
@@ -683,8 +652,6 @@ async function selectPortalSeason(page, seasonLabel) {
   );
   return seasonId;
 }
-
->>>>>>> bbcb56abe585e1908db2deb25c4cadeb515d634b
 function buildPersistedCompetitionIndex(persisted) {
   const byId = {};
   const cats = persisted?.categories || {};
