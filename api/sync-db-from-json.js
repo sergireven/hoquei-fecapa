@@ -206,6 +206,7 @@ function extractPlayersFromDb(db, season = "2025-26") {
     
     // Team stats: if present, use first
     const teamStats = Array.isArray(player?.teamStats) ? player.teamStats : [];
+    if (teamStats.length === 0) continue;
     const primaryTeam = teamStats[0];
     const teamName = primaryTeam?.team || "";
     const category = primaryTeam?.cat || "";
@@ -275,6 +276,12 @@ async function syncSeasonToDatabase(sb, seasonKey, dataPath, season = "2025-26")
   const data = await readJsonFile(dataPath);
   if (!data) {
     return { ok: false, error: `Could not read ${dataPath}` };
+  }
+  if (data.season && String(data.season).trim() !== String(season).trim()) {
+    return {
+      ok: false,
+      error: `Season mismatch: data is ${data.season}, sync requested ${season}`,
+    };
   }
 
   // 2. Extreu clubs, teams, players

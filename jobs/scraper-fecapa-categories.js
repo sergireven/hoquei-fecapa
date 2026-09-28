@@ -9,6 +9,7 @@
 
 const fs = require("fs").promises;
 const path = require("path");
+const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
 
 // Importar la función principal de fecapa-categories
 const { getCategoriesData } = require("./fecapa-categories");
@@ -18,7 +19,9 @@ async function main() {
   const liveModeRequested = args.includes("--live");
   const liveMode = true;
   const outputIdx = args.indexOf("--output");
-  const outputFile = outputIdx !== -1 ? args[outputIdx + 1] : null;
+  const outputFile = outputIdx !== -1
+    ? args[outputIdx + 1]
+    : path.join(__dirname, "../public/fecapa-categories.json");
   const timeoutIdx = args.indexOf("--competition-timeout-ms");
   const timeoutArg = timeoutIdx !== -1 ? parseInt(args[timeoutIdx + 1], 10) : null;
   const timeoutEnv = process.env.FECAPA_COMP_TIMEOUT_MS ? parseInt(process.env.FECAPA_COMP_TIMEOUT_MS, 10) : null;
@@ -54,7 +57,7 @@ async function main() {
       competitionTimeoutMs,
     });
 
-    if (!data.ok) {
+    if (!data.ok || data.degraded || data.fetchedCompetitions <= 0 || data.failedCompetitions > 0) {
       console.error("❌ Error:", data.degraded ? "Degraded mode" : "Failed");
       if (data.errors && data.errors.length > 0) {
         console.error("   Errors:", data.errors);
@@ -92,13 +95,11 @@ async function main() {
 
     console.log(`\n🔢 Total grups obtinguts: ${totalGroups}`);
 
-    // Guardar en archivo si se especifica
-    if (outputFile) {
-      const outPath = path.resolve(process.cwd(), outputFile);
-      await fs.mkdir(path.dirname(outPath), { recursive: true });
-      await fs.writeFile(outPath, JSON.stringify(data, null, 2));
-      console.log(`\n✅ Dades guardades a: ${outPath}`);
-    }
+    data.season = getCurrentSeasonLabelFromEnvOrDate(process.env);
+    const outPath = path.resolve(process.cwd(), outputFile);
+    await fs.mkdir(path.dirname(outPath), { recursive: true });
+    await fs.writeFile(outPath, JSON.stringify(data, null, 2));
+    console.log(`\n✅ Dades guardades a: ${outPath}`);
 
     console.log(`\n✅ Scraper completat a ${new Date().toISOString()}`);
     process.exit(0);
