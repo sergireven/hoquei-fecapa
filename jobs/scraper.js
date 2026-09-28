@@ -1550,6 +1550,10 @@ function categorise(name) {
 function buildPlayerTeamStats(jugadors, actes, compIdToCat) {
   const counts = {}; // jugadorId → { teamName::catSlug → { team, cat, count } }
 
+  for (const player of Object.values(jugadors || {})) {
+    if (player) player.teamStats = [];
+  }
+
   for (const [, acta] of Object.entries(actes || {})) {
     if (!acta.playerStats) continue;
     const cat = catSlug(compIdToCat[acta.compId] || "Altres");
@@ -2513,7 +2517,11 @@ async function main() {
   let fecapaCategories = {};
   try {
     const fecapaRaw = JSON.parse(await fs.readFile(FECAPA_CATEGORIES_FILE, "utf8"));
-    fecapaCategories = fecapaRaw?.categories || {};
+    if (fecapaRaw?.season === TARGET_SEASON && !fecapaRaw?.degraded && fecapaRaw?.failedCompetitions === 0) {
+      fecapaCategories = fecapaRaw.categories || {};
+    } else {
+      console.warn(`   ⚠️  Ignorant snapshot FECAPA: temporada/lectura no vàlida per ${TARGET_SEASON}`);
+    }
     if (Object.keys(fecapaCategories).length > 0) {
       const mergedCategories = mergeFecapaCompetitionsIntoCategories({
         categories: output.categories,

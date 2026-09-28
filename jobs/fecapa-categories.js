@@ -597,7 +597,10 @@ async function loadCategoriesFile() {
   try {
     const raw = await fs.readFile(CATEGORIES_FILE, "utf8");
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.categories) return parsed;
+    if (
+      parsed && typeof parsed === "object" && parsed.categories
+      && parsed.season === CURRENT_SEASON
+    ) return parsed;
   } catch {
     // Cache file absent or invalid; fall through to live/snapshot generation.
   }
