@@ -8,7 +8,6 @@ const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
 
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
-const TEMP_ID = "39";
 const CURRENT_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env);
 const COMP_FILE = path.join(__dirname, "../public/competicions-sidgad.json");
 const DATA_FILE = path.join(__dirname, "../public/data.json");
@@ -630,6 +629,29 @@ async function loadDataFile() {
   return null;
 }
 
+async function selectPortalSeason(page, seasonLabel) {
+  const seasonId = await page.evaluate((season) => {
+    const targetName = String(season || "").replace(/-/g, "/");
+    const option = [...document.querySelectorAll(".select_temporada")].find(
+      item => String(item.getAttribute("temp_name") || "").trim() === targetName
+    );
+    if (!option) return "";
+
+    const targetId = String(option.getAttribute("id_temp") || "").trim();
+    const activeId = String(document.getElementById("temp_activa")?.value || "").trim();
+    if (activeId !== targetId) option.click();
+    return targetId;
+  }, seasonLabel);
+
+  if (!seasonId) throw new Error(`FECAPA portal has no season selector for ${seasonLabel}`);
+
+  await page.waitForFunction(
+    expectedId => String(document.getElementById("temp_activa")?.value || "").trim() === expectedId,
+    { timeout: 10000 },
+    seasonId
+  );
+  return seasonId;
+}
 function buildPersistedCompetitionIndex(persisted) {
   const byId = {};
   const cats = persisted?.categories || {};
@@ -1256,7 +1278,7 @@ async function scrapeCompetitionFromLeaguePage(comp) {
   throw new Error(`No classification found at ${leagueUrl}`);
 }
 
-async function scrapeCompetitionLive(page, comp) {
+async function scrapeCompetitionLive(page, comp, tempId) {
   // Clear container so we can detect when new content is actually loaded
   await page.evaluate(() => {
     const el = document.getElementById("tab_modal_contenido_competicion");
@@ -1327,13 +1349,7 @@ async function scrapeCompetitionLive(page, comp) {
       };
     }
 
-    if (typeof btn.click === "function") {
-      btn.click();
-    }
-    btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    if (typeof window.$j === "function") {
-      window.$j(btn).trigger("click");
-    }
+    btn.click();
 
     const visibleAfter = rows.filter(r => {
       const style = window.getComputedStyle(r);
@@ -1349,7 +1365,7 @@ async function scrapeCompetitionLive(page, comp) {
       visibleAfter,
       availableFilters: [],
     };
-  }, { category: comp.category, tempId: TEMP_ID });
+  }, { category: comp.category, tempId });
 
   console.log(
     `[fecapa-categories] ${comp.competitionId} category-filter clicked=${filterMeta.clicked} target=${filterMeta.target || "none"} selected=${filterMeta.selectedNome || "none"} reason=${filterMeta.reason} visibleBefore=${filterMeta.visibleBefore} visibleAfter=${filterMeta.visibleAfter}`
@@ -1361,14 +1377,23 @@ async function scrapeCompetitionLive(page, comp) {
   }
 
   await page.waitForFunction(
-    ({ tempId }) => {
-      const rows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
-      const visible = rows.filter(r => window.getComputedStyle(r).display !== "none");
-      return visible.length > 0;
+    ({ tempId, id, competitionName }) => {
+      const normalize = (s) => String(s || "")
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Z0-9 ]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const wanted = normalize(competitionName);
+      return [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)].some(row =>
+        String(row.id || "") === String(id)
+        || (wanted && normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "") === wanted)
+      );
     },
     { timeout: 8000 },
-    { tempId: TEMP_ID }
-  ).catch(() => {});
+    { tempId, id: comp.competitionId, competitionName: comp.competitionName }
+  );
 
   const clickedMeta = await page.evaluate(({ id, tempId, competitionName }) => {
     const normalize = (s) => String(s || "")
@@ -1383,24 +1408,8 @@ async function scrapeCompetitionLive(page, comp) {
     const seasonRows = [...document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`)];
     const targetId = String(id);
 
-    // 1) Most reliable: visible row id equals competition id.
-    let el = document.getElementById(targetId);
-    if (el && !el.classList.contains("listado_competiciones_fila")) {
-      el = null;
-    }
-    let strategy = el ? "dom-id" : "";
-
-    // 2) Season-scoped id match.
-    if (!el) {
-      el = seasonRows.find(row => String(row.id || "") === targetId) || null;
-      if (el) strategy = "season-id";
-    }
-
-    // 2b) Search across all rows in case temp/category filters hide the target row.
-    if (!el) {
-      el = allRows.find(row => String(row.id || "") === targetId) || null;
-      if (el) strategy = "allrows-id";
-    }
+    let el = seasonRows.find(row => String(row.id || "") === targetId) || null;
+    let strategy = el ? "season-id" : "";
 
     // 3) href fallback.
     if (!el) {
@@ -1412,49 +1421,13 @@ async function scrapeCompetitionLive(page, comp) {
     }
 
     if (!el) {
-      el = allRows.find(row => {
-        const href = row.getAttribute("href") || "";
-        return href.includes(`/league/${targetId}`);
-      }) || null;
-      if (el) strategy = "allrows-href";
-    }
-
-    // 4) normalized name exact match.
-    if (!el) {
+      // Match the current season's competition name when IDs changed between seasons.
       const wanted = normalize(competitionName);
       el = seasonRows.find(row => {
         const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
         return wanted && rowName === wanted;
       }) || null;
-      if (el) strategy = "name-exact";
-    }
-
-    if (!el) {
-      const wanted = normalize(competitionName);
-      el = allRows.find(row => {
-        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
-        return wanted && rowName === wanted;
-      }) || null;
-      if (el) strategy = "allrows-name-exact";
-    }
-
-    // 5) normalized name inclusion fallback.
-    if (!el) {
-      const wanted = normalize(competitionName);
-      el = seasonRows.find(row => {
-        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
-        return wanted && (rowName.includes(wanted) || wanted.includes(rowName));
-      }) || null;
-      if (el) strategy = "name-includes";
-    }
-
-    if (!el) {
-      const wanted = normalize(competitionName);
-      el = allRows.find(row => {
-        const rowName = normalize(row.getAttribute("idc_name") || row.getAttribute("name") || row.textContent || "");
-        return wanted && (rowName.includes(wanted) || wanted.includes(rowName));
-      }) || null;
-      if (el) strategy = "allrows-name-includes";
+      if (el) strategy = "season-name-exact";
     }
 
     if (!el) {
@@ -1472,22 +1445,9 @@ async function scrapeCompetitionLive(page, comp) {
       };
     }
 
-    const computedDisplay = window.getComputedStyle(el).display || "";
-    const wasHidden = computedDisplay === "none";
-    if (wasHidden) {
-      // Some rows remain hidden after category filter despite being valid targets.
-      // Force visibility so portal click handlers can open the competition.
-      el.style.display = "inline-block";
-    }
+    const wasHidden = window.getComputedStyle(el).display === "none";
 
-    if (typeof el.click === "function") {
-      el.click();
-    } else {
-      el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    }
-    if (typeof window.$j === "function") {
-      window.$j(el).trigger("click");
-    }
+    el.click();
     return {
       clicked: true,
       strategy,
@@ -1498,7 +1458,7 @@ async function scrapeCompetitionLive(page, comp) {
       totalRows: allRows.length,
       seasonRows: seasonRows.length,
     };
-  }, { id: comp.competitionId, tempId: TEMP_ID, competitionName: comp.competitionName });
+  }, { id: comp.competitionId, tempId, competitionName: comp.competitionName });
 
   console.log(
     `[fecapa-categories] ${comp.competitionId} open-competition clicked=${clickedMeta.clicked} strategy=${clickedMeta.strategy} selectedId=${clickedMeta.selectedId || "none"} selectedName=${clickedMeta.selectedName || "none"} display=${clickedMeta.selectedDisplay || "n/a"} wasHidden=${clickedMeta.selectedWasHidden ? 1 : 0} rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows}`
@@ -1510,6 +1470,8 @@ async function scrapeCompetitionLive(page, comp) {
       : "no-sample";
     throw new Error(`Competition ${comp.competitionId} not found on portal | rows=${clickedMeta.seasonRows}/${clickedMeta.totalRows} | sample=${sampleStr}`);
   }
+
+  comp.competitionId = String(clickedMeta.selectedId || comp.competitionId);
 
   await page.waitForFunction(
     () => {
@@ -2253,11 +2215,14 @@ async function getCategoriesData(options = {}) {
 
         const page = await browser.newPage();
         await page.goto(PORTAL_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
+        const portalTempId = await selectPortalSeason(page, CURRENT_SEASON);
+        console.log(`[fecapa-categories] portal season=${CURRENT_SEASON} tempId=${portalTempId}`);
 
         for (const comp of selected) {
+          const sourceCompetitionId = String(comp.competitionId);
           try {
             const liveComp = await withTimeout(
-              scrapeCompetitionLive(page, comp),
+              scrapeCompetitionLive(page, comp, portalTempId),
               competitionTimeoutMs,
               `live-${comp.competitionId}`
             );
@@ -2287,7 +2252,7 @@ async function getCategoriesData(options = {}) {
             }
 
             if (bestComp && bestComp.groupCount > 0) {
-              liveById.set(String(comp.competitionId), bestComp);
+              liveById.set(sourceCompetitionId, bestComp);
               liveUsed = true;
               continue;
             }
@@ -2299,7 +2264,7 @@ async function getCategoriesData(options = {}) {
                 `league-after-live-fail-${comp.competitionId}`
               );
               if (leagueComp && leagueComp.groupCount > 0) {
-                liveById.set(String(comp.competitionId), leagueComp);
+                liveById.set(sourceCompetitionId, leagueComp);
                 liveUsed = true;
                 console.log(
                   `[fecapa-categories] ${comp.competitionId} recovered via league fallback after live error (${leagueComp.groupCount} groups)`

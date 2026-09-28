@@ -8975,18 +8975,31 @@ async function loadCatActes(slug, seasonKey = activeSeasonKey) {
   const baseUrl = getSeasonActesBaseUrl(seasonKey);
   const fileUrl = `${baseUrl}/${normalizedSlug}.json`;
   console.log(`[DEBUG] loadCatActes: seasonKey=${seasonKey}, slug=${normalizedSlug}, url=${fileUrl}`);
-  try {
-    const res = await fetch(`${fileUrl}?t=${Date.now()}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    actesCache[key] = await res.json();
+  const candidateUrls = [fileUrl];
+  if (String(seasonKey || "current") !== "current") {
+    candidateUrls.push(`./season-archive/data-${seasonKey}/${normalizedSlug}.json`);
+  }
+
+  let loadedFrom = "";
+  for (const candidateUrl of candidateUrls) {
+    try {
+      const candidateData = await fetchJsonFile(candidateUrl);
+      if (!candidateData || typeof candidateData !== "object" || Array.isArray(candidateData)) continue;
+      actesCache[key] = candidateData;
+      loadedFrom = candidateUrl;
+      break;
+    } catch {}
+  }
+
+  if (loadedFrom) {
     actaDataSourceByCacheKey.set(key, seasonUsesDatabaseDataset(seasonKey) ? "json-fallback" : "json");
     dataSourceDebug("actes.load.json.ok", {
       seasonKey: String(seasonKey || ""),
       catSlug: String(normalizedSlug || ""),
-      source: String(actaDataSourceByCacheKey.get(key) || "json"),
+      source: loadedFrom,
       rows: Number(Object.keys(actesCache[key] || {}).length),
     });
-  } catch(e) {
+  } else {
     actesCache[key] = {};
     actaDataSourceByCacheKey.set(key, "empty");
     dataSourceDebug("actes.load.json.empty", {
