@@ -350,10 +350,15 @@ async function main() {
 
     const portalTempId = await selectPortalSeason(page, CURRENT_SEASON);
     console.log(`[sidgad] Temporada objectiu ${CURRENT_SEASON} (portal tempId=${portalTempId})`);
+    await page.waitForFunction(
+      tempId => document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`).length > 0,
+      { timeout: 20000 },
+      portalTempId
+    );
 
     // ── 1. Obtenir IDs de competicions ───────────────────────
     const comps = await page.$$eval(
-      `.listado_competicions_fila.temp_${portalTempId}`,
+      `.listado_competiciones_fila.temp_${portalTempId}`,
       els => els.map(el => {
         const cfg = el.getAttribute("config_params") || "";
         return {
@@ -366,6 +371,9 @@ async function main() {
     const compIds = comps.map(c => c.id);
     const compNames = Object.fromEntries(comps.map(c => [c.id, c.name]));
     console.log(`   Competicions temporada ${portalTempId}: ${compIds.length}`);
+    if (compIds.length === 0) {
+      throw new Error(`No FECAPA competitions found for ${CURRENT_SEASON} (portal tempId=${portalTempId}); refusing to overwrite the competition index`);
+    }
 
     // ── 2. Recollir resultats i classificació per competició ──
     // Clic a cada competició → calendari carrega a #tab_modal_contenido_competicion
