@@ -22801,11 +22801,11 @@
   },
   "43233": {
     "sidgadId": "43233",
-    "name": "INFA GRAELLS CAMPS NIL",
+    "name": "JUVB GRAELLS CAMPS NIL",
     "birthDate": "01/04/2011",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-03T14:20:31.857Z"
+    "fetchedAt": "2026-10-05T10:56:58.783Z"
   },
   "43357": {
     "sidgadId": "43357",
@@ -33313,11 +33313,11 @@
   },
   "54812": {
     "sidgadId": "54812",
-    "name": "INFA CIVIT GARRABÉ XAVI",
+    "name": "JUVB CIVIT GARRABÉ XAVI",
     "birthDate": "03/03/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-03T14:20:34.310Z"
+    "fetchedAt": "2026-10-05T10:56:58.966Z"
   },
   "54827": {
     "sidgadId": "54827",
@@ -86982,6 +86982,7 @@
     "163300",
     "163296",
     "163294",
-    "159981"
+    "159981",
+    "150735"
   ]
 }
