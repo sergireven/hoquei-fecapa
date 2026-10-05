@@ -15238,6 +15238,11 @@ async function renderDetailJugadors(){
   const calendarActaIds = new Set(
     calendarMatches.map(m => String(m?.actaId || "").trim()).filter(Boolean)
   );
+  const calendarMatchesByActaId = new Map(
+    calendarMatches
+      .map(match => [String(match?.actaId || "").trim(), match])
+      .filter(([actaId]) => Boolean(actaId))
+  );
   const extraActesBySlug = {};
   if (calendarActaIds.size && DB?.actesIndex) {
     const extraSlugs = [...new Set([...calendarActaIds].map(id => DB.actesIndex[id]).filter(Boolean).filter(s => s !== catSlug))];
@@ -15258,6 +15263,7 @@ async function renderDetailJugadors(){
 
   // Agrega estadístiques per jugador des de les actes d'aquesta competició
   const statsMap = {};
+  const countedPlayerActas = new Set();
   for (const bucket of allActesBuckets) {
     for (const acta of Object.values(bucket || {})) {
       const actaIdStr = String(acta?.actaId || acta?.id || "").trim();
@@ -15265,14 +15271,21 @@ async function renderDetailJugadors(){
       const inCalendar = !!(actaIdStr && calendarActaIds.has(actaIdStr));
       if (!inComp && !inCalendar) continue;
       if (!acta.playerStats) continue;
+      const calendarMatch = calendarMatchesByActaId.get(actaIdStr) || null;
+      const homeTeam = String(acta?.home || calendarMatch?.home || "").trim();
+      const awayTeam = String(acta?.away || calendarMatch?.away || "").trim();
       const add = (player, team) => {
-        if (!player.jugadorId) return;
+        const playerId = String(player?.jugadorId || player?.id || player?.url?.match(/\/jugador\/(\d+)\//)?.[1] || "").trim();
+        if (!playerId) return;
         if (detailTeam && !teamMatchesCalendarExact(team, detailTeam)) return;
-        const s = statsMap[player.jugadorId] ||= { name: player.name, team, g:0, b:0, v:0, partits:0 };
+        const actaPlayerKey = `${actaIdStr}::${playerId}`;
+        if (countedPlayerActas.has(actaPlayerKey)) return;
+        countedPlayerActas.add(actaPlayerKey);
+        const s = statsMap[playerId] ||= { name: player.name, team, g:0, b:0, v:0, partits:0 };
         s.g += player.g||0; s.b += player.b||0; s.v += player.v||0; s.partits++;
       };
-      for (const p of acta.playerStats.homePlayers||[]) add(p, acta.home);
-      for (const p of acta.playerStats.awayPlayers||[]) add(p, acta.away);
+      for (const p of acta.playerStats.homePlayers||[]) add(p, homeTeam);
+      for (const p of acta.playerStats.awayPlayers||[]) add(p, awayTeam);
     }
   }
 
@@ -15283,76 +15296,7 @@ async function renderDetailJugadors(){
       $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Selecciona un equip per veure jugadors.</div>`;
       return;
     }
-
-    // Build the set of calendar team-name variants for the selected team only.
-    // When detailTeam is set, only include the specific side (home/away) that matches
-    // detailTeam so that opponent names don't contaminate the player lookup.
-    const visibleTeamSet = new Set(
-      calendarMatches
-        .flatMap(m => {
-          const home = m?.home, away = m?.away;
-          if (!home && !away) return [];
-          if (!detailTeam) {
-            // No team filter: include all non-noise names
-            return [home, away].filter(t => t && !isCalendarFilterNoiseName(t));
-          }
-          // Only include the side(s) that match detailTeam
-          const names = [];
-          if (home && teamMatchesCalendarExact(home, detailTeam)) names.push(home);
-          if (away && teamMatchesCalendarExact(away, detailTeam)) names.push(away);
-          return names;
-        })
-        .filter(Boolean)
-    );
-
-    const fallbackRows = [];
-    for (const [jid, p] of Object.entries(DB?.jugadors || {})) {
-      const playerTeams = new Set([
-        String(p?.registeredTeam || "").trim(),
-        ...((p?.teamStats || []).map(t => String(t?.team || "").trim())),
-      ].filter(Boolean));
-
-      const inVisibleTeams = [...playerTeams].some(pt =>
-        [...visibleTeamSet].some(vt => teamMatchesLoose(pt, vt) || teamMatchesCalendarExact(pt, vt))
-      );
-      if (!inVisibleTeams) continue;
-      fallbackRows.push({ jid, p });
-    }
-
-    if (!fallbackRows.length) {
-      $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">Jugadors no disponibles.</div>`;
-      return;
-    }
-
-    const list = fallbackRows.slice(0, 120).map(({ jid, p }) => {
-      const name = p?.slug ? fmtName(p) : formatPlayerDisplayName(p?.name || "Jugador");
-      const age  = calcAge(p?.birthDate);
-      const team = normalizeJokClubDisplayName(String(p?.registeredTeam || p?.teamStats?.[0]?.team || "—"));
-      const gk   = p?.isGK ? " 🥅" : "";
-      return `<tr data-jid="${jid}" data-player-name="${esc(name)}" style="cursor:pointer;border-bottom:1px solid #f0f4f8">
-        <td style="padding:7px 8px;font-size:13px;font-weight:600;color:#1a2035">${esc(name)}${gk}</td>
-        <td style="padding:7px 8px;font-size:13px;color:#334155;text-align:center">${age??'—'}</td>
-        <td style="padding:7px 8px;font-size:12px;color:#64748b;text-align:center">${esc(team || '—')}</td>
-        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
-        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
-        <td style="padding:7px 8px;font-size:12px;color:#94a3b8;text-align:center">—</td>
-      </tr>`;
-    }).join("");
-
-    $("panel-jugadors").innerHTML = chips + `<div style="overflow-x:auto">
-      <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Jugadors (fallback per equips)</div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="border-bottom:2px solid #e2e6ef">
-          <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Jugador</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Edat</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Equip</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">⚽</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">🟦</th>
-          <th style="padding:6px 8px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8">Partits</th>
-        </tr></thead>
-        <tbody>${list}</tbody>
-      </table>
-    </div>`;
+    $("panel-jugadors").innerHTML = chips + `<div style="text-align:center;padding:32px;color:#94a3b8">No hi ha actes amb dades de jugadors per aquest equip i temporada.</div>`;
     return;
   }
 
