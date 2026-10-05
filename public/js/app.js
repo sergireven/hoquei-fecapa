@@ -14432,20 +14432,29 @@ async function openPlayerModal(jid, fallbackName) {
       ...fixedTeamStats.map(row => row?.team),
       ...(globalJugadorsIndex.get(activePlayerId)?.teamStats || []).map(row => row?.team),
     ].map(value => String(value || "").trim()).filter(value => value && value !== "?");
-    const participantCounts = new Map();
-    for (const match of apiMatches) {
-      for (const teamName of [match?.localTeam, match?.visitorTeam].map(value => String(value || "").trim()).filter(Boolean)) {
-        participantCounts.set(teamName, (participantCounts.get(teamName) || 0) + 1);
-      }
-    }
-    const mostFrequentTeam = [...participantCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+    const knownTeamIds = new Set(Object.entries(seasonDataCache.get(seasonKey)?.clubIndex || DB?.clubIndex || {})
+      .filter(([, team]) => historicalTeams.some(name => teamMatchesCalendarExact(team?.name || "", name)))
+      .map(([id]) => String(id)));
 
     const rows = apiMatches.map(match => {
+      const participants = [
+        { name: String(match?.localTeam || "").trim(), id: String(match?.idLocal || "").trim() },
+        { name: String(match?.visitorTeam || "").trim(), id: String(match?.idVisitor || "").trim() },
+      ].filter(participant => participant.name);
+      const idMatches = participants.filter(participant => participant.id && knownTeamIds.has(participant.id));
+      const exactNameMatches = participants.filter(participant => historicalTeams.some(team =>
+        teamMatchesCalendarExact(participant.name, team)
+      ));
+      const looseNameMatches = exactNameMatches.length
+        ? []
+        : participants.filter(participant => historicalTeams.some(team => teamMatchesLoose(participant.name, team)));
+      const playerTeam = idMatches.length === 1
+        ? idMatches[0].name
+        : (exactNameMatches.length === 1
+          ? exactNameMatches[0].name
+          : (looseNameMatches.length === 1 ? looseNameMatches[0].name : ""));
       const home = String(match?.localTeam || "").trim();
       const away = String(match?.visitorTeam || "").trim();
-      const playerTeam = [home, away].find(participant => historicalTeams.some(team =>
-        teamMatchesCalendarExact(participant, team) || teamMatchesLoose(participant, team)
-      )) || (participantCounts.get(mostFrequentTeam) > 1 ? mostFrequentTeam : "");
       const categorySlug = normalizeActaCategorySlug(match?.categoryName || "");
       const actaId = String(match?.idMatch || "").trim();
       const acta = actaId ? actaLookupById.get(`${seasonKey}::${actaId}`) : null;
