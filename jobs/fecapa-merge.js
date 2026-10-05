@@ -9,6 +9,7 @@ function normalizeText(value) {
 
 function normalizeCompName(value) {
   return normalizeText(value)
+    .replace(/\s*\(\d{4}-\d{2}\)\s*$/i, "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
@@ -81,24 +82,29 @@ function mapFecapaTeamToClassificationRow(team) {
   };
 }
 
-function collectFecapaClassification(comp) {
+function collectFecapaClassification(group) {
   const rows = [];
-  for (const group of Array.isArray(comp?.groups) ? comp.groups : []) {
-    for (const team of Array.isArray(group?.teams) ? group.teams : []) {
-      const row = mapFecapaTeamToClassificationRow(team);
-      if (row) rows.push(row);
-    }
+  for (const team of Array.isArray(group?.teams) ? group.teams : []) {
+    const row = mapFecapaTeamToClassificationRow(team);
+    if (row) rows.push(row);
   }
   return rows;
 }
 
-function collectFecapaCalendar(comp) {
+function collectFecapaCalendar(comp, group) {
   const matches = [];
+  const groupTeams = new Set(
+    (Array.isArray(group?.teams) ? group.teams : [])
+      .map(team => normalizeCompName(team?.teamName || team?.name || team?.team || ""))
+      .filter(Boolean)
+  );
+  if (Array.isArray(comp?.groups) && comp.groups.length > 1 && groupTeams.size === 0) return matches;
   for (const phase of Array.isArray(comp?.competitionPhases) ? comp.competitionPhases : []) {
     for (const match of Array.isArray(phase?.matches) ? phase.matches : []) {
       const home = normalizeText(match?.home || "");
       const away = normalizeText(match?.away || "");
       if (!home || !away) continue;
+      if (groupTeams.size && (!groupTeams.has(normalizeCompName(home)) || !groupTeams.has(normalizeCompName(away)))) continue;
       matches.push({
         ...match,
         home,
@@ -129,51 +135,53 @@ function mergeFecapaCompetitionsIntoCategories({ categories = {}, fecapaCategori
       const targetCategory = detectCompetitionBucket(name) || sourceBucket || "Altres";
       const bucket = output[targetCategory] || (output[targetCategory] = []);
 
-      const classification = collectFecapaClassification(comp);
-      const calendar = collectFecapaCalendar(comp);
-      const mappedComp = {
-        id: compId,
-        name,
-        slug: normalizeText(comp?.slug || name),
-        competitionId: compId,
-        classification,
-        calendar,
-        teams: [],
-        teamToClub: {},
-        classificationSource: "fecapa",
-        hasPostSeasonPhases: Boolean(
-          Array.isArray(comp?.competitionPhases) &&
-          comp.competitionPhases.some(phase => phase?.isPostSeason === true || /playoff|eliminat|fase final|final/i.test(String(phase?.phaseName || "")))
-        ),
-        postSeasonPhases: Array.isArray(comp?.competitionPhases) ? comp.competitionPhases.map(phase => ({ ...phase })) : [],
-      };
+      const groups = Array.isArray(comp?.groups) && comp.groups.length ? comp.groups : [null];
+      for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+        const group = groups[groupIndex];
+        const groupName = normalizeText(group?.groupName || "");
+        const itemName = groups.length === 1 ? name : (groupName || name);
+        const matchNameKeys = new Set([groupName, name].map(normalizeCompName).filter(Boolean));
+        const classification = collectFecapaClassification(group);
+        const calendar = collectFecapaCalendar(comp, group);
+        const existingIndex = bucket.findIndex(item => {
+          const itemId = String(item?.id || item?.competitionId || "").trim();
+          const itemNameKey = normalizeCompName(item?.name || "");
+          return (groups.length === 1 && itemId === compId) ||
+            (itemNameKey && matchNameKeys.has(itemNameKey));
+        });
+        const mappedComp = {
+          id: groups.length === 1 ? compId : String(group?.groupId || `${compId}-group-${groupIndex + 1}`),
+          name: itemName,
+          slug: normalizeText(comp?.slug || itemName),
+          competitionId: compId,
+          classification,
+          calendar,
+          teams: [],
+          teamToClub: {},
+          classificationSource: "fecapa",
+          hasPostSeasonPhases: Boolean(
+            Array.isArray(comp?.competitionPhases) &&
+            comp.competitionPhases.some(phase => phase?.isPostSeason === true || /playoff|eliminat|fase final|final/i.test(String(phase?.phaseName || "")))
+          ),
+          postSeasonPhases: Array.isArray(comp?.competitionPhases) ? comp.competitionPhases.map(phase => ({ ...phase })) : [],
+        };
 
-      const existingIndex = bucket.findIndex(item => {
-        const itemId = String(item?.id || item?.competitionId || "").trim();
-        const itemName = normalizeCompName(item?.name || "");
-        return itemId === compId || (itemName && itemName === normalizeCompName(name));
-      });
+        if (existingIndex >= 0) {
+          const existing = bucket[existingIndex];
+          if (classification.length) existing.classification = classification;
+          if (calendar.length) existing.calendar = calendar;
+          if (existing.id == null || !String(existing.id || "").trim()) existing.id = mappedComp.id;
+          if (classification.length) existing.classificationSource = "fecapa";
+          existing.competitionId = existing.competitionId || compId;
+          if (calendar.length) {
+            existing.hasPostSeasonPhases = mappedComp.hasPostSeasonPhases;
+            existing.postSeasonPhases = mappedComp.postSeasonPhases;
+          }
+          continue;
+        }
 
-      if (existingIndex >= 0) {
-        const existing = bucket[existingIndex];
-        if (classification.length && (!existing.classification || existing.classification.length === 0)) {
-          existing.classification = classification;
-        } else if (classification.length) {
-          existing.classification = classification;
-        }
-        if (calendar.length && (!existing.calendar || existing.calendar.length === 0)) {
-          existing.calendar = calendar;
-        } else if (calendar.length) {
-          existing.calendar = calendar;
-        }
-        if (existing.id == null || !String(existing.id || "").trim()) existing.id = compId;
-        if (!existing.name) existing.name = name;
-        existing.classificationSource = "fecapa";
-        existing.competitionId = existing.competitionId || compId;
-        continue;
+        bucket.push(mappedComp);
       }
-
-      bucket.push(mappedComp);
     }
   }
 
