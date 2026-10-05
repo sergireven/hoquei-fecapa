@@ -20,6 +20,15 @@ function getCurrentSeasonLabelFromEnvOrDate(env = process.env, date = new Date()
   return fallbackSeason;
 }
 
+function isSeasonLabelBeforeCurrentSeason(seasonLabel, env = process.env, date = new Date()) {
+  const normalized = String(seasonLabel || '').trim();
+  const currentSeason = getCurrentSeasonLabelFromEnvOrDate(env, date);
+  const seasonStart = normalized.match(/^(\d{4})-\d{2}$/);
+  const currentStart = currentSeason.match(/^(\d{4})-\d{2}$/);
+  if (!seasonStart || !currentStart) return false;
+  return Number(seasonStart[1]) < Number(currentStart[1]);
+}
+
 function isSeasonLabelMatchingCurrentSeason(seasonLabel, env = process.env, date = new Date()) {
   const normalized = String(seasonLabel || '').trim();
   if (!normalized) return false;
@@ -29,5 +38,6 @@ function isSeasonLabelMatchingCurrentSeason(seasonLabel, env = process.env, date
 module.exports = {
   inferSeasonLabel,
   getCurrentSeasonLabelFromEnvOrDate,
+  isSeasonLabelBeforeCurrentSeason,
   isSeasonLabelMatchingCurrentSeason,
 };

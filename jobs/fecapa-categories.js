@@ -4,7 +4,7 @@ const https = require("https");
 const http = require("http");
 const puppeteer = require("puppeteer");
 
-const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
+const { getCurrentSeasonLabelFromEnvOrDate, isSeasonLabelBeforeCurrentSeason } = require("./season-utils");
 
 const LEAGUE_BASE_URL = "https://www.hoqueipatins.fecapa.cat/league/";
 const PORTAL_URL = "https://www.hoqueipatins.fecapa.cat/";
@@ -766,10 +766,8 @@ function buildGroupId(competitionId, groupName, fallbackOrder) {
 
 function isCompetitionFinishedOverride(competitionName) {
   const seasonMatch = String(competitionName || "").match(/\((\d{4}-\d{2})\)\s*$/);
-  const resolvedCurrentSeason = getCurrentSeasonLabelFromEnvOrDate(process.env);
-  if (seasonMatch) return seasonMatch[1] === resolvedCurrentSeason;
-
-  return resolvedCurrentSeason === CURRENT_SEASON;
+  if (!seasonMatch) return false;
+  return isSeasonLabelBeforeCurrentSeason(seasonMatch[1], process.env);
 }
 
 function annotateCompetitionNoMatches(compData) {
