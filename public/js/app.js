@@ -9651,11 +9651,11 @@ function isCurrentSeasonView() {
 
 function isCompetitionFinished(comp) {
   if (!comp) return false;
-  if (comp?.isFinished === true) return true;
   const seasonMatch = String(comp?.name || "").match(/\((\d{4}-\d{2})\)\s*$/);
   const seasonLabel = seasonMatch ? seasonMatch[1] : "";
   const currentSeasonLabel = getResolvedCurrentSeasonLabel();
-  return Boolean(seasonLabel && seasonLabel === currentSeasonLabel);
+  if (seasonLabel) return Number(seasonLabel.slice(0, 4)) < Number(currentSeasonLabel.slice(0, 4));
+  return comp?.isFinished === true;
 }
 
 const isActive = comp => {

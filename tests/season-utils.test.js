@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { inferSeasonLabel, getCurrentSeasonLabelFromEnvOrDate, isSeasonLabelMatchingCurrentSeason } = require('../jobs/season-utils');
+const {
+  inferSeasonLabel,
+  getCurrentSeasonLabelFromEnvOrDate,
+  isSeasonLabelBeforeCurrentSeason,
+  isSeasonLabelMatchingCurrentSeason,
+} = require('../jobs/season-utils');
 
 test('inferSeasonLabel uses the academic year for dates before August', () => {
   assert.equal(inferSeasonLabel(new Date('2025-07-01T00:00:00Z')), '2024-25');
@@ -17,4 +22,12 @@ test('getCurrentSeasonLabelFromEnvOrDate prefers an explicit env season', () => 
 test('isSeasonLabelMatchingCurrentSeason compares against the resolved current season', () => {
   assert.equal(isSeasonLabelMatchingCurrentSeason('2026-27', { JOK_SEASON: '2026-27' }), true);
   assert.equal(isSeasonLabelMatchingCurrentSeason('2025-26', { JOK_SEASON: '2026-27' }), false);
+});
+
+test('isSeasonLabelBeforeCurrentSeason only marks past seasons as finished', () => {
+  const env = { JOK_SEASON: '2026-27' };
+  assert.equal(isSeasonLabelBeforeCurrentSeason('2025-26', env), true);
+  assert.equal(isSeasonLabelBeforeCurrentSeason('2026-27', env), false);
+  assert.equal(isSeasonLabelBeforeCurrentSeason('2027-28', env), false);
+  assert.equal(isSeasonLabelBeforeCurrentSeason('', env), false);
 });
