@@ -299,7 +299,7 @@ function parseCalendar(html) {
   if (jsonM) {
     try {
       const data = JSON.parse(jsonM[1]);
-      return data.map(p => ({
+      const parsed = data.map(p => ({
         jornada:   p.jornada   || null,
         home:      p.local     || p.home  || "",
         away:      p.visitant  || p.away  || "",
@@ -309,6 +309,7 @@ function parseCalendar(html) {
         time:      p.hora      || p.time  || "",
         played:    p.jugat     != null ? !!p.jugat : (p.gols_local != null),
       }));
+      if (parsed.length) return parsed;
     } catch {}
   }
 
@@ -359,6 +360,42 @@ function parseCalendar(html) {
         date:   pm[3],
         time:   pm[4] || "",
         played: false,
+      });
+    }
+  }
+
+  if (matches.length === 0) {
+    const teamLinks = [...html.matchAll(/href=["'][^"']*\/equip\/\d+\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    for (let i = 0; i < teamLinks.length - 1; i += 1) {
+      const home = strip(teamLinks[i][1]);
+      const away = strip(teamLinks[i + 1][1]);
+      if (!home || !away || home === away) continue;
+
+      const between = html.slice(teamLinks[i].index + teamLinks[i][0].length, teamLinks[i + 1].index);
+      if (between.length > 700) continue;
+      const dateMatch = between.match(/\b(\d{2}-\d{2}(?:-\d{4})?|\d{4}-\d{2}-\d{2})\b/);
+      if (!dateMatch) continue;
+      const timeMatch = between.match(/\b(\d{2}:\d{2})\b/);
+      const scoreText = between.replace(dateMatch[0], "").replace(timeMatch?.[0] || "", "");
+      const scoreMatch = scoreText.match(/\b(\d{1,2})\s*-\s*(\d{1,2})\b/);
+      const previousJornadaPos = html.lastIndexOf("Jornada", teamLinks[i].index);
+      const jornadaText = previousJornadaPos >= 0
+        ? html.slice(previousJornadaPos, previousJornadaPos + 40)
+        : "";
+      const jornadaMatch = jornadaText.match(/Jornada\s+(\d+)/i);
+      const jornada = jornadaMatch ? parseInt(jornadaMatch[1]) : null;
+      const key = `${jornada || ""}|${home}|${away}|${dateMatch[0]}|${timeMatch?.[0] || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      matches.push({
+        jornada,
+        home,
+        away,
+        date: dateMatch[0],
+        time: timeMatch?.[0] || "",
+        homeScore: scoreMatch ? parseInt(scoreMatch[1]) : undefined,
+        awayScore: scoreMatch ? parseInt(scoreMatch[2]) : undefined,
+        played: Boolean(scoreMatch),
       });
     }
   }
@@ -1624,6 +1661,7 @@ async function mergeSidgadData(jugadors) {
 // ── Fusió de competicions sidgad (classificació + resultats) ──
 function normCompName(name) {
   return (name || "").toUpperCase()
+    .replace(/\s*\(\d{4}-\d{2}\)\s*$/i, "")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9]/g, " ").replace(/\s+/g, " ").trim()
     .replace(/\b(2025|2026|25|26)\b/g, "").replace(/\s+/g, " ").trim();
@@ -2699,7 +2737,11 @@ async function main() {
   console.log(`   📊 Stats → ${statsFile}`);
 }
 
-main().catch(err => {
-  console.error("Error fatal:", err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error("Error fatal:", err);
+    process.exit(1);
+  });
+}
+
+module.exports = { parseCalendar, buildFallbackNameKeys };
