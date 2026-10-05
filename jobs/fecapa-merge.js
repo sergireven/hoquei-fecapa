@@ -54,8 +54,8 @@ function detectCompetitionBucket(name) {
   if (/JUVENIL/.test(normalized)) return "Juvenil";
   if (/INFANTIL/.test(normalized)) return "Infantil";
   if (/ALEV[ÍI]/.test(normalized) || /ALEVI/.test(normalized)) return "Aleví";
-  if (/BENJAM[ÍI]/.test(normalized) || /BENJAMI/.test(normalized)) return "Benjamí";
   if (/PREBENJAM[ÍI]/.test(normalized) || /PREBENJAMI/.test(normalized)) return "Prebenjamí";
+  if (/BENJAM[ÍI]/.test(normalized) || /BENJAMI/.test(normalized)) return "Benjamí";
   if (/VETERANS/.test(normalized) || /LCV/.test(normalized)) return "Veterans";
   if (/FEM/.test(normalized) || /FEMENI/.test(normalized) || /FEMENINA/.test(normalized)) return "Fem";
   return null;
@@ -143,12 +143,36 @@ function mergeFecapaCompetitionsIntoCategories({ categories = {}, fecapaCategori
         const matchNameKeys = new Set([groupName, name].map(normalizeCompName).filter(Boolean));
         const classification = collectFecapaClassification(group);
         const calendar = collectFecapaCalendar(comp, group);
-        const existingIndex = bucket.findIndex(item => {
+        let existingBucket = bucket;
+        let existingIndex = bucket.findIndex(item => {
           const itemId = String(item?.id || item?.competitionId || "").trim();
           const itemNameKey = normalizeCompName(item?.name || "");
           return (groups.length === 1 && itemId === compId) ||
             (itemNameKey && matchNameKeys.has(itemNameKey));
         });
+        if (existingIndex < 0) {
+          for (const [category, items] of Object.entries(output)) {
+            if (category === targetCategory) continue;
+            const index = items.findIndex(item => matchNameKeys.has(normalizeCompName(item?.name || "")));
+            if (index < 0) continue;
+            existingBucket = items;
+            existingIndex = index;
+            break;
+          }
+        }
+        if (!(existingBucket[existingIndex]?.calendar || []).length) {
+          for (const [category, items] of Object.entries(output)) {
+            if (category === targetCategory) continue;
+            const index = items.findIndex(item =>
+              matchNameKeys.has(normalizeCompName(item?.name || ""))
+              && (item?.calendar || []).length > 0
+            );
+            if (index < 0) continue;
+            existingBucket = items;
+            existingIndex = index;
+            break;
+          }
+        }
         const mappedComp = {
           id: groups.length === 1 ? compId : String(group?.groupId || `${compId}-group-${groupIndex + 1}`),
           name: itemName,
@@ -167,7 +191,7 @@ function mergeFecapaCompetitionsIntoCategories({ categories = {}, fecapaCategori
         };
 
         if (existingIndex >= 0) {
-          const existing = bucket[existingIndex];
+          const existing = existingBucket[existingIndex];
           if (classification.length) existing.classification = classification;
           if (calendar.length) existing.calendar = calendar;
           if (existing.id == null || !String(existing.id || "").trim()) existing.id = mappedComp.id;
@@ -176,6 +200,12 @@ function mergeFecapaCompetitionsIntoCategories({ categories = {}, fecapaCategori
           if (calendar.length) {
             existing.hasPostSeasonPhases = mappedComp.hasPostSeasonPhases;
             existing.postSeasonPhases = mappedComp.postSeasonPhases;
+          }
+          if (existingBucket !== bucket) {
+            existingBucket.splice(existingIndex, 1);
+            const duplicateIndex = bucket.findIndex(item => matchNameKeys.has(normalizeCompName(item?.name || "")));
+            if (duplicateIndex >= 0) bucket.splice(duplicateIndex, 1);
+            bucket.push(existing);
           }
           continue;
         }

@@ -313,6 +313,39 @@ function parseCalendar(html) {
     } catch {}
   }
 
+  const cardMatches = [];
+  const matchCards = html.split(/<!-- UNIFIED APPLE SPORTS MATCH CARD[^>]*-->/i).slice(1);
+  for (const card of matchCards) {
+    const teamLinks = [...card.matchAll(/href=["'][^"']*\/equip\/\d+\/[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    if (teamLinks.length < 2) continue;
+
+    const home = strip(teamLinks[0][1]);
+    const away = strip(teamLinks[1][1]);
+    if (!home || !away || home === away) continue;
+
+    const kickoff = card.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\s*[—-]\s*(\d{1,2}:\d{2})\b/);
+    if (!kickoff) continue;
+
+    const betweenTeams = card.slice(teamLinks[0].index + teamLinks[0][0].length, teamLinks[1].index);
+    const scoreMatch = betweenTeams.match(/<span[^>]*>\s*(\d{1,2})\s*-\s*(\d{1,2})\s*<\/span>/i);
+    const roundMatch = card.match(/showActualRound\(['"][^'"]*['"]\s*,\s*(\d+)\s*\)/i);
+    const key = `${home}|${away}|${kickoff[1]}-${kickoff[2]}-${kickoff[3]}|${kickoff[4]}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    cardMatches.push({
+      jornada: roundMatch ? parseInt(roundMatch[1], 10) : null,
+      home,
+      away,
+      date: `${kickoff[1].padStart(2, "0")}-${kickoff[2].padStart(2, "0")}-${kickoff[3]}`,
+      time: kickoff[4],
+      homeScore: scoreMatch ? parseInt(scoreMatch[1], 10) : undefined,
+      awayScore: scoreMatch ? parseInt(scoreMatch[2], 10) : undefined,
+      played: Boolean(scoreMatch),
+    });
+  }
+  if (cardMatches.length) return cardMatches;
+
   // HTML parsing: find match blocks
   // Pattern: two equip links close together with a score between them
   // [Jornada N] ... [Local](url) ... DD-MM ... G-G ... [Visitant](url)
