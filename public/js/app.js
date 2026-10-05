@@ -8270,6 +8270,7 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
     for (const actaId of ids) {
       const acta = actes?.[actaId];
       if (!acta?.playerStats) continue;
+      if (acta.homeScore == null || acta.awayScore == null) continue;
       addAppearance(acta.playerStats.homePlayers, acta.home, cat, acta?.compId);
       addAppearance(acta.playerStats.awayPlayers, acta.away, cat, acta?.compId);
     }
@@ -8278,24 +8279,83 @@ async function buildPlayerTeamStatsFromSources(player, jid, options = {}) {
   return Object.values(teamCatCounts).sort((a, b) => b.count - a.count);
 }
 
+function getPlayerActaStatsFromLoadedSources(player, jid, seasonData, seasonKey) {
+  const wantedId = String(jid || player?.jugadorId || player?.id || "").trim();
+  const season = getSeasonLabelFromData(seasonData, "");
+  const seen = new Set();
+  const stats = { hasActaSources: false, match_count: 0, total_goals: 0, total_blue: 0, total_red: 0 };
+  if (!wantedId) return stats;
+
+  for (const source of (player?.sources || [])) {
+    if (source?.type !== "acta") continue;
+    const actaId = String(source?.id || "").trim();
+    if (!actaId || seen.has(actaId)) continue;
+    const acta = actaLookupById.get(`${String(seasonKey || "current")}::${actaId}`);
+    if (!acta) continue;
+
+    const actaSeason = getCompetitionSeasonLabel({ name: acta?.compName || "" });
+    if (season && actaSeason && actaSeason !== season) continue;
+
+    const rows = [
+      ...(Array.isArray(acta?.playerStats?.homePlayers) ? acta.playerStats.homePlayers : []),
+      ...(Array.isArray(acta?.playerStats?.awayPlayers) ? acta.playerStats.awayPlayers : []),
+    ];
+    const playerRow = rows.find(row => {
+      const rowId = String(
+        row?.jugadorId
+        || row?.id
+        || (row?.url?.match(/\/jugador\/(\d+)\//)?.[1] || "")
+      );
+      return rowId === wantedId;
+    });
+    if (!playerRow) continue;
+
+    stats.hasActaSources = true;
+    if (acta.homeScore == null || acta.awayScore == null) continue;
+    seen.add(actaId);
+    stats.total_goals += Number(playerRow?.g || 0);
+    stats.total_blue += Number(playerRow?.b || 0);
+    stats.total_red += Number(playerRow?.v || 0);
+  }
+
+  stats.match_count = seen.size;
+  return stats;
+}
+
 async function enrichPlayerOnDemand(jid) {
   const player = getPlayerById(jid);
   if (!player) return;
-  if (Array.isArray(player.careerStats) && player.careerStats.length) return;
+  if (player.playerDetailsFetched) return;
   try {
     const res = await fetch(`https://jok.cat/api/player/${jid}`);
     if (!res.ok) return;
     const data = await res.json();
 
     if (Array.isArray(data.playerStats) && data.playerStats.length) {
-      player.careerStats = data.playerStats.map(s => ({
-        seasonName:   s.seasonName,
-        total_goals:  +s.total_goals,
-        match_count:  +s.match_count,
-        total_blue:   +s.total_blue,
-        total_red:    +s.total_red,
-      }));
+      const statsBySeason = new Map((player.careerStats || []).map(stat => [
+        String(stat?.seasonName || "").trim(),
+        stat,
+      ]));
+      for (const stat of data.playerStats) {
+        const seasonName = String(stat?.seasonName || "").trim();
+        if (!seasonName) continue;
+        const asNumberOrNull = value => value == null || value === "" || !Number.isFinite(Number(value))
+          ? null
+          : Number(value);
+        statsBySeason.set(seasonName, {
+          ...statsBySeason.get(seasonName),
+          seasonName,
+          total_goals: asNumberOrNull(stat.total_goals),
+          match_count: asNumberOrNull(stat.match_count),
+          total_blue: asNumberOrNull(stat.total_blue),
+          total_red: asNumberOrNull(stat.total_red),
+        });
+      }
+      player.careerStats = Array.from(statsBySeason.values())
+        .sort((a, b) => String(b?.seasonName || "").localeCompare(String(a?.seasonName || "")));
     }
+    player.playerMatchesList = Array.isArray(data.playerMatchesList) ? data.playerMatchesList : [];
+    player.playerDetailsFetched = true;
     const info = data.playerInfo?.[0];
     if (info?.number != null && player.number == null) player.number = info.number;
   } catch {}
@@ -14150,9 +14210,9 @@ async function openPlayerModal(jid, fallbackName) {
   const fixedTeamStats = sourceTeamStats.length
     ? sourceTeamStats
     : normalizePlayerTeamStatsForDisplay(player, DB);
-  const firstTeam  = fixedTeamStats?.[0];
-  const teamSuffix = firstTeam ? `, ${normalizeJokClubDisplayName(firstTeam.team)}` : "";
-  const catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
+  let firstTeam  = fixedTeamStats?.[0];
+  let teamSuffix = firstTeam ? `, ${normalizeJokClubDisplayName(firstTeam.team)}` : "";
+  let catSuffix  = firstTeam ? `, ${CAT_LABELS[firstTeam.cat] || firstTeam.cat || ""}` : "";
   const numericPlayerId = /^\d+$/.test(activePlayerId);
   const url    = player?.url || (numericPlayerId ? `https://jok.cat/jugador/${activePlayerId}` : null);
 
@@ -14215,8 +14275,25 @@ async function openPlayerModal(jid, fallbackName) {
     .sort((a, b) => String(b?.seasonName || "").localeCompare(String(a?.seasonName || "")))
     .map(s => ({ ...s, _seasonToken: parseSeasonToken(s?.seasonName) }));
 
-  // Ensure archived seasons can appear even when jok careerStats omits them.
+  const currentSeasonData = seasonDataCache.get("current") || null;
+  const currentSeasonEntry = seasonCatalog.find(s => s.key === "current") || null;
+  const currentSeasonToken = parseSeasonToken(
+    currentSeasonData?.season || currentSeasonEntry?.label || DB?.season || ""
+  );
   const knownTokens = new Set(cs.map(s => s?._seasonToken).filter(Boolean));
+  if (currentSeasonToken && !knownTokens.has(currentSeasonToken)) {
+    cs.push({
+      seasonName: String(currentSeasonData?.season || currentSeasonToken),
+      total_goals: null,
+      total_blue: null,
+      total_red: null,
+      match_count: null,
+      _seasonToken: currentSeasonToken,
+    });
+    knownTokens.add(currentSeasonToken);
+  }
+
+  // Ensure archived seasons can appear even when jok careerStats omits them.
   for (const seasonEntry of seasonCatalog) {
     if (!seasonEntry || seasonEntry.key === "current") continue;
     const token = parseSeasonToken(seasonEntry.label || seasonEntry.key);
@@ -14237,8 +14314,6 @@ async function openPlayerModal(jid, fallbackName) {
   const selectedSeasonIdx = selectedSeasonToken
     ? cs.findIndex(s => s._seasonToken === selectedSeasonToken)
     : -1;
-  const currentSeasonData = seasonDataCache.get("current") || null;
-  const currentSeasonToken = parseSeasonToken(currentSeasonData?.season || "");
   const currentSeasonIdx = currentSeasonToken
     ? cs.findIndex(s => s._seasonToken === currentSeasonToken)
     : -1;
@@ -14253,7 +14328,7 @@ async function openPlayerModal(jid, fallbackName) {
     `<div class="pm-stat"><div class="pm-stat-val" style="color:${color}">${val ?? "–"}</div><div class="pm-stat-lbl">${lbl}</div></div>`;
 
   const buildSeasonDisplayRows = async seasonToken => {
-    if (!seasonToken) return [];
+    if (!seasonToken) return { rows: [], actaStats: null };
     const seasonEntry = seasonCatalog.find(s =>
       parseSeasonToken(s.key) === seasonToken
       || parseSeasonToken(s.label) === seasonToken
@@ -14261,7 +14336,7 @@ async function openPlayerModal(jid, fallbackName) {
     ) || null;
     const seasonKey = seasonEntry?.key || null;
     const seasonData = seasonKey ? await getSeasonDataForKey(seasonKey) : null;
-    if (!seasonData) return [];
+    if (!seasonData) return { rows: [], actaStats: null };
 
     let resolvedSeasonData = seasonData;
     let seasonPlayerRef = findPlayerInSeasonDataByIdentity(resolvedSeasonData, {
@@ -14279,36 +14354,175 @@ async function openPlayerModal(jid, fallbackName) {
     // No secondary fallback needed - just use the loaded data
 
     const seasonPlayer = seasonPlayerRef?.player || null;
-    if (!seasonPlayer) return [];
+    if (!seasonPlayer) return { rows: [], actaStats: null };
 
-    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerRef?.jid || activePlayerId, { seasonData: resolvedSeasonData, seasonKey: seasonKey || activeSeasonKey });
+    const seasonPlayerId = seasonPlayerRef?.jid || activePlayerId;
+    const fromSources = await buildPlayerTeamStatsFromSources(seasonPlayer, seasonPlayerId, { seasonData: resolvedSeasonData, seasonKey: seasonKey || activeSeasonKey });
+    const actaStats = getPlayerActaStatsFromLoadedSources(seasonPlayer, seasonPlayerId, resolvedSeasonData, seasonKey || activeSeasonKey);
     console.log(`[DEBUG] seasonKey=${seasonKey}, fromSources=${fromSources.length}, sources=${seasonPlayer?.sources?.length}`);
     const teamStats = fromSources.length
       ? fromSources
       : normalizePlayerTeamStatsForDisplay(seasonPlayer, resolvedSeasonData);
 
     if (teamStats.length) {
-      return teamStats.map(t => ({
-        teamName: String(t.team || ""),
-        label: esc(normalizeJokClubDisplayName(t.team)),
-        sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""),
-        count: Number(t.count || 0),
-        compId: String((t.compIds || [])[0] || ""),
-        seasonKey: seasonKey || "",
-      }));
+      return {
+        rows: teamStats.map(t => ({
+          teamName: String(t.team || ""),
+          cat: String(t.cat || ""),
+          label: esc(normalizeJokClubDisplayName(t.team)),
+          sublabel: esc(CAT_LABELS[t.cat] || t.cat || ""),
+          count: seasonKey === "current" && actaStats?.hasActaSources && !actaStats.match_count
+            ? 0
+            : Number(t.count || 0),
+          compId: String((t.compIds || [])[0] || ""),
+          seasonKey: seasonKey || "",
+        })),
+        actaStats,
+      };
     }
 
     const catCounts = getPlayerSourceCatCounts(seasonPlayer, seasonData);
-    return Object.entries(catCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([cat, cnt]) => ({ teamName: "", label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: Number(cnt || 0), compId: "", seasonKey: seasonKey || "" }));
+    return {
+      rows: Object.entries(catCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, cnt]) => ({ teamName: "", cat, label: esc(CAT_LABELS[cat] || cat), sublabel: "", count: Number(cnt || 0), compId: "", seasonKey: seasonKey || "" })),
+      actaStats,
+    };
   };
 
   const seasonRowsByToken = new Map();
   const tokensToBuild = [...new Set(cs.map(s => s?._seasonToken).filter(Boolean))];
-  const builtRows = await Promise.all(tokensToBuild.map(async token => [token, await buildSeasonDisplayRows(token)]));
-  for (const [token, rows] of builtRows) {
-    seasonRowsByToken.set(token, rows || []);
+  const builtSeasons = await Promise.all(tokensToBuild.map(async token => [token, await buildSeasonDisplayRows(token)]));
+  for (const [token, seasonDetail] of builtSeasons) {
+    const rows = Array.isArray(seasonDetail?.rows) ? seasonDetail.rows : [];
+    seasonRowsByToken.set(token, rows);
+    const seasonStats = cs.find(s => s?._seasonToken === token);
+    const actaStats = seasonDetail?.actaStats;
+    if (!seasonStats || !actaStats) continue;
+
+    if (seasonStats.match_count == null && actaStats.hasActaSources) {
+      seasonStats.match_count = Number(actaStats.match_count || 0);
+    }
+    if (actaStats.match_count > 0) {
+      if (seasonStats.total_goals == null) seasonStats.total_goals = actaStats.total_goals;
+      if (seasonStats.total_blue == null) seasonStats.total_blue = actaStats.total_blue;
+      if (seasonStats.total_red == null) seasonStats.total_red = actaStats.total_red;
+    } else if (actaStats.hasActaSources) {
+      if (seasonStats.total_goals == null) seasonStats.total_goals = 0;
+      if (seasonStats.total_blue == null) seasonStats.total_blue = 0;
+      if (seasonStats.total_red == null) seasonStats.total_red = 0;
+    }
+  }
+
+  const playerMatchesByToken = new Map();
+  const apiMatchesByToken = new Map();
+  for (const match of (Array.isArray(player?.playerMatchesList) ? player.playerMatchesList : [])) {
+    const token = parseSeasonToken(match?.seasonName);
+    if (!token || match?.localResult == null || match?.visitorResult == null) continue;
+    if (!apiMatchesByToken.has(token)) apiMatchesByToken.set(token, []);
+    apiMatchesByToken.get(token).push(match);
+  }
+
+  for (const [token, apiMatches] of apiMatchesByToken.entries()) {
+    const seasonEntry = seasonCatalog.find(entry => parseSeasonToken(entry?.key) === token || parseSeasonToken(entry?.label) === token);
+    const seasonKey = seasonEntry?.key || activeSeasonKey;
+    const historicalTeams = [
+      ...(seasonRowsByToken.get(token) || []).map(row => row?.teamName),
+      ...Array.from(seasonRowsByToken.values()).flatMap(rows => (rows || []).map(row => row?.teamName)),
+      ...fixedTeamStats.map(row => row?.team),
+      ...(globalJugadorsIndex.get(activePlayerId)?.teamStats || []).map(row => row?.team),
+    ].map(value => String(value || "").trim()).filter(value => value && value !== "?");
+    const participantCounts = new Map();
+    for (const match of apiMatches) {
+      for (const teamName of [match?.localTeam, match?.visitorTeam].map(value => String(value || "").trim()).filter(Boolean)) {
+        participantCounts.set(teamName, (participantCounts.get(teamName) || 0) + 1);
+      }
+    }
+    const mostFrequentTeam = [...participantCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+
+    const rows = apiMatches.map(match => {
+      const home = String(match?.localTeam || "").trim();
+      const away = String(match?.visitorTeam || "").trim();
+      const playerTeam = [home, away].find(participant => historicalTeams.some(team =>
+        teamMatchesCalendarExact(participant, team) || teamMatchesLoose(participant, team)
+      )) || (participantCounts.get(mostFrequentTeam) > 1 ? mostFrequentTeam : "");
+      const categorySlug = normalizeActaCategorySlug(match?.categoryName || "");
+      const actaId = String(match?.idMatch || "").trim();
+      const acta = actaId ? actaLookupById.get(`${seasonKey}::${actaId}`) : null;
+      const playerRow = [
+        ...(Array.isArray(acta?.playerStats?.homePlayers) ? acta.playerStats.homePlayers : []),
+        ...(Array.isArray(acta?.playerStats?.awayPlayers) ? acta.playerStats.awayPlayers : []),
+      ].find(row => String(row?.jugadorId || row?.id || row?.url?.match(/\/jugador\/(\d+)\//)?.[1] || "") === activePlayerId);
+
+      return {
+        date: String(match?.matchDate || "").trim(),
+        round: String(match?.idRound || "").trim(),
+        home,
+        away,
+        homeScore: Number(match.localResult),
+        awayScore: Number(match.visitorResult),
+        playerTeam,
+        categorySlug,
+        categoryName: String(match?.categoryName || "").trim(),
+        playerStats: playerRow ? {
+          goals: Number(playerRow?.g || 0),
+          blue: Number(playerRow?.b || 0),
+          red: Number(playerRow?.v || 0),
+        } : null,
+      };
+    }).sort((a, b) => parseMatchTimestamp(b.date, token) - parseMatchTimestamp(a.date, token));
+
+    playerMatchesByToken.set(token, rows);
+
+    const currentTeam = rows.find(row => row.playerTeam)?.playerTeam || "";
+    if (!currentTeam) continue;
+    const currentCategory = rows.find(row => row.playerTeam === currentTeam)?.categorySlug || "";
+    const seasonRows = seasonRowsByToken.get(token) || [];
+    const hasResolvedTeam = seasonRows.some(row => row?.teamName && row.teamName !== "?");
+    if (!hasResolvedTeam) {
+      const resolvedRow = {
+        teamName: currentTeam,
+        cat: currentCategory,
+        label: esc(normalizeJokClubDisplayName(currentTeam)),
+        sublabel: esc(CAT_LABELS[currentCategory] || currentCategory || ""),
+        count: rows.filter(row => row.playerTeam === currentTeam).length,
+        compId: "",
+        seasonKey: seasonKey || "",
+      };
+      seasonRowsByToken.set(token, seasonRows.length
+        ? seasonRows.map(row => row?.teamName === "?" ? resolvedRow : row)
+        : [resolvedRow]);
+    }
+
+    if (token === currentSeasonToken && (!firstTeam?.team || firstTeam.team === "?")) {
+      firstTeam = { team: currentTeam, cat: currentCategory };
+      teamSuffix = `, ${normalizeJokClubDisplayName(currentTeam)}`;
+      catSuffix = currentCategory ? `, ${CAT_LABELS[currentCategory] || currentCategory}` : "";
+    }
+  }
+
+  const activeTeamRow = (seasonRowsByToken.get(currentSeasonToken) || [])
+    .find(row => row?.teamName && String(row.teamName).trim() !== "?");
+  if (activeTeamRow) {
+    const activeTeamKey = normalizeTeamNameStrict(activeTeamRow.teamName);
+    const currentComp = Object.values(DB?.categories || {}).flat().find(comp =>
+      (comp?.classification || []).some(row => teamMatchesCalendarExact(row?.team || "", activeTeamRow.teamName))
+      && normalizeActaCategorySlug(getCatForComp(comp) || "") === normalizeActaCategorySlug(activeTeamRow.cat || "")
+    );
+    player.teamStats = [
+      {
+        team: activeTeamRow.teamName,
+        cat: activeTeamRow.cat || "",
+        count: Number(activeTeamRow.count || 0),
+        compIds: currentComp ? [String(currentComp.id)] : [],
+      },
+      ...(Array.isArray(player.teamStats) ? player.teamStats : []).filter(row => {
+        const team = String(row?.team || "").trim();
+        return team && team !== "?" && normalizeTeamNameStrict(team) !== activeTeamKey;
+      }),
+    ];
+    player.registeredTeam = activeTeamRow.teamName;
+    if (homeTab === "jugadors" && $("jugador-results")) renderJugadorsTab(true);
   }
 
   const visibleSeasonRows = cs.filter(s => {
@@ -14330,6 +14544,7 @@ async function openPlayerModal(jid, fallbackName) {
         const isPreferred = idx === preferredVisibleIdx;
         const shouldOpen = isLatest || isPreferred;
         const seasonRows = seasonRowsByToken.get(s._seasonToken) || [];
+        const playerMatches = playerMatchesByToken.get(s._seasonToken) || [];
         const maxCount = Math.max(1, Number(seasonRows[0]?.count || 0));
         const breakdownSection = seasonRows.length ? `
           <div class="pm-section-title" style="margin-top:12px">Equips / Categories</div>
@@ -14346,6 +14561,25 @@ async function openPlayerModal(jid, fallbackName) {
               </div>
               <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#003da5;width:24px;text-align:right;flex-shrink:0">${Number(r.count || 0)}</div>
             </div>`).join("")}` : "";
+        const matchDetails = playerMatches.length ? `
+          <div class="pm-section-title" style="margin-top:12px">Partits (${playerMatches.length})</div>
+          <div style="max-height:260px;overflow-y:auto;border-top:1px solid #f0f2f8">
+            ${playerMatches.map(match => {
+              const dateParts = match.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+              const dateLabel = dateParts ? `${dateParts[3]}/${dateParts[2]}/${dateParts[1]}` : match.date;
+              const score = `${match.homeScore} - ${match.awayScore}`;
+              const teamsLabel = `${match.home} - ${match.away}`;
+              const playerStats = match.playerStats
+                ? `<div style="font-size:10px;color:#64748b;margin-top:2px">${match.playerStats.goals} gols · ${match.playerStats.blue} blaves · ${match.playerStats.red} vermelles</div>`
+                : "";
+              return `<div style="padding:8px 2px;border-bottom:1px solid #f0f2f8">
+                <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#64748b"><span>${dateLabel}${match.round ? ` · J${esc(match.round)}` : ""}</span><b style="color:#1a2035">${score}</b></div>
+                <div style="font-size:12px;font-weight:700;color:#1a2035;margin-top:2px">${esc(teamsLabel)}</div>
+                <div style="font-size:10px;color:#64748b;margin-top:2px">${esc(CAT_LABELS[match.categorySlug] || match.categoryName || "")}${match.playerTeam ? ` · ${esc(normalizeJokClubDisplayName(match.playerTeam))}` : ""}</div>
+                ${playerStats}
+              </div>`;
+            }).join("")}
+          </div>` : "";
         const highlight = isPreferred
           ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#e8f2ff;color:#1d4ed8;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">Temporada seleccionada</span>`
           : "";
@@ -14363,10 +14597,11 @@ async function openPlayerModal(jid, fallbackName) {
           <div style="display:flex;background:#f8fafc;border-radius:12px;margin-top:10px">
             ${statBox(s?.match_count, "Partits",   "#1a2035")}
             ${statBox(s?.total_goals, "Gols",      "#e5001c")}
-            ${statBox((s?.total_blue ?? 0) || "·", "Blaves",    "#2563eb")}
-            ${statBox((s?.total_red ?? 0) || "·",  "Vermelles", "#dc2626")}
+            ${statBox(s?.total_blue, "Blaves",    "#2563eb")}
+            ${statBox(s?.total_red,  "Vermelles", "#dc2626")}
           </div>
           ${breakdownSection}
+          ${matchDetails}
         </details>`;
       }).join("")}
       ${selectedSeasonFallbackToCurrent ? `<div style="margin-top:4px;font-size:11px;color:#64748b">No hi ha registre del jugador a la temporada seleccionada; es mostra la temporada actual.</div>` : ""}
