@@ -2,6 +2,10 @@ const fs = require("fs").promises;
 const path = require("path");
 const https = require("https");
 const http = require("http");
+const {
+  extractPlayerStatsRaw: extractPlayerStatsRawFromTable,
+  parsePlayerStats,
+} = require("./acta-player-parser");
 
 const args = process.argv.slice(2);
 const dataFileArgIndex = args.indexOf("--data-file");
@@ -131,25 +135,8 @@ function extractReferees(rawText) {
   return refs;
 }
 
-function extractPlayerStatsRaw(rawText) {
-  const result = {
-    columns: ["Jugador", "G", "B", "V", "FD", "Pe"],
-    homeBlock: "",
-    awayBlock: "",
-  };
-
-  const parts = rawText.split(/Jugador\s+G\s+B\s+V(?:\s+FD\s+Pe)?/i);
-  if (parts.length < 3) return result;
-
-  const cleanBlock = (txt) => String(txt || "")
-    .replace(/\s+JOK\.cat[\s\S]*$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  result.homeBlock = cleanBlock(parts[1]);
-  result.awayBlock = cleanBlock(parts[2]);
-
-  return result;
+function extractPlayerStatsRaw(rawText, html = "") {
+  return extractPlayerStatsRawFromTable(rawText, html);
 }
 
 /**
@@ -351,7 +338,7 @@ async function main() {
       const rawText = stripHtml(html);
       const actaMeta = extractActaMeta(rawText);
       const referees = extractReferees(rawText);
-      const playerStatsRaw = extractPlayerStatsRaw(rawText);
+      const playerStatsRaw = extractPlayerStatsRaw(rawText, html);
       const playerLinks = extractPlayerLinks(html);
 
       const target = data.actes[acta.actaId];
@@ -374,8 +361,9 @@ async function main() {
           time: actaMeta.time || target.time || "",
         };
         target.referees = referees;
-        target.playerStatsRaw = playerStatsRaw;
+        target.playerStats = parsePlayerStats(playerStatsRaw, playerLinks);
         target.playerLinks = playerLinks;
+        delete target.playerStatsRaw;
 
         // Extract and store team-level fouls from the score block.
         const fouls = extractTeamFouls(rawText, target.homeScore, target.awayScore, target.home);

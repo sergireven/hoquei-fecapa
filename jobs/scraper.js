@@ -9,6 +9,10 @@ const https = require("https");
 const http  = require("http");
 const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
 const { mergeFecapaCompetitionsIntoCategories } = require("./fecapa-merge");
+const {
+  extractPlayerStatsRaw: extractPlayerStatsRawFromTable,
+  parsePlayerStats: parsePlayerStatsFromTable,
+} = require("./acta-player-parser");
 
 const BASE      = "https://jok.cat";
 const DATA_FILE = path.join(__dirname, "../public/data.json");
@@ -1017,25 +1021,8 @@ function extractReferees(rawText) {
   return refs;
 }
 
-function extractPlayerStatsRaw(rawText) {
-  const result = {
-    columns: ["Jugador", "G", "B", "V", "FD", "Pe"],
-    homeBlock: "",
-    awayBlock: "",
-  };
-
-  const parts = rawText.split(/Jugador\s+G\s+B\s+V(?:\s+FD\s+Pe)?/i);
-  if (parts.length < 3) return result;
-
-  const cleanBlock = (txt) => String(txt || "")
-    .replace(/\s+JOK\.cat[\s\S]*$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  result.homeBlock = cleanBlock(parts[1]);
-  result.awayBlock = cleanBlock(parts[2]);
-
-  return result;
+function extractPlayerStatsRaw(rawText, html = "") {
+  return extractPlayerStatsRawFromTable(rawText, html);
 }
 
 /**
@@ -1089,55 +1076,7 @@ function extractTeamFouls(rawText, homeScore, awayScore) {
 }
 
 function parsePlayerStats(playerStatsRaw, playerLinks) {
-  const psr = playerStatsRaw || {};
-  const links = playerLinks || [];
-
-  function parseBlock(block, offset) {
-    const result = [];
-    const re = /((?:[A-Za-zÀ-ÿ'\-]+ )+?)(\d+) (\d+) (\d+)(?: (\d+) (\d+))?(?= [A-Za-zÀ-ÿ]|$)/g;
-    let m, i = 0;
-    while ((m = re.exec(block)) !== null) {
-      const link = links[offset + i] || {};
-      result.push({
-        name: m[1].trim(),
-        g: +m[2],
-        b: +m[3],
-        v: +m[4],
-        fd: m[5] != null ? +m[5] : null,
-        pe: m[6] != null ? +m[6] : null,
-        jugadorId: link.jugadorId || null,
-        url: link.url || null,
-      });
-      i++;
-    }
-    if (!result.length && links.slice(offset).length) {
-      const blockLinks = links.slice(offset);
-      const tokens = String(block || "").trim().split(/\s+/);
-      let j = 0;
-      blockLinks.forEach((link) => {
-        const nameParts = [];
-        while (j < tokens.length && !/^\d+$/.test(tokens[j])) nameParts.push(tokens[j++]);
-        const g = +tokens[j++] || 0, b = +tokens[j++] || 0, v = +tokens[j++] || 0;
-        const fd = /^\d+$/.test(tokens[j] || "") ? (+tokens[j++]) : null;
-        const pe = /^\d+$/.test(tokens[j] || "") ? (+tokens[j++]) : null;
-        result.push({
-          name: nameParts.join(" "),
-          g,
-          b,
-          v,
-          fd,
-          pe,
-          jugadorId: link.jugadorId || null,
-          url: link.url || null,
-        });
-      });
-    }
-    return result;
-  }
-
-  const homePlayers = parseBlock(psr.homeBlock || "", 0);
-  const awayPlayers = parseBlock(psr.awayBlock || "", homePlayers.length);
-  return { homePlayers, awayPlayers };
+  return parsePlayerStatsFromTable(playerStatsRaw, playerLinks);
 }
 
 function migrateActes(data) {
@@ -1378,7 +1317,7 @@ async function loadPendingActes(output) {
       const rawText = stripHtmlFull(html);
       const actaMeta = extractActaMeta(rawText);
       const referees = extractReferees(rawText);
-      const playerStatsRaw = extractPlayerStatsRaw(rawText);
+      const playerStatsRaw = extractPlayerStatsRaw(rawText, html);
       const playerLinks = extractPlayerLinks(html);
 
       const target = output.actes[acta.actaId];
@@ -2777,4 +2716,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseCalendar, buildFallbackNameKeys };
+module.exports = { parseCalendar, buildFallbackNameKeys, extractPlayerStatsRaw, parsePlayerStats };
