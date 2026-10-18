@@ -80727,6 +80727,14 @@
     "isGK": false,
     "fetchedAt": "2026-09-10T14:15:46.288Z"
   },
+  "90918": {
+    "sidgadId": "90918",
+    "name": "PREU( CONDOMINAS MARTINEZ IRIA",
+    "birthDate": "25/08/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-18T19:13:10.526Z"
+  },
   "90942": {
     "sidgadId": "90942",
     "name": "TERC BREWINGTON-LAGOS BRANDON TULIO",
@@ -81309,7 +81317,7 @@
     "birthDate": "23/08/2018",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-17T14:52:00.561Z"
+    "fetchedAt": "2026-10-18T19:13:10.751Z"
   },
   "91552": {
     "sidgadId": "91552",
@@ -91110,6 +91118,8 @@
     "158654",
     "162730",
     "162732",
-    "162731"
+    "162731",
+    "159963",
+    "159964"
   ]
 }
