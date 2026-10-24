@@ -485,7 +485,7 @@
     "birthDate": "19/04/2000",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-02T05:38:39.507Z"
+    "fetchedAt": "2026-10-24T22:16:24.100Z"
   },
   "7899": {
     "sidgadId": "7899",
@@ -2197,7 +2197,7 @@
     "birthDate": "22/10/1998",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-12T16:48:32.698Z"
+    "fetchedAt": "2026-10-24T22:16:24.279Z"
   },
   "9111": {
     "sidgadId": "9111",
@@ -4141,7 +4141,7 @@
     "birthDate": "26/01/1999",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-12T16:48:35.303Z"
+    "fetchedAt": "2026-10-24T22:16:24.452Z"
   },
   "10498": {
     "sidgadId": "10498",
@@ -4205,7 +4205,7 @@
     "birthDate": "03/09/1997",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:03:52.356Z"
+    "fetchedAt": "2026-10-24T22:16:24.627Z"
   },
   "10541": {
     "sidgadId": "10541",
@@ -6949,7 +6949,7 @@
     "birthDate": "09/04/1986",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:39.233Z"
+    "fetchedAt": "2026-10-24T22:16:24.800Z"
   },
   "13013": {
     "sidgadId": "13013",
@@ -8589,7 +8589,7 @@
     "birthDate": "11/09/1998",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-01T12:03:56.303Z"
+    "fetchedAt": "2026-10-24T22:16:24.972Z"
   },
   "14134": {
     "sidgadId": "14134",
@@ -9909,7 +9909,7 @@
     "birthDate": "10/12/1998",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-05-17T23:16:16.531Z"
+    "fetchedAt": "2026-10-24T22:16:25.143Z"
   },
   "15495": {
     "sidgadId": "15495",
@@ -11997,7 +11997,7 @@
     "birthDate": "30/01/1983",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-08T14:32:42.505Z"
+    "fetchedAt": "2026-10-24T22:16:25.315Z"
   },
   "21010": {
     "sidgadId": "21010",
@@ -12273,11 +12273,11 @@
   },
   "21360": {
     "sidgadId": "21360",
-    "name": "SEGC2 TUXANS VAL ARAN",
+    "name": "TERC2 TUXANS VAL ARAN",
     "birthDate": "08/03/2004",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-02T05:39:06.010Z"
+    "fetchedAt": "2026-10-24T22:16:25.485Z"
   },
   "21362": {
     "sidgadId": "21362",
@@ -12701,7 +12701,7 @@
     "birthDate": "17/03/2005",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-12T16:48:47.720Z"
+    "fetchedAt": "2026-10-24T22:16:25.657Z"
   },
   "21881": {
     "sidgadId": "21881",
@@ -13873,11 +13873,11 @@
   },
   "25754": {
     "sidgadId": "25754",
-    "name": "TERC2 BONNIN FISA JAN",
+    "name": "TERC BONNIN FISA JAN",
     "birthDate": "20/01/2006",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:33.586Z"
+    "fetchedAt": "2026-10-24T22:16:25.831Z"
   },
   "25767": {
     "sidgadId": "25767",
@@ -13961,11 +13961,11 @@
   },
   "25848": {
     "sidgadId": "25848",
-    "name": "SEGC2 VIA-DUFRESNE FERNÁNDEZ HÈCTOR",
+    "name": "TERC2 VIA-DUFRESNE FERNÁNDEZ HÈCTOR",
     "birthDate": "02/05/2005",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:33.862Z"
+    "fetchedAt": "2026-10-24T22:16:26.005Z"
   },
   "25865": {
     "sidgadId": "25865",
@@ -14365,7 +14365,7 @@
     "birthDate": "14/06/2005",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-12T16:48:50.605Z"
+    "fetchedAt": "2026-10-24T22:16:26.178Z"
   },
   "26386": {
     "sidgadId": "26386",
@@ -14833,11 +14833,11 @@
   },
   "26710": {
     "sidgadId": "26710",
-    "name": "JUNU FERNANDEZ TORRES POL",
+    "name": "TERC2 FERNANDEZ TORRES POL",
     "birthDate": "02/01/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:35.939Z"
+    "fetchedAt": "2026-10-24T22:16:26.351Z"
   },
   "26735": {
     "sidgadId": "26735",
@@ -15497,11 +15497,11 @@
   },
   "27791": {
     "sidgadId": "27791",
-    "name": "TERC2 BASOMBA FERRER BIEL",
+    "name": "TERC BASOMBA FERRER BIEL",
     "birthDate": "14/04/2006",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:38.295Z"
+    "fetchedAt": "2026-10-24T22:16:26.524Z"
   },
   "27793": {
     "sidgadId": "27793",
@@ -15765,7 +15765,7 @@
     "birthDate": "15/02/2008",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:39.256Z"
+    "fetchedAt": "2026-10-24T22:16:26.695Z"
   },
   "29391": {
     "sidgadId": "29391",
@@ -17013,7 +17013,7 @@
     "birthDate": "05/11/2003",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:41.769Z"
+    "fetchedAt": "2026-10-24T22:16:26.867Z"
   },
   "31332": {
     "sidgadId": "31332",
@@ -17549,7 +17549,7 @@
     "birthDate": "02/02/2005",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:43.020Z"
+    "fetchedAt": "2026-10-24T22:16:27.040Z"
   },
   "32142": {
     "sidgadId": "32142",
@@ -18489,11 +18489,11 @@
   },
   "34916": {
     "sidgadId": "34916",
-    "name": "TERC2 WILKE GAVALDÀ JOAN",
+    "name": "TERC WILKE GAVALDÀ JOAN",
     "birthDate": "14/07/2006",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:45.830Z"
+    "fetchedAt": "2026-10-24T22:16:27.212Z"
   },
   "34918": {
     "sidgadId": "34918",
@@ -18933,7 +18933,7 @@
     "birthDate": "01/10/2006",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:46.534Z"
+    "fetchedAt": "2026-10-24T22:16:27.385Z"
   },
   "35457": {
     "sidgadId": "35457",
@@ -19801,11 +19801,11 @@
   },
   "36747": {
     "sidgadId": "36747",
-    "name": "JUVA MARTINEZ HIDALGO MARC",
+    "name": "JUNC MARTINEZ HIDALGO MARC",
     "birthDate": "02/01/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-14T16:18:17.785Z"
+    "fetchedAt": "2026-10-24T22:16:27.560Z"
   },
   "36748": {
     "sidgadId": "36748",
@@ -22777,11 +22777,11 @@
   },
   "40999": {
     "sidgadId": "40999",
-    "name": "JUNU OJEDA NAVARRO NAO",
+    "name": "TERC2 OJEDA NAVARRO NAO",
     "birthDate": "11/12/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-15T14:22:40.824Z"
+    "fetchedAt": "2026-10-24T22:16:27.732Z"
   },
   "41000": {
     "sidgadId": "41000",
@@ -23453,7 +23453,7 @@
     "birthDate": "04/12/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-24T14:52:17.729Z"
+    "fetchedAt": "2026-10-24T22:16:27.904Z"
   },
   "43393": {
     "sidgadId": "43393",
@@ -28817,11 +28817,11 @@
   },
   "49171": {
     "sidgadId": "49171",
-    "name": "JUVB CARRILLO PEREZ ALVARO",
+    "name": "JUNB CARRILLO PEREZ ALVARO",
     "birthDate": "22/09/2009",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-06T21:59:31.913Z"
+    "fetchedAt": "2026-10-24T22:16:28.076Z"
   },
   "49174": {
     "sidgadId": "49174",
@@ -83831,6 +83831,14 @@
     "isGK": false,
     "fetchedAt": "2026-10-17T19:01:43.877Z"
   },
+  "93310": {
+    "sidgadId": "93310",
+    "name": "PREU FARINA TRILLARD MAXIME",
+    "birthDate": "16/08/2019",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-24T22:16:28.247Z"
+  },
   "93319": {
     "sidgadId": "93319",
     "name": "PREU BERROZPE SANCHEZ MARC",
@@ -92180,6 +92188,28 @@
     "161775",
     "163797",
     "163814",
-    "163812"
+    "163812",
+    "153156",
+    "153396",
+    "153395",
+    "153402",
+    "153400",
+    "153634",
+    "153635",
+    "153633",
+    "153632",
+    "153815",
+    "153813",
+    "154177",
+    "154180",
+    "157197",
+    "157194",
+    "157192",
+    "157189",
+    "158449",
+    "158450",
+    "156596",
+    "156765",
+    "161280"
   ]
 }
