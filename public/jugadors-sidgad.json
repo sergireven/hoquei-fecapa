@@ -475,9 +475,9 @@
     "sidgadId": "7887",
     "name": "PUIGDUETA CARRERA LAURA",
     "birthDate": "30/07/1995",
-    "registeredTeam": "PAL",
+    "registeredTeam": "CAT",
     "isGK": false,
-    "fetchedAt": "2026-09-20T14:32:04.564Z"
+    "fetchedAt": "2026-10-25T17:26:14.869Z"
   },
   "7891": {
     "sidgadId": "7891",
@@ -657,11 +657,11 @@
   },
   "8009": {
     "sidgadId": "8009",
-    "name": "0 FONTDEGLORIA COLL CARLA",
+    "name": "FONTDEGLORIA COLL CARLA",
     "birthDate": "08/07/1999",
-    "registeredTeam": null,
+    "registeredTeam": "CAT",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:06.696Z"
+    "fetchedAt": "2026-10-25T17:26:15.096Z"
   },
   "8023": {
     "sidgadId": "8023",
@@ -886,6 +886,14 @@
     "registeredTeam": null,
     "isGK": true,
     "fetchedAt": "2026-08-24T10:44:29.556Z"
+  },
+  "8176": {
+    "sidgadId": "8176",
+    "name": "0 IGUALADA RODRIGUEZ MARIA",
+    "birthDate": "25/11/1999",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:15.325Z"
   },
   "8184": {
     "sidgadId": "8184",
@@ -4405,7 +4413,7 @@
     "birthDate": "10/03/2002",
     "registeredTeam": "CAT",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:07.615Z"
+    "fetchedAt": "2026-10-25T17:26:15.551Z"
   },
   "10694": {
     "sidgadId": "10694",
@@ -10735,6 +10743,14 @@
     "isGK": true,
     "fetchedAt": "2026-10-02T16:12:01.895Z"
   },
+  "16779": {
+    "sidgadId": "16779",
+    "name": "GIMENO MORENO TXELL",
+    "birthDate": "10/11/2002",
+    "registeredTeam": "CAT",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:15.781Z"
+  },
   "16784": {
     "sidgadId": "16784",
     "name": "RIBAS BOVÉ JOAN",
@@ -11985,11 +12001,11 @@
   },
   "20984": {
     "sidgadId": "20984",
-    "name": "ANTÓN PARRA DANA",
+    "name": "0 ANTÓN PARRA DANA",
     "birthDate": "12/03/2006",
-    "registeredTeam": "CCH",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-20T14:32:06.344Z"
+    "fetchedAt": "2026-10-25T17:26:16.008Z"
   },
   "20997": {
     "sidgadId": "20997",
@@ -26097,11 +26113,11 @@
   },
   "45300": {
     "sidgadId": "45300",
-    "name": "INFA RIBAS ROCA OLIU",
+    "name": "JUVA RIBAS ROCA OLIU",
     "birthDate": "28/11/2011",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-22T14:37:25.436Z"
+    "fetchedAt": "2026-10-25T17:26:16.235Z"
   },
   "45319": {
     "sidgadId": "45319",
@@ -28229,7 +28245,7 @@
     "birthDate": "16/06/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-18T14:20:17.104Z"
+    "fetchedAt": "2026-10-25T17:26:16.465Z"
   },
   "48781": {
     "sidgadId": "48781",
@@ -31561,19 +31577,19 @@
   },
   "53460": {
     "sidgadId": "53460",
-    "name": "INFC TUDELA LLORENS ABRIL",
+    "name": "JUVB TUDELA LLORENS ABRIL",
     "birthDate": "26/11/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-18T14:20:18.127Z"
+    "fetchedAt": "2026-10-25T17:26:16.693Z"
   },
   "53461": {
     "sidgadId": "53461",
-    "name": "INFC ARNAU RUIZ CLOE",
+    "name": "JUVB ARNAU RUIZ CLOE",
     "birthDate": "01/08/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-18T14:20:18.242Z"
+    "fetchedAt": "2026-10-25T17:26:16.921Z"
   },
   "53462": {
     "sidgadId": "53462",
@@ -31761,11 +31777,11 @@
   },
   "53558": {
     "sidgadId": "53558",
-    "name": "INFU( PEREZ LOZANO MARIA",
+    "name": "JUVU PEREZ LOZANO MARIA",
     "birthDate": "29/05/2011",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-25T15:08:29.726Z"
+    "fetchedAt": "2026-10-25T17:26:17.228Z"
   },
   "53559": {
     "sidgadId": "53559",
@@ -32321,11 +32337,11 @@
   },
   "53846": {
     "sidgadId": "53846",
-    "name": "INFU BALADON HIDALGO FERRAN",
+    "name": "JUVU BALADON HIDALGO FERRAN",
     "birthDate": "12/04/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-22T14:37:26.359Z"
+    "fetchedAt": "2026-10-25T17:26:17.456Z"
   },
   "53849": {
     "sidgadId": "53849",
@@ -38273,11 +38289,11 @@
   },
   "59106": {
     "sidgadId": "59106",
-    "name": "INFB AMBLÀS PIÑOL FERRAN",
+    "name": "INFA AMBLÀS PIÑOL FERRAN",
     "birthDate": "21/05/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-22T14:37:28.399Z"
+    "fetchedAt": "2026-10-25T17:26:17.683Z"
   },
   "59107": {
     "sidgadId": "59107",
@@ -39313,11 +39329,11 @@
   },
   "60979": {
     "sidgadId": "60979",
-    "name": "INFU( PAREJO GARCIA MARIA",
+    "name": "JUVU( PAREJO GARCIA MARIA",
     "birthDate": "18/04/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-25T15:08:36.029Z"
+    "fetchedAt": "2026-10-25T17:26:17.988Z"
   },
   "61006": {
     "sidgadId": "61006",
@@ -39665,11 +39681,11 @@
   },
   "62331": {
     "sidgadId": "62331",
-    "name": "INFA JULIÀ LLOBET DALMAU",
+    "name": "JUVA JULIÀ LLOBET DALMAU",
     "birthDate": "21/10/2011",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-13T14:50:33.896Z"
+    "fetchedAt": "2026-10-25T17:26:18.215Z"
   },
   "62332": {
     "sidgadId": "62332",
@@ -42649,11 +42665,11 @@
   },
   "63465": {
     "sidgadId": "63465",
-    "name": "ALEA PÉREZ GÓMEZ ERIC",
+    "name": "INFB PÉREZ GÓMEZ ERIC",
     "birthDate": "14/08/2013",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-02T08:01:07.278Z"
+    "fetchedAt": "2026-10-25T17:26:18.443Z"
   },
   "63469": {
     "sidgadId": "63469",
@@ -43313,11 +43329,11 @@
   },
   "63968": {
     "sidgadId": "63968",
-    "name": "INFB MARTIN-ROMO PARAREDA NOAH",
+    "name": "INFA MARTIN-ROMO PARAREDA NOAH",
     "birthDate": "31/07/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-22T14:37:29.039Z"
+    "fetchedAt": "2026-10-25T17:26:18.670Z"
   },
   "63969": {
     "sidgadId": "63969",
@@ -45393,11 +45409,11 @@
   },
   "66277": {
     "sidgadId": "66277",
-    "name": "ALEA RECASENS BARBA BIEL",
+    "name": "0 RECASENS BARBA BIEL",
     "birthDate": "21/09/2013",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-09-06T13:58:16.886Z"
+    "fetchedAt": "2026-10-25T17:26:18.907Z"
   },
   "66278": {
     "sidgadId": "66278",
@@ -53329,11 +53345,11 @@
   },
   "71602": {
     "sidgadId": "71602",
-    "name": "BENA BENAGES BAEZA ARNAU",
+    "name": "ALEA BENAGES BAEZA ARNAU",
     "birthDate": "23/07/2015",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-29T15:32:25.882Z"
+    "fetchedAt": "2026-10-25T17:26:19.133Z"
   },
   "71603": {
     "sidgadId": "71603",
@@ -86431,6 +86447,14 @@
     "isGK": false,
     "fetchedAt": "2026-10-02T16:12:13.296Z"
   },
+  "10000720": {
+    "sidgadId": "10000720",
+    "name": "GOHET CÉLIA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:19.360Z"
+  },
   "10000747": {
     "sidgadId": "10000747",
     "name": "COCCO GIULIO",
@@ -86506,10 +86530,10 @@
   "10000982": {
     "sidgadId": "10000982",
     "name": "MONCÓVIO SOFIA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:32.263Z"
+    "fetchedAt": "2026-10-25T17:26:19.589Z"
   },
   "10000983": {
     "sidgadId": "10000983",
@@ -86522,10 +86546,10 @@
   "10000984": {
     "sidgadId": "10000984",
     "name": "SOUSA MARLENE",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:32.562Z"
+    "fetchedAt": "2026-10-25T17:26:19.816Z"
   },
   "10000985": {
     "sidgadId": "10000985",
@@ -86538,18 +86562,26 @@
   "10000986": {
     "sidgadId": "10000986",
     "name": "COELHO LEONOR",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:32.861Z"
+    "fetchedAt": "2026-10-25T17:26:20.044Z"
+  },
+  "10000987": {
+    "sidgadId": "10000987",
+    "name": "TEIXEIRA JOANA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "POR",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:20.270Z"
   },
   "10000988": {
     "sidgadId": "10000988",
     "name": "SANTOS RAQUEL",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:33.030Z"
+    "fetchedAt": "2026-10-25T17:26:20.499Z"
   },
   "10000989": {
     "sidgadId": "10000989",
@@ -86783,6 +86815,14 @@
     "isGK": false,
     "fetchedAt": "2026-10-02T16:12:14.654Z"
   },
+  "10001350": {
+    "sidgadId": "10001350",
+    "name": "SILVA ANA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "POR",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:20.725Z"
+  },
   "10001374": {
     "sidgadId": "10001374",
     "name": "GOHET CÉLIA",
@@ -86790,6 +86830,14 @@
     "registeredTeam": "FRA",
     "isGK": false,
     "fetchedAt": "2026-08-31T08:28:34.077Z"
+  },
+  "10001377": {
+    "sidgadId": "10001377",
+    "name": "HUSSON AXELLE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:20.954Z"
   },
   "10001457": {
     "sidgadId": "10001457",
@@ -86858,26 +86906,34 @@
   "10001612": {
     "sidgadId": "10001612",
     "name": "0 PILLENKAMP ANNABELL",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-31T08:28:34.376Z"
+    "fetchedAt": "2026-10-25T17:26:21.257Z"
   },
   "10001613": {
     "sidgadId": "10001613",
     "name": "ZECH ANNIKA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "ALE",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:34.526Z"
+    "fetchedAt": "2026-10-25T17:26:21.485Z"
   },
   "10001614": {
     "sidgadId": "10001614",
     "name": "MOLET CARLOTA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "ALE",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:34.675Z"
+    "fetchedAt": "2026-10-25T17:26:21.711Z"
+  },
+  "10001615": {
+    "sidgadId": "10001615",
+    "name": "0 LÜTTERS LEONIE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:21.937Z"
   },
   "10001616": {
     "sidgadId": "10001616",
@@ -86889,11 +86945,11 @@
   },
   "10001617": {
     "sidgadId": "10001617",
-    "name": "GIERSCH  SAPHIRA",
-    "birthDate": "21/08/2025",
-    "registeredTeam": "ALE",
+    "name": "0 GIERSCH  SAPHIRA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:34.974Z"
+    "fetchedAt": "2026-10-25T17:26:22.163Z"
   },
   "10001618": {
     "sidgadId": "10001618",
@@ -86906,10 +86962,10 @@
   "10001619": {
     "sidgadId": "10001619",
     "name": "KAHMANN YOLANDA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "ALE",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:35.272Z"
+    "fetchedAt": "2026-10-25T17:26:22.389Z"
   },
   "10001621": {
     "sidgadId": "10001621",
@@ -86929,19 +86985,19 @@
   },
   "10001623": {
     "sidgadId": "10001623",
-    "name": "SIMON MIRIAM",
-    "birthDate": "21/08/2025",
-    "registeredTeam": "ALE",
+    "name": "0 SIMON MIRIAM",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:35.722Z"
+    "fetchedAt": "2026-10-25T17:26:22.616Z"
   },
   "10001624": {
     "sidgadId": "10001624",
     "name": "0 DICKE LOTTA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-31T08:28:35.877Z"
+    "fetchedAt": "2026-10-25T17:26:22.843Z"
   },
   "10001626": {
     "sidgadId": "10001626",
@@ -87025,11 +87081,11 @@
   },
   "10001640": {
     "sidgadId": "10001640",
-    "name": "DEBOCQUET NINON",
-    "birthDate": "21/08/2025",
-    "registeredTeam": "FRA",
+    "name": "0 DEBOCQUET NINON",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:36.027Z"
+    "fetchedAt": "2026-10-25T17:26:23.069Z"
   },
   "10001641": {
     "sidgadId": "10001641",
@@ -87106,26 +87162,26 @@
   "10001658": {
     "sidgadId": "10001658",
     "name": "COSTA CATARINA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:36.775Z"
+    "fetchedAt": "2026-10-25T17:26:23.311Z"
   },
   "10001659": {
     "sidgadId": "10001659",
-    "name": "0 VÁREZAS BEATRIZ",
-    "birthDate": "21/08/2025",
-    "registeredTeam": null,
+    "name": "VÁREZAS BEATRIZ",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "POR",
     "isGK": false,
-    "fetchedAt": "2026-08-31T08:28:36.924Z"
+    "fetchedAt": "2026-10-25T17:26:23.541Z"
   },
   "10001660": {
     "sidgadId": "10001660",
     "name": "0 COELHO SANDRA",
-    "birthDate": "21/08/2025",
+    "birthDate": "17/09/2026",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-31T08:28:37.092Z"
+    "fetchedAt": "2026-10-25T17:26:23.773Z"
   },
   "10001666": {
     "sidgadId": "10001666",
@@ -87343,6 +87399,14 @@
     "isGK": false,
     "fetchedAt": "2026-06-13T15:44:27.026Z"
   },
+  "10001849": {
+    "sidgadId": "10001849",
+    "name": "0 MIRANDA MOISES GAEL",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:24.001Z"
+  },
   "10001850": {
     "sidgadId": "10001850",
     "name": "0 VELUDO FRANCISCO",
@@ -87455,6 +87519,166 @@
     "isGK": false,
     "fetchedAt": "2026-10-02T16:12:18.042Z"
   },
+  "10001870": {
+    "sidgadId": "10001870",
+    "name": "0 CASCANT VILAPLANA PAU",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:24.235Z"
+  },
+  "10001871": {
+    "sidgadId": "10001871",
+    "name": "0 SEMPERE MOLTO NOAH",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:24.463Z"
+  },
+  "10001872": {
+    "sidgadId": "10001872",
+    "name": "0 CALBO GALERA ARIO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:24.691Z"
+  },
+  "10001873": {
+    "sidgadId": "10001873",
+    "name": "0 PEREZ ESQUINA  GERARD",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:24.919Z"
+  },
+  "10001874": {
+    "sidgadId": "10001874",
+    "name": "0 HERDIA PARRILLA ÁLVARO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:25.146Z"
+  },
+  "10001875": {
+    "sidgadId": "10001875",
+    "name": "0 CAÑAVATE SÁNCHEZ FABIÁN",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:25.373Z"
+  },
+  "10001876": {
+    "sidgadId": "10001876",
+    "name": "0 ALMAGRO PORTABELL GUILLEM",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:25.600Z"
+  },
+  "10001877": {
+    "sidgadId": "10001877",
+    "name": "0 ESCRIBANO CAMPOS  PAU",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:25.826Z"
+  },
+  "10001878": {
+    "sidgadId": "10001878",
+    "name": "0 FERRANDO HERNÁMDEZ JACOBO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:26.059Z"
+  },
+  "10001879": {
+    "sidgadId": "10001879",
+    "name": "0 ABAD LLOPIS JUAN",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:26.364Z"
+  },
+  "10001880": {
+    "sidgadId": "10001880",
+    "name": "0 BURGAUD TIMÉO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:26.591Z"
+  },
+  "10001881": {
+    "sidgadId": "10001881",
+    "name": "0 LOIZEAU ARMAND",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:26.820Z"
+  },
+  "10001882": {
+    "sidgadId": "10001882",
+    "name": "0 HUVELIN LEÓ",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:27.124Z"
+  },
+  "10001883": {
+    "sidgadId": "10001883",
+    "name": "0 MARTINEAU NOAM",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:27.350Z"
+  },
+  "10001884": {
+    "sidgadId": "10001884",
+    "name": "0 CLAUTOUR NINO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:27.577Z"
+  },
+  "10001885": {
+    "sidgadId": "10001885",
+    "name": "0 GRASSINEAU LENY",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:27.803Z"
+  },
+  "10001886": {
+    "sidgadId": "10001886",
+    "name": "0 DOUILLARD THIBAULT",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:28.032Z"
+  },
+  "10001887": {
+    "sidgadId": "10001887",
+    "name": "0 PALLATIER MILO",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:28.258Z"
+  },
+  "10001888": {
+    "sidgadId": "10001888",
+    "name": "0 LEPOUTRE ALEXIS",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:28.484Z"
+  },
+  "10001889": {
+    "sidgadId": "10001889",
+    "name": "0 VEINSTEIN AMAURY",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:28.709Z"
+  },
   "10001894": {
     "sidgadId": "10001894",
     "name": "0 GEFFLOT NATHAN",
@@ -87462,6 +87686,110 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-10-02T16:12:18.279Z"
+  },
+  "10001898": {
+    "sidgadId": "10001898",
+    "name": "0 FREITAS INES",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:28.937Z"
+  },
+  "10001899": {
+    "sidgadId": "10001899",
+    "name": "0 GOHET LUCIE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:29.166Z"
+  },
+  "10001900": {
+    "sidgadId": "10001900",
+    "name": "LAGROYE CYRIELLE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:29.392Z"
+  },
+  "10001901": {
+    "sidgadId": "10001901",
+    "name": "0 HERRAULT HANAÉ",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:29.619Z"
+  },
+  "10001902": {
+    "sidgadId": "10001902",
+    "name": "CAYOL SOLÈNE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:29.844Z"
+  },
+  "10001903": {
+    "sidgadId": "10001903",
+    "name": "D'HAESE CHLOÉ",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:30.070Z"
+  },
+  "10001904": {
+    "sidgadId": "10001904",
+    "name": "GEFFLOT SANDY",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "FRA",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:30.298Z"
+  },
+  "10001905": {
+    "sidgadId": "10001905",
+    "name": "0 BUCHOUX LILI",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:30.524Z"
+  },
+  "10001910": {
+    "sidgadId": "10001910",
+    "name": "0 WEBER GRETA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:30.752Z"
+  },
+  "10001911": {
+    "sidgadId": "10001911",
+    "name": "KNEBEL AMELIE",
+    "birthDate": "17/09/2026",
+    "registeredTeam": "ALE",
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:30.980Z"
+  },
+  "10001912": {
+    "sidgadId": "10001912",
+    "name": "0 IMMER LARA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": true,
+    "fetchedAt": "2026-10-25T17:26:31.210Z"
+  },
+  "10001915": {
+    "sidgadId": "10001915",
+    "name": "0 GONZALEZ NOA",
+    "birthDate": "17/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:31.437Z"
+  },
+  "10001916": {
+    "sidgadId": "10001916",
+    "name": "0 VELA TORRES TIM",
+    "birthDate": "18/09/2026",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-25T17:26:31.664Z"
   },
   "10001924": {
     "sidgadId": "10001924",
@@ -92395,6 +92723,56 @@
     "163415",
     "163417",
     "163414",
-    "163416"
+    "163416",
+    "151313",
+    "151315",
+    "151314",
+    "151368",
+    "151371",
+    "151370",
+    "151426",
+    "151425",
+    "151427",
+    "151482",
+    "151481",
+    "151537",
+    "151538",
+    "151592",
+    "151593",
+    "151594",
+    "151649",
+    "151705",
+    "151704",
+    "151761",
+    "151760",
+    "151805",
+    "151817",
+    "151818",
+    "163237",
+    "163238",
+    "163239",
+    "163240",
+    "163241",
+    "163242",
+    "163252",
+    "163253",
+    "163254",
+    "163256",
+    "163262",
+    "163263",
+    "163264",
+    "163265",
+    "163266",
+    "163267",
+    "163268",
+    "163269",
+    "163274",
+    "163275",
+    "163276",
+    "163277",
+    "163282",
+    "163283",
+    "163284",
+    "163285"
   ]
 }
