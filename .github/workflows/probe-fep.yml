@@ -2,17 +2,24 @@ name: Sonda FEP (temporal)
 on:
   push:
     branches: [probe/fep]
+    paths: ['probe/*.js', '.github/workflows/probe-fep.yml']
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - run: npx puppeteer browsers install chrome
-      - run: node probe/fep-probe.js
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: { name: probe-out, path: probe-out }
+      - run: node probe/fep-probe.js || true
+      - name: Desa resultats a la branca
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f probe-out
+          git commit -m "Resultats sonda FEP" || true
+          git push
