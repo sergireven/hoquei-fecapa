@@ -1,0 +1,2242 @@
+
+====  https://www.hockeypatines.fep.es/
+{
+ "title": "RFEP - Hockey Patines",
+ "vars": {
+  "ruta_files": null,
+  "id_temp": null,
+  "idm": "[object HTMLInputElement]",
+  "id_web": null,
+  "temp_activa": "[object HTMLInputElement]",
+  "ruta": null,
+  "url_base": null
+ },
+ "tempActiva": "41",
+ "temporadas": [
+  {
+   "id": "41",
+   "name": "2026/27"
+  },
+  {
+   "id": "39",
+   "name": "2025/26"
+  },
+  {
+   "id": "37",
+   "name": "2024/25"
+  },
+  {
+   "id": "35",
+   "name": "2023/24"
+  },
+  {
+   "id": "33",
+   "name": "2022/23"
+  }
+ ],
+ "compLinks": [
+  {
+   "tag": "A",
+   "id": "3568",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "3569",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3574",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3575",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3571",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3572",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3573",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3481",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFFS OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3150",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "3484",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3151",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3515",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "3153",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3154",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3155",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3516",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "3156",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3158",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3061",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3062",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3063",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2816",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "2817",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3064",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2819",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2820",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2821",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3065",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2823",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2824",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2658",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2660",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2659",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2477",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2661",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2478",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2662",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2482",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2483",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2503",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "2663",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2480",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2481",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2409",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2410",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2411",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2092",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2412",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2093",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2413",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2095",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2096",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2097",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "2414",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2098",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2099",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1751",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1921",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1922",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1923",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1752",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "1929",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "1756",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1770",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1989",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "1753",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1754",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1755",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2040",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "1474",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "1476",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1482",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1484",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1578",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1576",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1577",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1728",
+   "href": "#",
+   "idc": null,
+   "text": "ELIMINATORIA DE ASCENSO A LA OK LIGA PLATA"
+  },
+  {
+   "tag": "A",
+   "id": "1285",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1288",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1289",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1293",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1283",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1004",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "1005",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "1006",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JORNA"
+  },
+  {
+   "tag": "A",
+   "id": "714",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "715",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "716",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "942",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "500",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "501",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "502",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "574",
+   "href": "#",
+   "idc": null,
+   "text": "FASE DE ASCENSO SECTOR SUR\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A UNA VUELTA29,30 DE"
+  },
+  {
+   "tag": "A",
+   "id": "573",
+   "href": "#",
+   "idc": null,
+   "text": "FASE DE ASCENSO SECTOR NORTE\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A UNA VUELTA29,30 "
+  },
+  {
+   "tag": "A",
+   "id": "401",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "402",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "403",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "496",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "35",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "36",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA13 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "37",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "24",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "25",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "28",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO LIGA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "29",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO LIGA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "247",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "251",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "252",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "260",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "262",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "263",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "276",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "288",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "292",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "300",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "303",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "314",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "307",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "319",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "321",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "341",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "343",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "374",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "376",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "351",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "352",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "239",
+   "href": "#",
+   "idc": null,
+   "text": "CONCURSO LOGO OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "316",
+   "href": "#",
+   "idc": null,
+   "text": "FINAL 8 LIGA EUROPEA"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tCHVS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tGEG\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tACO\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tPHSC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tBAR\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tREUS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tCHVS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCCH\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:1\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCEV\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:6\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCPV\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:4\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCPM\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t6:5\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCHP\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:5\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tIHC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:1\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tSHA\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:3\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tGAT\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:1\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tCRH\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t12:0\t\t\t\t\t\t\n"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tTCPC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:2\t\t\t\t\t\t\n"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tSHT\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:2\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tCPM\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t4:3\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tOVR\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:5\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tHCP\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t4:1\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA BRONCE MASCULINA NORTE\n\t\t\t\t\t\n\t\t\t\t\tIRU\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:2"
+  }
+ ],
+ "gameReports": 39,
+ "scripts": [
+  "https://pixel.mathtag.com/sync/js?sync=auto&mt_exid=10082&exsync=https%3A%2F%2Ftra.neodatagroup.com%2Fcm%3Fsid%3D1%26pv%3DMEDIAMATH%26eid%3D%5BMM_UUID%5D%26rt%3Dimg%26rnd%3D476736674637",
+  "https://tra.neodatagroup.com/pv?sid=2004&rnd=476736674637&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2F&re=&co=24",
+  "https://c.neodatagroup.com/adesp.js",
+  "https://www.googletagmanager.com/gtag/js?id=G-9L7H9YSQZ8",
+  "inline:\n    window.dataLayer = window.dataLayer || [];\n\n    function gtag() {\n      dataLayer.push(arguments);\n    }\n    gtag('js', new Date());\n\n    gtag('config', 'G-9L7H9YSQZ8');\n  ",
+  "https://www.server2.sidgad.es/js/jquery.min.js",
+  "https://www.server2.sidgad.es/js/jquery-ui.js",
+  "https://www.server2.sidgad.es/portales.js?v=12345",
+  "inline:\n    var _adespExaudi = _adespExaudi || [];\n    _adespExaudi.push([\"S\", [\"_adv\", \"122073\"]]);\n    _adespExaudi.push([\"S\", [\"_tagId\", \"10176\"]]);\n    (function($n, e, o, d, a, t, $a) {\n      var x = $n.createElement(e),\n        s = $n.getElementsByTagName(e)[0];\n      x.src = ('https:' == t.protocol ",
+  "inline:\n    var $j = jQuery.noConflict();\n    $j(document).ready(function() {\n      $j('#sidgad_thickbox_mini').draggable();\n\n\n\n    });\n  ",
+  "inline:\n(function() {\n\tconst raw = \"\\r\\n<!DOCTYPE html>\\r\\n<html lang=\\\"es\\\">\\r\\n\\r\\n<head>\\r\\n    <meta charset=\\\"utf-8\\\">\\r\\n    <meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\r\\n\\r\\n    <title>Real Federaci\\u00f3n Espa\\u00f1ola de Patinaje<\\/title>\\r\\n    <meta name=\\\"descripti",
+  "inline:\n(function() {\n\tconst fixedMargins = {};\n\twindow.addEventListener('message', (e) => {\n\t\tif (e.data.id && e.data.h > 0) {\n\t\t\tconst ifrm = document.getElementById(e.data.id + '_iframe');\n\t\t\tif (!ifrm) return;\n\t\t\tifrm.style.height = e.data.h + 'px';\n\t\t\t\t\t}\n\t});\n})();\n",
+  "inline:\n  var $j = jQuery.noConflict();\n  $j(document).ready(function() {\n    $j('#sidgad_thickbox_mini').draggable();\n\n    $j(\".loading_portal\").hide();\n    var scorer_file = 'https://www.server2.sidgad.es//worldskate_mc_1.php';\n    $j('#scorer_competiciones_a').load(scorer_file,\n      function(response, "
+ ]
+}
+REQUESTS:
+GET https://www.hockeypatines.fep.es/ 
+GET https://www.server2.sidgad.es/js/jquery.min.js 
+GET https://www.server2.sidgad.es/js/jquery-ui.js 
+GET https://www.server2.sidgad.es/portales.js?v=12345 
+POST https://www.google-analytics.com/g/collect?v=2&tid=G-9L7H9YSQZ8&gtm=45je6aq0v887023659za208zd887023659xf1&_p=1793132153934&gcd=13l3l3l3l1l1&npa=0&dma=0&are=1&cid=1668791995.1793132154&frm=0&pscdl=&rcb=12&sr=800x600&uaa=x86&uab=64&uafvl=Chromium%3B127.0.6533.88%7CNot)A%253BBrand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=7.0.0&uaw=0&ul=en-us&_s=1&tag_exp=115616986~115938465~115938469~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034&sid=1793132154&sct=1&seg=0&dl=https%3A%2F%2Fwww.hockeypatines.fep.es%2F&dt=RFEP%20-%20Hockey%20Patines&en=page_view&_fv=1&_nsi=1&_ss=1&_ee=1&tfd=1403 
+GET blob:https://www.hockeypatines.fep.es/253acf18-b16c-4204-818b-68a0bb5c17d3 
+GET https://www.server2.sidgad.es/rfep/rfep_ls_1.php 
+POST https://www.server2.sidgad.es/rfep/rfep_mc_1.php 
+GET https://www.server2.sidgad.es//worldskate_mc_1.php 
+POST https://www.server2.sidgad.es/public_docs/rfep/hp_feed.php 
+GET https://tra.neodatagroup.com/pv?sid=2004&rnd=476736674637&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2F&re=&co=24 
+GET https://fep.es/dist/node_modules/jquery/dist/jquery.min.js 
+GET https://tra.neodatagroup.com/pv?sid=2004&rnd=476736674637&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2F&re=&co=24&neoid=342fe02aa0005a1 
+GET https://fep.es/dist/node_modules/jquery.scrollto/jquery.scrollTo.min.js 
+
+====  https://www.hockeypatines.fep.es/league/2819
+{
+ "title": "RFEP - Hockey Patines",
+ "vars": {
+  "ruta_files": null,
+  "id_temp": null,
+  "idm": "[object HTMLInputElement]",
+  "id_web": null,
+  "temp_activa": "[object HTMLInputElement]",
+  "ruta": null,
+  "url_base": null
+ },
+ "tempActiva": "41",
+ "temporadas": [
+  {
+   "id": "41",
+   "name": "2026/27"
+  },
+  {
+   "id": "39",
+   "name": "2025/26"
+  },
+  {
+   "id": "37",
+   "name": "2024/25"
+  },
+  {
+   "id": "35",
+   "name": "2023/24"
+  },
+  {
+   "id": "33",
+   "name": "2022/23"
+  }
+ ],
+ "compLinks": [
+  {
+   "tag": "A",
+   "id": "3568",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "3569",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3574",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3575",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3571",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3572",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3573",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3481",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFFS OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3150",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "3484",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3151",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3515",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "3153",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3154",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3155",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3516",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "3156",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "3158",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "3061",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3062",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "3063",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2816",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "2817",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "3064",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2819",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2820",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2821",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "3065",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2823",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2824",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE MASCULINA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2658",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2660",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2659",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2477",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2661",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2478",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2662",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2482",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2483",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2503",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "2663",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2480",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2481",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2409",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2410",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2411",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2092",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "2412",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2093",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "2413",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2095",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2096",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2097",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "2414",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "2098",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "2099",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1751",
+   "href": "#",
+   "idc": null,
+   "text": "PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1921",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1922",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OUT PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1923",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF 9 Y 10 PARLEM OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1752",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "1929",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY OFF OK LIGA IBERDROLA"
+  },
+  {
+   "tag": "A",
+   "id": "1756",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1770",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1989",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "1753",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1754",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1755",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "2040",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE ELIMINATORIA"
+  },
+  {
+   "tag": "A",
+   "id": "1474",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA MASCULINA"
+  },
+  {
+   "tag": "A",
+   "id": "1476",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1482",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1484",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1578",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1576",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1577",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA BRONCE SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1728",
+   "href": "#",
+   "idc": null,
+   "text": "ELIMINATORIA DE ASCENSO A LA OK LIGA PLATA"
+  },
+  {
+   "tag": "A",
+   "id": "1285",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "1288",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1289",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "1293",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "1283",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "1004",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "1005",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "1006",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA PLATA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JORNA"
+  },
+  {
+   "tag": "A",
+   "id": "714",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "715",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "716",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "942",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "500",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "501",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "502",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "574",
+   "href": "#",
+   "idc": null,
+   "text": "FASE DE ASCENSO SECTOR SUR\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A UNA VUELTA29,30 DE"
+  },
+  {
+   "tag": "A",
+   "id": "573",
+   "href": "#",
+   "idc": null,
+   "text": "FASE DE ASCENSO SECTOR NORTE\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A UNA VUELTA29,30 "
+  },
+  {
+   "tag": "A",
+   "id": "401",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "402",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "403",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "496",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "35",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA16 EQUIPOS 30 JORNADAS"
+  },
+  {
+   "tag": "A",
+   "id": "36",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA13 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "37",
+   "href": "#",
+   "idc": null,
+   "text": "PRIMERA DIVISION\t\t\t\n\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\tLIGA REGULAR A DOBLE VUELTA14 EQUIPOS 26 JO"
+  },
+  {
+   "tag": "A",
+   "id": "24",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "25",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "28",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO LIGA NORTE"
+  },
+  {
+   "tag": "A",
+   "id": "29",
+   "href": "#",
+   "idc": null,
+   "text": "FASE ASCENSO LIGA SUR"
+  },
+  {
+   "tag": "A",
+   "id": "247",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "251",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "252",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "260",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "262",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "263",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "276",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "288",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "292",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "300",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "303",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "314",
+   "href": "#",
+   "idc": null,
+   "text": "PLAY-OFF OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "307",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "319",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "321",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "341",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "343",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "374",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "376",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "351",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "352",
+   "href": "#",
+   "idc": null,
+   "text": "OK LIGA FEMENINA"
+  },
+  {
+   "tag": "A",
+   "id": "239",
+   "href": "#",
+   "idc": null,
+   "text": "CONCURSO LOGO OK LIGA"
+  },
+  {
+   "tag": "A",
+   "id": "316",
+   "href": "#",
+   "idc": null,
+   "text": "FINAL 8 LIGA EUROPEA"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tCHVS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tGEG\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tACO\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tPHSC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tBAR\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:2\t\t\t\t\t\t\n\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tREUS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA NORTE\n\t\t\t\t\t\n\t\t\t\t\tCHVS\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:3\t\t\t\t\t\t\n\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCCH\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t5:1\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCEV\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:6\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCPV\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:4\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCPM\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t6:5\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tCHP\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:5\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tIHC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t1:1\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA SUR\n\t\t\t\t\t\n\t\t\t\t\tSHA\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:3\t\t\t\t\t\t\n\t\t\t\t\t\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tGAT\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:1\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tCRH\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t12:0\t\t\t\t\t\t\n"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tTCPC\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:2\t\t\t\t\t\t\n"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tSHT\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t3:2\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tCPM\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t4:3\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tOVR\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t0:5\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA PLATA FEMENINA\n\t\t\t\t\t\n\t\t\t\t\tHCP\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t4:1\t\t\t\t\t\t\n\t"
+  },
+  {
+   "tag": "A",
+   "id": "",
+   "href": "#",
+   "idc": "$id_liga",
+   "text": "OK LIGA BRONCE MASCULINA NORTE\n\t\t\t\t\t\n\t\t\t\t\tIRU\n\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t2:2"
+  }
+ ],
+ "gameReports": 170,
+ "scripts": [
+  "https://tra.neodatagroup.com/pv?sid=2004&rnd=1309258527309&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2Fleague%2F2819&re=&co=24",
+  "https://c.neodatagroup.com/adesp.js",
+  "https://www.googletagmanager.com/gtag/js?id=G-9L7H9YSQZ8",
+  "inline:\n    window.dataLayer = window.dataLayer || [];\n\n    function gtag() {\n      dataLayer.push(arguments);\n    }\n    gtag('js', new Date());\n\n    gtag('config', 'G-9L7H9YSQZ8');\n  ",
+  "https://www.server2.sidgad.es/js/jquery.min.js",
+  "https://www.server2.sidgad.es/js/jquery-ui.js",
+  "https://www.server2.sidgad.es/portales.js?v=12345",
+  "inline:\n    var _adespExaudi = _adespExaudi || [];\n    _adespExaudi.push([\"S\", [\"_adv\", \"122073\"]]);\n    _adespExaudi.push([\"S\", [\"_tagId\", \"10176\"]]);\n    (function($n, e, o, d, a, t, $a) {\n      var x = $n.createElement(e),\n        s = $n.getElementsByTagName(e)[0];\n      x.src = ('https:' == t.protocol ",
+  "inline:\n    var $j = jQuery.noConflict();\n    $j(document).ready(function() {\n      $j('#sidgad_thickbox_mini').draggable();\n\n\n\n    });\n  ",
+  "inline:\n(function() {\n\tconst raw = \"\\r\\n<!DOCTYPE html>\\r\\n<html lang=\\\"es\\\">\\r\\n\\r\\n<head>\\r\\n    <meta charset=\\\"utf-8\\\">\\r\\n    <meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\r\\n\\r\\n    <title>Real Federaci\\u00f3n Espa\\u00f1ola de Patinaje<\\/title>\\r\\n    <meta name=\\\"descripti",
+  "inline:\n(function() {\n\tconst fixedMargins = {};\n\twindow.addEventListener('message', (e) => {\n\t\tif (e.data.id && e.data.h > 0) {\n\t\t\tconst ifrm = document.getElementById(e.data.id + '_iframe');\n\t\t\tif (!ifrm) return;\n\t\t\tifrm.style.height = e.data.h + 'px';\n\t\t\t\t\t}\n\t});\n})();\n",
+  "inline:\n  var $j = jQuery.noConflict();\n  $j(document).ready(function() {\n    $j('#sidgad_thickbox_mini').draggable();\n\n    $j(\".loading_portal\").hide();\n    var scorer_file = 'https://www.server2.sidgad.es//worldskate_mc_1.php';\n    $j('#scorer_competiciones_a').load(scorer_file,\n      function(response, "
+ ]
+}
+REQUESTS:
+GET https://www.hockeypatines.fep.es/league/2819 
+GET https://www.server2.sidgad.es/js/jquery.min.js 
+GET https://www.server2.sidgad.es/js/jquery-ui.js 
+GET https://www.server2.sidgad.es/portales.js?v=12345 
+POST https://www.google-analytics.com/g/collect?v=2&tid=G-9L7H9YSQZ8&gtm=45je6aq0v887023659za208zd887023659xf1&_p=1793132163481&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAAQ&are=1&cid=1668791995.1793132154&frm=0&pscdl=&rcb=8&sr=800x600&uaa=x86&uab=64&uafvl=Chromium%3B127.0.6533.88%7CNot)A%253BBrand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=7.0.0&uaw=0&ul=en-us&_s=1&tag_exp=115938466~115938469~118897920~118897930~120213116~120385423~120412527~120469145~120469153~121246026~121246034~123620775&sid=1793132154&sct=1&seg=1&dl=https%3A%2F%2Fwww.hockeypatines.fep.es%2Fleague%2F2819&dt=RFEP%20-%20Hockey%20Patines&en=page_view&_ee=1&tfd=228 
+GET https://tra.neodatagroup.com/pv?sid=2004&rnd=1309258527309&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2Fleague%2F2819&re=&co=24 
+GET blob:https://www.hockeypatines.fep.es/ac8df9e9-b0d6-46df-86b7-e6380fd299aa 
+GET https://www.server2.sidgad.es/rfep/rfep_ls_1.php 
+POST https://www.server2.sidgad.es/rfep/rfep_mc_1.php 
+GET https://www.server2.sidgad.es//worldskate_mc_1.php 
+POST https://www.server2.sidgad.es/public_docs/rfep/hp_feed.php 
+GET https://fep.es/dist/node_modules/jquery/dist/jquery.min.js 
+GET https://tra.neodatagroup.com/pv?sid=2004&rnd=1309258527309&id=10176&ad=122073&rs=800x600&lg=en-US&tz=0&ur=https%3A%2F%2Fwww.hockeypatines.fep.es%2Fleague%2F2819&re=&co=24&neoid=342fe02e46c059a 
+GET https://fep.es/dist/node_modules/jquery.scrollto/jquery.scrollTo.min.js 
+POST https://www.server2.sidgad.es/competicion_header_creator.php config_params=ids_teams%3A3057%2C3055%2C3051%2C3047%2C3046%2C3043%2C3041%2C3038%2C3059%2C3022%2C3029%2C3066%3Bids_period_reg%3A1%2C2%3Btpo_reg%3A25%3Bids_period_ot%3A0%3Btpo_ot%3A0%3Bbonus%3A0%3Bempates%3A1%3Ball_periods%3A1%2C10%2C2%3Bperiods_names%3APERIODO+1%2CDESCANSO%2CPERIODO+2%3Bids_periods%3A1%2C2%3Bmodel_acta%3A3%3Btipo_idc_contable%3A1%3Bderechos1%3A160%3Bderechos2%3A160%3Bderechos_anot%3A80%3Bfase_nombre%3A%3Bhorarios%3A0%3B&idm=1&teams_array=98_1.png%2C3051%2CCCH%2CCERDANYOLA+CLUB+D'HOQUEI%3B123_2.png%2C3038%2CCDM%2CCDM+HOCKEY+PATINES%3Bvendrell.png%2C3047%2CCEV%2CCLUB+ESPORTS+VENDRELL%3Bchmataro.png%2C3066%2CCHM%2CCH+MATAR%C3%93%3Bsant_feliu.png%2C3059%2CCHPS%2CCHP+SANT+FELIU%3Bcptordera.png%2C3055%2CCPT%2CCLUB+PATI+TORDERA+%3Bdominicos.png%2C3041%2CDOM%2CCAA+DOMINICOS%3B482.PNG%2C3046%2CESPA%2CSD+ESPANYOL%3B69_1.png%2C3057%2CIHC%2CSIMAR+IGUALADA+HC+%3Boviedo_roller.png%2C3022%2COVR%2COVIEDO+ROLLER+HC%3Bcugat.png%2C3043%2CPHSC%2COXIGEN+PHC+SANT+CUGAT%3Bshum.png%2C3029%2CSHUM%2CSHUM+FRIT+RAVICH%3B&cliente=rfep&temp=41&idc=2819&logo=1006.png&site_lang=es
+POST https://www.server2.sidgad.es/rfep/rfep_cal_idc_2819_1.php idc=2819&site_lang=es
+POST https://www.google-analytics.com/g/collect?v=2&tid=G-9L7H9YSQZ8&gtm=45je6aq0v887023659za200zd887023659xf1&_p=1793132163481&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&are=1&cid=1668791995.1793132154&frm=0&pscdl=&rcb=8&sr=800x600&uaa=x86&uab=64&uafvl=Chromium%3B127.0.6533.88%7CNot)A%253BBrand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=7.0.0&uaw=0&ul=en-us&_s=2&tag_exp=115938466~115938469~118897920~118897930~120213116~120385423~120412527~120469145~120469153~121246026~121246034~123620775&sid=1793132154&sct=1&seg=1&dl=https%3A%2F%2Fwww.hockeypatines.fep.es%2Fleague%2F2819&dt=RFEP%20-%20Hockey%20Patines&en=scroll&epn.percent_scrolled=90&_et=2&tfd=5229 
