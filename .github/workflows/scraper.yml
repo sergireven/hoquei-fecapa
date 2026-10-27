@@ -90,8 +90,11 @@ jobs:
       - name: Construir classificacio audit
         run: npm run build:audit
 
+      - name: Construir plantilles per equip (conflictes calendari)
+        run: npm run build:rosters
+
       - name: Commit i push
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🏒 Actualitza dades FECAPA"
-          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json public/fecapa-categories.json public/classification-audit.json public/entity-mapping.json
+          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json public/fecapa-categories.json public/classification-audit.json public/entity-mapping.json public/team-rosters.json

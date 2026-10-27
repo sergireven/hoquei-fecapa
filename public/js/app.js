@@ -2752,7 +2752,13 @@ async function coordinatorRefreshCurrentSeasonData(force = false) {
 }
 
 function coordinatorSetTab(tab) {
-  coordinatorPanelTab = ["club", "trainings", "convocatories"].includes(tab) ? tab : "club";
+  coordinatorPanelTab = ["club", "trainings", "convocatories", "calendari"].includes(tab) ? tab : "club";
+  if (coordinatorPanelTab === "calendari") {
+    coordinatorRefreshCurrentSeasonData(false)
+      .finally(() => renderCoordinatorPanel());
+    renderCoordinatorPanel();
+    return;
+  }
   if (coordinatorPanelTab === "convocatories") {
     coordinatorEnsureValidConvTeam(loadCoordinatorFavorite(), { defaultIfEmpty: true });
     coordinatorRefreshCurrentSeasonData(false)
@@ -2822,6 +2828,7 @@ function renderCoordinatorTabs() {
     { key: "club", label: "Gestió club" },
     { key: "trainings", label: "Gestió d'entrenaments" },
     { key: "convocatories", label: "Gestió de convocatòries" },
+  { key: "calendari", label: "Calendari i conflictes" },
   ];
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${tabs.map(tab => {
     const active = coordinatorPanelTab === tab.key;
@@ -3153,7 +3160,9 @@ function renderCoordinatorPanel(searchCursor) {
     ? renderCoordinatorTrainingsTab(currentFav)
     : coordinatorPanelTab === "convocatories"
       ? renderCoordinatorConvocatoriesTab(currentFav)
-      : renderCoordinatorClubTab(currentFav);
+      : coordinatorPanelTab === "calendari" && typeof renderCoordinatorCalendarTab === "function"
+        ? renderCoordinatorCalendarTab(currentFav)
+        : renderCoordinatorClubTab(currentFav);
   body.innerHTML = `${renderCoordinatorTabs()}${renderCoordinatorDbStatusBanner()}${content}`;
 
   if (coordinatorPanelTab === "trainings") {
