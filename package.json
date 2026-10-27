@@ -11,6 +11,7 @@
     "export:db-csv": "node jobs/export-db-csv.js",
     "build:mapping": "node jobs/build-entity-mapping.js",
     "build:rosters": "node jobs/build-team-rosters.js",
+    "scrape:fep": "node jobs/scraper-fep.js",
     "test": "node --test tests/*.test.js",
     "build:audit": "npm run build:mapping && node jobs/build-classification-audit.js",
     "feedback:merge": "node jobs/merge-audit-feedback.js",

@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: write
+      issues: write
     env:
       NODE_ENV: production
       JOK_SEASON: "2026-27"
@@ -35,6 +36,9 @@ jobs:
 
       - name: Instal·lar Chrome (Puppeteer)
         run: npx puppeteer browsers install chrome
+
+      - name: Guardar calendari anterior (per detectar canvis)
+        run: cp public/data.json "$RUNNER_TEMP/prev-data.json" || true
 
       - name: Executar scraper sidgad (dades jugadors)
         run: |
@@ -93,8 +97,21 @@ jobs:
       - name: Construir plantilles per equip (conflictes calendari)
         run: npm run build:rosters
 
+      - name: Calendaris OK Liga (RFEP)
+        run: npm run scrape:fep || echo "::warning::No s'han pogut actualitzar els calendaris de la RFEP"
+
+      - name: Avisos de canvis de calendari del club
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NOTIFY_MENTION: ${{ github.repository_owner }}
+          CLUB_PATTERN: ripollet
+          CLUB_LABEL: CH Ripollet
+        run: node jobs/club-changes.js --prev "$RUNNER_TEMP/prev-data.json" || echo "::warning::No s'han pogut revisar els canvis del club"
+
       - name: Commit i push
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🏒 Actualitza dades FECAPA"
-          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json public/fecapa-categories.json public/classification-audit.json public/entity-mapping.json public/team-rosters.json
+          file_pattern: public/data.json public/actes/*.json public/jugadors-sidgad.json public/jugadors-sidgad-index.json public/competicions-sidgad.json public/fecapa-categories.json public/classification-audit.json public/entity-mapping.json public/team-rosters.json public/fep-data.json public/club-changes.json
