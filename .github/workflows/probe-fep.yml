@@ -15,7 +15,7 @@ jobs:
         with: { node-version: '22', cache: npm }
       - run: npm ci
       - run: npx puppeteer browsers install chrome
-      - run: node probe/fep-probe.js || true
+      - run: FEP_OUT=probe-out/fep-data.json node probe/scraper-fep.js 2>&1 | tee probe-out/scraper.log || true
       - name: Desa resultats a la branca
         run: |
           git config user.name "github-actions[bot]"
