@@ -1977,11 +1977,11 @@
   },
   "8997": {
     "sidgadId": "8997",
-    "name": "SEGC PRIVAT MARQUEZ JOAN",
+    "name": "VETA PRIVAT MARQUEZ JOAN",
     "birthDate": "08/06/1987",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-19T14:13:20.862Z"
+    "fetchedAt": "2026-10-31T23:07:18.880Z"
   },
   "9001": {
     "sidgadId": "9001",
@@ -2013,7 +2013,7 @@
     "birthDate": "02/04/1987",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-08-07T11:04:37.339Z"
+    "fetchedAt": "2026-10-31T23:07:19.107Z"
   },
   "9010": {
     "sidgadId": "9010",
@@ -3271,6 +3271,14 @@
     "isGK": true,
     "fetchedAt": "2026-08-01T12:03:51.255Z"
   },
+  "9841": {
+    "sidgadId": "9841",
+    "name": "VETU VILA MULLERAS DANI",
+    "birthDate": "24/08/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:19.333Z"
+  },
   "9847": {
     "sidgadId": "9847",
     "name": "VETU LLUCH NUÑEZ JORDI",
@@ -3286,6 +3294,14 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-10-17T14:06:02.700Z"
+  },
+  "9858": {
+    "sidgadId": "9858",
+    "name": "VETU CASSOLA SUBIRANA CRISTIAN",
+    "birthDate": "17/07/1976",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:19.558Z"
   },
   "9862": {
     "sidgadId": "9862",
@@ -7333,7 +7349,7 @@
     "birthDate": "05/11/1983",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-07T11:04:40.327Z"
+    "fetchedAt": "2026-10-31T23:07:19.783Z"
   },
   "13196": {
     "sidgadId": "13196",
@@ -11247,6 +11263,14 @@
     "isGK": true,
     "fetchedAt": "2026-09-19T14:13:29.944Z"
   },
+  "19937": {
+    "sidgadId": "19937",
+    "name": "VETA PELICANO PLAZA RAUL",
+    "birthDate": "10/09/1986",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:20.009Z"
+  },
   "19938": {
     "sidgadId": "19938",
     "name": "SEGC LLAVEROLA VIDAL JAUME",
@@ -12750,6 +12774,30 @@
     "registeredTeam": null,
     "isGK": false,
     "fetchedAt": "2026-09-12T16:48:48.095Z"
+  },
+  "21899": {
+    "sidgadId": "21899",
+    "name": "VETA ESTEVE BOSCH JORDI",
+    "birthDate": "07/05/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:20.234Z"
+  },
+  "21901": {
+    "sidgadId": "21901",
+    "name": "VETA TRESSERRAS ALBERTI DANIEL",
+    "birthDate": "04/12/1975",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:20.460Z"
+  },
+  "21902": {
+    "sidgadId": "21902",
+    "name": "VETA ROURA HERNANDEZ JOAN",
+    "birthDate": "29/09/1978",
+    "registeredTeam": null,
+    "isGK": false,
+    "fetchedAt": "2026-10-31T23:07:20.684Z"
   },
   "21903": {
     "sidgadId": "21903",
@@ -28633,11 +28681,11 @@
   },
   "49033": {
     "sidgadId": "49033",
-    "name": "TERC TORRES TEJEDOR ALEXANDRE",
+    "name": "VETU TORRES TEJEDOR ALEXANDRE",
     "birthDate": "20/08/1981",
     "registeredTeam": null,
     "isGK": true,
-    "fetchedAt": "2026-05-16T20:09:10.534Z"
+    "fetchedAt": "2026-10-31T23:07:20.910Z"
   },
   "49038": {
     "sidgadId": "49038",
@@ -39777,11 +39825,11 @@
   },
   "62352": {
     "sidgadId": "62352",
-    "name": "INFD TRINIDAD GARCIA ARAM",
+    "name": "INFB TRINIDAD GARCIA ARAM",
     "birthDate": "01/02/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-23T20:22:51.827Z"
+    "fetchedAt": "2026-10-31T23:07:21.214Z"
   },
   "62353": {
     "sidgadId": "62353",
@@ -51233,11 +51281,11 @@
   },
   "70232": {
     "sidgadId": "70232",
-    "name": "INFA GARCIA AULINAS BERTA",
+    "name": "INFC GARCIA AULINAS BERTA",
     "birthDate": "23/03/2012",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-13T14:50:43.652Z"
+    "fetchedAt": "2026-10-31T23:07:21.441Z"
   },
   "70233": {
     "sidgadId": "70233",
@@ -52809,11 +52857,11 @@
   },
   "70931": {
     "sidgadId": "70931",
-    "name": "ALEA GALLARDO SABE MARÇAL",
+    "name": "INFU GALLARDO SABE MARÇAL",
     "birthDate": "01/02/2013",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-29T15:32:22.938Z"
+    "fetchedAt": "2026-10-31T23:07:21.668Z"
   },
   "70932": {
     "sidgadId": "70932",
@@ -64913,19 +64961,19 @@
   },
   "79900": {
     "sidgadId": "79900",
-    "name": "TERC BANCELLS MASMIQUEL JOSE MARIA",
+    "name": "VETU BANCELLS MASMIQUEL JOSE MARIA",
     "birthDate": "10/06/1976",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-05-16T20:09:11.902Z"
+    "fetchedAt": "2026-10-31T23:07:21.894Z"
   },
   "79901": {
     "sidgadId": "79901",
-    "name": "TERC GODAYOL GARCIA PAU",
+    "name": "VETU GODAYOL GARCIA PAU",
     "birthDate": "04/09/1981",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-05-16T20:09:12.001Z"
+    "fetchedAt": "2026-10-31T23:07:22.121Z"
   },
   "79903": {
     "sidgadId": "79903",
@@ -75097,11 +75145,11 @@
   },
   "87776": {
     "sidgadId": "87776",
-    "name": "ALEA( POCH TAMAYO EVA",
+    "name": "INF- POCH TAMAYO EVA",
     "birthDate": "07/10/2014",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-10-01T16:59:38.408Z"
+    "fetchedAt": "2026-10-31T23:07:22.349Z"
   },
   "87788": {
     "sidgadId": "87788",
@@ -75769,11 +75817,11 @@
   },
   "88077": {
     "sidgadId": "88077",
-    "name": "TERC BOTA OLIVERAS SEBASTIÀ",
+    "name": "VETU BOTA OLIVERAS SEBASTIÀ",
     "birthDate": "22/06/1973",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-05-16T20:09:12.484Z"
+    "fetchedAt": "2026-10-31T23:07:22.575Z"
   },
   "88082": {
     "sidgadId": "88082",
@@ -89565,6 +89613,48 @@
     "159970",
     "159972",
     "159975",
-    "159976"
+    "159976",
+    "149733",
+    "149732",
+    "149736",
+    "149737",
+    "149823",
+    "149827",
+    "149828",
+    "149825",
+    "149885",
+    "149919",
+    "149913",
+    "149916",
+    "149982",
+    "150008",
+    "150005",
+    "150007",
+    "150010",
+    "150009",
+    "157899",
+    "157900",
+    "157896",
+    "157897",
+    "157991",
+    "157985",
+    "157988",
+    "157990",
+    "157986",
+    "161269",
+    "161270",
+    "161273",
+    "161274",
+    "161272",
+    "161276",
+    "161277",
+    "161279",
+    "161280",
+    "161278",
+    "164070",
+    "164069",
+    "164071",
+    "164075",
+    "164074"
   ]
 }
