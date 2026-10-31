@@ -15321,11 +15321,11 @@
   },
   "27554": {
     "sidgadId": "27554",
-    "name": "MOLERA I MONCAU ALBERT",
+    "name": "NACC2 MOLERA I MONCAU ALBERT",
     "birthDate": "06/07/2007",
-    "registeredTeam": "BAR",
+    "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-08-30T22:27:17.352Z"
+    "fetchedAt": "2026-10-31T20:24:14.507Z"
   },
   "27564": {
     "sidgadId": "27564",
@@ -22013,7 +22013,7 @@
     "birthDate": "30/07/2007",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-28T09:57:20.192Z"
+    "fetchedAt": "2026-10-31T20:24:14.734Z"
   },
   "39954": {
     "sidgadId": "39954",
@@ -36197,7 +36197,7 @@
     "birthDate": "18/11/2010",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-28T08:39:01.371Z"
+    "fetchedAt": "2026-10-31T20:24:14.961Z"
   },
   "58146": {
     "sidgadId": "58146",
@@ -47721,11 +47721,11 @@
   },
   "67386": {
     "sidgadId": "67386",
-    "name": "ALEA ESPINET JULI ORIOL",
+    "name": "INFD ESPINET JULI ORIOL",
     "birthDate": "07/05/2013",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-26T22:26:18.813Z"
+    "fetchedAt": "2026-10-31T20:24:15.196Z"
   },
   "67389": {
     "sidgadId": "67389",
@@ -57919,6 +57919,14 @@
     "isGK": false,
     "fetchedAt": "2026-10-26T16:43:09.401Z"
   },
+  "75070": {
+    "sidgadId": "75070",
+    "name": "ESCUDERO ROJAS MATHIAS RODRIGO",
+    "birthDate": "07/05/2013",
+    "registeredTeam": "CHJA",
+    "isGK": false,
+    "fetchedAt": "2026-10-31T20:24:15.419Z"
+  },
   "75075": {
     "sidgadId": "75075",
     "name": "ALEA BELVIS MARTI LLUC",
@@ -62801,11 +62809,11 @@
   },
   "78926": {
     "sidgadId": "78926",
-    "name": "PREB MARTÍN PABLO GALA",
+    "name": "PREU( MARTÍN PABLO GALA",
     "birthDate": "02/03/2018",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-10-01T16:59:33.944Z"
+    "fetchedAt": "2026-10-31T20:24:15.645Z"
   },
   "78928": {
     "sidgadId": "78928",
@@ -67193,11 +67201,11 @@
   },
   "82951": {
     "sidgadId": "82951",
-    "name": "PREI SABATE ROVIRA JANA",
+    "name": "PREI� SABATE ROVIRA JANA",
     "birthDate": "11/11/2020",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-29T16:27:23.316Z"
+    "fetchedAt": "2026-10-31T20:24:15.882Z"
   },
   "82952": {
     "sidgadId": "82952",
@@ -67217,11 +67225,11 @@
   },
   "82954": {
     "sidgadId": "82954",
-    "name": "PREI VIÑALS GONZALEZ AINA",
+    "name": "PREI� VIÑALS GONZALEZ AINA",
     "birthDate": "17/08/2020",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-29T16:27:23.543Z"
+    "fetchedAt": "2026-10-31T20:24:16.109Z"
   },
   "82955": {
     "sidgadId": "82955",
@@ -67233,11 +67241,11 @@
   },
   "82956": {
     "sidgadId": "82956",
-    "name": "PREI ROSAL SABATE LAIA",
+    "name": "PREI� ROSAL SABATE LAIA",
     "birthDate": "19/01/2020",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-29T16:27:23.991Z"
+    "fetchedAt": "2026-10-31T20:24:16.335Z"
   },
   "82957": {
     "sidgadId": "82957",
@@ -72417,11 +72425,11 @@
   },
   "85381": {
     "sidgadId": "85381",
-    "name": "PREB CARMONA MONSERRAT GAL.LA",
+    "name": "PREU( CARMONA MONSERRAT GAL.LA",
     "birthDate": "06/06/2019",
     "registeredTeam": null,
-    "isGK": true,
-    "fetchedAt": "2026-10-01T16:59:36.736Z"
+    "isGK": false,
+    "fetchedAt": "2026-10-31T20:24:16.561Z"
   },
   "85382": {
     "sidgadId": "85382",
@@ -73121,11 +73129,11 @@
   },
   "85647": {
     "sidgadId": "85647",
-    "name": "PRED FERNANDEZ SAURA CLOE",
+    "name": "PREU( FERNANDEZ SAURA CLOE",
     "birthDate": "24/07/2018",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-10-01T16:59:36.922Z"
+    "fetchedAt": "2026-10-31T20:24:16.787Z"
   },
   "85648": {
     "sidgadId": "85648",
@@ -76857,11 +76865,11 @@
   },
   "88546": {
     "sidgadId": "88546",
-    "name": "PREB SOLER BUJONS ÈLIA",
+    "name": "PREU( SOLER BUJONS ÈLIA",
     "birthDate": "18/07/2019",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-10-01T16:59:39.711Z"
+    "fetchedAt": "2026-10-31T20:24:17.013Z"
   },
   "88548": {
     "sidgadId": "88548",
@@ -83529,11 +83537,11 @@
   },
   "92973": {
     "sidgadId": "92973",
-    "name": "PREI PACHECO PEDRAGOSA ARLETTE",
+    "name": "PREI� PACHECO PEDRAGOSA ARLETTE",
     "birthDate": "20/05/2020",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-09-29T16:27:31.149Z"
+    "fetchedAt": "2026-10-31T20:24:17.239Z"
   },
   "92977": {
     "sidgadId": "92977",
@@ -83673,11 +83681,11 @@
   },
   "93024": {
     "sidgadId": "93024",
-    "name": "PREB BAKHALAKH CHESA SALMA",
+    "name": "PREU( BAKHALAKH CHESA SALMA",
     "birthDate": "08/09/2019",
     "registeredTeam": null,
     "isGK": false,
-    "fetchedAt": "2026-10-01T16:59:46.606Z"
+    "fetchedAt": "2026-10-31T20:24:17.465Z"
   },
   "93027": {
     "sidgadId": "93027",
@@ -89530,6 +89538,33 @@
     "161474",
     "161470",
     "161471",
-    "161475"
+    "161475",
+    "146369",
+    "146366",
+    "146372",
+    "146371",
+    "151935",
+    "151988",
+    "152102",
+    "152103",
+    "152101",
+    "152213",
+    "152214",
+    "152326",
+    "159957",
+    "159958",
+    "159960",
+    "159959",
+    "159962",
+    "159961",
+    "159963",
+    "159964",
+    "159966",
+    "159965",
+    "159967",
+    "159970",
+    "159972",
+    "159975",
+    "159976"
   ]
 }
