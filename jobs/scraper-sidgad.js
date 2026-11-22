@@ -1,11 +1,11 @@
 // ============================================================
-// FECAPA Sidgad Scraper  (portales.js reverse-engineered)
+// FECAPA Sidgad Scraper  (API JSON del portal nou, nov. 2026)
 //
-// Flux:
-//  1. Clic competició → calendari a #tab_modal_contenido_competicion
-//  2. .game_report[idp] → fecapa_gr_{idp}_1.php → acta a #sidgad_thickbox_content
-//  3. .player_season_stats[id_player] → perfil a #sidgad_thickbox_right_content
-//  4. Parseja data de naixement, posició (porter), equip inscrit
+// Flux (veure jobs/sidgad-api.js):
+//  1. seasons + leagues → competicions de la temporada
+//  2. calendar{id} + standing{id} → resultats i classificació
+//  3. report{idp} → jugadors de cada acta (id, nom, porter, equip)
+//  4. profile{id,s} → data de naixement
 // ============================================================
 
 const puppeteer = require("puppeteer");
@@ -13,13 +13,19 @@ const fs        = require("fs").promises;
 const path      = require("path");
 
 const { getCurrentSeasonLabelFromEnvOrDate } = require("./season-utils");
+const {
+  openSidgadApiPage,
+  sidgadApiOrNull,
+  resolveSeasonId,
+  listLeagues,
+  parseCalendarGames,
+  parseStanding,
+  parseReportPlayers,
+} = require("./sidgad-api");
 
 const CACHE_FILE   = path.join(__dirname, "../public/jugadors-sidgad.json");
 const COMP_FILE    = path.join(__dirname, "../public/competicions-sidgad.json");
-const PORTAL_URL   = "https://www.hoqueipatins.fecapa.cat/";
-const SERVER_BASE  = "https://www.server2.sidgad.es/fecapa/";
 const CURRENT_SEASON = getCurrentSeasonLabelFromEnvOrDate(process.env);
-const IDM          = "1";
 const MAX_MATCHES  = 300;     // partits a processar per execució
 const MAX_PROFILES = 200;     // perfils a enriquir per execució
 const STALE_MS     = 30 * 24 * 60 * 60 * 1000;
@@ -29,36 +35,9 @@ async function loadCache() {
   catch { return {}; }
 }
 
-async function selectPortalSeason(page, seasonLabel) {
-  const seasonId = await page.evaluate((season) => {
-    const targetName = String(season || "").replace(/-/g, "/");
-    const option = [...document.querySelectorAll(".select_temporada")].find(
-      item => String(item.getAttribute("temp_name") || "").trim() === targetName
-    );
-    if (!option) return "";
-
-    const targetId = String(option.getAttribute("id_temp") || "").trim();
-    const activeId = String(document.getElementById("temp_activa")?.value || "").trim();
-    if (activeId !== targetId) option.click();
-    return targetId;
-  }, seasonLabel);
-
-  if (!seasonId) throw new Error(`FECAPA portal has no season selector for ${seasonLabel}`);
-
-  await page.waitForFunction(
-    expectedId => String(document.getElementById("temp_activa")?.value || "").trim() === expectedId,
-    { timeout: 10000 },
-    seasonId
-  );
-  return seasonId;
-}
 async function saveCache(cache) {
   await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true });
   await fs.writeFile(CACHE_FILE, JSON.stringify(cache, null, 2));
-}
-async function loadCompData() {
-  try { return JSON.parse(await fs.readFile(COMP_FILE, "utf8")); }
-  catch { return {}; }
 }
 async function saveCompData(data) {
   await fs.mkdir(path.dirname(COMP_FILE), { recursive: true });
@@ -87,104 +66,9 @@ function parseBirthDate(html) {
   return null;
 }
 
-// Construeix un mapa índex → jornada a partir del HTML del calendari
-function buildJornadaMap(html, rawMatches) {
-  const result = {};
-  // Cerca patrons de jornada: "Jornada N", "J.N", "Jornada N"
-  const jornadaSections = [...html.matchAll(/(?:jornada|jornad[ao]|jorn\.?)\s*(\d+)/gi)];
-  if (jornadaSections.length === 0) return result;
 
-  // Assigna la jornada a cada .game_report per ordre d'aparició
-  let jornadaIdx = 0;
-  let currentJornada = parseInt(jornadaSections[0][1]);
-  let matchesInSection = 0;
 
-  for (let i = 0; i < rawMatches.length; i++) {
-    if (jornadaIdx + 1 < jornadaSections.length) {
-      // Avança a la següent jornada si el HTML de l'element ve après del marcador
-      const matchPos = html.indexOf(rawMatches[i].html.substring(0, 50));
-      const nextJornadaPos = jornadaSections[jornadaIdx + 1].index;
-      if (matchPos > nextJornadaPos) {
-        jornadaIdx++;
-        currentJornada = parseInt(jornadaSections[jornadaIdx][1]);
-      }
-    }
-    result[i] = currentJornada;
-    matchesInSection++;
-  }
-  return result;
-}
 
-// Parseja un element .game_report (rawMatch = { attrs, html })
-function parseGameReport(rawMatch, currentJornada) {
-  const { attrs, html } = rawMatch;
-  const idp      = attrs.idp || null;
-  const idc      = attrs.idc || null;
-  const jornada  = parseInt(attrs.jornada || attrs.num_jornada || currentJornada || "0") || null;
-
-  // Equips locals/visitants: primer per atributs, després per classes CSS
-  let home = attrs.local || attrs.id_local_name || attrs["data-local"] || null;
-  let away = attrs.visitant || attrs.id_visitant_name || attrs["data-visitant"] || null;
-  let homeId = attrs.id_local || attrs["data-id-local"] || null;
-  let awayId = attrs.id_visitant || attrs["data-id-visitant"] || null;
-
-  if (!home || !away) {
-    const localM  = html.match(/class=['"]?[^"']*equip_local[^"']*['"]?[^>]*>([^<]+)<\/[^>]+>/i)
-                 || html.match(/<(?:span|div|td)[^>]*>[^<]*equip[_\s]*local[^<]*(?:<[^>]+>)*\s*([^<]+)<\/[^>]+>/i);
-    const visitM  = html.match(/class=['"]?[^"']*equip_visitant[^"']*['"]?[^>]*>([^<]+)<\/[^>]+>/i)
-                 || html.match(/<(?:span|div|td)[^>]*>[^<]*equip[_\s]*visitant[^<]*(?:<[^>]+>)*\s*([^<]+)<\/[^>]+>/i);
-    if (localM)  home = localM[1].trim();
-    if (visitM)  away = visitM[1].trim();
-  }
-  // Fallback: cerca links d'equip
-  if (!home || !away) {
-    const teamLinks = [...html.matchAll(/href=['"]?[^'"]*\/equip\/(\d+)\/[^'"]*['"]?[^>]*>([^<]+)<\/a>/gi)]
-                   .concat([...html.matchAll(/href=['"]?[^'"]*\/equip\/(\d+)\/[^'"]*['"]?[^>]*>\s*<[^>]*>([^<]+)<\/[^>]+><\/a>/gi)]);
-    if (teamLinks.length >= 1 && !home) { homeId = teamLinks[0][1]; home = teamLinks[0][2].trim(); }
-    if (teamLinks.length >= 2 && !away) { awayId = teamLinks[1][1]; away = teamLinks[1][2].trim(); }
-  }
-
-  // Marcador — elimina primer dates/hores per evitar falsos positius
-  let homeScore = null, awayScore = null, played = false;
-  const htmlForScore = html
-    .replace(/\b\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?\b/g, "")  // elimina dates
-    .replace(/\b\d{2}:\d{2}\b/g, "");                            // elimina hores
-  const scoreM = htmlForScore.match(/\b(\d{1,2})\s*[-:]\s*(\d{1,2})\b/);
-  if (scoreM) {
-    homeScore = parseInt(scoreM[1]);
-    awayScore = parseInt(scoreM[2]);
-    played = true;
-  }
-  // Data i hora — busca primer dates completes (DD/MM/YYYY), depois DD/MM
-  let date = null, time = null;
-  const fullDateM = html.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})\b/);
-  if (fullDateM) {
-    date = `${fullDateM[3]}-${String(fullDateM[2]).padStart(2, '0')}-${String(fullDateM[1]).padStart(2, '0')}`;
-  } else {
-    const shortDateM = html.match(/\b(\d{1,2})[-\/](\d{1,2})\b/);
-    if (shortDateM) date = `${String(shortDateM[2]).padStart(2, '0')}-${String(shortDateM[1]).padStart(2, '0')}`;
-  }
-  const timeM = html.match(/(\d{2}:\d{2})/);
-  if (timeM) time = timeM[1];
-
-  return { idp, idc, jornada, home, homeId, away, awayId, homeScore, awayScore, date, time, played };
-}
-
-// Parseja la taula de classificació HTML de sidgad
-function decodeHtmlEntities(s) {
-  return String(s || "")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&[a-z]+;/gi, " ");
-}
-
-function normalizeText(s) {
-  return decodeHtmlEntities(s || "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function inferCategoryFromCompetitionName(name) {
   const n = normName(name || "");
@@ -203,131 +87,6 @@ function inferCategoryFromCompetitionName(name) {
   return null;
 }
 
-function parseClassificationSidgad(html) {
-  if (!html || html.length < 50) return [];
-  const rows = [];
-
-  // Strategy 1: Taula <tr><td> estàndard
-  const trMatches = html.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-  for (const tr of trMatches) {
-    const cells = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m =>
-      decodeHtmlEntities(m[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
-    );
-    if (cells.length < 5) continue;
-
-    // Posició: primera cel·la numèrica 1-999 (més tolerant per grups més grans)
-    const posIdx = cells.findIndex(c => /^\d{1,3}$/.test(c) && parseInt(c) >= 1 && parseInt(c) <= 999);
-    if (posIdx < 0) continue;
-    const pos = parseInt(cells[posIdx]);
-
-    // Nom d'equip: primera cel·la de text llarg adjacent a la posició
-    const teamIdx = cells.findIndex((c, i) => i > posIdx && c.length > 2 && /[a-zA-Z]/.test(c) && !/^\d+$/.test(c));
-    if (teamIdx < 0) continue;
-    const team = cells[teamIdx].replace(/\s+[A-Z0-9]{2,6}$/, "").trim();
-
-    // Extreu teamId del HTML de la fila
-    const teamIdM = tr.match(/\/equip\/(\d+)\//);
-    const teamId  = teamIdM ? teamIdM[1] : null;
-
-    // Números restants: Pts, J, G, E, P, F, C, (GAV), (PEN)
-    const nums = cells.slice(teamIdx + 1).map(c => parseInt(c)).filter(n => !isNaN(n));
-    if (nums.length < 3) continue;
-    const [pts = null, pj = null, pg = null, pe = null, pp = null, gf = null, gc = null, gav = null, pen = null] = nums;
-
-    rows.push({ pos, team, teamId, pts, pj, pg, pe, pp, gf, gc, gav, pen });
-  }
-
-  // Strategy 2: divs flex (similar a jok.cat)
-  if (rows.length === 0) {
-    const divRows = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*(?:fila|row|clasificacion)[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)];
-    for (const [, inner] of divRows) {
-      const texts = [...inner.matchAll(/>([^<]+)</g)]
-        .map(m => decodeHtmlEntities(m[1]).trim()).filter(Boolean);
-      const nums  = texts.map(t => parseInt(t)).filter(n => !isNaN(n));
-      const team  = texts.find(t => /[a-zA-Z]{3}/.test(t) && !/^\d/.test(t));
-      if (!team || nums.length < 3) continue;
-      const [pos, pts, pj, pg, pe, pp, gf, gc, gav, pen] = nums;
-      const teamIdM = inner.match(/\/equip\/(\d+)\//);
-      rows.push({ pos, team, teamId: teamIdM?.[1] || null, pts, pj, pg, pe, pp, gf, gc, gav, pen });
-    }
-  }
-
-  return rows;
-}
-
-// Parser classificacions separades per grups.
-// Llegeix títols de grup (div_titulo_fase_idc) + taules i retorna
-// un format jeràrquic i, alhora, un mapa idc -> classificació per compatibilitat.
-function parseClassificationByGroupSidgad(html, uniqueIdcs) {
-  if (!html || html.length < 50) return { byIdc: {}, groups: [] };
-
-  const byIdc = {};
-  const groups = [];
-
-  const titles = [...html.matchAll(/<div[^>]*class=['"]?[^'"]*div_titulo_fase_idc[^'"]*['"]?[^>]*>([\s\S]*?)<\/div>/gi)]
-    .map(m => normalizeText(m[1]))
-    .filter(Boolean);
-
-  const tables = html.match(/<table[^>]*class=['"]?[^'"]*tabla_standard[^'"]*['"]?[^>]*>[\s\S]*?<\/table>/gi)
-    || html.match(/<table[^>]*>[\s\S]*?<\/table>/gi)
-    || [];
-
-  console.log(`parseClassificationByGroupSidgad: detected ${titles.length} group titles, ${tables.length} tables`);
-
-  // Robust matching: associate each parsed table with its title
-  let parsedTableCount = 0;
-  for (let i = 0; i < tables.length; i++) {
-    const classification = parseClassificationSidgad(tables[i]);
-    if (classification.length === 0) {
-      console.log(`  Table ${i}: failed to parse (0 rows)`);
-      continue;
-    }
-    parsedTableCount++;
-
-    const idcHint = (uniqueIdcs && uniqueIdcs[i]) ? String(uniqueIdcs[i]) : null;
-    // IMPROVED: use parsed order, not original index (avoids misalignment)
-    const groupName = titles[parsedTableCount - 1] || `Grup ${parsedTableCount}`;
-    const key = idcHint || `group_${parsedTableCount}`;
-
-    console.log(`  Table ${i}: parsed OK -> Group ${parsedTableCount} (${classification.length} teams) - Name: "${groupName}"`);
-    groups.push({ order: parsedTableCount, key, idc: idcHint, name: groupName, classification });
-    byIdc[key] = classification;
-  }
-
-  console.log(`parseClassificationByGroupSidgad: result=${parsedTableCount} groups extracted (${titles.length} titles found)`);
-  return { byIdc, groups };
-}
-
-// Executa jQuery.load dins la pàgina i retorna el HTML del contenidor
-async function jqLoad(page, containerId, url, postData, timeoutMs = 10000) {
-  return page.evaluate(
-    async (cid, u, data, tms) => {
-      return new Promise(resolve => {
-        const el = document.getElementById(cid);
-        if (!el) { resolve(""); return; }
-        jQuery(el).load(u, data, function() { resolve(el.innerHTML); });
-        setTimeout(() => resolve(""), tms);
-      });
-    },
-    containerId, url, postData, timeoutMs
-  );
-}
-
-// Fallback: llegeix HTML guardat localment per a 4452 (en cas que Puppeteer falli)
-async function loadReferenceLagueHtmlForComparison(compId) {
-  if (String(compId) !== "4452") return "";
-  
-  const refPath = path.join(__dirname, "../public/HOQUEI PATINS _ FCP.html");
-  try {
-    const html = await fs.readFile(refPath, "utf8");
-    console.log(`   📄 Carregat HTML local de referència per comp ${compId} (${html.length} bytes)`);
-    return html;
-  } catch (err) {
-    console.log(`   ⚠️  No es pot llegir HTML local: ${err.message}`);
-    return "";
-  }
-}
-
 async function main() {
   console.log("🏒 FECAPA Sidgad Scraper — iniciant...\n");
 
@@ -340,96 +99,87 @@ async function main() {
   });
 
   try {
-    const page = await browser.newPage();
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-
-    console.log("🌐 Carregant portal...");
-    await page.goto(PORTAL_URL, { waitUntil: "networkidle0", timeout: 60000 });
-    await page.waitForSelector(".listado_competiciones_fila", { timeout: 20000 });
+    // El portal nou (nov. 2026) ja no té el llistat antic de competicions ni
+    // els handlers jQuery: les dades es demanen a l'API JSON de sidgad des de
+    // dins de la pàgina del portal (veure jobs/sidgad-api.js).
+    console.log("🌐 Carregant portal (API sidgad)...");
+    const page = await openSidgadApiPage(browser);
     console.log("   Portal carregat ✓");
 
-    const portalTempId = await selectPortalSeason(page, CURRENT_SEASON);
+    const portalTempId = await resolveSeasonId(page, CURRENT_SEASON);
     console.log(`[sidgad] Temporada objectiu ${CURRENT_SEASON} (portal tempId=${portalTempId})`);
-    await page.waitForFunction(
-      tempId => document.querySelectorAll(`.listado_competiciones_fila.temp_${tempId}`).length > 0,
-      { timeout: 20000 },
-      portalTempId
-    );
 
     // ── 1. Obtenir IDs de competicions ───────────────────────
-    const comps = await page.$$eval(
-      `.listado_competiciones_fila.temp_${portalTempId}`,
-      els => els.map(el => {
-        const cfg = el.getAttribute("config_params") || "";
-        return {
-          id: el.id,
-          name: el.textContent.trim(),
-          hideClasif: /(?:^|;)\s*hide_clasif\s*:\s*1\s*(?:;|$)/i.test(cfg),
-        };
-      }).filter(c => c.id)
-    );
+    const comps = (await listLeagues(page, portalTempId)).map(l => ({
+      id: l.id,
+      name: l.name,
+      // Les competicions sense botó de classificacions equivalen a l'antic hide_clasif=1.
+      hideClasif: l.buttons.length > 0 && !l.buttons.includes("clasificaciones"),
+      apiCategory: l.categoryName,
+    }));
     const compIds = comps.map(c => c.id);
-    const compNames = Object.fromEntries(comps.map(c => [c.id, c.name]));
     console.log(`   Competicions temporada ${portalTempId}: ${compIds.length}`);
     if (compIds.length === 0) {
       throw new Error(`No FECAPA competitions found for ${CURRENT_SEASON} (portal tempId=${portalTempId}); refusing to overwrite the competition index`);
     }
 
     // ── 2. Recollir resultats i classificació per competició ──
-    // Clic a cada competició → calendari carrega a #tab_modal_contenido_competicion
-    // Busca .game_report[idp] (partits acabats amb lupa disponible)
     const matchIds  = new Map(); // idp → { compId, idc }
     const compData  = {};        // compId → { id, name, matches, classification }
     let debugCalLogged   = false;
     let debugClassLogged = false;
+    let compErrors = 0;
 
-    for (const { id: compId, name: compName, hideClasif } of comps) {
+    const toClassRow = r => ({
+      pos:  r.position,
+      team: r.teamName,
+      teamId: null,
+      pts:  r.points,
+      pj:   r.played,
+      pg:   r.won,
+      pe:   r.drawn,
+      pp:   r.lost,
+      gf:   r.goalsFor,
+      gc:   r.goalsAgainst,
+      gav:  r.goalDiff,
+      pen:  r.penalties,
+    });
+
+    for (const { id: compId, name: compName, hideClasif, apiCategory } of comps) {
       try {
-        await page.evaluate(id => { document.getElementById(id)?.click(); }, compId);
-        await page.waitForFunction(
-          () => {
-            const el = document.getElementById("tab_modal_contenido_competicion");
-            return el && el.innerHTML.length > 50;
-          },
-          { timeout: 6000 }
-        ).catch(() => {});
-
         // ── 2a. Resultats del calendari ──────────────────────
-        const rawMatches = await page.$$eval(
-          "#tab_modal_contenido_competicion .game_report[idp]",
-          els => els.map(el => {
-            const attrs = {};
-            for (const a of el.attributes) attrs[a.name] = a.value;
-            return { attrs, html: el.outerHTML };
-          })
-        );
+        const calendar = await sidgadApiOrNull(page, "calendar", { id: compId });
+        const phases = calendar ? parseCalendarGames(calendar, compId) : [];
+        const parsedMatches = phases.flatMap(ph => ph.matches.map(m => ({
+          idp: m.idp,
+          idc: ph.idc || compId,
+          jornada: m.jornada,
+          home: m.home,
+          homeId: m.homeId,
+          away: m.away,
+          awayId: m.awayId,
+          homeScore: m.homeScore,
+          awayScore: m.awayScore,
+          date: m.year ? `${m.year}-${m.month}-${m.day}` : null,
+          time: m.time,
+          played: m.played,
+        })));
 
-        // Debug: primera competició amb partits
-        if (!debugCalLogged && rawMatches.length > 0) {
-          const sample = await page.evaluate(() => {
-            const el = document.getElementById("tab_modal_contenido_competicion");
-            return el?.innerHTML?.slice(0, 1000) || "";
-          });
-          console.log(`\n--- DEBUG CALENDARI comp ${compId} "${compName}" (${rawMatches.length} partits) ---`);
-          console.log(sample.replace(/\s+/g, " ").trim().slice(0, 800));
-          console.log("---\n");
-          debugCalLogged = true;
-        }
-
-        // Detectar jornades del HTML per associar-les als partits
-        const calHtml = await page.evaluate(() =>
-          document.getElementById("tab_modal_contenido_competicion")?.innerHTML || ""
-        );
-        const jornadaMap = buildJornadaMap(calHtml, rawMatches);
-
-        const parsedMatches = rawMatches.map((rm, i) => parseGameReport(rm, jornadaMap[i] || null));
         for (const m of parsedMatches) {
-          if (m.idp && !matchIds.has(m.idp)) {
+          if (m.idp && m.played && !matchIds.has(m.idp)) {
             matchIds.set(m.idp, { compId, idc: m.idc || compId });
           }
         }
 
-        const categoryName = inferCategoryFromCompetitionName(compName);
+        if (!debugCalLogged && parsedMatches.length > 0) {
+          console.log(`\n--- DEBUG CALENDARI comp ${compId} "${compName}" (${parsedMatches.length} partits, ${phases.length} fases) ---`);
+          console.log(JSON.stringify(parsedMatches[0]));
+          console.log("---\n");
+          debugCalLogged = true;
+        }
+
+        const categoryName = inferCategoryFromCompetitionName(compName)
+          || inferCategoryFromCompetitionName(apiCategory);
         compData[compId] = {
           id: compId,
           name: compName,
@@ -452,427 +202,35 @@ async function main() {
         }
 
         // ── 2b. Classificació ────────────────────────────────
-        // Helper: clica la pestanya "classificació" i retorna el HTML resultant (o null)
-        let classTabMeta = { file: "", filter: "0" };
-        const clickClassTab = async () => {
-          const expectedClassFile = `clasif_idc_${compId}_1.php`;
-          const tabInfo = await page.evaluate(() => {
-            // 1) Camí preferit: botó oficial de classificacions.
-            const strictBtn = document.getElementById("clasificaciones_btn");
-            if (strictBtn) {
-              strictBtn.click();
-              return {
-                found: true,
-                file: strictBtn.getAttribute("file") || "",
-                filter: strictBtn.getAttribute("filter") || "0",
-              };
-            }
-
-            // 2) Fallback: cerca dins del contenidor de pestanyes de la competició activa.
-            const root = document.getElementById("menu_idc_options_general") || document.getElementById("tab_modal_container") || document;
-            const allClickable = [...root.querySelectorAll("a, button, li, span, td, div[onclick], [class*='tab'], [class*='nav']")];
-            const tab = allClickable.find(el => {
-              const txt = (el.textContent || "").trim().toUpperCase();
-              const onclick = el.getAttribute("onclick") || "";
-              const href = el.getAttribute("href") || "";
-              const id = el.id || "";
-              const file = el.getAttribute("file") || "";
-              return id === "clasificaciones_btn"
-                || file.includes("clasif_idc_")
-                || txt.includes("CLASSIFICACI")
-                || /class?ificaci/i.test(onclick)
-                || /class?ificaci/i.test(href);
-            });
-            if (tab) {
-              tab.click();
-              return {
-                found: true,
-                file: tab.getAttribute("file") || "",
-                filter: tab.getAttribute("filter") || "0",
-              };
-            }
-            return { found: false, file: "", filter: "0" };
+        const standing = await sidgadApiOrNull(page, "standing", { id: compId });
+        const groups = standing ? parseStanding(standing, compId) : [];
+        for (const g of groups) {
+          const rows = g.rows.map(toClassRow);
+          const groupName = g.name || compName;
+          compData[compId].classificationByGroup[g.idc] = rows;
+          compData[compId].classificationByGroupName[groupName] = rows;
+          compData[compId].hierarchy.groups.push({
+            key: String(g.idc),
+            idc: String(g.idc),
+            name: groupName,
+            teams: rows.length,
           });
-          if (!tabInfo?.found) {
-            // Fallback robust: força càrrega de classificació encara que no existeixi el botó.
-            const directHtml = await page.evaluate(async ({ expectedFile }) => {
-              const container = document.getElementById("tab_modal_contenido_competicion");
-              if (!container) return "";
-
-              const route = (typeof window.ruta_files === "string" && window.ruta_files)
-                ? window.ruta_files
-                : "https://www.server2.sidgad.es/fecapa";
-
-              if (typeof window.$j !== "function") return "";
-
-              const loadByFile = (file, payload) => new Promise((resolve) => {
-                let done = false;
-                const finish = () => {
-                  if (done) return;
-                  done = true;
-                  resolve(container.innerHTML || "");
-                };
-                window.$j("#tab_modal_contenido_competicion").load(
-                  `${route}/cerilh/${file}`,
-                  payload,
-                  () => finish()
-                );
-                setTimeout(finish, 9000);
-              });
-
-              const candidates = [
-                expectedFile,
-                expectedFile.replace(/_1\.php$/, ".php"),
-              ];
-
-              for (const file of candidates) {
-                if (!file) continue;
-                const html = await loadByFile(file, { filter: "0" });
-                if ((html || "").length > 200) return html;
-              }
-
-              return "";
-            }, { expectedFile: expectedClassFile });
-
-            if (!directHtml) return null;
-            return directHtml;
-          }
-
-          classTabMeta = {
-            file: tabInfo.file || "",
-            filter: tabInfo.filter || "0",
-          };
-
-          const looksLikeClassification = (html) => {
-            const h = String(html || "");
-            return /div_titulo_fase_idc|tabla_standard|stats_table_special|\bPUNTS\b|\bPT\b|classificaci/i.test(h);
-          };
-
-          await page.waitForFunction(
-            () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 100; },
-            { timeout: 5000 }
-          ).catch(() => {});
-
-          let html = await page.evaluate(() => document.getElementById("tab_modal_contenido_competicion")?.innerHTML || "");
-          if (looksLikeClassification(html)) return html;
-
-          // Fallback robust: si el clic no ha carregat classificacions, força el load amb el fitxer del botó.
-          if (tabInfo.file) {
-            const forcedHtml = await jqLoad(
-              page,
-              "tab_modal_contenido_competicion",
-              tabInfo.file,
-              { filter: tabInfo.filter || "0" },
-              10000
-            );
-            if (looksLikeClassification(forcedHtml)) return forcedHtml;
-            if (forcedHtml && forcedHtml.length > (html?.length || 0)) html = forcedHtml;
-          }
-
-          return html;
-        };
-
-        // Helper: intenta seleccionar el grup amb el idc indicat al portal
-        const clickGroupTab = async (idc) => {
-          return page.evaluate(targetIdc => {
-            const candidates = [...document.querySelectorAll("[onclick], a, button, li, span, td")];
-            const el = candidates.find(e => {
-              const oc = e.getAttribute("onclick") || "";
-              const hr = e.getAttribute("href") || "";
-              const di = e.getAttribute("data-idc") || e.getAttribute("idc") || "";
-              // Coincideix si el valor idc apareix com a token sencer (no com a substring d'un nombre més gran)
-              const re = new RegExp("(?<![\\d])" + targetIdc + "(?![\\d])");
-              return re.test(oc) || re.test(hr) || di === String(targetIdc);
-            });
-            if (el) { el.click(); return { found: true, text: el.textContent.trim().slice(0, 60) }; }
-            // Debug: mostra elements amb onclick per ajudar a identificar l'estructura
-            const sample = candidates.filter(e => e.getAttribute("onclick"))
-              .slice(0, 8).map(e => ({ tag: e.tagName, oc: (e.getAttribute("onclick") || "").slice(0, 80), txt: e.textContent.trim().slice(0, 40) }));
-            return { found: false, sample };
-          }, idc);
-        };
-
-        // Grups únics (idc) presents en els partits d'aquesta competició
-        const uniqueIdcs = [...new Set(parsedMatches.map(m => m.idc).filter(Boolean))];
-
-        // IMPORTANT: no fusionem idcs detectats globalment al DOM perquè pot introduir
-        // grups d'altres competicions i provocar falsos "DEBUG GRUP (no trobat)".
-
-        if (uniqueIdcs.length > 1) {
-          // Competició amb múltiples grups (p.ex. Copa): intentar clickar CLASSIFICACIONS sense grup
-          // Sidgad mostrarà totes les classificacions de grups separades, i les parsejem per noms
-          console.log(`\n🔍 Intentant carregar clasificacions de TOTS els grups per comp ${compId}...`);
-          let hasGroupData = false;
-          try {
-            const classHtmlAllGroups = await clickClassTab();
-            if (classHtmlAllGroups) {
-              console.log(`   HTML rebut: ${classHtmlAllGroups.length} bytes`);
-
-              // DEBUG: guardar el primer HTML de clasificació multi-grup per inspeccionar
-              const debugPath = require("path").join(__dirname, `../public/debug-classif-${compId}.html`);
-              require("fs").promises.writeFile(debugPath, classHtmlAllGroups).catch(() => {});
-              console.log(`   📄 HTML guardat a debug-classif-${compId}.html`);
-
-              const grouped = parseClassificationByGroupSidgad(classHtmlAllGroups, uniqueIdcs);
-              console.log(`   parseClassificationByGroupSidgad() retorna: ${grouped.groups.length} grups`);
-              if (grouped.groups.length > 0) {
-                hasGroupData = true;
-                // Éxit: tenim classificacions per grups
-                for (const g of grouped.groups) {
-                  compData[compId].classificationByGroup[g.key] = g.classification;
-                  compData[compId].classificationByGroupName[g.name] = g.classification;
-                }
-                compData[compId].hierarchy.groups = grouped.groups.map(g => ({
-                  key: g.key,
-                  idc: g.idc,
-                  name: g.name,
-                  teams: g.classification.length,
-                }));
-
-                console.log(`   ✓ Guardades ${grouped.groups.length} classificacions de grups\n`);
-                if (!debugClassLogged) {
-                  console.log(`\n--- CLASSIFICACIONS GRUPS comp ${compId} (${grouped.groups.length} grups) ---`);
-                  const firstGroup = grouped.groups[0];
-                  console.log(`   Primer grup: ${firstGroup.name} (${firstGroup.key}) - ${firstGroup.classification.length} equips`);
-                  console.log("---\n");
-                  debugClassLogged = true;
-                }
-              } else {
-                // Fallback: hi ha competicions que, tot i tenir idc variables,
-                // retornen una classificació única en aquest HTML.
-                const flatClassification = parseClassificationSidgad(classHtmlAllGroups);
-                if (flatClassification.length > 0) {
-                  hasGroupData = true;
-                  const fallbackIdc = String(uniqueIdcs[0] || compId);
-                  compData[compId].classification = flatClassification;
-                  compData[compId].classificationByGroup[fallbackIdc] = flatClassification;
-                  compData[compId].classificationByGroupName[compName] = flatClassification;
-                  compData[compId].hierarchy.groups = [{
-                    key: fallbackIdc,
-                    idc: fallbackIdc,
-                    name: compName,
-                    teams: flatClassification.length,
-                  }];
-                  console.log(`   ↪️  Fallback a classificació única: ${flatClassification.length} equips`);
-                } else {
-                  // Fallback robust: forçar càrrega de classificació per cada idc
-                  // utilitzant el mateix "file" de la pestanya Classificació.
-                  if (classTabMeta.file && uniqueIdcs.length > 0) {
-                    for (const idc of uniqueIdcs) {
-                      const payloads = [
-                        { filter: String(idc), idc: String(idc), idm: IDM },
-                        { filter: String(idc), idc: String(idc) },
-                        { idc: String(idc), idm: IDM },
-                        { filter: String(idc) },
-                      ];
-
-                      let byIdc = [];
-                      for (const payload of payloads) {
-                        const classHtmlByIdc = await jqLoad(
-                          page,
-                          "tab_modal_contenido_competicion",
-                          classTabMeta.file,
-                          payload,
-                          10000
-                        );
-                        byIdc = parseClassificationSidgad(classHtmlByIdc);
-                        if (byIdc.length > 0) break;
-                      }
-
-                      if (byIdc.length === 0) continue;
-
-                      hasGroupData = true;
-                      compData[compId].classificationByGroup[String(idc)] = byIdc;
-                      const groupName = `Grup ${idc}`;
-                      compData[compId].classificationByGroupName[groupName] = byIdc;
-                      compData[compId].hierarchy.groups.push({
-                        key: String(idc),
-                        idc: String(idc),
-                        name: groupName,
-                        teams: byIdc.length,
-                      });
-                    }
-
-                    if (hasGroupData) {
-                      const nRecovered = Object.keys(compData[compId].classificationByGroup).length;
-                      const expected = uniqueIdcs.length;
-                      console.log(`   ↪️  Fallback per idc: ${nRecovered} grup(s) detectat(s)`);
-                      if (nRecovered === expected) {
-                        console.log(`   ✓ Grups recuperats via fallback idc (${nRecovered}/${expected})`);
-                      }
-                    } else {
-                      console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
-                    }
-                  } else {
-                    console.log(`   ⚠️  No es van detectar grups ni classificació plana en el HTML`);
-                  }
-                }
-              }
-            } else {
-              console.log(`   ⚠️  No es va obtenir HTML de classificacions`);
-            }
-          } catch (e) {
-            console.log(`   ❌ ERROR: ${e.message}\n`);
-          }
-
-          // Si encara falten grups, intentar l'alternativa: clickar cada grup individualment (antiga lógica)
-          // Important: el fallback per idc pot recuperar només una part dels grups.
-          const recoveredIdcs = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
-          const pendingIdcs = uniqueIdcs.map(String).filter(idc => !recoveredIdcs.has(idc));
-          if (pendingIdcs.length > 0) {
-            let debugGroupLogged = false;
-            for (const idc of pendingIdcs) {
-              try {
-                // Torna a clicar la competició per reiniciar l'estat
-                await page.evaluate(id => document.getElementById(id)?.click(), compId);
-                await page.waitForFunction(
-                  () => { const el = document.getElementById("tab_modal_contenido_competicion"); return el && el.innerHTML.length > 50; },
-                  { timeout: 6000 }
-                ).catch(() => {});
-
-                // Selecciona el grup
-                const groupResult = await clickGroupTab(idc);
-                if (!groupResult.found) {
-                  if (!debugGroupLogged) {
-                    console.log(`\n--- DEBUG GRUP (no trobat) comp ${compId} idc=${idc} ---`);
-                    console.log(JSON.stringify(groupResult.sample, null, 2));
-                    console.log("---\n");
-                    debugGroupLogged = true;
-                  }
-                  continue;
-                }
-                await new Promise(r => setTimeout(r, 600));
-
-                // Obté la classificació del grup
-                const classHtml = await clickClassTab();
-                if (!classHtml) {
-                  if (!debugGroupLogged) {
-                    console.log(`\n--- DEBUG: No es pot obtenir classificació per comp ${compId} idc=${idc} ---`);
-                    debugGroupLogged = true;
-                  }
-                  continue;
-                }
-                const classification = parseClassificationSidgad(classHtml);
-                if (classification.length > 0) {
-                  compData[compId].classificationByGroup[idc] = classification;
-                  const groupName = `Grup ${idc}`;
-                  compData[compId].classificationByGroupName[groupName] = classification;
-                  compData[compId].hierarchy.groups.push({
-                    key: idc,
-                    idc,
-                    name: groupName,
-                    teams: classification.length,
-                  });
-                  if (!debugClassLogged) {
-                    console.log(`\n--- DEBUG CLASSIFICACIÓ GRUP comp ${compId} idc=${idc} (${classification.length} equips) ---`);
-                    console.log(JSON.stringify(classification[0]));
-                    console.log("---\n");
-                    debugClassLogged = true;
-                  }
-                }
-              } catch (e) {
-                console.log(`\n--- ERROR clickant grup comp ${compId} idc=${idc}: ${e.message} ---\n`);
-              }
-            }
-
-            if (Object.keys(compData[compId].classificationByGroup).length > recoveredIdcs.size) {
-              hasGroupData = true;
-            }
-
-            const finalRecovered = new Set(Object.keys(compData[compId].classificationByGroup || {}).map(String));
-            const finalMissing = uniqueIdcs.map(String).filter(idc => !finalRecovered.has(idc));
-            if (finalMissing.length > 0) {
-              console.log(`   ⚠️  Grups pendents sense classificació (comp ${compId}): ${finalMissing.join(", ")}`);
-            }
-          }
-        } else {
-          // Competició d'un sol grup: comportament original
-          const classHtml = await clickClassTab();
-          if (!classHtml && !debugClassLogged) {
-            const nearby = await page.evaluate(() => {
-              const modal = document.getElementById("tab_modal_contenido_competicion");
-              return [...(modal?.closest("div, table, section") || document).querySelectorAll("a, button, li[onclick], div[onclick]")]
-                .slice(0, 10).map(el => ({ tag: el.tagName, cls: el.className.slice(0, 40), txt: el.textContent.trim().slice(0, 50) }));
-            });
-            console.log(`\n--- DEBUG TAB CLASSIFICACIÓ (no trobat) comp ${compId} ---`);
-            console.log(JSON.stringify(nearby, null, 2));
-            console.log("---\n");
-            debugClassLogged = true;
-          }
-          if (classHtml) {
-            let grouped = parseClassificationByGroupSidgad(classHtml, uniqueIdcs);
-            let source = "puppeteer";
-
-            // Fallback HTTP directe: només quan Puppeteer no ha trobat cap grup.
-            // Això evita soroll en competicions vàlides d'1-2 grups.
-            if (grouped.groups.length === 0 && typeof fetchLeaguePageDirect === "function") {
-              try {
-                console.log(`   🔗 Intentant HTTP direct al portal per comp ${compId} (Puppeteer va retornar 0 grups)...`);
-                const directHtml = await fetchLeaguePageDirect(compId);
-                if (directHtml && directHtml.length > 1000) {
-                  const directGrouped = parseClassificationByGroupSidgad(directHtml, uniqueIdcs);
-                  if (directGrouped.groups.length > grouped.groups.length) {
-                    console.log(`   ✓ HTTP direct va retornar ${directGrouped.groups.length} grups (vs ${grouped.groups.length} de Puppeteer)`);
-                    grouped = directGrouped;
-                    source = "http_direct";
-                  }
-                }
-              } catch (err) {
-                console.log(`   ⚠️  HTTP direct error: ${err.message}`);
-              }
-            }
-
-            if (grouped.groups.length > 0) {
-              // Quan no tenim idc als partits (o només en tenim un), podem recuperar
-              // igualment la classificació per grup directament del HTML de classificacions.
-              compData[compId].classificationByGroup = {};
-              compData[compId].classificationByGroupName = {};
-              compData[compId].hierarchy.groups = grouped.groups.map(g => ({
-                key: String(g.key),
-                idc: g.idc ? String(g.idc) : null,
-                name: g.name,
-                teams: g.classification.length,
-              }));
-
-              for (const g of grouped.groups) {
-                compData[compId].classificationByGroup[String(g.key)] = g.classification;
-                compData[compId].classificationByGroupName[g.name] = g.classification;
-              }
-
-              compData[compId].classification = grouped.groups.flatMap(g => g.classification);
-
-              if (!debugClassLogged) {
-                console.log(`\n--- DEBUG CLASSIFICACIÓ GRUPS comp ${compId} (${grouped.groups.length} grups, source=${source}) ---`);
-                if (grouped.groups[0]?.classification?.length > 0) {
-                  console.log(JSON.stringify(grouped.groups[0].classification[0]));
-                }
-                console.log("---\n");
-                debugClassLogged = true;
-              }
-            } else {
-              const classification = parseClassificationSidgad(classHtml);
-              compData[compId].classification = classification;
-              if (uniqueIdcs.length === 1) {
-                const idc = uniqueIdcs[0];
-                compData[compId].classificationByGroup[idc] = classification;
-                compData[compId].classificationByGroupName[compName] = classification;
-                compData[compId].hierarchy.groups = [{
-                  key: String(idc),
-                  idc: String(idc),
-                  name: compName,
-                  teams: classification.length,
-                }];
-              }
-              if (!debugClassLogged && classification.length > 0) {
-                console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${classification.length} equips) ---`);
-                console.log(JSON.stringify(classification[0]));
-                console.log("---\n");
-                debugClassLogged = true;
-              }
-            }
-          }
         }
-      } catch { /* continua */ }
+        compData[compId].classification = groups.flatMap(g => g.rows.map(toClassRow));
+
+        if (!debugClassLogged && compData[compId].classification.length > 0) {
+          console.log(`\n--- DEBUG CLASSIFICACIÓ comp ${compId} "${compName}" (${groups.length} grups) ---`);
+          console.log(JSON.stringify(compData[compId].classification[0]));
+          console.log("---\n");
+          debugClassLogged = true;
+        }
+      } catch (err) {
+        compErrors++;
+        console.log(`   ⚠️  Comp ${compId} "${compName}": ${err.message}`);
+      }
+    }
+    if (compErrors === comps.length) {
+      throw new Error(`Totes les ${comps.length} competicions han fallat a l'API sidgad; no es desa res`);
     }
     console.log(`   Partits amb acta descoberts: ${matchIds.size}`);
     const nClassSingle = Object.values(compData).filter(c => c.classification.length > 0).length;
@@ -896,48 +254,18 @@ async function main() {
     console.log(`   Partits pendents: ${unprocessed.length} → processant ${matchList.length}`);
     let actaDone = 0, debugActaLogged = false;
 
-    for (const [idp, { compId, idc }] of matchList) {
+    for (const [idp] of matchList) {
       try {
-        const actaUrl = `${SERVER_BASE}fecapa_gr_${idp}_${IDM}.php`;
-        const html = await jqLoad(page, "sidgad_thickbox_content", actaUrl,
-          { idm: IDM, idc: idc || compId, idp, tab: "tab_ficha_resumen" }, 10000);
+        const report = await sidgadApiOrNull(page, "report", { id: idp });
+        if (!report) continue;
+        const players = parseReportPlayers(report);
 
-        if (!html || html.length < 50) continue;
-
-        // Debug: primer acta
         if (!debugActaLogged) {
-          console.log(`\n--- DEBUG ACTA idp=${idp} (${html.length} chars) ---`);
-          const relevant = html.match(/.{0,60}(?:player_season_stats|id_player|player_name|porter|dorsal|inscrit).{0,100}/gi) || [];
-          if (relevant.length > 0) {
-            relevant.slice(0, 8).forEach(s => console.log("  " + s.replace(/\s+/g, " ").trim()));
-          } else {
-            console.log(html.slice(0, 800));
-          }
+          console.log(`\n--- DEBUG ACTA idp=${idp} (${players.length} jugadors) ---`);
+          console.log(JSON.stringify(players.slice(0, 2)));
           console.log("---\n");
           debugActaLogged = true;
         }
-
-        // Extreu jugadors: .player_season_stats[id_player][player_name]
-        const players = await page.evaluate(() => {
-          const container = document.getElementById("sidgad_thickbox_content");
-          if (!container) return [];
-          return [...container.querySelectorAll(".player_season_stats")].map(el => {
-            const idAttr = el.getAttribute("id_player");
-            const id_player = (idAttr && idAttr !== "0" && /^\d+$/.test(idAttr))
-              ? idAttr
-              : (el.id && /^\d+$/.test(el.id) ? el.id : null);
-            const row = el.closest("tr") || el.parentElement;
-            const cells = row ? [...row.querySelectorAll("td")] : [];
-            const isGK = cells.some(td => /^\s*[Pp]\s*$/.test(td.textContent));
-            const teamCell = cells.find(td => /^[A-Z]{2,8}$/.test(td.textContent.trim()));
-            return {
-              id_player,
-              player_name:   el.getAttribute("player_name") || el.textContent.trim(),
-              isGK,
-              registeredTeam: teamCell?.textContent.trim() || null,
-            };
-          }).filter(p => p.id_player);
-        });
 
         for (const p of players) {
           if (!discovered[p.id_player]) {
@@ -946,6 +274,8 @@ async function main() {
               isGK:           p.isGK,
               registeredTeam: p.registeredTeam,
             };
+          } else if (p.isGK) {
+            discovered[p.id_player].isGK = true;
           }
         }
         actaDone++;
@@ -966,20 +296,18 @@ async function main() {
 
     for (const [sidgadId, info] of toFetch) {
       try {
-        const profileUrl = `${SERVER_BASE}profiles/fecapa_profileseason_${sidgadId}_${IDM}_${portalTempId}.php`;
-        const html = await jqLoad(page, "sidgad_thickbox_right_content", profileUrl,
-          { idm: IDM, idc: "0", id_player: sidgadId, team_id: "0", temp_name: CURRENT_SEASON.replace(/-/g, "/") }, 8000);
+        const profile = await sidgadApiOrNull(page, "profile", { id: sidgadId, s: portalTempId });
+        const player = profile?.player || null;
 
-        // Debug: primer perfil
-        if (!debugProfileLogged && html && html.length > 50) {
-          console.log(`\n--- DEBUG PERFIL id=${sidgadId} (${html.length} chars) ---`);
-          console.log(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500));
+        if (!debugProfileLogged && player) {
+          console.log(`\n--- DEBUG PERFIL id=${sidgadId} ---`);
+          console.log(JSON.stringify({ name: player.name, surname: player.surname, date_born: player.date_born, is_goalie: player.is_goalie }));
           console.log("---\n");
           debugProfileLogged = true;
         }
 
-        const birthDate = parseBirthDate(html || "");
-        if (!birthDate && (!html || html.replace(/<[^>]+>/g, "").trim().length < 10)) {
+        const birthDate = parseBirthDate(String(player?.date_born || ""));
+        if (!player || !birthDate) {
           empty++;
           continue;
         }
@@ -987,9 +315,9 @@ async function main() {
         cache[sidgadId] = {
           sidgadId,
           name:           info.name,
-          birthDate:      birthDate           || null,
+          birthDate,
           registeredTeam: info.registeredTeam || null,
-          isGK:           info.isGK           ?? null,
+          isGK:           (info.isGK || player.is_goalie === true) ?? null,
           fetchedAt:      new Date().toISOString(),
         };
         ok++;
