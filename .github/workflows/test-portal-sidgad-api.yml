@@ -1,0 +1,35 @@
+name: Prova scrapers API sidgad (temporal)
+on:
+  push:
+    branches: [test/portal-sidgad-api]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      JOK_SEASON: "2026-27"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npx puppeteer browsers install chrome
+      - run: mkdir -p test-out
+      - name: scraper sidgad
+        run: npm run scrape:sidgad 2>&1 | tee test-out/sidgad.log; echo "exit=${PIPESTATUS[0]}" >> test-out/sidgad.log
+      - name: scraper categories
+        run: |
+          node jobs/scraper-fecapa-categories.js --category "NACIONAL CATALANA" --category "PRIMERA CATALANA" --category "SEGONA CATALANA" --category "TERCERA CATALANA" --category FEM --category JUNIOR --category JUVENIL --category INFANTIL --category PREBENJAMI --category BENJAMI --category ALEVI --category VETERANS --competition-timeout-ms 45000 --output public/fecapa-categories.json 2>&1 | tail -150 > test-out/categories.log; echo "exit=${PIPESTATUS[0]}" >> test-out/categories.log
+      - name: scraper principal
+        run: npm run scrape:on 2>&1 | tail -120 > test-out/main.log; echo "exit=${PIPESTATUS[0]}" >> test-out/main.log
+      - name: Desa resultats
+        if: always()
+        run: |
+          cp public/competicions-sidgad.json public/fecapa-categories.json public/data.json test-out/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f test-out
+          git commit -m "Resultats prova" || true
+          git push
