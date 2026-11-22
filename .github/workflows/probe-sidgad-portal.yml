@@ -1,0 +1,26 @@
+name: Sonda portal FECAPA (temporal)
+on:
+  push:
+    branches: [probe/sidgad-portal]
+    paths: ['probe/portal-probe.js', '.github/workflows/probe-sidgad-portal.yml']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npx puppeteer browsers install chrome
+      - run: node probe/portal-probe.js 2>&1 | tee probe-portal.log || true
+      - name: Desa resultats
+        run: |
+          mv probe-portal.log probe-out/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f probe-out
+          git commit -m "Resultats sonda portal" || true
+          git push
