@@ -881,6 +881,15 @@ async function validateAndNormalize4452Competition(compData) {
 
 
 // ── Core function: obtenir dades de categories ───────────────
+function buildJokActaLink(idp, home, away) {
+  const actaSlug = `${home}-${away}`.replace(/\s+/g, "+");
+  return {
+    actaId: String(idp),
+    actaSlug,
+    actaUrl: `https://jok.cat/acta/${encodeURIComponent(String(idp))}/${encodeURI(actaSlug)}`,
+  };
+}
+
 // Construeix una competició (grups + fases) a partir de l'API de sidgad.
 async function scrapeCompetitionFromApi(page, comp) {
   const competitionId = String(comp.competitionId);
@@ -920,6 +929,9 @@ async function scrapeCompetitionFromApi(page, comp) {
       awayScore: m.awayScore,
       played: m.played,
       source: "fecapa",
+      // L'id de partit de la FECAPA és el mateix que l'actaId de jok.cat:
+      // es manté l'enllaç a l'acta que mostrava el calendari de jok.cat.
+      ...(m.idp && m.played ? buildJokActaLink(m.idp, m.home, m.away) : {}),
     }));
     return {
       phaseId: `${competitionId}-phase-${idx + 1}`,
