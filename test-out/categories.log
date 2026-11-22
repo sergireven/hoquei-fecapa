@@ -1,0 +1,137 @@
+🏒 FECAPA Categories Scraper — 2026-11-22T19:07:05.309Z
+   Mode: LIVE (portal) + snapshot fallback
+   ℹ️  Live mode és obligatori en aquest scraper (no cal passar --live)
+   Competition timeout: 45000ms
+   Category filter: NACIONAL CATALANA, PRIMERA CATALANA, SEGONA CATALANA, TERCERA CATALANA, FEM, JUNIOR, JUVENIL, INFANTIL, PREBENJAMI, BENJAMI, ALEVI, VETERANS
+
+📚 Carregant dades de categories...
+[fecapa-categories] portal season=2026-27 tempId=41 (API sidgad)
+[fecapa-categories] 4774 api groups=1 teams=16 phases=1
+[fecapa-categories] 4775 api groups=1 teams=16 phases=1
+[fecapa-categories] 4776 api groups=2 teams=36 phases=2
+[fecapa-categories] 4778 api groups=2 teams=26 phases=2
+[fecapa-categories] 4779 api groups=4 teams=56 phases=4
+[fecapa-categories] 4780 api groups=2 teams=25 phases=2
+[fecapa-categories] 4781 api groups=6 teams=84 phases=6
+[fecapa-categories] 4782 api groups=7 teams=50 phases=7
+[fecapa-categories] 4783 api groups=2 teams=26 phases=2
+[fecapa-categories] 4784 api groups=10 teams=73 phases=10
+[fecapa-categories] 4785 api groups=4 teams=58 phases=4
+[fecapa-categories] 4786 api groups=10 teams=77 phases=10
+[fecapa-categories] 4787 api groups=7 teams=94 phases=7
+[fecapa-categories] 4788 api groups=1 teams=5 phases=1
+[fecapa-categories] 4789 api groups=10 teams=77 phases=10
+[fecapa-categories] 4790 api groups=8 teams=105 phases=8
+[fecapa-categories] 4791 api groups=1 teams=8 phases=1
+[fecapa-categories] 4792 api groups=1 teams=12 phases=1
+[fecapa-categories] 4793 api groups=1 teams=21 phases=1
+[fecapa-categories] 4794 api groups=1 teams=14 phases=1
+[fecapa-categories] 4802 api groups=1 teams=25 phases=1
+[fecapa-categories] 4803 api groups=1 teams=18 phases=1
+[fecapa-categories] 4804 api groups=1 teams=21 phases=1
+[fecapa-categories] 4805 api groups=1 teams=18 phases=1
+[fecapa-categories] 4806 api groups=1 teams=15 phases=1
+[fecapa-categories] 4807 api groups=1 teams=26 phases=1
+[fecapa-categories] 4808 api groups=3 teams=20 phases=3
+[fecapa-categories] 4810 api groups=6 teams=46 phases=6
+[fecapa-categories] 4811 api groups=5 teams=66 phases=5
+[fecapa-categories] 4812 api groups=3 teams=21 phases=3
+[fecapa-categories] 4813 api groups=3 teams=21 phases=3
+[fecapa-categories] 4814 api groups=4 teams=55 phases=4
+[fecapa-categories] 4815 api groups=4 teams=27 phases=4
+[fecapa-categories] 4816 api groups=3 teams=21 phases=3
+[fecapa-categories] 4817 api groups=1 teams=0 phases=1
+[fecapa-categories] 4818 api groups=1 teams=17 phases=2
+[fecapa-categories] 4819 api groups=2 teams=12 phases=2
+[fecapa-categories] 4820 api groups=2 teams=17 phases=2
+[fecapa-categories] 4821 api groups=2 teams=24 phases=2
+[fecapa-categories] 4822 api groups=2 teams=18 phases=2
+[fecapa-categories] 4823 api groups=4 teams=46 phases=4
+[fecapa-categories] 4824 api groups=2 teams=14 phases=2
+[fecapa-categories] 4825 api groups=2 teams=33 phases=2
+[fecapa-categories] 4833 api groups=1 teams=8 phases=1
+[fecapa-categories] 4834 api groups=1 teams=10 phases=1
+[fecapa-categories] 4860 api groups=2 teams=18 phases=2
+[fecapa-categories] 5015 api groups=1 teams=2 phases=1
+[fecapa-categories] 5027 api groups=1 teams=15 phases=1
+[fecapa-categories] 5045 api groups=3 teams=27 phases=3
+[fecapa-categories] 5046 api groups=1 teams=13 phases=1
+[fecapa-categories] 5062 api groups=1 teams=7 phases=1
+[fecapa-categories] 5073 api groups=1 teams=4 phases=2
+[fecapa-categories] 5082 api groups=2 teams=18 phases=2
+[fecapa-categories] summary competitions=53 totalGroups=150 failed=0
+✓ Carregades 53 competicions
+
+📊 Categories:
+   NACIONAL_CATALANA: 1 competitions
+      - [4774] NACIONAL CATALANA MASCULINA (1 groups, 16 teams)
+   PRIMERA_CATALANA: 1 competitions
+      - [4776] PRIMERA CATALANA MASCULINA (2 groups, 36 teams)
+   SEGONA_CATALANA: 1 competitions
+      - [4779] SEGONA CATALANA MASCULINA (4 groups, 56 teams)
+   TERCERA_CATALANA: 1 competitions
+      - [4781] TERCERA CATALANA MASCULINA (6 groups, 84 teams)
+   FEM: 16 competitions
+      - [4775] NACIONAL CATALANA FEMENINA (1 groups, 16 teams)
+      - [4778] PRIMERA CATALANA FEMENINA (2 groups, 26 teams)
+      - [4780] SEGONA CATALANA FEMENINA (2 groups, 25 teams)
+      - [4792] FEM19 (1 groups, 12 teams)
+      - [4793] FEM 17 OR (1 groups, 21 teams)
+      - [4794] FEM 17 PLATA (1 groups, 14 teams)
+      - [4802] FEM 15 OR (1 groups, 25 teams)
+      - [4803] FEM 15 PLATA (1 groups, 18 teams)
+      - [4804] FEM 13 OR (1 groups, 21 teams)
+      - [4805] FEM 13 PLATA (1 groups, 18 teams)
+      - [4806] FEM 11 OR (1 groups, 15 teams)
+      - [4807] FEM 11 PLATA (1 groups, 26 teams)
+      - [4808] MINIFEM (3 groups, 20 teams)
+      - [4860] LLIGA CATALANA FEMENINA (2 groups, 18 teams)
+      - [5015] SUPERCOPA CATALANA FEMENINA (1 groups, 2 teams)
+      - [5073] OPEN INTERNACIONAL GOLDENCAT FEMENÍ (1 groups, 4 teams)
+   JUNIOR: 2 competitions
+      - [4782] JÚNIOR OR (7 groups, 50 teams)
+      - [4783] JÚNIOR PLATA (2 groups, 26 teams)
+   JUVENIL: 2 competitions
+      - [4784] JUVENIL OR (10 groups, 73 teams)
+      - [4785] JUVENIL PLATA (4 groups, 58 teams)
+   INFANTIL: 3 competitions
+      - [4786] INFANTIL OR (10 groups, 77 teams)
+      - [4787] INFANTIL PLATA (7 groups, 94 teams)
+      - [4788] INFANTIL BRONZE (1 groups, 5 teams)
+   PREBENJAMI: 11 competitions
+      - [4813] PREBENJAMI OR BARCELONA (3 groups, 21 teams)
+      - [4814] PREBENJAMI PLATA BARCELONA (4 groups, 55 teams)
+      - [4815] PREBENJAMI BRONZE BARCELONA (4 groups, 27 teams)
+      - [4816] PREBENJAMI INICIACIO BARCELONA (3 groups, 21 teams)
+      - [4819] PREBENJAMI OR TARRAGONA (2 groups, 12 teams)
+      - [4820] PREBENJAMI PLATA TARRAGONA (2 groups, 17 teams)
+      - [4821] PREBENJAMI BRONZE TARRAGONA (2 groups, 24 teams)
+      - [4824] PREBENJAMI OR GIRONA (2 groups, 14 teams)
+      - [4825] PREBENJAMI PLATA GIRONA (2 groups, 33 teams)
+      - [4833] PREBENJAMI OR LLEIDA (1 groups, 8 teams)
+      - [4834] PREBENJAMI PLATA- BRONZE LLEIDA (1 groups, 10 teams)
+   BENJAMI: 8 competitions
+      - [4810] BENJAMÍ OR BARCELONA (6 groups, 46 teams)
+      - [4811] BENJAMÍ PLATA BARCELONA (5 groups, 66 teams)
+      - [4812] BENJAMÍ BRONZE BARCELONA (3 groups, 21 teams)
+      - [4817] BENJAMÍ OR TARRAGONA (1 groups, 0 teams) — Sense partits disputats
+      - [4818] BENJAMÍ PLATA TARRAGONA (1 groups, 17 teams)
+      - [4822] BENJAMÍ OR GIRONA (2 groups, 18 teams)
+      - [4823] BENJAMÍ PLATA GIRONA (4 groups, 46 teams)
+      - [5027] BENJAMÍ LLEIDA (1 groups, 15 teams)
+   ALEVI: 3 competitions
+      - [4789] ALEVÍ OR (10 groups, 77 teams)
+      - [4790] ALEVÍ PLATA (8 groups, 105 teams)
+      - [4791] ALEVÍ BRONZE (1 groups, 8 teams)
+   VETERANS: 4 competitions
+      - [5045] LLIGA CATALANA DE VETERANS (3 groups, 27 teams)
+      - [5046] MÀSTER 50 LLIGA CATALANA DE VETERANS (1 groups, 13 teams)
+      - [5062] LLIGA VETERANS GIRONA (1 groups, 7 teams)
+      - [5082] LLIGA VETERANS TARRAGONA (2 groups, 18 teams)
+
+🔢 Total grups obtinguts: 150
+
+✅ Dades guardades a: /home/runner/work/hoquei-fecapa/hoquei-fecapa/public/fecapa-categories.json
+
+✅ Scraper completat a 2026-11-22T19:07:38.819Z
+exit=0
