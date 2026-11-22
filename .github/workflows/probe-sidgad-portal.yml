@@ -18,9 +18,9 @@ jobs:
       - run: node probe/portal-probe.js 2>&1 | tee probe-portal.log || true
       - name: Desa resultats
         run: |
-          mv probe-portal.log probe-out2/ || true
+          mv probe-portal.log probe-out3/ || true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f probe-out probe-out2 probe-out2
+          git add -f probe-out probe-out2 probe-out3
           git commit -m "Resultats sonda portal" || true
           git push
