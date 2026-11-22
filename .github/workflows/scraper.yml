@@ -37,7 +37,7 @@ jobs:
         run: npx puppeteer browsers install chrome
 
       - name: Executar scraper sidgad (dades jugadors)
-          continue-on-error: true
+        continue-on-error: true
         run: |
           set -euo pipefail
           npm run scrape:sidgad
