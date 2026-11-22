@@ -1,0 +1,282 @@
+[
+ {
+  "i": 0,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/acta/sidgad-hp-acta.js?v=1795258276",
+  "post": null,
+  "len": 20843
+ },
+ {
+  "i": 1,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-router.js?v=1795258276",
+  "post": null,
+  "len": 10717
+ },
+ {
+  "i": 2,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-copa.js?v=1795258276",
+  "post": null,
+  "len": 18063
+ },
+ {
+  "i": 3,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-portada.js?v=1795258276",
+  "post": null,
+  "len": 12860
+ },
+ {
+  "i": 4,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/i18n/ca.js?v=1795258276",
+  "post": null,
+  "len": 16490
+ },
+ {
+  "i": 5,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-video-overlay.js?v=1795258276",
+  "post": null,
+  "len": 2998
+ },
+ {
+  "i": 6,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-pistas.js?v=1795258276",
+  "post": null,
+  "len": 8702
+ },
+ {
+  "i": 7,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-league.js?v=1795258276",
+  "post": null,
+  "len": 21774
+ },
+ {
+  "i": 8,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/acta/sidgad-acta-common.js?v=1795258276",
+  "post": null,
+  "len": 42083
+ },
+ {
+  "i": 9,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-clasificacion.js?v=1795258276",
+  "post": null,
+  "len": 12986
+ },
+ {
+  "i": 10,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-designaciones.js?v=1795258276",
+  "post": null,
+  "len": 6540
+ },
+ {
+  "i": 11,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-plantillas.js?v=1795258276",
+  "post": null,
+  "len": 8761
+ },
+ {
+  "i": 12,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-core.js?v=1795258276",
+  "post": null,
+  "len": 34206
+ },
+ {
+  "i": 13,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-scorer.js?v=1795258276",
+  "post": null,
+  "len": 6421
+ },
+ {
+  "i": 14,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/i18n/es.js?v=1795258276",
+  "post": null,
+  "len": 16692
+ },
+ {
+  "i": 15,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-estadisticas.js?v=1795258276",
+  "post": null,
+  "len": 14865
+ },
+ {
+  "i": 16,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/player/sidgad-player-ficha.js?v=1795258276",
+  "post": null,
+  "len": 31977
+ },
+ {
+  "i": 17,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/player/sidgad-player-overlay.js?v=1795258276",
+  "post": null,
+  "len": 12975
+ },
+ {
+  "i": 18,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-equipo.js?v=1795258276",
+  "post": null,
+  "len": 29940
+ },
+ {
+  "i": 19,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/new_portal/assets/js/sidgad-previa.js?v=1795258276",
+  "post": null,
+  "len": 18077
+ },
+ {
+  "i": 20,
+  "status": 200,
+  "method": "GET",
+  "url": "https://www.server2.sidgad.es/sg_token.php",
+  "post": null,
+  "len": 45
+ },
+ {
+  "i": 22,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/seasons/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 312
+ },
+ {
+  "i": 21,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/scorer/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 512198
+ },
+ {
+  "i": 23,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/leagues/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 2525147
+ },
+ {
+  "i": 24,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/scorer/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 512198
+ },
+ {
+  "i": 25,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/scorer/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 512198
+ },
+ {
+  "i": 26,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/stats/?id=1459&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 20
+ },
+ {
+  "i": 27,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/calendar/?id=1459&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 137064
+ },
+ {
+  "i": 28,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/calendar/?id=1459&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 137064
+ },
+ {
+  "i": 29,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/standing/?id=1459&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 20
+ },
+ {
+  "i": 30,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/scorer/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 512198
+ },
+ {
+  "i": 31,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/report/?id=154365&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 6051
+ },
+ {
+  "i": 32,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/calendar/?id=1459&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 137064
+ },
+ {
+  "i": 33,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/calendar/?id=4810&jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 183432
+ },
+ {
+  "i": 34,
+  "status": 200,
+  "method": "GET",
+  "url": "https://api.sidgad.com/fecapa/v1/hp/scorer/?jwt=1b5835d4-50b8-4e29-b0f8-4b38b6e6cf79&st=GOt5PXSUoQkAbxkqHL3ZIA&se=1795375412",
+  "post": null,
+  "len": 512198
+ }
+]

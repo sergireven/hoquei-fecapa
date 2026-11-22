@@ -1,0 +1,10 @@
+zona BARCELONA
+cat BENJAMI
+reqs before card click 26
+card BARCELONA
+          BCN PREBENJAMI OR 2ª FASE
+url https://www.hoqueipatins.fecapa.cat/?liga=1459
+visible buttons: ["Ficha Resumen","Incidencias","Acta Partido","VOLVER A COMPETICIONES","PORTADA","CALENDARIO Y RESULTADOS","CLASIFICACIONES","PLANTILLAS","ALAA","AMAA","ARLA","ARLB","BIRA","CPFA","CPMA","CPMA","CPVA","CPVB","CSJA","HAMA","HCCA","HCSA","HSCA","HSPA","IHCA","MHCA","MHCB","OIAA","PBAA","PBAA","PRAA","PRE","PSRA","REAA","SFCA","SJSS","UEHA","MOLLET HC AMHCA","CH CALDES RECAM LÀSER BARLB","CLUB PATÍ SANT RAMON APSRA","CLUB PATÍ VOLTREGÀ ACPVA","CLUB PATÍ VILAFRANCA A APBAA","IGUALADA HC AIHCA","MOLLET HC BMHCB","UNIÓ ESPORTIVA D´HORTA AUEHA","CP RODA APRAA","SOLIDEO PHC SANT CUGAT AHSCA","UEH BARBERÀ A AREAA","CLUB PATÍ VOLTREGÀ BCPVB","HC PALAU PLEGAMANS AALAA","HOQUEI CLUB CASTELLAR AHCCA","CLUB PATÍ SANT RAMON APSRA","CE NOIA AOIAA"]
+tab CALENDARIO Y RESULTADOS
+tab CLASIFICACIONES
+acta <button class="sidgad-partido-fila sidgad-partido-finalizado"><div class="sidgad-partido-fila-content"><div class="sidgad-equipo-box sidgad-local"><img src="https://sidgad.cloud/fecapa/images/logos_clubes/237.png" class="sidgad-equipo-logo-mini" alt="CHCA" onerror="this.src='https://www.sidgad.com/shared/images/no_logo.png'"><div class="sidgad-equipo-info"><span class="sidgad-equipo-nombre">CHCA</span><span class="sidgad-equipo-sub">21/11 11:15</span></div></div><div class="sidgad-resultado-box"><span class="sidgad-resultado-texto"><span class="sidgad-bonus local-bonus"></span>3 - 4<span class

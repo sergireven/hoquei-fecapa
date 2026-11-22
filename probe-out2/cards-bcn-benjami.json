@@ -1,0 +1,14 @@
+[
+ {
+  "html": "<button class=\"sidgad-liga-card\" data-season-id=\"41\" data-zona=\"20\" data-categoria=\"1\" data-sexo=\"0\">\n        <img src=\"https://sidgad.cloud/fecapa/images/logos_competiciones/12.png\" class=\"sidgad-liga-logo\" alt=\"\" onerror=\"sidgadLogoCompeticionFallo(this)\">\n        <div class=\"sidgad-liga-info\">\n          <span class=\"sidgad-zona\">BARCELONA</span>\n          <div class=\"sidgad-liga-titulo\">BENJAMÍ",
+  "t": "BARCELONA BENJAMÍ OR BARCELONA"
+ },
+ {
+  "html": "<button class=\"sidgad-liga-card\" data-season-id=\"41\" data-zona=\"20\" data-categoria=\"1\" data-sexo=\"0\">\n        <img src=\"https://sidgad.cloud/fecapa/images/logos_competiciones/12.png\" class=\"sidgad-liga-logo\" alt=\"\" onerror=\"sidgadLogoCompeticionFallo(this)\">\n        <div class=\"sidgad-liga-info\">\n          <span class=\"sidgad-zona\">BARCELONA</span>\n          <div class=\"sidgad-liga-titulo\">BENJAMÍ",
+  "t": "BARCELONA BENJAMÍ PLATA BARCELONA"
+ },
+ {
+  "html": "<button class=\"sidgad-liga-card\" data-season-id=\"41\" data-zona=\"20\" data-categoria=\"1\" data-sexo=\"0\">\n        <img src=\"https://sidgad.cloud/fecapa/images/logos_competiciones/12.png\" class=\"sidgad-liga-logo\" alt=\"\" onerror=\"sidgadLogoCompeticionFallo(this)\">\n        <div class=\"sidgad-liga-info\">\n          <span class=\"sidgad-zona\">BARCELONA</span>\n          <div class=\"sidgad-liga-titulo\">BENJAMÍ",
+  "t": "BARCELONA BENJAMÍ BRONZE BARCELONA"
+ }
+]
