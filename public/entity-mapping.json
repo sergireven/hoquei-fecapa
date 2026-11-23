@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T00:40:17.956Z",
+  "generatedAt": "2026-11-23T21:59:24.596Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 211,
@@ -15997,6 +15997,14 @@
         "competitionCanonicalId": "cmp_50d3166cf4cf"
       },
       {
+        "canonicalId": "team_546323d4e33b",
+        "clubCanonicalId": "club_f0f323c328f7",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "MOLLET HC",
+        "competitionCanonicalId": "cmp_50d3166cf4cf"
+      },
+      {
         "canonicalId": "team_2522a2f98444",
         "clubCanonicalId": "club_bb8eb812dc39",
         "source": "jok",
@@ -16010,14 +16018,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "GEIEG",
-        "competitionCanonicalId": "cmp_50d3166cf4cf"
-      },
-      {
-        "canonicalId": "team_546323d4e33b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "MOLLET HC",
         "competitionCanonicalId": "cmp_50d3166cf4cf"
       },
       {
@@ -30768,6 +30768,15 @@
         "groupCanonicalId": "grp_dc80833720f3"
       },
       {
+        "canonicalId": "team_546323d4e33b",
+        "clubCanonicalId": "club_f0f323c328f7",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "MOLLET HC",
+        "competitionCanonicalId": "cmp_50d3166cf4cf",
+        "groupCanonicalId": "grp_dc80833720f3"
+      },
+      {
         "canonicalId": "team_2522a2f98444",
         "clubCanonicalId": "club_bb8eb812dc39",
         "source": "fecapa",
@@ -30782,15 +30791,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "GEIEG",
-        "competitionCanonicalId": "cmp_50d3166cf4cf",
-        "groupCanonicalId": "grp_dc80833720f3"
-      },
-      {
-        "canonicalId": "team_546323d4e33b",
-        "clubCanonicalId": "club_f0f323c328f7",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "MOLLET HC",
         "competitionCanonicalId": "cmp_50d3166cf4cf",
         "groupCanonicalId": "grp_dc80833720f3"
       },
@@ -168439,17 +168439,17 @@
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_b0d35875d1c3",
+        "canonicalId": "acta_56621e6c5b24",
         "source": "jok",
-        "sourceId": "478748921179512068",
+        "sourceId": "478748921175412011",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_56621e6c5b24",
+        "canonicalId": "acta_b0d35875d1c3",
         "source": "jok",
-        "sourceId": "478748921175412011",
+        "sourceId": "478748921179512068",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
@@ -179922,7 +179922,7 @@
         "canonicalId": "acta_fbe1e5021182",
         "source": "jok",
         "sourceId": "146390",
-        "sourceName": "vs",
+        "sourceName": "Cp Voltregà - Masies vs Ch Caldes Recam Làser",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
@@ -181882,7 +181882,7 @@
         "canonicalId": "acta_9501d2550e2d",
         "source": "jok",
         "sourceId": "146635",
-        "sourceName": "vs",
+        "sourceName": "Patí Vic vs Club Pati Torrelles",
         "compSourceId": "4865",
         "compName": "NACIONAL CATALANA FEMENINA (2026-27)"
       },

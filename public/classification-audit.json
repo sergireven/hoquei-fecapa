@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-11-23T00:40:23.532Z",
+  "builtAt": "2026-11-23T21:59:28.647Z",
   "fecapaSource": "sidgad_api",
-  "jokcatUpdatedAt": "2026-11-23T00:39:30.654Z",
+  "jokcatUpdatedAt": "2026-11-23T21:58:50.780Z",
   "feedbackUpdatedAt": null,
   "totalGroupsOk": 150,
   "totalGroupsMissing": 26,
@@ -29829,9 +29829,9 @@
               "won": 6,
               "drawn": 2,
               "lost": 0,
-              "goalsFor": 55,
+              "goalsFor": 45,
               "goalsAgainst": 10,
-              "goalDiff": 45,
+              "goalDiff": 35,
               "penalties": 0
             },
             {
@@ -29878,8 +29878,8 @@
               "drawn": 0,
               "lost": 5,
               "goalsFor": 15,
-              "goalsAgainst": 42,
-              "goalDiff": -27,
+              "goalsAgainst": 32,
+              "goalDiff": -17,
               "penalties": 0
             },
             {
@@ -29953,9 +29953,9 @@
               "pg": 6,
               "pe": 2,
               "pp": 0,
-              "gf": 55,
+              "gf": 45,
               "gc": 10,
-              "gav": 45,
+              "gav": 35,
               "pen": 0
             },
             {
@@ -29999,8 +29999,8 @@
               "pe": 0,
               "pp": 5,
               "gf": 15,
-              "gc": 42,
-              "gav": -27,
+              "gc": 32,
+              "gav": -17,
               "pen": 0
             },
             {
@@ -66076,9 +66076,9 @@
             "UEH VETERANS 50",
             "CLUB PATI VILAFRANCA",
             "UNIO ESPORTIVA LA GARRIGA 50",
+            "MOLLET",
             "CORNELLA",
             "GEIEG",
-            "MOLLET",
             "ESPANYOL",
             "CLUB PATI CALAFELL",
             "CLUB HOQUEI PREMIA A",
@@ -66139,6 +66139,22 @@
             {
               "position": 4,
               "teamId": null,
+              "teamName": "MOLLET HC",
+              "teamShort": "MHC",
+              "logoSrc": "https://sidgad.cloud/fecapa/images/logos_clubes/266_1.png",
+              "points": 12,
+              "played": 4,
+              "won": 4,
+              "drawn": 0,
+              "lost": 0,
+              "goalsFor": 25,
+              "goalsAgainst": 9,
+              "goalDiff": 16,
+              "penalties": 0
+            },
+            {
+              "position": 5,
+              "teamId": null,
               "teamName": "CE CORNELLÀ",
               "teamShort": "CORN",
               "logoSrc": "https://sidgad.cloud/fecapa/images/logos_clubes/248.png",
@@ -66153,7 +66169,7 @@
               "penalties": 0
             },
             {
-              "position": 5,
+              "position": 6,
               "teamId": null,
               "teamName": "GEIEG",
               "teamShort": "GEG",
@@ -66166,22 +66182,6 @@
               "goalsFor": 25,
               "goalsAgainst": 14,
               "goalDiff": 11,
-              "penalties": 0
-            },
-            {
-              "position": 6,
-              "teamId": null,
-              "teamName": "MOLLET HC",
-              "teamShort": "MHC",
-              "logoSrc": "https://sidgad.cloud/fecapa/images/logos_clubes/266_1.png",
-              "points": 9,
-              "played": 3,
-              "won": 3,
-              "drawn": 0,
-              "lost": 0,
-              "goalsFor": 14,
-              "goalsAgainst": 7,
-              "goalDiff": 7,
               "penalties": 0
             },
             {
@@ -66207,13 +66207,13 @@
               "teamShort": "CPC",
               "logoSrc": "https://sidgad.cloud/fecapa/images/logos_clubes/322.png",
               "points": 6,
-              "played": 6,
+              "played": 7,
               "won": 2,
               "drawn": 0,
-              "lost": 4,
-              "goalsFor": 22,
-              "goalsAgainst": 23,
-              "goalDiff": -1,
+              "lost": 5,
+              "goalsFor": 24,
+              "goalsAgainst": 34,
+              "goalDiff": -10,
               "penalties": 0
             },
             {
@@ -66545,6 +66545,21 @@
             {
               "pos": 4,
               "teamId": null,
+              "team": "MOLLET HC",
+              "clubId": "https://sidgad.cloud/fecapa/images/logos_clubes/266_1.png",
+              "pts": 12,
+              "pj": 4,
+              "pg": 4,
+              "pe": 0,
+              "pp": 0,
+              "gf": 25,
+              "gc": 9,
+              "gav": 16,
+              "pen": 0
+            },
+            {
+              "pos": 5,
+              "teamId": null,
               "team": "CE CORNELLÀ",
               "clubId": "https://sidgad.cloud/fecapa/images/logos_clubes/248.png",
               "pts": 10,
@@ -66558,7 +66573,7 @@
               "pen": 0
             },
             {
-              "pos": 5,
+              "pos": 6,
               "teamId": null,
               "team": "GEIEG",
               "clubId": "https://sidgad.cloud/fecapa/images/logos_clubes/311.png",
@@ -66570,21 +66585,6 @@
               "gf": 25,
               "gc": 14,
               "gav": 11,
-              "pen": 0
-            },
-            {
-              "pos": 6,
-              "teamId": null,
-              "team": "MOLLET HC",
-              "clubId": "https://sidgad.cloud/fecapa/images/logos_clubes/266_1.png",
-              "pts": 9,
-              "pj": 3,
-              "pg": 3,
-              "pe": 0,
-              "pp": 0,
-              "gf": 14,
-              "gc": 7,
-              "gav": 7,
               "pen": 0
             },
             {
@@ -66608,13 +66608,13 @@
               "team": "CLUB PATI CALAFELL",
               "clubId": "https://sidgad.cloud/fecapa/images/logos_clubes/322.png",
               "pts": 6,
-              "pj": 6,
+              "pj": 7,
               "pg": 2,
               "pe": 0,
-              "pp": 4,
-              "gf": 22,
-              "gc": 23,
-              "gav": -1,
+              "pp": 5,
+              "gf": 24,
+              "gc": 34,
+              "gav": -10,
               "pen": 0
             },
             {
