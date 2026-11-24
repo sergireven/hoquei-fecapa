@@ -14054,7 +14054,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2027-01-09",
-        "time": "20:00",
+        "time": "20:15",
         "played": false
       },
       {
@@ -25344,20 +25344,6 @@
         "played": false
       },
       {
-        "idp": "147933",
-        "idc": "4870",
-        "jornada": 22,
-        "home": "CLUB HOQUEI MOLLERUSSA",
-        "homeId": "11683",
-        "away": "CH PALAFRUGELL",
-        "awayId": "11220",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2027-04-09",
-        "time": "21:30",
-        "played": false
-      },
-      {
         "idp": "147932",
         "idc": "4870",
         "jornada": 22,
@@ -25439,6 +25425,20 @@
         "awayScore": null,
         "date": "2027-04-11",
         "time": "17:30",
+        "played": false
+      },
+      {
+        "idp": "147933",
+        "idc": "4870",
+        "jornada": 22,
+        "home": "CLUB HOQUEI MOLLERUSSA",
+        "homeId": "11683",
+        "away": "CH PALAFRUGELL",
+        "awayId": "11220",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-04-11",
+        "time": "20:00",
         "played": false
       },
       {
@@ -41410,6 +41410,20 @@
         "played": false
       },
       {
+        "idp": "153208",
+        "idc": "4939",
+        "jornada": 11,
+        "home": "CEH SABADELL",
+        "homeId": "11770",
+        "away": "EUROFIRMS CASSANENC",
+        "awayId": "11403",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-03",
+        "time": "20:45",
+        "played": false
+      },
+      {
         "idp": "153206",
         "idc": "4939",
         "jornada": 11,
@@ -41505,20 +41519,6 @@
         "awayScore": null,
         "date": "2026-12-06",
         "time": "13:00",
-        "played": false
-      },
-      {
-        "idp": "153208",
-        "idc": "4939",
-        "jornada": 11,
-        "home": "CEH SABADELL",
-        "homeId": "11770",
-        "away": "EUROFIRMS CASSANENC",
-        "awayId": "11403",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-06",
-        "time": "19:00",
         "played": false
       },
       {
@@ -61835,6 +61835,20 @@
         "played": false
       },
       {
+        "idp": "151173",
+        "idc": "4904",
+        "jornada": 12,
+        "home": "FARNERS",
+        "homeId": "11996",
+        "away": "CE NOIA FREIXENET A",
+        "awayId": "11789",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-12",
+        "time": "12:00",
+        "played": false
+      },
+      {
         "idp": "151174",
         "idc": "4904",
         "jornada": 12,
@@ -61860,20 +61874,6 @@
         "awayScore": null,
         "date": "2026-12-12",
         "time": "12:40",
-        "played": false
-      },
-      {
-        "idp": "151173",
-        "idc": "4904",
-        "jornada": 12,
-        "home": "FARNERS",
-        "homeId": "11996",
-        "away": "CE NOIA FREIXENET A",
-        "awayId": "11789",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-12",
-        "time": "18:30",
         "played": false
       },
       {
@@ -71505,20 +71505,6 @@
         "played": false
       },
       {
-        "idp": "151510",
-        "idc": "4910",
-        "jornada": 12,
-        "home": "FARNERS A",
-        "homeId": "11995",
-        "away": "CH CALDES RECAM LÀSER A",
-        "awayId": "11981",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-12",
-        "time": "17:00",
-        "played": false
-      },
-      {
         "idp": "151508",
         "idc": "4910",
         "jornada": 12,
@@ -71530,6 +71516,20 @@
         "awayScore": null,
         "date": "2026-12-12",
         "time": "17:45",
+        "played": false
+      },
+      {
+        "idp": "151510",
+        "idc": "4910",
+        "jornada": 12,
+        "home": "FARNERS A",
+        "homeId": "11995",
+        "away": "CH CALDES RECAM LÀSER A",
+        "awayId": "11981",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-12",
+        "time": "20:00",
         "played": false
       },
       {
@@ -75061,20 +75061,6 @@
         "played": false
       },
       {
-        "idp": "151849",
-        "idc": "4916",
-        "jornada": 13,
-        "home": "CHP SANT FELIU A",
-        "homeId": "11899",
-        "away": "GENERALI HC PALAU B",
-        "awayId": "11321",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-19",
-        "time": "16:00",
-        "played": false
-      },
-      {
         "idp": "151851",
         "idc": "4916",
         "jornada": 13,
@@ -75100,6 +75086,20 @@
         "awayScore": null,
         "date": "2026-12-20",
         "time": "15:00",
+        "played": false
+      },
+      {
+        "idp": "151849",
+        "idc": "4916",
+        "jornada": 13,
+        "home": "CHP SANT FELIU A",
+        "homeId": "11899",
+        "away": "GENERALI HC PALAU B",
+        "awayId": "11321",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-20",
+        "time": "18:30",
         "played": false
       },
       {
@@ -79198,7 +79198,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-12-05",
-        "time": "10:00",
+        "time": "11:15",
         "played": false
       },
       {
@@ -79310,7 +79310,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-12-12",
-        "time": "19:00",
+        "time": "18:00",
         "played": false
       },
       {
@@ -79491,22 +79491,8 @@
         "awayId": "12409",
         "homeScore": null,
         "awayScore": null,
-        "date": "2027-01-09",
-        "time": "19:00",
-        "played": false
-      },
-      {
-        "idp": "150347",
-        "idc": "4894",
-        "jornada": 14,
-        "home": "CHP MCDONALD'S AMPOSTA",
-        "homeId": "12106",
-        "away": "CLUB ESPORTIU OLESA PATI A",
-        "awayId": "11539",
-        "homeScore": null,
-        "awayScore": null,
         "date": "2027-01-10",
-        "time": "12:30",
+        "time": "10:00",
         "played": false
       },
       {
@@ -79521,6 +79507,20 @@
         "awayScore": null,
         "date": "2027-01-10",
         "time": "15:00",
+        "played": false
+      },
+      {
+        "idp": "150347",
+        "idc": "4894",
+        "jornada": 14,
+        "home": "CHP MCDONALD'S AMPOSTA",
+        "homeId": "12106",
+        "away": "CLUB ESPORTIU OLESA PATI A",
+        "awayId": "11539",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-01-10",
+        "time": "18:15",
         "played": false
       },
       {
@@ -82002,20 +82002,6 @@
         "played": false
       },
       {
-        "idp": "150555",
-        "idc": "4896",
-        "jornada": 10,
-        "home": "CH MATARÓ C",
-        "homeId": "11874",
-        "away": "CLUB PATÍ CENTELLES",
-        "awayId": "11665",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-28",
-        "time": "15:15",
-        "played": false
-      },
-      {
         "idp": "150559",
         "idc": "4896",
         "jornada": 10,
@@ -82055,6 +82041,20 @@
         "awayScore": null,
         "date": "2026-11-29",
         "time": "17:15",
+        "played": false
+      },
+      {
+        "idp": "150555",
+        "idc": "4896",
+        "jornada": 10,
+        "home": "CH MATARÓ C",
+        "homeId": "11874",
+        "away": "CLUB PATÍ CENTELLES",
+        "awayId": "11665",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-03",
+        "time": "20:30",
         "played": false
       },
       {
@@ -83580,7 +83580,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-12-19",
-        "time": "15:00",
+        "time": "11:40",
         "played": false
       },
       {
@@ -86881,20 +86881,6 @@
         "played": false
       },
       {
-        "idp": "151896",
-        "idc": "4917",
-        "jornada": 11,
-        "home": "BARÇA",
-        "homeId": "11172",
-        "away": "CLUB HOQUEI VILA-SECA C",
-        "awayId": "11812",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-05",
-        "time": "13:00",
-        "played": false
-      },
-      {
         "idp": "151897",
         "idc": "4917",
         "jornada": 11,
@@ -86934,6 +86920,20 @@
         "awayScore": null,
         "date": "2026-12-06",
         "time": "11:00",
+        "played": false
+      },
+      {
+        "idp": "151896",
+        "idc": "4917",
+        "jornada": 11,
+        "home": "BARÇA",
+        "homeId": "11172",
+        "away": "CLUB HOQUEI VILA-SECA C",
+        "awayId": "11812",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-11",
+        "time": "19:00",
         "played": false
       },
       {
@@ -98830,7 +98830,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-12-20",
-        "time": "15:00",
+        "time": "16:15",
         "played": false
       },
       {
@@ -99688,20 +99688,6 @@
         "played": false
       },
       {
-        "idp": "149851",
-        "idc": "4889",
-        "jornada": 10,
-        "home": "CLUB HOQUEI CASTELLET",
-        "homeId": "11339",
-        "away": "MARTINELIA MANLLEU C",
-        "awayId": "11304",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-28",
-        "time": "16:00",
-        "played": false
-      },
-      {
         "idp": "149855",
         "idc": "4889",
         "jornada": 10,
@@ -99741,6 +99727,20 @@
         "awayScore": null,
         "date": "2026-11-28",
         "time": "16:15",
+        "played": false
+      },
+      {
+        "idp": "149851",
+        "idc": "4889",
+        "jornada": 10,
+        "home": "CLUB HOQUEI CASTELLET",
+        "homeId": "11339",
+        "away": "MARTINELIA MANLLEU C",
+        "awayId": "11304",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-11-28",
+        "time": "17:00",
         "played": false
       },
       {
@@ -103398,20 +103398,6 @@
         "played": false
       },
       {
-        "idp": "157935",
-        "idc": "4991",
-        "jornada": 11,
-        "home": "HOQUEI CLUB ALPICAT D",
-        "homeId": "12053",
-        "away": "CLUB HOQUEI MOLLERUSSA A",
-        "awayId": "11678",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-12",
-        "time": "16:15",
-        "played": false
-      },
-      {
         "idp": "157932",
         "idc": "4991",
         "jornada": 11,
@@ -103451,6 +103437,20 @@
         "awayScore": null,
         "date": "2026-12-13",
         "time": "17:00",
+        "played": false
+      },
+      {
+        "idp": "157935",
+        "idc": "4991",
+        "jornada": 11,
+        "home": "HOQUEI CLUB ALPICAT D",
+        "homeId": "12053",
+        "away": "CLUB HOQUEI MOLLERUSSA A",
+        "awayId": "11678",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-13",
+        "time": "17:30",
         "played": false
       },
       {
@@ -114598,20 +114598,6 @@
         "played": true
       },
       {
-        "idp": "152780",
-        "idc": "4933",
-        "jornada": 8,
-        "home": "JESUS MARIA I JOSEP B",
-        "homeId": "11105",
-        "away": "CP CONGRES A",
-        "awayId": "12025",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-14",
-        "time": "19:15",
-        "played": false
-      },
-      {
         "idp": "152782",
         "idc": "4933",
         "jornada": 8,
@@ -114638,6 +114624,20 @@
         "date": "2026-11-15",
         "time": "10:00",
         "played": true
+      },
+      {
+        "idp": "152780",
+        "idc": "4933",
+        "jornada": 8,
+        "home": "JESUS MARIA I JOSEP B",
+        "homeId": "11105",
+        "away": "CP CONGRES A",
+        "awayId": "12025",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-11",
+        "time": "20:00",
+        "played": false
       },
       {
         "idp": "152786",
@@ -115410,6 +115410,20 @@
         "played": false
       },
       {
+        "idp": "152851",
+        "idc": "4934",
+        "jornada": 11,
+        "home": "REUS DEPORTIU A A",
+        "homeId": "12345",
+        "away": "CP CORBERA",
+        "awayId": "11282",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-05",
+        "time": "13:30",
+        "played": false
+      },
+      {
         "idp": "152850",
         "idc": "4934",
         "jornada": 11,
@@ -115421,20 +115435,6 @@
         "awayScore": null,
         "date": "2026-12-05",
         "time": "13:45",
-        "played": false
-      },
-      {
-        "idp": "152851",
-        "idc": "4934",
-        "jornada": 11,
-        "home": "REUS DEPORTIU A A",
-        "homeId": "12345",
-        "away": "CP CORBERA",
-        "awayId": "11282",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-06",
-        "time": "15:00",
         "played": false
       },
       {
@@ -121035,6 +121035,20 @@
         "played": false
       },
       {
+        "idp": "148865",
+        "idc": "4878",
+        "jornada": 12,
+        "home": "CP FOLGUEROLES B",
+        "homeId": "11463",
+        "away": "AUTO VIGATANA PATÍ VIC C",
+        "awayId": "12239",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-19",
+        "time": "14:45",
+        "played": false
+      },
+      {
         "idp": "148867",
         "idc": "4878",
         "jornada": 12,
@@ -121088,20 +121102,6 @@
         "awayScore": null,
         "date": "2026-12-20",
         "time": "12:30",
-        "played": false
-      },
-      {
-        "idp": "148865",
-        "idc": "4878",
-        "jornada": 12,
-        "home": "CP FOLGUEROLES B",
-        "homeId": "11463",
-        "away": "AUTO VIGATANA PATÍ VIC C",
-        "awayId": "12239",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-20",
-        "time": "16:15",
         "played": false
       },
       {
@@ -122277,7 +122277,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2027-01-10",
-        "time": "12:30",
+        "time": "12:45",
         "played": false
       },
       {
@@ -127685,6 +127685,20 @@
         "played": false
       },
       {
+        "idp": "159244",
+        "idc": "5008",
+        "jornada": 13,
+        "home": "CHP MCDONALD'S AMPOSTA A",
+        "homeId": "12103",
+        "away": "HC VALLS FM LOGISTIC A",
+        "awayId": "12069",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-01-09",
+        "time": "17:15",
+        "played": false
+      },
+      {
         "idp": "159247",
         "idc": "5008",
         "jornada": 13,
@@ -127724,20 +127738,6 @@
         "awayScore": null,
         "date": "2027-01-10",
         "time": "10:00",
-        "played": false
-      },
-      {
-        "idp": "159244",
-        "idc": "5008",
-        "jornada": 13,
-        "home": "CHP MCDONALD'S AMPOSTA A",
-        "homeId": "12103",
-        "away": "HC VALLS FM LOGISTIC A",
-        "awayId": "12069",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2027-01-10",
-        "time": "11:15",
         "played": false
       },
       {
@@ -141649,6 +141649,20 @@
         "played": false
       },
       {
+        "idp": "157039",
+        "idc": "4976",
+        "jornada": 10,
+        "home": "HOQUEI CLUB ALPICAT",
+        "homeId": "12057",
+        "away": "CH LLORET CAFÈS CORNELLÀ",
+        "awayId": "11199",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-12",
+        "time": "15:30",
+        "played": false
+      },
+      {
         "idp": "157037",
         "idc": "4976",
         "jornada": 10,
@@ -141688,20 +141702,6 @@
         "awayScore": null,
         "date": "2026-12-12",
         "time": "19:00",
-        "played": false
-      },
-      {
-        "idp": "157039",
-        "idc": "4976",
-        "jornada": 10,
-        "home": "HOQUEI CLUB ALPICAT",
-        "homeId": "12057",
-        "away": "CH LLORET CAFÈS CORNELLÀ",
-        "awayId": "11199",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-13",
-        "time": "17:30",
         "played": false
       },
       {
@@ -145472,7 +145472,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-28",
-        "time": "16:45",
+        "time": "17:30",
         "played": false
       },
       {
@@ -150293,7 +150293,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-29",
-        "time": "16:15",
+        "time": "16:45",
         "played": false
       },
       {
@@ -156883,7 +156883,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-29",
-        "time": "17:15",
+        "time": "16:45",
         "played": false
       },
       {
@@ -159478,7 +159478,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-29",
-        "time": "12:30",
+        "time": "11:30",
         "played": false
       },
       {
@@ -159538,20 +159538,6 @@
         "played": false
       },
       {
-        "idp": "158710",
-        "idc": "5002",
-        "jornada": 11,
-        "home": "INNOAESTHETICS HC SANT JUST A",
-        "homeId": "12176",
-        "away": "CLUB PATÍ VOLTREGÀ",
-        "awayId": "12538",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-05",
-        "time": "10:00",
-        "played": false
-      },
-      {
         "idp": "158713",
         "idc": "5002",
         "jornada": 11,
@@ -159605,6 +159591,20 @@
         "awayScore": null,
         "date": "2026-12-06",
         "time": "13:00",
+        "played": false
+      },
+      {
+        "idp": "158710",
+        "idc": "5002",
+        "jornada": 11,
+        "home": "INNOAESTHETICS HC SANT JUST A",
+        "homeId": "12176",
+        "away": "CLUB PATÍ VOLTREGÀ",
+        "awayId": "12538",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-20",
+        "time": "11:15",
         "played": false
       },
       {
@@ -161526,8 +161526,8 @@
         "awayId": "12235",
         "homeScore": null,
         "awayScore": null,
-        "date": "2026-11-28",
-        "time": "13:00",
+        "date": "2026-12-05",
+        "time": "17:30",
         "played": false
       },
       {
@@ -171935,20 +171935,6 @@
         "played": true
       },
       {
-        "idp": "154592",
-        "idc": "4949",
-        "jornada": 10,
-        "home": "SANT CELONI",
-        "homeId": "12591",
-        "away": "CE NOIA FREIXENET",
-        "awayId": "11803",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-29",
-        "time": "10:00",
-        "played": false
-      },
-      {
         "idp": "154593",
         "idc": "4949",
         "jornada": 10,
@@ -171956,6 +171942,20 @@
         "homeId": "11930",
         "away": "CLUB PATÍ VOLTREGÀ B",
         "awayId": "12542",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-11-28",
+        "time": "15:30",
+        "played": false
+      },
+      {
+        "idp": "154592",
+        "idc": "4949",
+        "jornada": 10,
+        "home": "SANT CELONI",
+        "homeId": "12591",
+        "away": "CE NOIA FREIXENET",
+        "awayId": "11803",
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-29",
@@ -177772,6 +177772,20 @@
         "played": false
       },
       {
+        "idp": "155344",
+        "idc": "4955",
+        "jornada": 10,
+        "home": "CH LES FRANQUESES",
+        "homeId": "11625",
+        "away": "UNIÓ ESPORTIVA D'HORTA B",
+        "awayId": "11157",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-11-28",
+        "time": "15:00",
+        "played": false
+      },
+      {
         "idp": "155347",
         "idc": "4955",
         "jornada": 10,
@@ -177811,20 +177825,6 @@
         "awayScore": null,
         "date": "2026-11-29",
         "time": "10:00",
-        "played": false
-      },
-      {
-        "idp": "155344",
-        "idc": "4955",
-        "jornada": 10,
-        "home": "CH LES FRANQUESES",
-        "homeId": "11625",
-        "away": "UNIÓ ESPORTIVA D'HORTA B",
-        "awayId": "11157",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-29",
-        "time": "10:45",
         "played": false
       },
       {
@@ -179018,20 +179018,6 @@
         "played": false
       },
       {
-        "idp": "155483",
-        "idc": "4956",
-        "jornada": 12,
-        "home": "CP FOLGUEROLES A",
-        "homeId": "11465",
-        "away": "CP TARADELL",
-        "awayId": "11359",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-19",
-        "time": "14:45",
-        "played": false
-      },
-      {
         "idp": "155485",
         "idc": "4956",
         "jornada": 12,
@@ -179057,6 +179043,20 @@
         "awayScore": null,
         "date": "2026-12-20",
         "time": "10:00",
+        "played": false
+      },
+      {
+        "idp": "155483",
+        "idc": "4956",
+        "jornada": 12,
+        "home": "CP FOLGUEROLES A",
+        "homeId": "11465",
+        "away": "CP TARADELL",
+        "awayId": "11359",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-20",
+        "time": "15:00",
         "played": false
       },
       {
@@ -183651,7 +183651,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-29",
-        "time": "16:30",
+        "time": "17:00",
         "played": false
       },
       {
@@ -184201,6 +184201,20 @@
         "played": true
       },
       {
+        "idp": "155723",
+        "idc": "4959",
+        "jornada": 10,
+        "home": "CLUB HOQUEI PRAT",
+        "homeId": "12154",
+        "away": "CLUB HOQUEI MOLINS DE REI",
+        "awayId": "12109",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-11-20",
+        "time": "15:00",
+        "played": false
+      },
+      {
         "idp": "155724",
         "idc": "4959",
         "jornada": 10,
@@ -184212,20 +184226,6 @@
         "awayScore": null,
         "date": "2026-11-28",
         "time": "10:00",
-        "played": false
-      },
-      {
-        "idp": "155723",
-        "idc": "4959",
-        "jornada": 10,
-        "home": "CLUB HOQUEI PRAT",
-        "homeId": "12154",
-        "away": "CLUB HOQUEI MOLINS DE REI",
-        "awayId": "12109",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-28",
-        "time": "16:00",
         "played": false
       },
       {
@@ -190663,20 +190663,6 @@
         "played": true
       },
       {
-        "idp": "156296",
-        "idc": "4966",
-        "jornada": 10,
-        "home": "CH LES FRANQUESES B",
-        "homeId": "11624",
-        "away": "CP FOLGUEROLES B",
-        "awayId": "11468",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-28",
-        "time": "10:00",
-        "played": false
-      },
-      {
         "idp": "156294",
         "idc": "4966",
         "jornada": 10,
@@ -190698,6 +190684,20 @@
         "homeId": "11889",
         "away": "CLUB PATÍ VOLTREGÀ C",
         "awayId": "12553",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-11-28",
+        "time": "16:15",
+        "played": false
+      },
+      {
+        "idp": "156296",
+        "idc": "4966",
+        "jornada": 10,
+        "home": "CH LES FRANQUESES B",
+        "homeId": "11624",
+        "away": "CP FOLGUEROLES B",
+        "awayId": "11468",
         "homeScore": null,
         "awayScore": null,
         "date": "2026-11-28",
@@ -190873,20 +190873,6 @@
         "played": false
       },
       {
-        "idp": "156309",
-        "idc": "4966",
-        "jornada": 12,
-        "home": "AUTO VIGATANA PATÍ VIC A",
-        "homeId": "12243",
-        "away": "CH RIPOLLET B",
-        "awayId": "12444",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-19",
-        "time": "15:00",
-        "played": false
-      },
-      {
         "idp": "156314",
         "idc": "4966",
         "jornada": 12,
@@ -190898,6 +190884,20 @@
         "awayScore": null,
         "date": "2026-12-20",
         "time": "10:00",
+        "played": false
+      },
+      {
+        "idp": "156309",
+        "idc": "4966",
+        "jornada": 12,
+        "home": "AUTO VIGATANA PATÍ VIC A",
+        "homeId": "12243",
+        "away": "CH RIPOLLET B",
+        "awayId": "12444",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-20",
+        "time": "12:00",
         "played": false
       },
       {
@@ -199609,20 +199609,6 @@
         "played": true
       },
       {
-        "idp": "156831",
-        "idc": "4973",
-        "jornada": 8,
-        "home": "UNIÓ ESPORTIVA D'HORTA",
-        "homeId": "11152",
-        "away": "CPI SANT IGNASI A",
-        "awayId": "11692",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-14",
-        "time": "13:45",
-        "played": false
-      },
-      {
         "idp": "156833",
         "idc": "4973",
         "jornada": 8,
@@ -199635,6 +199621,20 @@
         "date": "2026-11-15",
         "time": "11:15",
         "played": true
+      },
+      {
+        "idp": "156831",
+        "idc": "4973",
+        "jornada": 8,
+        "home": "UNIÓ ESPORTIVA D'HORTA",
+        "homeId": "11152",
+        "away": "CPI SANT IGNASI A",
+        "awayId": "11692",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-11",
+        "time": "17:45",
+        "played": false
       },
       {
         "idp": "156836",
@@ -203175,8 +203175,8 @@
         "awayId": "11551",
         "homeScore": null,
         "awayScore": null,
-        "date": "2027-01-10",
-        "time": "10:00",
+        "date": "2027-01-09",
+        "time": "16:00",
         "played": false
       },
       {
@@ -203446,20 +203446,6 @@
         "played": false
       },
       {
-        "idp": "161408",
-        "idc": "5043",
-        "jornada": 13,
-        "home": "CHP MCDONALDS AMPOSTA",
-        "homeId": "12098",
-        "away": "CLUB HOQUEI VILA-SECA A",
-        "awayId": "11756",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2027-01-09",
-        "time": "17:15",
-        "played": false
-      },
-      {
         "idp": "161411",
         "idc": "5043",
         "jornada": 13,
@@ -203498,7 +203484,7 @@
         "homeScore": null,
         "awayScore": null,
         "date": "2027-01-10",
-        "time": "11:15",
+        "time": "15:00",
         "played": false
       },
       {
@@ -203513,6 +203499,20 @@
         "awayScore": null,
         "date": "2027-01-10",
         "time": "16:30",
+        "played": false
+      },
+      {
+        "idp": "161408",
+        "idc": "5043",
+        "jornada": 13,
+        "home": "CHP MCDONALDS AMPOSTA",
+        "homeId": "12098",
+        "away": "CLUB HOQUEI VILA-SECA A",
+        "awayId": "11756",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-01-10",
+        "time": "17:00",
         "played": false
       },
       {
@@ -207695,6 +207695,20 @@
         "played": false
       },
       {
+        "idp": "161501",
+        "idc": "5044",
+        "jornada": 9,
+        "home": "HC VALLS FM LOGISTIC B",
+        "homeId": "12073",
+        "away": "CLUB D'ESPORTS VENDRELL C",
+        "awayId": "11548",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-12-11",
+        "time": "20:00",
+        "played": false
+      },
+      {
         "idp": "161500",
         "idc": "5044",
         "jornada": 9,
@@ -207748,20 +207762,6 @@
         "awayScore": null,
         "date": "2026-12-13",
         "time": "10:00",
-        "played": false
-      },
-      {
-        "idp": "161501",
-        "idc": "5044",
-        "jornada": 9,
-        "home": "HC VALLS FM LOGISTIC B",
-        "homeId": "12073",
-        "away": "CLUB D'ESPORTS VENDRELL C",
-        "awayId": "11548",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-12-13",
-        "time": "10:30",
         "played": false
       },
       {
@@ -207891,20 +207891,6 @@
         "played": false
       },
       {
-        "idp": "161515",
-        "idc": "5044",
-        "jornada": 11,
-        "home": "CLUB HOQUEI VILA-SECA D",
-        "homeId": "11758",
-        "away": "CHP MCDONALD'S AMPOSTA B",
-        "awayId": "12096",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2027-01-10",
-        "time": "10:00",
-        "played": false
-      },
-      {
         "idp": "161514",
         "idc": "5044",
         "jornada": 11,
@@ -207916,6 +207902,20 @@
         "awayScore": null,
         "date": "2027-01-10",
         "time": "10:30",
+        "played": false
+      },
+      {
+        "idp": "161515",
+        "idc": "5044",
+        "jornada": 11,
+        "home": "CLUB HOQUEI VILA-SECA D",
+        "homeId": "11758",
+        "away": "CHP MCDONALD'S AMPOSTA B",
+        "awayId": "12096",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-01-10",
+        "time": "11:30",
         "played": false
       },
       {
@@ -207944,6 +207944,20 @@
         "awayScore": null,
         "date": "2027-01-10",
         "time": "13:00",
+        "played": false
+      },
+      {
+        "idp": "161519",
+        "idc": "5044",
+        "jornada": 12,
+        "home": "CLUB HOQUEI VILA-SECA D",
+        "homeId": "11758",
+        "away": "CP RIUDOMS C",
+        "awayId": "12568",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2027-01-09",
+        "time": "15:00",
         "played": false
       },
       {
@@ -207986,20 +208000,6 @@
         "awayScore": null,
         "date": "2027-01-16",
         "time": "18:15",
-        "played": false
-      },
-      {
-        "idp": "161519",
-        "idc": "5044",
-        "jornada": 12,
-        "home": "CLUB HOQUEI VILA-SECA D",
-        "homeId": "11758",
-        "away": "CP RIUDOMS C",
-        "awayId": "12568",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2027-01-17",
-        "time": "10:00",
         "played": false
       },
       {
@@ -213465,6 +213465,20 @@
         "played": true
       },
       {
+        "idp": "161736",
+        "idc": "5050",
+        "jornada": 9,
+        "home": "CP JONQUERENC",
+        "homeId": "11128",
+        "away": "CH LLORET CAFÈS CORNELLÀ A",
+        "awayId": "11201",
+        "homeScore": null,
+        "awayScore": null,
+        "date": "2026-07-31",
+        "time": "17:30",
+        "played": false
+      },
+      {
         "idp": "161737",
         "idc": "5050",
         "jornada": 9,
@@ -213504,20 +213518,6 @@
         "awayScore": null,
         "date": "2026-11-28",
         "time": "16:15",
-        "played": false
-      },
-      {
-        "idp": "161736",
-        "idc": "5050",
-        "jornada": 9,
-        "home": "CP JONQUERENC",
-        "homeId": "11128",
-        "away": "CH LLORET CAFÈS CORNELLÀ A",
-        "awayId": "11201",
-        "homeScore": null,
-        "awayScore": null,
-        "date": "2026-11-28",
-        "time": "17:30",
         "played": false
       },
       {
@@ -233505,11 +233505,11 @@
         "homeId": "12837",
         "away": "CLUB HOQUEI CANET",
         "awayId": "12826",
-        "homeScore": null,
-        "awayScore": null,
+        "homeScore": 8,
+        "awayScore": 3,
         "date": "2026-11-23",
         "time": "22:00",
-        "played": false
+        "played": true
       },
       {
         "idp": "164007",
@@ -235029,14 +235029,14 @@
         "pos": 1,
         "team": "CLUB PATI CALAFELL",
         "teamId": null,
-        "pts": 10,
-        "pj": 5,
-        "pg": 3,
+        "pts": 13,
+        "pj": 6,
+        "pg": 4,
         "pe": 1,
         "pp": 1,
-        "gf": 25,
-        "gc": 19,
-        "gav": 6,
+        "gf": 33,
+        "gc": 22,
+        "gav": 11,
         "pen": 0
       },
       {
@@ -235142,13 +235142,13 @@
         "team": "CLUB HOQUEI CANET",
         "teamId": null,
         "pts": 0,
-        "pj": 1,
+        "pj": 2,
         "pg": 0,
         "pe": 0,
-        "pp": 1,
-        "gf": 0,
-        "gc": 10,
-        "gav": -10,
+        "pp": 2,
+        "gf": 3,
+        "gc": 18,
+        "gav": -15,
         "pen": 1
       },
       {
@@ -235412,14 +235412,14 @@
           "pos": 1,
           "team": "CLUB PATI CALAFELL",
           "teamId": null,
-          "pts": 10,
-          "pj": 5,
-          "pg": 3,
+          "pts": 13,
+          "pj": 6,
+          "pg": 4,
           "pe": 1,
           "pp": 1,
-          "gf": 25,
-          "gc": 19,
-          "gav": 6,
+          "gf": 33,
+          "gc": 22,
+          "gav": 11,
           "pen": 0
         },
         {
@@ -235525,13 +235525,13 @@
           "team": "CLUB HOQUEI CANET",
           "teamId": null,
           "pts": 0,
-          "pj": 1,
+          "pj": 2,
           "pg": 0,
           "pe": 0,
-          "pp": 1,
-          "gf": 0,
-          "gc": 10,
-          "gav": -10,
+          "pp": 2,
+          "gf": 3,
+          "gc": 18,
+          "gav": -15,
           "pen": 1
         }
       ],
@@ -235798,14 +235798,14 @@
           "pos": 1,
           "team": "CLUB PATI CALAFELL",
           "teamId": null,
-          "pts": 10,
-          "pj": 5,
-          "pg": 3,
+          "pts": 13,
+          "pj": 6,
+          "pg": 4,
           "pe": 1,
           "pp": 1,
-          "gf": 25,
-          "gc": 19,
-          "gav": 6,
+          "gf": 33,
+          "gc": 22,
+          "gav": 11,
           "pen": 0
         },
         {
@@ -235911,13 +235911,13 @@
           "team": "CLUB HOQUEI CANET",
           "teamId": null,
           "pts": 0,
-          "pj": 1,
+          "pj": 2,
           "pg": 0,
           "pe": 0,
-          "pp": 1,
-          "gf": 0,
-          "gc": 10,
-          "gav": -10,
+          "pp": 2,
+          "gf": 3,
+          "gc": 18,
+          "gav": -15,
           "pen": 1
         }
       ],
