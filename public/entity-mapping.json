@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-24T20:34:41.635Z",
+  "generatedAt": "2026-11-25T19:49:17.331Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 211,
@@ -15989,6 +15989,14 @@
         "competitionCanonicalId": "cmp_50d3166cf4cf"
       },
       {
+        "canonicalId": "team_2522a2f98444",
+        "clubCanonicalId": "club_bb8eb812dc39",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE CORNELLÀ",
+        "competitionCanonicalId": "cmp_50d3166cf4cf"
+      },
+      {
         "canonicalId": "team_677b448254b2",
         "clubCanonicalId": "club_6068ea04a42b",
         "source": "jok",
@@ -16002,14 +16010,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "MOLLET HC",
-        "competitionCanonicalId": "cmp_50d3166cf4cf"
-      },
-      {
-        "canonicalId": "team_2522a2f98444",
-        "clubCanonicalId": "club_bb8eb812dc39",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CE CORNELLÀ",
         "competitionCanonicalId": "cmp_50d3166cf4cf"
       },
       {
@@ -30759,6 +30759,15 @@
         "groupCanonicalId": "grp_dc80833720f3"
       },
       {
+        "canonicalId": "team_2522a2f98444",
+        "clubCanonicalId": "club_bb8eb812dc39",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE CORNELLÀ",
+        "competitionCanonicalId": "cmp_50d3166cf4cf",
+        "groupCanonicalId": "grp_dc80833720f3"
+      },
+      {
         "canonicalId": "team_677b448254b2",
         "clubCanonicalId": "club_6068ea04a42b",
         "source": "fecapa",
@@ -30773,15 +30782,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "MOLLET HC",
-        "competitionCanonicalId": "cmp_50d3166cf4cf",
-        "groupCanonicalId": "grp_dc80833720f3"
-      },
-      {
-        "canonicalId": "team_2522a2f98444",
-        "clubCanonicalId": "club_bb8eb812dc39",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CE CORNELLÀ",
         "competitionCanonicalId": "cmp_50d3166cf4cf",
         "groupCanonicalId": "grp_dc80833720f3"
       },
@@ -194295,17 +194295,17 @@
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
       },
       {
-        "canonicalId": "acta_c89126d7a9da",
+        "canonicalId": "acta_80fff85d7192",
         "source": "jok",
-        "sourceId": "483350261250211637",
+        "sourceId": "483350261205912229",
         "sourceName": "vs",
         "compSourceId": "5026",
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
       },
       {
-        "canonicalId": "acta_80fff85d7192",
+        "canonicalId": "acta_c89126d7a9da",
         "source": "jok",
-        "sourceId": "483350261205912229",
+        "sourceId": "483350261250211637",
         "sourceName": "vs",
         "compSourceId": "5026",
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
