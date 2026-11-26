@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T19:49:17.331Z",
+  "generatedAt": "2026-11-26T19:31:08.707Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 211,
@@ -5437,6 +5437,14 @@
         "competitionCanonicalId": "cmp_8cf8d3bed9c4"
       },
       {
+        "canonicalId": "team_0940b56336ba",
+        "clubCanonicalId": "club_f1c45ec173c5",
+        "source": "jok",
+        "sourceId": "11921",
+        "sourceName": "CLUB HOQUEI VILASSAR",
+        "competitionCanonicalId": "cmp_8cf8d3bed9c4"
+      },
+      {
         "canonicalId": "team_7313eac1984b",
         "clubCanonicalId": "club_f11fcfa16b25",
         "source": "jok",
@@ -5450,14 +5458,6 @@
         "source": "jok",
         "sourceId": "11391",
         "sourceName": "SANT JOSEP DE BADALONA",
-        "competitionCanonicalId": "cmp_8cf8d3bed9c4"
-      },
-      {
-        "canonicalId": "team_0940b56336ba",
-        "clubCanonicalId": "club_f1c45ec173c5",
-        "source": "jok",
-        "sourceId": "11921",
-        "sourceName": "CLUB HOQUEI VILASSAR",
         "competitionCanonicalId": "cmp_8cf8d3bed9c4"
       },
       {
@@ -6533,19 +6533,19 @@
         "competitionCanonicalId": "cmp_4c87ab2fdbf4"
       },
       {
-        "canonicalId": "team_a1be96bef468",
-        "clubCanonicalId": "club_3a0f0b5c84f8",
-        "source": "jok",
-        "sourceId": "11600",
-        "sourceName": "CLUB PATÍ VILA SANA B",
-        "competitionCanonicalId": "cmp_4c87ab2fdbf4"
-      },
-      {
         "canonicalId": "team_64670073929b",
         "clubCanonicalId": "club_c08b45637227",
         "source": "jok",
         "sourceId": "11127",
         "sourceName": "CP JONQUERENC",
+        "competitionCanonicalId": "cmp_4c87ab2fdbf4"
+      },
+      {
+        "canonicalId": "team_a1be96bef468",
+        "clubCanonicalId": "club_3a0f0b5c84f8",
+        "source": "jok",
+        "sourceId": "11600",
+        "sourceName": "CLUB PATÍ VILA SANA B",
         "competitionCanonicalId": "cmp_4c87ab2fdbf4"
       },
       {
@@ -15925,19 +15925,19 @@
         "competitionCanonicalId": "cmp_ad2f1bda7f7f"
       },
       {
-        "canonicalId": "team_cd8703913202",
-        "clubCanonicalId": "club_9d0b0968985c",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "STICK CLUB BARCELONA",
-        "competitionCanonicalId": "cmp_3d9386e013fe"
-      },
-      {
         "canonicalId": "team_39046a5bef99",
         "clubCanonicalId": "club_dec96fc71830",
         "source": "jok",
         "sourceId": null,
         "sourceName": "CH MATARÓ",
+        "competitionCanonicalId": "cmp_3d9386e013fe"
+      },
+      {
+        "canonicalId": "team_cd8703913202",
+        "clubCanonicalId": "club_9d0b0968985c",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "STICK CLUB BARCELONA",
         "competitionCanonicalId": "cmp_3d9386e013fe"
       },
       {
@@ -17907,6 +17907,15 @@
         "groupCanonicalId": "grp_e4311d5db268"
       },
       {
+        "canonicalId": "team_0940b56336ba",
+        "clubCanonicalId": "club_f1c45ec173c5",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB HOQUEI VILASSAR",
+        "competitionCanonicalId": "cmp_54b4c1bca5ce",
+        "groupCanonicalId": "grp_e4311d5db268"
+      },
+      {
         "canonicalId": "team_7313eac1984b",
         "clubCanonicalId": "club_f11fcfa16b25",
         "source": "fecapa",
@@ -17921,15 +17930,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "SANT JOSEP DE BADALONA",
-        "competitionCanonicalId": "cmp_54b4c1bca5ce",
-        "groupCanonicalId": "grp_e4311d5db268"
-      },
-      {
-        "canonicalId": "team_0940b56336ba",
-        "clubCanonicalId": "club_f1c45ec173c5",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB HOQUEI VILASSAR",
         "competitionCanonicalId": "cmp_54b4c1bca5ce",
         "groupCanonicalId": "grp_e4311d5db268"
       },
@@ -19851,20 +19851,20 @@
         "groupCanonicalId": "grp_7f2f1b5d1a69"
       },
       {
-        "canonicalId": "team_a1be96bef468",
-        "clubCanonicalId": "club_3a0f0b5c84f8",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CLUB PATÍ VILA-SANA B",
-        "competitionCanonicalId": "cmp_dca9124c6a07",
-        "groupCanonicalId": "grp_7f2f1b5d1a69"
-      },
-      {
         "canonicalId": "team_64670073929b",
         "clubCanonicalId": "club_c08b45637227",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CP JONQUERENC",
+        "competitionCanonicalId": "cmp_dca9124c6a07",
+        "groupCanonicalId": "grp_7f2f1b5d1a69"
+      },
+      {
+        "canonicalId": "team_a1be96bef468",
+        "clubCanonicalId": "club_3a0f0b5c84f8",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CLUB PATÍ VILA-SANA B",
         "competitionCanonicalId": "cmp_dca9124c6a07",
         "groupCanonicalId": "grp_7f2f1b5d1a69"
       },
@@ -30687,20 +30687,20 @@
         "groupCanonicalId": "grp_1dbc53b656e1"
       },
       {
-        "canonicalId": "team_cd8703913202",
-        "clubCanonicalId": "club_9d0b0968985c",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "STICK CLUB BARCELONA",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_cd1c58499a09"
-      },
-      {
         "canonicalId": "team_39046a5bef99",
         "clubCanonicalId": "club_dec96fc71830",
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "CH MATARÓ",
+        "competitionCanonicalId": "cmp_9476ab10e608",
+        "groupCanonicalId": "grp_cd1c58499a09"
+      },
+      {
+        "canonicalId": "team_cd8703913202",
+        "clubCanonicalId": "club_9d0b0968985c",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "STICK CLUB BARCELONA",
         "competitionCanonicalId": "cmp_9476ab10e608",
         "groupCanonicalId": "grp_cd1c58499a09"
       },
@@ -114906,7 +114906,7 @@
         "canonicalId": "acta_1870936c19fd",
         "source": "jok",
         "sourceId": "153171",
-        "sourceName": "vs",
+        "sourceName": "Club Hoquei Vilassar vs Ch Ripollet",
         "compSourceId": "4939",
         "compName": "3ª CATALANA GRUP A (2026-27)"
       },
@@ -147034,7 +147034,7 @@
         "canonicalId": "acta_e755a845b53e",
         "source": "jok",
         "sourceId": "157216",
-        "sourceName": "vs",
+        "sourceName": "Cp Jonquerenc vs Auto Vigatana Patí Vic",
         "compSourceId": "4977",
         "compName": "FEM 15 PLATA (2026-27)"
       },
@@ -168535,17 +168535,17 @@
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_265510351d1f",
+        "canonicalId": "acta_d0bb1fd2a422",
         "source": "jok",
-        "sourceId": "478748921179512307",
+        "sourceId": "478748921175412519",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
       },
       {
-        "canonicalId": "acta_d0bb1fd2a422",
+        "canonicalId": "acta_265510351d1f",
         "source": "jok",
-        "sourceId": "478748921175412519",
+        "sourceId": "478748921179512307",
         "sourceName": "vs",
         "compSourceId": "4892",
         "compName": "INFANTIL PLATA 6 (2026-27)"
@@ -185746,7 +185746,7 @@
         "canonicalId": "acta_c29167150f3a",
         "source": "jok",
         "sourceId": "156522",
-        "sourceName": "vs",
+        "sourceName": "Unió Esportiva Dhorta A vs Cp Montesquiu",
         "compSourceId": "4968",
         "compName": "BCN PREBENJAMI PLATA 4 (2026-27)"
       },
@@ -194295,17 +194295,17 @@
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
       },
       {
-        "canonicalId": "acta_80fff85d7192",
+        "canonicalId": "acta_c89126d7a9da",
         "source": "jok",
-        "sourceId": "483350261205912229",
+        "sourceId": "483350261250211637",
         "sourceName": "vs",
         "compSourceId": "5026",
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
       },
       {
-        "canonicalId": "acta_c89126d7a9da",
+        "canonicalId": "acta_80fff85d7192",
         "source": "jok",
-        "sourceId": "483350261250211637",
+        "sourceId": "483350261205912229",
         "sourceName": "vs",
         "compSourceId": "5026",
         "compName": "PREBENJAMÍ OR LLEIDA (2026-27)"
