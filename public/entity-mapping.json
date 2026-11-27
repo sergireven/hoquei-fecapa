@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T19:31:08.707Z",
+  "generatedAt": "2026-11-27T19:25:01.775Z",
   "rulesVersion": "v1",
   "summary": {
     "competitions": 211,
@@ -15757,6 +15757,14 @@
         "competitionCanonicalId": "cmp_f42c1c362595"
       },
       {
+        "canonicalId": "team_7f7db94248e2",
+        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "source": "jok",
+        "sourceId": null,
+        "sourceName": "CE ARENYS DE MUNT",
+        "competitionCanonicalId": "cmp_f18ae63ce649"
+      },
+      {
         "canonicalId": "team_49b0bf37f011",
         "clubCanonicalId": "club_9df98e8a3897",
         "source": "jok",
@@ -15765,11 +15773,11 @@
         "competitionCanonicalId": "cmp_f18ae63ce649"
       },
       {
-        "canonicalId": "team_7f7db94248e2",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "canonicalId": "team_8a3afc65e6a9",
+        "clubCanonicalId": "club_d1587372a824",
         "source": "jok",
         "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT",
+        "sourceName": "CP CORBERA",
         "competitionCanonicalId": "cmp_f18ae63ce649"
       },
       {
@@ -15802,14 +15810,6 @@
         "source": "jok",
         "sourceId": null,
         "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_f18ae63ce649"
-      },
-      {
-        "canonicalId": "team_8a3afc65e6a9",
-        "clubCanonicalId": "club_d1587372a824",
-        "source": "jok",
-        "sourceId": null,
-        "sourceName": "CP CORBERA",
         "competitionCanonicalId": "cmp_f18ae63ce649"
       },
       {
@@ -30498,6 +30498,15 @@
         "groupCanonicalId": "grp_c921ab3e5fdc"
       },
       {
+        "canonicalId": "team_7f7db94248e2",
+        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "source": "fecapa",
+        "sourceId": null,
+        "sourceName": "CE ARENYS DE MUNT",
+        "competitionCanonicalId": "cmp_9476ab10e608",
+        "groupCanonicalId": "grp_e22f5af566f7"
+      },
+      {
         "canonicalId": "team_49b0bf37f011",
         "clubCanonicalId": "club_9df98e8a3897",
         "source": "fecapa",
@@ -30507,11 +30516,11 @@
         "groupCanonicalId": "grp_e22f5af566f7"
       },
       {
-        "canonicalId": "team_7f7db94248e2",
-        "clubCanonicalId": "club_7b6bb0c4ff81",
+        "canonicalId": "team_8a3afc65e6a9",
+        "clubCanonicalId": "club_d1587372a824",
         "source": "fecapa",
         "sourceId": null,
-        "sourceName": "CE ARENYS DE MUNT",
+        "sourceName": "CP CORBERA",
         "competitionCanonicalId": "cmp_9476ab10e608",
         "groupCanonicalId": "grp_e22f5af566f7"
       },
@@ -30548,15 +30557,6 @@
         "source": "fecapa",
         "sourceId": null,
         "sourceName": "INNOAESTHETICS HC SANT JUST",
-        "competitionCanonicalId": "cmp_9476ab10e608",
-        "groupCanonicalId": "grp_e22f5af566f7"
-      },
-      {
-        "canonicalId": "team_8a3afc65e6a9",
-        "clubCanonicalId": "club_d1587372a824",
-        "source": "fecapa",
-        "sourceId": null,
-        "sourceName": "CP CORBERA",
         "competitionCanonicalId": "cmp_9476ab10e608",
         "groupCanonicalId": "grp_e22f5af566f7"
       },
@@ -107050,7 +107050,7 @@
         "canonicalId": "acta_eb2b1c27b980",
         "source": "jok",
         "sourceId": "147837",
-        "sourceName": "vs",
+        "sourceName": "Hc Valls Intec Enginyeria vs Hc Castellar",
         "compSourceId": "4870",
         "compName": "2ª CATALANA GRUP A (2026-27)"
       },
@@ -121050,7 +121050,7 @@
         "canonicalId": "acta_161d2debd80d",
         "source": "jok",
         "sourceId": "154023",
-        "sourceName": "vs",
+        "sourceName": "Hc Valls vs Hc Castellar",
         "compSourceId": "4943",
         "compName": "3ª CATALANA GRUP E (2026-27)"
       },
@@ -179994,7 +179994,7 @@
         "canonicalId": "acta_29ceb586f989",
         "source": "jok",
         "sourceId": "146399",
-        "sourceName": "vs",
+        "sourceName": "Barça vs Cp Voltregà - Masies",
         "compSourceId": "4864",
         "compName": "NACIONAL CATALANA MASCULINA (2026-27)"
       },
